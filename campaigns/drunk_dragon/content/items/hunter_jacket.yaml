@@ -1,0 +1,6 @@
+id: hunter_jacket
+name: Куртка следопыта
+description: Кожаная куртка, укреплённая Броном костяными пластинами болотных гончих.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: clothing

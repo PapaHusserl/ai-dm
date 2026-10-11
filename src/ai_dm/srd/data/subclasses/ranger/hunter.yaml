@@ -1,0 +1,11 @@
+id: hunter
+name: Охотник
+description: Следопыт, который выучил повадки крупной добычи и целых стай.
+source: srd-5.2
+license: CC-BY-4.0
+class_id: ranger
+features:
+- level: 3
+  feature: hunters_lore
+- level: 3
+  feature: hunters_prey

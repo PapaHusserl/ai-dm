@@ -1,0 +1,228 @@
+{
+  "id": "hero",
+  "ordinal": 1,
+  "name": "Грей",
+  "sheet": {
+    "species_id": "human",
+    "class_id": "ranger",
+    "background": {
+      "name": "Егерь-одиночка",
+      "abilities": [
+        "dex",
+        "wis",
+        "con"
+      ],
+      "skills": [
+        "stealth",
+        "survival"
+      ],
+      "tool": "herbalism_kit",
+      "feat": "alert",
+      "equipment": [],
+      "gold_cp": 0,
+      "gold_option_cp": 5000
+    },
+    "abilities": {
+      "str": 12,
+      "dex": 17,
+      "con": 13,
+      "int": 10,
+      "wis": 15,
+      "cha": 8
+    },
+    "subclass_id": "beast_master",
+    "level": 3,
+    "skill_proficiencies": [
+      "stealth",
+      "survival",
+      "perception",
+      "insight",
+      "nature",
+      "intimidation"
+    ],
+    "tool_proficiencies": [
+      "herbalism_kit"
+    ],
+    "feats": [
+      "alert",
+      "savage_attacker",
+      "archery"
+    ],
+    "weapon_masteries": [
+      "north_wind_blade",
+      "composite_longbow"
+    ],
+    "spells_known": [
+      "cure_wounds",
+      "ensnaring_strike",
+      "speak_with_animals",
+      "fog_cloud"
+    ],
+    "spells_prepared": [
+      "cure_wounds",
+      "ensnaring_strike",
+      "speak_with_animals",
+      "fog_cloud"
+    ],
+    "xp": 900,
+    "skill_expertise": [
+      "survival"
+    ],
+    "languages": [
+      "celestial",
+      "gnomish"
+    ],
+    "feature_options": {}
+  },
+  "creature": {
+    "hp_current": 25,
+    "hp_max": 25,
+    "hp_temp": 0,
+    "conditions": [],
+    "exhaustion": 0,
+    "active_effects": [],
+    "death_saves": {
+      "successes": 0,
+      "failures": 0,
+      "stable": false
+    },
+    "resources": {
+      "hit_dice": {
+        "current": 3,
+        "max": 3
+      },
+      "favored_enemy": {
+        "current": 2,
+        "max": 2
+      },
+      "spell_slot:1": {
+        "current": 3,
+        "max": 3
+      }
+    },
+    "concentration": null
+  },
+  "status": "active",
+  "fate": null,
+  "death": null,
+  "inventory": [
+    {
+      "item_id": "mithral_shirt",
+      "qty": 1
+    },
+    {
+      "item_id": "north_wind_blade",
+      "qty": 1
+    },
+    {
+      "item_id": "composite_longbow",
+      "qty": 1
+    },
+    {
+      "item_id": "hunting_dirk",
+      "qty": 1
+    },
+    {
+      "item_id": "harpoon_dart",
+      "qty": 1
+    },
+    {
+      "item_id": "arrow_armor_piercing",
+      "qty": 20
+    },
+    {
+      "item_id": "arrow_frost",
+      "qty": 10
+    },
+    {
+      "item_id": "arrow_fire",
+      "qty": 10
+    },
+    {
+      "item_id": "arrow_silver",
+      "qty": 10
+    },
+    {
+      "item_id": "hunter_jacket",
+      "qty": 1
+    },
+    {
+      "item_id": "snow_ghost_cloak",
+      "qty": 1
+    },
+    {
+      "item_id": "spiked_bogshoes",
+      "qty": 1
+    },
+    {
+      "item_id": "gnome_climbing_kit",
+      "qty": 1
+    },
+    {
+      "item_id": "stoneskin_elixir",
+      "qty": 2
+    },
+    {
+      "item_id": "breath_cleansing_potion",
+      "qty": 3
+    },
+    {
+      "item_id": "mor_antidote",
+      "qty": 1
+    },
+    {
+      "item_id": "bran_mountain_salve",
+      "qty": 1
+    },
+    {
+      "item_id": "spare_bowstring",
+      "qty": 2
+    },
+    {
+      "item_id": "ratusha_master_key",
+      "qty": 1
+    },
+    {
+      "item_id": "olbrecht_signet_ring",
+      "qty": 1
+    },
+    {
+      "item_id": "travel_flask",
+      "qty": 1
+    }
+  ],
+  "equipped": {
+    "armor": "mithral_shirt",
+    "shield": null,
+    "main_hand": "north_wind_blade",
+    "off_hand": null
+  },
+  "money_cp": 5400,
+  "motive": "Поддерживать баланс мира: как охотник жить в гармонии с природой и беречь жизнь в любом её виде",
+  "means": [],
+  "opportunity": [],
+  "favor": {},
+  "deity_id": null,
+  "divine": {
+    "frozen": [],
+    "debts": [],
+    "intervention_chapter": null,
+    "intervention_god": null,
+    "debt_scene": {},
+    "prayer_god": null,
+    "prayer_day": null,
+    "prayer_used_day": null,
+    "curse_day_used": null
+  },
+  "birth_s": null,
+  "scars": [],
+  "heroic_inspiration": false,
+  "location_id": "iron_ridge_foothills",
+  "afterlife": null,
+  "legacy_links": [],
+  "companion": {
+    "name": "Акела",
+    "kind": "волк",
+    "notes": "Серый волк; перед походом его доверил Грею Йорген-зверолов. Идёт по следу, чует ветер, сторожит стоянку; в бою пока не участвует."
+  }
+}

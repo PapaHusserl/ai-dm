@@ -1,0 +1,56 @@
+# Каталог тем: файл <имя> лежит в этой папке (OGG, добавляются в Му-б). Нет файла -- тишина слоя.
+themes:
+  combat: {music: combat.ogg}
+  tavern: {music: tavern.ogg, ambient: crowd.ogg}
+  town: {music: town.ogg, ambient: street.ogg}
+  nature: {music: nature.ogg, ambient: wind_birds.ogg}
+  dungeon: {music: dungeon.ogg, ambient: drips.ogg}
+  dark: {music: dark.ogg, ambient: night.ogg}
+  explore: {music: explore.ogg, ambient: wind_birds.ogg}
+  wilds: {music: wilds.ogg, ambient: night.ogg}
+  romance: {music: romance.ogg}
+  romance_sensual: {music: romance_sensual.ogg}
+# id локации -> тема (точные ссылки)
+locations: {}
+# тег локации -> тема (порядок тегов локации -- приоритет)
+location_tags:
+  таверна: tavern
+  трактир: tavern
+  город: town
+  деревня: town
+  квартал: town
+  магазин: town
+  власть: town
+  гильдия: town
+  храм: town
+  порт: town
+  равнина: nature
+  горы: nature
+  предгорья: nature
+  болото: nature
+  лес: nature
+  долина: nature
+  дорога: nature
+  ущелье: nature
+  руины: dungeon
+  гробница: dungeon
+  подвал: dungeon
+  логово: dungeon
+  логово врага: dungeon
+  крепость: dungeon
+  шахта: dungeon
+  пещера: dungeon
+  вход: dungeon
+  святилище: dark
+  кладбище: dark
+  заброшено: dark
+  чаща: wilds
+  тёмный лес: wilds
+  топь: wilds
+tone:
+  horror_strong: dark
+  default: explore
+  horror_variants: {nature: wilds}
+  romance_variants:
+    откровенно: {romance: romance_sensual}
+combat: combat

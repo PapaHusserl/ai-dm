@@ -1,0 +1,159 @@
+{
+  "id": "hero",
+  "ordinal": 1,
+  "name": "Арн",
+  "sheet": {
+    "species_id": "human",
+    "class_id": "fighter",
+    "background": {
+      "name": "Солдат",
+      "abilities": [
+        "str",
+        "dex",
+        "con"
+      ],
+      "skills": [
+        "athletics",
+        "intimidation"
+      ],
+      "tool": "gaming_set",
+      "feat": "savage_attacker",
+      "equipment": [
+        "spear",
+        "shortbow",
+        "arrows",
+        "gaming_set",
+        "healers_kit",
+        "quiver",
+        "travelers_clothes"
+      ],
+      "gold_cp": 1400,
+      "gold_option_cp": 5000
+    },
+    "abilities": {
+      "str": 17,
+      "dex": 13,
+      "con": 15,
+      "int": 8,
+      "wis": 10,
+      "cha": 12
+    },
+    "subclass_id": null,
+    "level": 1,
+    "skill_proficiencies": [
+      "athletics",
+      "intimidation",
+      "perception",
+      "survival",
+      "stealth",
+      "medicine",
+      "religion",
+      "nature"
+    ],
+    "tool_proficiencies": [
+      "gaming_set"
+    ],
+    "feats": [
+      "savage_attacker",
+      "defense",
+      "skilled"
+    ],
+    "weapon_masteries": [
+      "longsword",
+      "greatsword",
+      "shortsword"
+    ],
+    "spells_known": [],
+    "spells_prepared": [],
+    "xp": 0,
+    "skill_expertise": [],
+    "languages": [],
+    "feature_options": {}
+  },
+  "creature": {
+    "hp_current": 0,
+    "hp_max": 12,
+    "hp_temp": 0,
+    "conditions": [
+      {
+        "id": "unconscious",
+        "source": "0_hp",
+        "expires": null,
+        "dc": null
+      }
+    ],
+    "exhaustion": 0,
+    "active_effects": [],
+    "death_saves": {
+      "successes": 0,
+      "failures": 0,
+      "stable": true
+    },
+    "resources": {
+      "hit_dice": {
+        "current": 1,
+        "max": 1
+      },
+      "second_wind": {
+        "current": 2,
+        "max": 2
+      }
+    },
+    "concentration": null
+  },
+  "status": "active",
+  "fate": null,
+  "death": null,
+  "inventory": [
+    {
+      "item_id": "longsword",
+      "qty": 1
+    },
+    {
+      "item_id": "scimitar",
+      "qty": 2
+    },
+    {
+      "item_id": "potion_of_healing",
+      "qty": 3
+    },
+    {
+      "item_id": "shield",
+      "qty": 1
+    },
+    {
+      "item_id": "ghost_relic",
+      "qty": 1
+    }
+  ],
+  "equipped": {
+    "armor": null,
+    "shield": null,
+    "main_hand": "longsword",
+    "off_hand": null
+  },
+  "money_cp": 1400,
+  "motive": "",
+  "means": [],
+  "opportunity": [],
+  "favor": {},
+  "deity_id": null,
+  "divine": {
+    "frozen": [],
+    "debts": [],
+    "intervention_chapter": null,
+    "intervention_god": null,
+    "debt_scene": {},
+    "prayer_god": null,
+    "prayer_day": null,
+    "prayer_used_day": null,
+    "curse_day_used": null
+  },
+  "birth_s": null,
+  "scars": [],
+  "heroic_inspiration": false,
+  "location_id": "cellar",
+  "afterlife": null,
+  "legacy_links": [],
+  "companion": null
+}

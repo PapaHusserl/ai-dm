@@ -1,0 +1,11 @@
+id: alert
+name: Бдительность
+description: К броску инициативы вы добавляете бонус мастерства. После броска инициативы можете поменяться
+  местами с союзником по инициативе.
+source: srd-5.2
+license: CC-BY-4.0
+category: origin
+effects:
+- type: modifier
+  target: initiative
+  add: proficiency_bonus

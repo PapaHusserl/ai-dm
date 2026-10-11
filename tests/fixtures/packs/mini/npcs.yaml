@@ -1,0 +1,49 @@
+- id: aldric
+  name: Олдрик
+  named: true
+  key: true
+  location_id: tavern
+  species_id: human
+  means: [связи]
+  opportunity:
+    - id: steal_grail
+      if: {flag: grail_seen}
+      then: Олдрик крадёт чашу
+      once: true
+  secrets:
+    - id: sister
+      text: Сестра Олдрика в беде
+      reveal_if: {flag: found_letter}
+    - id: oath
+      text: Олдрик дал клятву
+      reveal_if: {narrative: герой завоевал доверие Олдрика}
+- id: mara
+  name: Мара
+  named: true
+  location_id: town
+  species_id: human
+  means: [товары]
+  trade: {kind: general}
+  opportunity:
+    - id: mara_shout
+      if: {flag: alarm}
+      then: Мара зовёт стражу
+      cooldown: 7d
+- id: brann
+  name: Бранн
+  named: true
+  location_id: cellar
+  species_id: dwarf
+  means: [кирка]
+  opportunity:
+    - id: brann_trust
+      if:
+        all:
+          - flag: met_brann
+          - narrative: Бранн доверяет герою
+      then: Бранн открывает проход
+- id: guard
+  name: Стражник
+  named: false
+  location_id: town
+  means: [меч]

@@ -1,0 +1,10 @@
+id: resourceful
+name: Находчивость
+description: Каждый раз, когда вы завершаете продолжительный отдых, вы получаете героическое вдохновение.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: resource
+  resource: heroic_inspiration
+  amount: 1
+  when: long_rest

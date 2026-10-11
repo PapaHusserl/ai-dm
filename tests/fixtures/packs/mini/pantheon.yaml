@@ -1,0 +1,10 @@
+- id: selune
+  name: Селунэ
+  check_every_days: 7
+  opportunity:
+    - id: bless_pilgrim
+      if: {flag: pilgrim_prayed}
+      then: Селунэ посылает знамение
+- id: morrah
+  name: Моррах
+  rivals: [selune]

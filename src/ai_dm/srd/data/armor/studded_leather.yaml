@@ -1,0 +1,10 @@
+id: studded_leather
+name: Проклёпанная кожа
+description: КД 12 + модификатор Ловкости.
+source: srd-5.2
+license: CC-BY-4.0
+category: light
+ac: 12
+cost_cp: 4500
+dex_cap: null
+strength_min: 0

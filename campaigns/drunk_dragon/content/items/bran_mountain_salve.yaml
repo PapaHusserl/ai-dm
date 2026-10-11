@@ -1,0 +1,6 @@
+id: bran_mountain_salve
+name: Горная мазь Брана
+description: 'Медная баночка: от обморожений и серных ожогов.'
+cost_cp: 0
+source: campaign:drunk_dragon
+category: consumable

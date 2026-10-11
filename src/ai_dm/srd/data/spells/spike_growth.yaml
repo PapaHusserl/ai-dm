@@ -1,0 +1,13 @@
+id: spike_growth
+name: Шипастая поросль
+description: "Земля в радиусе 20 фт. от точки в пределах 150 фт. обрастает колючками (концентрация, до 10 минут) и становится труднопроходимой. Существо, идущее по ней, получает 2d4 колющего урона за каждые 5 фт. пути. Заметить такую поросль со стороны трудно."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: ranged
+range_ft: 150
+duration: 10m
+concentration: true
+classes:
+- ranger

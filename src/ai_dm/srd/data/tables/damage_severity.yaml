@@ -1,0 +1,30 @@
+id: damage_severity
+name: Урон опасности по полосе уровня и тяжести (ключ полоса:тяжесть:count|sides)
+source: srd-5.2
+license: CC-BY-4.0
+# Таблица «Damage Severity and Level» SRD 5.2. Кубики count d sides (значения таблиц -- только целые).
+rows:
+  '1-4:nuisance:count': 1
+  '1-4:nuisance:sides': 10
+  '1-4:dangerous:count': 2
+  '1-4:dangerous:sides': 10
+  '1-4:deadly:count': 4
+  '1-4:deadly:sides': 10
+  '5-10:nuisance:count': 2
+  '5-10:nuisance:sides': 10
+  '5-10:dangerous:count': 4
+  '5-10:dangerous:sides': 10
+  '5-10:deadly:count': 10
+  '5-10:deadly:sides': 10
+  '11-16:nuisance:count': 4
+  '11-16:nuisance:sides': 10
+  '11-16:dangerous:count': 10
+  '11-16:dangerous:sides': 10
+  '11-16:deadly:count': 18
+  '11-16:deadly:sides': 10
+  '17-20:nuisance:count': 10
+  '17-20:nuisance:sides': 10
+  '17-20:dangerous:count': 18
+  '17-20:dangerous:sides': 10
+  '17-20:deadly:count': 24
+  '17-20:deadly:sides': 10

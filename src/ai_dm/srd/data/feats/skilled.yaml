@@ -1,0 +1,11 @@
+id: skilled
+name: Одарённый
+description: Вы получаете владение любыми тремя навыками или инструментами на ваш выбор.
+source: srd-5.2
+license: CC-BY-4.0
+category: origin
+effects:
+- type: proficiency
+  target: skill_or_tool
+  count: 3
+repeatable: true

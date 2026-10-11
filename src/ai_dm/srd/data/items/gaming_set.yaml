@@ -1,0 +1,6 @@
+id: gaming_set
+name: Игровой набор
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 10
+tool: true

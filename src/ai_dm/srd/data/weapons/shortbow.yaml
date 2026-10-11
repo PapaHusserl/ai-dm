@@ -1,0 +1,15 @@
+id: shortbow
+name: Короткий лук
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: ranged
+damage_dice: 1d6
+damage_type: piercing
+cost_cp: 2500
+properties:
+- ammunition
+- two_handed
+mastery: vex
+range_normal_ft: 80
+range_long_ft: 320

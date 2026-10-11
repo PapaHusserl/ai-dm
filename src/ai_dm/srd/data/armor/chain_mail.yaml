@@ -1,0 +1,10 @@
+id: chain_mail
+name: Кольчуга
+description: КД 16. Помеха на проверки Скрытности. Требуется Сила 13.
+source: srd-5.2
+license: CC-BY-4.0
+category: heavy
+ac: 16
+cost_cp: 7500
+dex_cap: 0
+strength_min: 13

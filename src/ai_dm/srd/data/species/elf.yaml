@@ -1,0 +1,9 @@
+id: elf
+name: Эльф
+description: Древний народ с наследием фей.
+source: srd-5.2
+license: CC-BY-4.0
+speed_ft: 30
+size: medium
+traits:
+- fey_ancestry

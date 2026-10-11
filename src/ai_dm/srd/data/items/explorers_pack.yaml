@@ -1,0 +1,6 @@
+id: explorers_pack
+name: Набор путешественника
+description: Рюкзак, спальник, котелок, трутница, факелы, рационы, бурдюк, верёвка.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 1000

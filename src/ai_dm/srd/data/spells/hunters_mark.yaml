@@ -1,0 +1,18 @@
+id: hunters_mark
+name: Метка охотника
+description: "Бонусным действием вы помечаете существо в пределах 90 фт.: пока держится концентрация (до 1 часа), каждое ваше попадание атакой по цели наносит ей ещё 1d6 урона силовым полем (при крите кость удваивается). Вы легче находите помеченную цель: преимущество на проверки Восприятия и Выживания для её поиска."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: divination
+range_kind: ranged
+range_ft: 90
+casting_time: bonus_action
+duration: 1h
+concentration: true
+classes:
+- ranger
+effects:
+- type: extra_damage
+  dice: 1d6
+  damage_type: force

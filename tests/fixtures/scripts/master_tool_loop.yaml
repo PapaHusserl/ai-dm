@@ -1,0 +1,8 @@
+# Сценарий мока для master: инструмент set_flag, затем рассказ (цикл tool_use -> tool_result).
+steps:
+  - tool_calls:
+      - id: call-1
+        name: set_flag
+        input: {type: set_flag, name: met_guard, value: "true"}
+  - text: "Стражник кивает вам."
+    usage: {input: 1500, output: 40, cache_read: 1200}

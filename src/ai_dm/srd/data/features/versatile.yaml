@@ -1,0 +1,9 @@
+id: versatile
+name: Универсальность
+description: Вы получаете одну черту происхождения на ваш выбор.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: feat_choice
+  target: origin_feat
+  count: 1

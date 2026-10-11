@@ -1,0 +1,28 @@
+- id: vale
+  name: Вейл
+  description: Небольшая деревня на берегу реки.
+  tags:
+  - долина
+  connections:
+  - to: lame_goose
+    distance_m: 150
+- id: lame_goose
+  name: Таверна «Хромой гусь»
+  parent_id: vale
+  description: 'Единственная таверна в Вейле: низкий зал, стойка, лестница в подвал.'
+  tags:
+  - таверна
+  connections:
+  - to: vale
+    distance_m: 150
+  - to: cellar
+    distance_m: 20
+- id: cellar
+  name: Подвал таверны
+  parent_id: lame_goose
+  description: Сырой подвал с бочками. В последнее время там поселились гоблины.
+  tags:
+  - подвал
+  connections:
+  - to: lame_goose
+    distance_m: 20

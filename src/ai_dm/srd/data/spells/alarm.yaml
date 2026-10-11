@@ -1,0 +1,14 @@
+id: alarm
+name: Тревога
+description: "За минуту вы охраняете дверь, окно или участок размером до куба со стороной 20 фт. на 8 часов: стоит незваному существу войти, как вы слышите мысленный сигнал (или настоящий звон) и просыпаетесь, если спите. Можно исключить существ по условному признаку. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: abjuration
+range_kind: ranged
+range_ft: 30
+casting_time: 1m
+duration: 8h
+classes:
+- ranger
+- wizard

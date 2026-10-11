@@ -1,0 +1,5 @@
+id: spare_bowstring
+name: Запасная тетива из жил пещерного вепря
+description: Не дубеет на морозе.
+cost_cp: 0
+source: campaign:drunk_dragon

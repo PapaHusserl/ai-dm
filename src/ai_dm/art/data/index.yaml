@@ -1,0 +1,32 @@
+# Каталог ASCII-рисунков: файл <id>.txt в этой папке, ссылки -- здесь. source: custom -- рисунки проекта.
+source: custom
+events:
+  title: title
+  victory: victory
+  death: death
+  level_up: level_up
+locations:
+  vale: vale
+  lame_goose: tavern
+  cellar: cellar
+location_tags:
+  таверна: tavern
+  город: city
+  деревня: village
+  болото: swamp
+  руины: ruins
+  храм: temple
+  святилище: temple
+  магазин: shop
+  горы: mountains
+  предгорья: mountains
+  гробница: tomb
+  равнина: plain
+monsters:
+  goblin_warrior: goblin_warrior
+  goblin_boss: goblin_boss
+  guard: guard
+creature_types:
+  humanoid: humanoid
+  beast: beast
+  undead: undead

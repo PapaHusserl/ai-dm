@@ -1,0 +1,12 @@
+id: longstrider
+name: Скороход
+description: "Существо, которого вы касаетесь, получает +10 фт. к скорости на 1 час. На каждый уровень ячейки выше 1-го можно коснуться ещё одного существа."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: transmutation
+range_kind: touch
+duration: 1h
+classes:
+- ranger
+- wizard

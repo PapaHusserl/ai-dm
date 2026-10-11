@@ -1,0 +1,204 @@
+# Ожидаемый API: пакетный файл ai_dm/master/prompts/narrator_rules.md -- контракт в master_kit.py.
+# Проверяем наличие ключевых правил по фразам и именам инструментов, не по точному тексту.
+import re
+from importlib import resources
+
+import pytest
+
+from ai_dm.protocol.requests import REQUEST_MODELS
+
+
+def rules_text():
+    return (resources.files("ai_dm.master") / "prompts" / "narrator_rules.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_rules_file_exists_and_is_not_empty():
+    assert len(rules_text().strip()) > 500
+
+
+def test_rules_are_in_russian():
+    text = rules_text()
+    cyrillic = len(re.findall("[а-яА-ЯёЁ]", text))
+    latin = len(re.findall("[a-zA-Z]", text))
+    assert cyrillic > latin
+
+
+def test_rules_say_ai_narrates_and_code_counts():
+    text = rules_text().lower()
+    assert "рассказ" in text
+    assert "движок" in text or "код" in text
+    assert "бросок" in text or "броск" in text
+
+
+def test_rules_say_narrate_after_tool_results():
+    text = rules_text().lower()
+    assert "результат" in text
+    assert "повествован" in text
+
+
+def test_rules_say_use_difficulty_categories_not_numbers():
+    text = rules_text().lower()
+    assert "категори" in text
+    assert "сл" in text or "сложност" in text
+
+
+def test_rules_mention_unsupported_action():
+    assert "unsupported_action" in rules_text()
+
+
+def test_rules_forbid_healing_without_mechanics():
+    text = rules_text().lower()
+    assert "леч" in text
+    assert "механик" in text
+
+
+@pytest.mark.parametrize("name", ["skill_check", "start_combat", "offer_choices"])
+def test_rules_mention_key_tools(name):
+    assert name in rules_text()
+
+
+def test_rules_mention_only_known_tools():
+    # всё, что похоже на имя инструмента в обратных кавычках, должно существовать в протоколе
+    names = re.findall(r"`([a-z_]+)`", rules_text())
+    tools = [n for n in names if "_" in n]
+    fields = (
+        "tool_use", "tool_result", "monster_ids", "item_ids", "player_input", "distance_m",
+        "known_npcs", "location_id", "scene_npcs", "loot_individual", "npc_id",
+        "can_pray", "god_id", "hero_hidden", "spell_id", "game_summary", "improvised_thrown",
+        "lost_items", "gear_looted", "purse_cp", "sell_factor", "min_cp", "max_cp", "total_cp",
+        "cost_cp", "price_cp", "item_id", "trade_kind", "holder_npc_id", "haggle_percent",
+    )
+    unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
+    assert unknown == []
+
+
+# D8
+
+@pytest.mark.parametrize(
+    "name", ["player_action", "defeat_outcome", "npc_action", "rest", "monster_ids", "item_ids"]
+)
+def test_rules_mention_mode_tools_and_id_lists(name):
+    assert name in rules_text()
+
+
+def test_rules_say_player_input_is_json_field():
+    text = rules_text()
+    assert "player_input" in text
+    assert "JSON" in text
+
+
+def test_rules_do_not_forbid_naming_ids_in_tools():
+    assert "Нельзя называть id" not in rules_text()
+
+
+def test_rules_say_healing_only_via_rest():
+    text = rules_text()
+    assert "rest" in text
+    assert "unsupported_action" in text
+
+
+def test_rules_say_npc_death_needs_cause_goal_or_hazard():
+    text = rules_text()
+    assert "cause" in text
+    assert "goal" in text
+    assert "hazard" in text
+
+
+def test_rules_say_to_mark_followers_by_npc_update():
+    text = rules_text()
+    assert "follows" in text
+
+
+# Б0-П0: раздел «Тон» перечисляет все значения шкалы романтики (из Literal модели)
+
+def tone_section():
+    text = rules_text()
+    start = text.index("## Тон")
+    end = text.find("\n## ", start + 1)
+    return text[start:] if end == -1 else text[start:end]
+
+
+def test_rules_tone_section_lists_every_romance_value():
+    from typing import get_args
+
+    from ai_dm.state.world import Tone
+
+    values = [v for v in get_args(Tone.model_fields["romance"].annotation) if v]
+    assert len(values) == 4
+    for value in values:
+        assert value in tone_section()
+
+
+def test_rules_tone_section_has_no_old_value_yes():
+    assert "`есть`" not in tone_section()
+
+
+# Б1а: hero_sheet_rules.md -- правила роли создания героя (режим hero_sheet)
+
+def sheet_rules_text():
+    path = resources.files("ai_dm.master") / "prompts" / "hero_sheet_rules.md"
+    return path.read_text(encoding="utf-8")
+
+
+def test_sheet_rules_name_the_tool():
+    assert "hero_sheet" in sheet_rules_text()
+
+
+@pytest.mark.parametrize("method", ["standard_array", "point_buy", "explicit"])
+def test_sheet_rules_name_every_ability_method(method):
+    assert method in sheet_rules_text()
+
+
+def test_sheet_rules_name_class_kit():
+    assert "class_kit" in sheet_rules_text()
+
+
+def test_sheet_rules_are_in_russian():
+    text = sheet_rules_text()
+    assert len(re.findall("[а-яА-ЯёЁ]", text)) > len(re.findall("[a-zA-Z]", text))
+
+
+@pytest.mark.parametrize("word", ["feedback", "previous", "taken_names", "opportunity", "motive"])
+def test_sheet_rules_mention_input_fields(word):
+    assert word in sheet_rules_text()
+
+
+# Б1-фикс пп.3-4
+
+def test_rules_say_text_next_to_tool_call_is_shown_as_narration():
+    text = rules_text().lower()
+    assert "рассужден" in text
+    assert "думай молча" in text
+
+
+def test_rules_say_thing_given_only_by_story_is_not_in_inventory():
+    text = rules_text()
+    assert "в инвентаре не появляется" in text
+
+
+def test_rules_say_usable_item_is_not_a_trifle_and_use_give_custom_item():
+    text = rules_text()
+    index = text.index("не мелочь")
+    assert "give_custom_item" in text[index : index + 400]
+
+
+def test_rules_say_do_not_describe_use_of_missing_item():
+    assert "её у него нет" in rules_text()
+
+
+# Б3: import_rules.md -- правила роли import пака (режим pack_import)
+
+def import_rules_text():
+    path = resources.files("ai_dm.master") / "prompts" / "import_rules.md"
+    return path.read_text(encoding="utf-8")
+
+
+def test_import_rules_file_exists_and_names_the_tool():
+    assert "pack" in import_rules_text()
+
+
+def test_import_rules_are_in_russian():
+    text = import_rules_text()
+    assert len(re.findall("[а-яА-ЯёЁ]", text)) > len(re.findall("[a-zA-Z]", text))

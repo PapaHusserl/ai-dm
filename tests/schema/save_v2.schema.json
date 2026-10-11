@@ -1,0 +1,3169 @@
+{
+  "$defs": {
+    "ActiveEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "expires": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expiry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "kind"
+      ],
+      "title": "ActiveEffect",
+      "type": "object"
+    },
+    "AllOf": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllOf",
+                "any": "#/$defs/AnyOf",
+                "attitude": "#/$defs/Attitude",
+                "event_active": "#/$defs/EventActive",
+                "favor": "#/$defs/Favor",
+                "flag": "#/$defs/Flag",
+                "hero_at": "#/$defs/HeroAt",
+                "hero_dead": "#/$defs/HeroDead",
+                "hero_has": "#/$defs/HeroHas",
+                "narrative": "#/$defs/Narrative",
+                "not": "#/$defs/NotOf",
+                "npc_at": "#/$defs/NpcAt",
+                "npc_status": "#/$defs/NpcStatus",
+                "time_after": "#/$defs/TimeAfter"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/NotOf"
+              },
+              {
+                "$ref": "#/$defs/Flag"
+              },
+              {
+                "$ref": "#/$defs/HeroHas"
+              },
+              {
+                "$ref": "#/$defs/NpcStatus"
+              },
+              {
+                "$ref": "#/$defs/HeroAt"
+              },
+              {
+                "$ref": "#/$defs/NpcAt"
+              },
+              {
+                "$ref": "#/$defs/TimeAfter"
+              },
+              {
+                "$ref": "#/$defs/Attitude"
+              },
+              {
+                "$ref": "#/$defs/Favor"
+              },
+              {
+                "$ref": "#/$defs/EventActive"
+              },
+              {
+                "$ref": "#/$defs/HeroDead"
+              },
+              {
+                "$ref": "#/$defs/Narrative"
+              }
+            ]
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "type": {
+          "const": "all",
+          "default": "all",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AllOf",
+      "type": "object"
+    },
+    "AnyOf": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllOf",
+                "any": "#/$defs/AnyOf",
+                "attitude": "#/$defs/Attitude",
+                "event_active": "#/$defs/EventActive",
+                "favor": "#/$defs/Favor",
+                "flag": "#/$defs/Flag",
+                "hero_at": "#/$defs/HeroAt",
+                "hero_dead": "#/$defs/HeroDead",
+                "hero_has": "#/$defs/HeroHas",
+                "narrative": "#/$defs/Narrative",
+                "not": "#/$defs/NotOf",
+                "npc_at": "#/$defs/NpcAt",
+                "npc_status": "#/$defs/NpcStatus",
+                "time_after": "#/$defs/TimeAfter"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllOf"
+              },
+              {
+                "$ref": "#/$defs/AnyOf"
+              },
+              {
+                "$ref": "#/$defs/NotOf"
+              },
+              {
+                "$ref": "#/$defs/Flag"
+              },
+              {
+                "$ref": "#/$defs/HeroHas"
+              },
+              {
+                "$ref": "#/$defs/NpcStatus"
+              },
+              {
+                "$ref": "#/$defs/HeroAt"
+              },
+              {
+                "$ref": "#/$defs/NpcAt"
+              },
+              {
+                "$ref": "#/$defs/TimeAfter"
+              },
+              {
+                "$ref": "#/$defs/Attitude"
+              },
+              {
+                "$ref": "#/$defs/Favor"
+              },
+              {
+                "$ref": "#/$defs/EventActive"
+              },
+              {
+                "$ref": "#/$defs/HeroDead"
+              },
+              {
+                "$ref": "#/$defs/Narrative"
+              }
+            ]
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "type": {
+          "const": "any",
+          "default": "any",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AnyOf",
+      "type": "object"
+    },
+    "AppliedCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "expires": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expiry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "AppliedCondition",
+      "type": "object"
+    },
+    "Attitude": {
+      "additionalProperties": false,
+      "properties": {
+        "gte": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gte"
+        },
+        "lte": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lte"
+        },
+        "npc": {
+          "title": "Npc",
+          "type": "string"
+        },
+        "type": {
+          "const": "attitude",
+          "default": "attitude",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "npc"
+      ],
+      "title": "Attitude",
+      "type": "object"
+    },
+    "BackgroundSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "abilities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Abilities",
+          "type": "array"
+        },
+        "equipment": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Equipment",
+          "type": "array"
+        },
+        "feat": {
+          "title": "Feat",
+          "type": "string"
+        },
+        "gold_cp": {
+          "default": 0,
+          "title": "Gold Cp",
+          "type": "integer"
+        },
+        "gold_option_cp": {
+          "default": 5000,
+          "title": "Gold Option Cp",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "skills": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skills",
+          "type": "array"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "abilities",
+        "skills",
+        "tool",
+        "feat"
+      ],
+      "title": "BackgroundSpec",
+      "type": "object"
+    },
+    "Calendar": {
+      "properties": {
+        "months": {
+          "items": {
+            "$ref": "#/$defs/Month"
+          },
+          "minItems": 1,
+          "title": "Months",
+          "type": "array"
+        }
+      },
+      "required": [
+        "months"
+      ],
+      "title": "Calendar",
+      "type": "object"
+    },
+    "CharacterSheet": {
+      "additionalProperties": false,
+      "properties": {
+        "abilities": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Abilities",
+          "type": "object"
+        },
+        "background": {
+          "$ref": "#/$defs/BackgroundSpec"
+        },
+        "class_id": {
+          "title": "Class Id",
+          "type": "string"
+        },
+        "feats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Feats",
+          "type": "array"
+        },
+        "level": {
+          "default": 1,
+          "title": "Level",
+          "type": "integer"
+        },
+        "skill_proficiencies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skill Proficiencies",
+          "type": "array"
+        },
+        "species_id": {
+          "title": "Species Id",
+          "type": "string"
+        },
+        "spells_known": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Spells Known",
+          "type": "array"
+        },
+        "spells_prepared": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Spells Prepared",
+          "type": "array"
+        },
+        "subclass_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subclass Id"
+        },
+        "tool_proficiencies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tool Proficiencies",
+          "type": "array"
+        },
+        "weapon_masteries": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Weapon Masteries",
+          "type": "array"
+        },
+        "xp": {
+          "default": 0,
+          "title": "Xp",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "species_id",
+        "class_id",
+        "background",
+        "abilities"
+      ],
+      "title": "CharacterSheet",
+      "type": "object"
+    },
+    "Chronicle": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "title": "Chronicle",
+      "type": "object"
+    },
+    "CombatState": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_override_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Override Reason"
+        },
+        "consulted": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Consulted",
+          "type": "array"
+        },
+        "defeat_group_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Defeat Group Id"
+        },
+        "groups": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Group"
+          },
+          "title": "Groups",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "initiative_order": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Initiative Order",
+          "type": "array"
+        },
+        "log": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Log",
+          "type": "array"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "enum": [
+                "victory",
+                "defeat_pending",
+                "hero_dying",
+                "hero_dead",
+                "fled",
+                "ended_by_master"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
+        },
+        "participants": {
+          "items": {
+            "$ref": "#/$defs/Participant"
+          },
+          "title": "Participants",
+          "type": "array"
+        },
+        "round": {
+          "default": 0,
+          "title": "Round",
+          "type": "integer"
+        },
+        "savage_used": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Savage Used",
+          "type": "array"
+        },
+        "turn_index": {
+          "default": 0,
+          "title": "Turn Index",
+          "type": "integer"
+        },
+        "turn_started_for": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Turn Started For"
+        },
+        "zones": {
+          "items": {
+            "$ref": "#/$defs/Zone"
+          },
+          "title": "Zones",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "zones",
+        "participants",
+        "groups"
+      ],
+      "title": "CombatState",
+      "type": "object"
+    },
+    "Connection": {
+      "additionalProperties": false,
+      "properties": {
+        "distance_m": {
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "integer"
+        },
+        "to": {
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "to",
+        "distance_m"
+      ],
+      "title": "Connection",
+      "type": "object"
+    },
+    "CreatureState": {
+      "additionalProperties": false,
+      "properties": {
+        "active_effects": {
+          "items": {
+            "$ref": "#/$defs/ActiveEffect"
+          },
+          "title": "Active Effects",
+          "type": "array"
+        },
+        "concentration": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Concentration"
+        },
+        "conditions": {
+          "items": {
+            "$ref": "#/$defs/AppliedCondition"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "death_saves": {
+          "$ref": "#/$defs/DeathSaves"
+        },
+        "exhaustion": {
+          "default": 0,
+          "title": "Exhaustion",
+          "type": "integer"
+        },
+        "hp_current": {
+          "title": "Hp Current",
+          "type": "integer"
+        },
+        "hp_max": {
+          "title": "Hp Max",
+          "type": "integer"
+        },
+        "hp_temp": {
+          "default": 0,
+          "title": "Hp Temp",
+          "type": "integer"
+        },
+        "resources": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ResourcePool"
+          },
+          "title": "Resources",
+          "type": "object"
+        }
+      },
+      "required": [
+        "hp_current",
+        "hp_max"
+      ],
+      "title": "CreatureState",
+      "type": "object"
+    },
+    "DeathRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "at_s": {
+          "title": "At S",
+          "type": "integer"
+        },
+        "by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "By"
+        },
+        "cause": {
+          "enum": [
+            "goal",
+            "hazard",
+            "chance",
+            "old_age"
+          ],
+          "title": "Cause",
+          "type": "string"
+        },
+        "location_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location Id"
+        },
+        "text": {
+          "default": "",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cause",
+        "at_s"
+      ],
+      "title": "DeathRecord",
+      "type": "object"
+    },
+    "DeathSaves": {
+      "additionalProperties": false,
+      "properties": {
+        "failures": {
+          "default": 0,
+          "title": "Failures",
+          "type": "integer"
+        },
+        "stable": {
+          "default": false,
+          "title": "Stable",
+          "type": "boolean"
+        },
+        "successes": {
+          "default": 0,
+          "title": "Successes",
+          "type": "integer"
+        }
+      },
+      "title": "DeathSaves",
+      "type": "object"
+    },
+    "DecisionPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "title": "Actor",
+          "type": "string"
+        },
+        "attacker": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attacker"
+        },
+        "kind": {
+          "enum": [
+            "turn_action",
+            "intent_reconsider"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject"
+        }
+      },
+      "required": [
+        "kind",
+        "actor",
+        "options"
+      ],
+      "title": "DecisionPoint",
+      "type": "object"
+    },
+    "Equipped": {
+      "additionalProperties": false,
+      "properties": {
+        "armor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Armor"
+        },
+        "main_hand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Main Hand"
+        },
+        "off_hand": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Off Hand"
+        },
+        "shield": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shield"
+        }
+      },
+      "title": "Equipped",
+      "type": "object"
+    },
+    "EventActive": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "title": "Event",
+          "type": "string"
+        },
+        "type": {
+          "const": "event_active",
+          "default": "event_active",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event"
+      ],
+      "title": "EventActive",
+      "type": "object"
+    },
+    "EventHazard": {
+      "additionalProperties": false,
+      "properties": {
+        "dc_category": {
+          "enum": [
+            "very_easy",
+            "easy",
+            "medium",
+            "hard",
+            "very_hard",
+            "nearly_impossible"
+          ],
+          "title": "Dc Category",
+          "type": "string"
+        },
+        "save": {
+          "enum": [
+            "str",
+            "dex",
+            "con",
+            "int",
+            "wis",
+            "cha"
+          ],
+          "title": "Save",
+          "type": "string"
+        }
+      },
+      "required": [
+        "save",
+        "dc_category"
+      ],
+      "title": "EventHazard",
+      "type": "object"
+    },
+    "Expiry": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "rounds",
+            "end_of_turn",
+            "start_of_turn",
+            "seconds",
+            "concentration"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner"
+        },
+        "value": {
+          "default": 0,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Expiry",
+      "type": "object"
+    },
+    "Faction": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "means": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Means",
+          "type": "array"
+        },
+        "members": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "motive": {
+          "default": "",
+          "title": "Motive",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "opportunity": {
+          "items": {
+            "$ref": "#/$defs/Trigger"
+          },
+          "title": "Opportunity",
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Faction",
+      "type": "object"
+    },
+    "Favor": {
+      "additionalProperties": false,
+      "properties": {
+        "god": {
+          "title": "God",
+          "type": "string"
+        },
+        "gte": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gte"
+        },
+        "lte": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lte"
+        },
+        "type": {
+          "const": "favor",
+          "default": "favor",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "god"
+      ],
+      "title": "Favor",
+      "type": "object"
+    },
+    "Flag": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "const": "flag",
+          "default": "flag",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "default": true,
+          "title": "Value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Flag",
+      "type": "object"
+    },
+    "GameClock": {
+      "properties": {
+        "calendar": {
+          "$ref": "#/$defs/Calendar",
+          "default": {
+            "months": [
+              {
+                "days": 30,
+                "name": "Заревень"
+              },
+              {
+                "days": 30,
+                "name": "Капельник"
+              },
+              {
+                "days": 30,
+                "name": "Ветролом"
+              },
+              {
+                "days": 30,
+                "name": "Цветень"
+              },
+              {
+                "days": 30,
+                "name": "Грозовик"
+              },
+              {
+                "days": 30,
+                "name": "Золотень"
+              },
+              {
+                "days": 30,
+                "name": "Жарынь"
+              },
+              {
+                "days": 30,
+                "name": "Сенокос"
+              },
+              {
+                "days": 30,
+                "name": "Дожинник"
+              },
+              {
+                "days": 30,
+                "name": "Листопад"
+              },
+              {
+                "days": 30,
+                "name": "Морозень"
+              },
+              {
+                "days": 30,
+                "name": "Темнозим"
+              }
+            ]
+          }
+        },
+        "now_s": {
+          "default": 0,
+          "title": "Now S",
+          "type": "integer"
+        }
+      },
+      "title": "GameClock",
+      "type": "object"
+    },
+    "GlobalEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "affects": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affects",
+          "type": "array"
+        },
+        "cause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cause"
+        },
+        "ends_at_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ends At S"
+        },
+        "ends_when": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "all": "#/$defs/AllOf",
+                  "any": "#/$defs/AnyOf",
+                  "attitude": "#/$defs/Attitude",
+                  "event_active": "#/$defs/EventActive",
+                  "favor": "#/$defs/Favor",
+                  "flag": "#/$defs/Flag",
+                  "hero_at": "#/$defs/HeroAt",
+                  "hero_dead": "#/$defs/HeroDead",
+                  "hero_has": "#/$defs/HeroHas",
+                  "narrative": "#/$defs/Narrative",
+                  "not": "#/$defs/NotOf",
+                  "npc_at": "#/$defs/NpcAt",
+                  "npc_status": "#/$defs/NpcStatus",
+                  "time_after": "#/$defs/TimeAfter"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/AllOf"
+                },
+                {
+                  "$ref": "#/$defs/AnyOf"
+                },
+                {
+                  "$ref": "#/$defs/NotOf"
+                },
+                {
+                  "$ref": "#/$defs/Flag"
+                },
+                {
+                  "$ref": "#/$defs/HeroHas"
+                },
+                {
+                  "$ref": "#/$defs/NpcStatus"
+                },
+                {
+                  "$ref": "#/$defs/HeroAt"
+                },
+                {
+                  "$ref": "#/$defs/NpcAt"
+                },
+                {
+                  "$ref": "#/$defs/TimeAfter"
+                },
+                {
+                  "$ref": "#/$defs/Attitude"
+                },
+                {
+                  "$ref": "#/$defs/Favor"
+                },
+                {
+                  "$ref": "#/$defs/EventActive"
+                },
+                {
+                  "$ref": "#/$defs/HeroDead"
+                },
+                {
+                  "$ref": "#/$defs/Narrative"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ends When"
+        },
+        "hazard": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EventHazard"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "mortality_multiplier": {
+          "default": 1,
+          "minimum": 0,
+          "title": "Mortality Multiplier",
+          "type": "integer"
+        },
+        "regions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "started_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started S"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "GlobalEvent",
+      "type": "object"
+    },
+    "God": {
+      "additionalProperties": false,
+      "properties": {
+        "angered_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Angered By",
+          "type": "array"
+        },
+        "domains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Domains",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "means": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Means",
+          "type": "array"
+        },
+        "motive": {
+          "default": "",
+          "title": "Motive",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "opportunity": {
+          "items": {
+            "$ref": "#/$defs/Trigger"
+          },
+          "title": "Opportunity",
+          "type": "array"
+        },
+        "origin": {
+          "default": "pack",
+          "enum": [
+            "pack",
+            "ascended"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "pleased_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pleased By",
+          "type": "array"
+        },
+        "realm": {
+          "default": "",
+          "title": "Realm",
+          "type": "string"
+        },
+        "rivals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rivals",
+          "type": "array"
+        },
+        "role": {
+          "default": "",
+          "title": "Role",
+          "type": "string"
+        },
+        "status": {
+          "default": "alive",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "God",
+      "type": "object"
+    },
+    "Group": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "anyOf": [
+            {
+              "enum": [
+                "kill",
+                "capture",
+                "rob",
+                "drive_off",
+                "spare"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "lair_location_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lair Location Id"
+        },
+        "leader_id": {
+          "title": "Leader Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "leader_id"
+      ],
+      "title": "Group",
+      "type": "object"
+    },
+    "HeroAt": {
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "type": {
+          "const": "hero_at",
+          "default": "hero_at",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location"
+      ],
+      "title": "HeroAt",
+      "type": "object"
+    },
+    "HeroDead": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "hero_dead",
+          "default": "hero_dead",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "HeroDead",
+      "type": "object"
+    },
+    "HeroHas": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "title": "Item",
+          "type": "string"
+        },
+        "type": {
+          "const": "hero_has",
+          "default": "hero_has",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "title": "HeroHas",
+      "type": "object"
+    },
+    "HeroState": {
+      "additionalProperties": false,
+      "properties": {
+        "afterlife": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Afterlife"
+        },
+        "creature": {
+          "$ref": "#/$defs/CreatureState"
+        },
+        "death": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeathRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "equipped": {
+          "$ref": "#/$defs/Equipped"
+        },
+        "fate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fate"
+        },
+        "favor": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Favor",
+          "type": "object"
+        },
+        "heroic_inspiration": {
+          "default": false,
+          "title": "Heroic Inspiration",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "inventory": {
+          "items": {
+            "$ref": "#/$defs/InventoryEntry"
+          },
+          "title": "Inventory",
+          "type": "array"
+        },
+        "legacy_links": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Legacy Links",
+          "type": "array"
+        },
+        "location_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location Id"
+        },
+        "means": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Means",
+          "type": "array"
+        },
+        "money_cp": {
+          "default": 0,
+          "title": "Money Cp",
+          "type": "integer"
+        },
+        "motive": {
+          "default": "",
+          "title": "Motive",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "opportunity": {
+          "items": {
+            "$ref": "#/$defs/Trigger"
+          },
+          "title": "Opportunity",
+          "type": "array"
+        },
+        "ordinal": {
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "scars": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scars",
+          "type": "array"
+        },
+        "sheet": {
+          "$ref": "#/$defs/CharacterSheet"
+        },
+        "status": {
+          "default": "active",
+          "enum": [
+            "active",
+            "dead",
+            "retired",
+            "in_afterlife",
+            "ascended",
+            "gone"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ordinal",
+        "name",
+        "sheet",
+        "creature"
+      ],
+      "title": "HeroState",
+      "type": "object"
+    },
+    "InventoryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "qty": {
+          "default": 1,
+          "title": "Qty",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "title": "InventoryEntry",
+      "type": "object"
+    },
+    "LastCombat": {
+      "additionalProperties": false,
+      "properties": {
+        "defeated": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Defeated",
+          "type": "array"
+        },
+        "looted": {
+          "default": false,
+          "title": "Looted",
+          "type": "boolean"
+        }
+      },
+      "title": "LastCombat",
+      "type": "object"
+    },
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/Connection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "origin": {
+          "default": "pack",
+          "title": "Origin",
+          "type": "string"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Id"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "visited": {
+          "default": false,
+          "title": "Visited",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "Manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Campaign Id"
+        },
+        "current_hero_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Hero Id"
+        },
+        "engine_version": {
+          "title": "Engine Version",
+          "type": "string"
+        },
+        "heroes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Heroes",
+          "type": "array"
+        },
+        "saved_at": {
+          "title": "Saved At",
+          "type": "string"
+        },
+        "schema_version": {
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "slot": {
+          "title": "Slot",
+          "type": "string"
+        },
+        "world_id": {
+          "title": "World Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "engine_version",
+        "world_id",
+        "campaign_id",
+        "slot",
+        "saved_at",
+        "current_hero_id"
+      ],
+      "title": "Manifest",
+      "type": "object"
+    },
+    "Memory": {
+      "additionalProperties": false,
+      "properties": {
+        "chapters": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Chapters",
+          "type": "array"
+        },
+        "game_summary": {
+          "default": "",
+          "title": "Game Summary",
+          "type": "string"
+        },
+        "recent_turns": {
+          "items": {
+            "$ref": "#/$defs/TurnRecord"
+          },
+          "title": "Recent Turns",
+          "type": "array"
+        },
+        "scenes": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Scenes",
+          "type": "array"
+        }
+      },
+      "title": "Memory",
+      "type": "object"
+    },
+    "Month": {
+      "properties": {
+        "days": {
+          "minimum": 1,
+          "title": "Days",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "days"
+      ],
+      "title": "Month",
+      "type": "object"
+    },
+    "NPC": {
+      "additionalProperties": false,
+      "properties": {
+        "attitude": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Attitude",
+          "type": "integer"
+        },
+        "birth_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Birth S"
+        },
+        "combat": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Combat"
+        },
+        "creature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CreatureState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "death": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeathRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "favor": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Favor",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "default": false,
+          "title": "Key",
+          "type": "boolean"
+        },
+        "known_to_player": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Known To Player",
+          "type": "array"
+        },
+        "location_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location Id"
+        },
+        "means": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Means",
+          "type": "array"
+        },
+        "motive": {
+          "default": "",
+          "title": "Motive",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "named": {
+          "default": false,
+          "title": "Named",
+          "type": "boolean"
+        },
+        "opportunity": {
+          "items": {
+            "$ref": "#/$defs/Trigger"
+          },
+          "title": "Opportunity",
+          "type": "array"
+        },
+        "origin": {
+          "default": "pack",
+          "enum": [
+            "pack",
+            "ai",
+            "engine"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "relations_text": {
+          "default": "",
+          "title": "Relations Text",
+          "type": "string"
+        },
+        "secrets": {
+          "items": {
+            "$ref": "#/$defs/Secret"
+          },
+          "title": "Secrets",
+          "type": "array"
+        },
+        "species_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Species Id"
+        },
+        "status": {
+          "default": "alive",
+          "enum": [
+            "alive",
+            "dead",
+            "gone",
+            "changed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "means"
+      ],
+      "title": "NPC",
+      "type": "object"
+    },
+    "Narrative": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "const": "narrative",
+          "default": "narrative",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Narrative",
+      "type": "object"
+    },
+    "NotOf": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllOf",
+              "any": "#/$defs/AnyOf",
+              "attitude": "#/$defs/Attitude",
+              "event_active": "#/$defs/EventActive",
+              "favor": "#/$defs/Favor",
+              "flag": "#/$defs/Flag",
+              "hero_at": "#/$defs/HeroAt",
+              "hero_dead": "#/$defs/HeroDead",
+              "hero_has": "#/$defs/HeroHas",
+              "narrative": "#/$defs/Narrative",
+              "not": "#/$defs/NotOf",
+              "npc_at": "#/$defs/NpcAt",
+              "npc_status": "#/$defs/NpcStatus",
+              "time_after": "#/$defs/TimeAfter"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/NotOf"
+            },
+            {
+              "$ref": "#/$defs/Flag"
+            },
+            {
+              "$ref": "#/$defs/HeroHas"
+            },
+            {
+              "$ref": "#/$defs/NpcStatus"
+            },
+            {
+              "$ref": "#/$defs/HeroAt"
+            },
+            {
+              "$ref": "#/$defs/NpcAt"
+            },
+            {
+              "$ref": "#/$defs/TimeAfter"
+            },
+            {
+              "$ref": "#/$defs/Attitude"
+            },
+            {
+              "$ref": "#/$defs/Favor"
+            },
+            {
+              "$ref": "#/$defs/EventActive"
+            },
+            {
+              "$ref": "#/$defs/HeroDead"
+            },
+            {
+              "$ref": "#/$defs/Narrative"
+            }
+          ],
+          "title": "Item"
+        },
+        "type": {
+          "const": "not",
+          "default": "not",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "title": "NotOf",
+      "type": "object"
+    },
+    "NpcAt": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "npc_at",
+          "default": "npc_at",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "at"
+      ],
+      "title": "NpcAt",
+      "type": "object"
+    },
+    "NpcStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "is": {
+          "title": "Is",
+          "type": "string"
+        },
+        "type": {
+          "const": "npc_status",
+          "default": "npc_status",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "is"
+      ],
+      "title": "NpcStatus",
+      "type": "object"
+    },
+    "Participant": {
+      "additionalProperties": false,
+      "properties": {
+        "controller": {
+          "default": "engine",
+          "enum": [
+            "engine",
+            "auto_hero",
+            "external"
+          ],
+          "title": "Controller",
+          "type": "string"
+        },
+        "creature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CreatureState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "group_id": {
+          "title": "Group Id",
+          "type": "string"
+        },
+        "initiative": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initiative"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "enum": [
+                "kill",
+                "capture",
+                "rob",
+                "drive_off",
+                "spare"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent"
+        },
+        "last_hit_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Hit By"
+        },
+        "monster_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Monster Id"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "ref": {
+          "title": "Ref",
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "heroes",
+            "enemies"
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "status": {
+          "default": "active",
+          "enum": [
+            "active",
+            "down",
+            "dead",
+            "fled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "surprised": {
+          "default": false,
+          "title": "Surprised",
+          "type": "boolean"
+        },
+        "turn": {
+          "$ref": "#/$defs/TurnState"
+        },
+        "zone_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone Id"
+        }
+      },
+      "required": [
+        "ref",
+        "side",
+        "group_id"
+      ],
+      "title": "Participant",
+      "type": "object"
+    },
+    "ResourcePool": {
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "title": "Current",
+          "type": "integer"
+        },
+        "max": {
+          "title": "Max",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "current",
+        "max"
+      ],
+      "title": "ResourcePool",
+      "type": "object"
+    },
+    "RngState": {
+      "additionalProperties": false,
+      "properties": {
+        "algo": {
+          "default": "pcg32",
+          "title": "Algo",
+          "type": "string"
+        },
+        "draws": {
+          "default": 0,
+          "title": "Draws",
+          "type": "integer"
+        },
+        "inc": {
+          "title": "Inc",
+          "type": "integer"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "state": {
+          "title": "State",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seed",
+        "state",
+        "inc"
+      ],
+      "title": "RngState",
+      "type": "object"
+    },
+    "SceneState": {
+      "additionalProperties": false,
+      "properties": {
+        "attitude_spent": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Attitude Spent",
+          "type": "object"
+        },
+        "closed_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "end_scene",
+                "location_changed",
+                "time_jump",
+                "combat_ended",
+                "turn_limit"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closed Reason"
+        },
+        "consumables_given": {
+          "default": 0,
+          "title": "Consumables Given",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "location_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location Id"
+        },
+        "player_turns": {
+          "default": 0,
+          "title": "Player Turns",
+          "type": "integer"
+        },
+        "started_at_s": {
+          "title": "Started At S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "started_at_s"
+      ],
+      "title": "SceneState",
+      "type": "object"
+    },
+    "Secret": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "reveal_if": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllOf",
+              "any": "#/$defs/AnyOf",
+              "attitude": "#/$defs/Attitude",
+              "event_active": "#/$defs/EventActive",
+              "favor": "#/$defs/Favor",
+              "flag": "#/$defs/Flag",
+              "hero_at": "#/$defs/HeroAt",
+              "hero_dead": "#/$defs/HeroDead",
+              "hero_has": "#/$defs/HeroHas",
+              "narrative": "#/$defs/Narrative",
+              "not": "#/$defs/NotOf",
+              "npc_at": "#/$defs/NpcAt",
+              "npc_status": "#/$defs/NpcStatus",
+              "time_after": "#/$defs/TimeAfter"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/NotOf"
+            },
+            {
+              "$ref": "#/$defs/Flag"
+            },
+            {
+              "$ref": "#/$defs/HeroHas"
+            },
+            {
+              "$ref": "#/$defs/NpcStatus"
+            },
+            {
+              "$ref": "#/$defs/HeroAt"
+            },
+            {
+              "$ref": "#/$defs/NpcAt"
+            },
+            {
+              "$ref": "#/$defs/TimeAfter"
+            },
+            {
+              "$ref": "#/$defs/Attitude"
+            },
+            {
+              "$ref": "#/$defs/Favor"
+            },
+            {
+              "$ref": "#/$defs/EventActive"
+            },
+            {
+              "$ref": "#/$defs/HeroDead"
+            },
+            {
+              "$ref": "#/$defs/Narrative"
+            }
+          ],
+          "title": "Reveal If"
+        },
+        "revealed": {
+          "default": false,
+          "title": "Revealed",
+          "type": "boolean"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "reveal_if"
+      ],
+      "title": "Secret",
+      "type": "object"
+    },
+    "SessionState": {
+      "additionalProperties": false,
+      "properties": {
+        "active_combat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CombatState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "current_chapter": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current Chapter"
+        },
+        "current_scene": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SceneState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "last_combat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LastCombat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "offered_choices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Offered Choices",
+          "type": "array"
+        },
+        "pending_decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "turn_seq": {
+          "default": 0,
+          "title": "Turn Seq",
+          "type": "integer"
+        }
+      },
+      "title": "SessionState",
+      "type": "object"
+    },
+    "TimeAfter": {
+      "additionalProperties": false,
+      "properties": {
+        "seconds": {
+          "title": "Seconds",
+          "type": "integer"
+        },
+        "type": {
+          "const": "time_after",
+          "default": "time_after",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seconds"
+      ],
+      "title": "TimeAfter",
+      "type": "object"
+    },
+    "Tone": {
+      "additionalProperties": false,
+      "properties": {
+        "hard_limits": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hard Limits",
+          "type": "array"
+        },
+        "horror": {
+          "default": "",
+          "title": "Horror",
+          "type": "string"
+        },
+        "language": {
+          "default": "",
+          "title": "Language",
+          "type": "string"
+        },
+        "mood": {
+          "default": "",
+          "title": "Mood",
+          "type": "string"
+        },
+        "romance": {
+          "default": "",
+          "title": "Romance",
+          "type": "string"
+        },
+        "soft_limits": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Soft Limits",
+          "type": "array"
+        },
+        "violence": {
+          "default": "",
+          "title": "Violence",
+          "type": "string"
+        }
+      },
+      "title": "Tone",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "cooldown": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cooldown"
+        },
+        "fired_count": {
+          "default": 0,
+          "title": "Fired Count",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "if": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllOf",
+              "any": "#/$defs/AnyOf",
+              "attitude": "#/$defs/Attitude",
+              "event_active": "#/$defs/EventActive",
+              "favor": "#/$defs/Favor",
+              "flag": "#/$defs/Flag",
+              "hero_at": "#/$defs/HeroAt",
+              "hero_dead": "#/$defs/HeroDead",
+              "hero_has": "#/$defs/HeroHas",
+              "narrative": "#/$defs/Narrative",
+              "not": "#/$defs/NotOf",
+              "npc_at": "#/$defs/NpcAt",
+              "npc_status": "#/$defs/NpcStatus",
+              "time_after": "#/$defs/TimeAfter"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllOf"
+            },
+            {
+              "$ref": "#/$defs/AnyOf"
+            },
+            {
+              "$ref": "#/$defs/NotOf"
+            },
+            {
+              "$ref": "#/$defs/Flag"
+            },
+            {
+              "$ref": "#/$defs/HeroHas"
+            },
+            {
+              "$ref": "#/$defs/NpcStatus"
+            },
+            {
+              "$ref": "#/$defs/HeroAt"
+            },
+            {
+              "$ref": "#/$defs/NpcAt"
+            },
+            {
+              "$ref": "#/$defs/TimeAfter"
+            },
+            {
+              "$ref": "#/$defs/Attitude"
+            },
+            {
+              "$ref": "#/$defs/Favor"
+            },
+            {
+              "$ref": "#/$defs/EventActive"
+            },
+            {
+              "$ref": "#/$defs/HeroDead"
+            },
+            {
+              "$ref": "#/$defs/Narrative"
+            }
+          ],
+          "title": "If"
+        },
+        "key": {
+          "default": false,
+          "title": "Key",
+          "type": "boolean"
+        },
+        "last_fired_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Fired At"
+        },
+        "once": {
+          "default": false,
+          "title": "Once",
+          "type": "boolean"
+        },
+        "state": {
+          "default": "active",
+          "enum": [
+            "active",
+            "fired",
+            "disabled"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "then": {
+          "title": "Then",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "if",
+        "then"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    },
+    "TurnRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "at_s": {
+          "title": "At S",
+          "type": "integer"
+        },
+        "narration": {
+          "title": "Narration",
+          "type": "string"
+        },
+        "player_input": {
+          "title": "Player Input",
+          "type": "string"
+        },
+        "requests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requests",
+          "type": "array"
+        },
+        "rolls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rolls",
+          "type": "array"
+        },
+        "turn_seq": {
+          "title": "Turn Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "turn_seq",
+        "at_s",
+        "player_input",
+        "narration"
+      ],
+      "title": "TurnRecord",
+      "type": "object"
+    },
+    "TurnState": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "default": true,
+          "title": "Action",
+          "type": "boolean"
+        },
+        "bonus": {
+          "default": true,
+          "title": "Bonus",
+          "type": "boolean"
+        },
+        "disengaged": {
+          "default": false,
+          "title": "Disengaged",
+          "type": "boolean"
+        },
+        "move": {
+          "default": 1,
+          "title": "Move",
+          "type": "integer"
+        },
+        "reaction": {
+          "default": true,
+          "title": "Reaction",
+          "type": "boolean"
+        }
+      },
+      "title": "TurnState",
+      "type": "object"
+    },
+    "WorldState": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Campaign Id"
+        },
+        "campaign_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Campaign Version"
+        },
+        "clock": {
+          "$ref": "#/$defs/GameClock"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/GlobalEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "factions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Faction"
+          },
+          "title": "Factions",
+          "type": "object"
+        },
+        "flags": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Flags",
+          "type": "object"
+        },
+        "locations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Location"
+          },
+          "title": "Locations",
+          "type": "object"
+        },
+        "npcs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NPC"
+          },
+          "title": "Npcs",
+          "type": "object"
+        },
+        "pantheon": {
+          "additionalProperties": {
+            "$ref": "#/$defs/God"
+          },
+          "title": "Pantheon",
+          "type": "object"
+        },
+        "rng": {
+          "$ref": "#/$defs/RngState"
+        },
+        "settings": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Settings",
+          "type": "object"
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone"
+        },
+        "world_id": {
+          "title": "World Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "world_id",
+        "rng"
+      ],
+      "title": "WorldState",
+      "type": "object"
+    },
+    "Zone": {
+      "additionalProperties": false,
+      "properties": {
+        "adjacent": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Adjacent",
+          "type": "array"
+        },
+        "exit": {
+          "default": false,
+          "title": "Exit",
+          "type": "boolean"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/ZoneFeature"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "adjacent"
+      ],
+      "title": "Zone",
+      "type": "object"
+    },
+    "ZoneFeature": {
+      "additionalProperties": false,
+      "properties": {
+        "damage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Damage"
+        },
+        "damage_type": {
+          "default": "fire",
+          "title": "Damage Type",
+          "type": "string"
+        },
+        "dc": {
+          "default": 10,
+          "title": "Dc",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "save": {
+          "anyOf": [
+            {
+              "enum": [
+                "str",
+                "dex",
+                "con",
+                "int",
+                "wis",
+                "cha"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Save"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ZoneFeature",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "chronicle": {
+      "$ref": "#/$defs/Chronicle"
+    },
+    "heroes": {
+      "items": {
+        "$ref": "#/$defs/HeroState"
+      },
+      "title": "Heroes",
+      "type": "array"
+    },
+    "manifest": {
+      "$ref": "#/$defs/Manifest"
+    },
+    "memory": {
+      "$ref": "#/$defs/Memory"
+    },
+    "session": {
+      "$ref": "#/$defs/SessionState"
+    },
+    "world": {
+      "$ref": "#/$defs/WorldState"
+    }
+  },
+  "required": [
+    "manifest",
+    "world",
+    "chronicle",
+    "memory",
+    "session"
+  ],
+  "title": "SaveBundle",
+  "type": "object"
+}

@@ -1,0 +1,8 @@
+id: shield
+name: Щит
+description: Бонус +2 к КД.
+source: srd-5.2
+license: CC-BY-4.0
+category: shield
+ac: 2
+cost_cp: 1000

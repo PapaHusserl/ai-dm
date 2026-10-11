@@ -1,0 +1,196 @@
+# по умолчанию профиль Gemini; набор Anthropic -- profiles.anthropic
+[roles.narrator]
+provider = "gemini"
+model = "gemini-3.8-flash"
+max_tokens = 16000
+
+[roles.world]
+provider = "gemini"
+model = "gemini-3.5-flash-lite"
+max_tokens = 4000
+
+[roles.summarizer]
+provider = "gemini"
+model = "gemini-3.5-flash-lite"
+max_tokens = 4000
+
+# import пака: длинный ответ (весь пак одним вызовом), потому max_tokens больше
+[roles.import]
+provider = "gemini"
+model = "gemini-3.8-flash"
+max_tokens = 32000
+
+[alternatives.narrator]
+provider = "anthropic"
+model = "claude-sonnet-5-5"
+effort = "low"
+max_tokens = 16000
+
+# цены: микро-доллары за 1 млн токенов (1 $ = 1_000_000)
+[prices.claude-opus-5-5]
+input = 4000000
+output = 20000000
+cache_read = 200000
+cache_write = 5000000  # TTL 5m: запись кэша = 1.25× входа
+cache_write_1h = 8000000  # TTL 1h: 2× входа
+
+[prices.claude-sonnet-5-5]
+input = 2000000
+output = 10000000
+cache_read = 200000
+cache_write = 2500000  # TTL 5m: 1.25× входа
+cache_write_1h = 4000000  # TTL 1h: 2× входа
+
+# цены кэша Haiku выведены из правила ~0.1x / ~1.25x входа (сверить с прайсом)
+[prices.claude-haiku-4-5]
+input = 1000000
+output = 5000000
+cache_read = 100000
+cache_write = 1250000  # TTL 5m: 1.25× входа
+cache_write_1h = 2000000  # TTL 1h: 2× входа
+
+# окна Gemini -- консервативно, сверить
+# Gemini: явный кэш (system + tools). cache_write -- создание кэша по цене входа (= input),
+# cache_storage_hour -- хранение за 1 млн токенов в час, начисляется при создании за весь TTL.
+# gemini-3.8-flash: пересмотреть с 2027-01-01: 1.50/7.50/0.15, хранение 1.00 ($ за 1M: вход/выход/чтение кэша)
+[prices."gemini-3.8-flash"]
+input = 750000
+output = 3750000
+cache_read = 75000
+cache_write = 750000
+cache_write_1h = 750000
+cache_storage_hour = 500000
+
+[prices."gemini-3.5-flash-lite"]
+input = 300000
+output = 2500000
+cache_read = 30000
+cache_write = 300000
+cache_write_1h = 300000
+cache_storage_hour = 1000000
+
+# окна Gemini -- консервативно, сверить
+[context_windows]
+claude-opus-5-5 = 1000000
+claude-sonnet-5-5 = 1000000
+claude-haiku-4-5 = 200000
+"gemini-3.8-flash" = 1000000
+"gemini-3.5-flash-lite" = 1000000
+
+[retry]
+delays = [1, 3, 10]
+invalid_retries = 2
+max_tool_rounds = 8
+timeout_s = 180
+
+[journal]
+max_mb = 50
+segment_mb = 5
+
+[cost_limits]
+enabled = false
+warn_percent = 80
+# лимиты в микро-долларах (как цены), 0 = нет лимита
+session_limit_micro = 0
+day_limit_micro = 0
+
+[master]
+recent_turns = 8
+recent_turns_keep = 50
+key_npc_consult_hp_percent = 50
+context_cap = 30000
+chars_per_token = 2.5
+recent_turns_floor = 1
+
+[llm]
+refusal_fallback = false
+strict_tools = true
+# TTL кэша префикса: "5m" или "1h"
+cache_ttl = "1h"
+# явный кэш Gemini для роли world (флаг действует только на Gemini): редкие вызовы, хранение дороже повторной отправки префикса
+gemini_cache_world = false
+
+[ui]
+width = 80
+
+[memory]
+# пределы длины выжимок, символы
+scene_summary_max = 600
+chapter_summary_max = 1500
+game_summary_max = 3000
+
+[world]
+# потолок вызовов роли world в игровой день; 0 = выключено
+max_calls_per_day = 0
+
+# профиль провайдера целиком; effort для Gemini не используется
+[profiles.gemini.narrator]
+provider = "gemini"
+model = "gemini-3.8-flash"
+max_tokens = 16000
+
+[profiles.gemini.world]
+provider = "gemini"
+model = "gemini-3.5-flash-lite"
+max_tokens = 4000
+
+[profiles.gemini.summarizer]
+provider = "gemini"
+model = "gemini-3.5-flash-lite"
+max_tokens = 4000
+
+[profiles.gemini.import]
+provider = "gemini"
+model = "gemini-3.8-flash"
+max_tokens = 32000
+
+# max_tokens narrator: мышление Opus входит в лимит
+[profiles.anthropic.narrator]
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "low"
+max_tokens = 16000
+
+[profiles.anthropic.world]
+provider = "anthropic"
+model = "claude-haiku-4-5"
+max_tokens = 4000
+
+[profiles.anthropic.summarizer]
+provider = "anthropic"
+model = "claude-haiku-4-5"
+max_tokens = 4000
+
+[profiles.anthropic.import]
+provider = "anthropic"
+model = "claude-sonnet-5-5"
+effort = "low"
+max_tokens = 32000
+
+[import]
+# предел длины текстовой выжимки для ai-dm --import, символы
+max_chars = 60000
+
+[reports]
+# сколько последних ходов (вместе с самим ходом) попадает в report.md
+recent_turns = 5
+
+[persistence]
+# fsync файлов и каталогов сейва (F_FULLFSYNC на macOS); false -- только для отладки
+durable = true
+
+[audio]
+# музыка и эмбиент (только TUI, нужен extra audio); /music меняет и сохраняет enabled, volume, ambient
+enabled = true
+# громкость, 0-100
+volume = 60
+# второй слой: фоновые звуки темы
+ambient = true
+# громкость эмбиента относительно музыки, %
+ambient_percent = 50
+# кроссфейд при смене темы, секунды
+crossfade_s = 2.0
+# смена темы не чаще раза в столько секунд (вход в бой и выход из него -- сразу)
+min_switch_s = 20.0
+# буфер звукового устройства, мс (больше -- реже щелчки, но задержка команд)
+buffer_ms = 200

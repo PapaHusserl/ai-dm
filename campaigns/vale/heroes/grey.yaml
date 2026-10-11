@@ -1,0 +1,23 @@
+id: grey
+# стандартный набор следопыта SRD 5.2
+money_cp: 700
+choices:
+  name: Грей
+  species_id: human
+  class_id: ranger
+  background:
+    name: Егерь-одиночка
+    abilities: [dex, wis, con]
+    skills: [stealth, survival]
+    tool: herbalism_kit
+    feat: alert
+    equipment: []
+    gold_cp: 0
+  ability_method: standard_array
+  ability_scores: {str: 12, dex: 15, con: 13, int: 10, wis: 14, cha: 8}
+  background_bonus: {dex: 2, wis: 1}
+  class_skills: [perception, insight, nature]
+  weapon_masteries: [longbow, scimitar]
+  inventory: [studded_leather, scimitar, shortsword, longbow, arrows, quiver, druidic_focus, explorers_pack]
+  equip: [studded_leather, longbow]
+  species_choices: {skill: intimidation, feat: savage_attacker}

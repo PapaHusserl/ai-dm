@@ -1,0 +1,6 @@
+id: olbrecht_signet_ring
+name: Перстень-печатка Казначея Ольбрехта
+description: Золотой перстень-печатка.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: valuable

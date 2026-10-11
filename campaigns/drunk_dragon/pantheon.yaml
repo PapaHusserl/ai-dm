@@ -1,0 +1,169 @@
+# Сгенерировано devtools/import_dragon.py из слота saves/drunk_dragon/slots/manual-import.
+# `# draft` -- поле заполнил ИИ (решение 4а), на утверждение проектировщику; список --
+# docs/decisions/stage3-p7-drafts.md.
+- id: abyss_demon
+  name: Высший демон Бездны (без имени)
+  domains:
+  - Бездна
+  role: Объект поклонения Ордена Разбитого Ключа (слова отца Марка). Возможно связан с Мор-Владыкой — не подтверждено
+  motive: Прорваться в мир через Врата Бездны, которые открывает Орден Разбитого Ключа  # draft
+  pleased_by:  # draft
+  - вскрытие печатей и Врат
+  - кровавые жертвы
+  - служение Братству Мора
+  angered_by:  # draft
+  - уничтожение Кристаллов-Ключей
+  - запечатывание Врат и Могильника
+  - убийство иерархов Ордена
+  opportunity:  # draft
+  - id: answers_awakening
+    if:
+      all:
+      - time_after: 23781600
+      - npc_status:
+          id: nazir
+          is: alive
+      - narrative: Мор-Владыка пробуждается
+    then: Откликается на пробуждение Мор-Владыки и тянется к Вратам Бездны
+    once: true
+  origin: pack
+- id: faceless
+  name: Безликий
+  role: Часовня Безликого на Мёртвом Кургане. Подробностей нет
+  motive: 'Копит секреты: каждое скрытое знание -- его сила'  # draft
+  pleased_by:  # draft
+  - хранимая тайна
+  - сделка в тени
+  - украденное знание
+  angered_by:  # draft
+  - раскрытые тайны и имена его служителей
+  opportunity:  # draft
+  - id: wants_the_folio
+    if:
+      all:
+      - hero_at: dead_barrow
+      - flag: abyss_keys_folio_stored_with_father_mark
+    then: Предлагает герою сделку в тени -- тайна за тайну; его интересует фолиант «Ключи Бездны»
+    once: true
+  origin: pack
+- id: ilmater
+  name: Ильматер
+  role: Упомянут в варианте ответа (жрецы Селунэ/Ильматера)
+  motive: Набирает силу от тех, кто принимает чужую боль; ему нужны мученики  # draft
+  pleased_by:  # draft
+  - стойкость в страдании
+  - боль, взятая за другого
+  angered_by:  # draft
+  - спасение себя ценой чужой боли
+  - лёгкие пути
+  opportunity:  # draft
+  - id: seeks_a_martyr
+    if:
+      all:
+      - flag: edrin_joined_as_guide
+      - hero_at: east_shaft
+    then: Обращает внимание на того, кто готов взять удар за других -- знамение стойкости для героя или Эдрина
+    once: true
+  origin: pack
+- id: lathander
+  name: Латандр (Светлый Бог, Рассвет)
+  domains:
+  - свет
+  - новый день
+  - обновление
+  role: Божество Святилища Рассвета и отца Марка. Дал Грею Благословение Латандра (одноразовый урон светом в гл. I)
+  motive: Всё новое должно начинаться под его именем -- храмы, клятвы, первые шаги -- его слава  # draft
+  pleased_by:  # draft
+  - дела, начатые с его именем
+  - восстановленные святилища
+  - уничтоженная нежить (оскорбляет рассвет)
+  angered_by:  # draft
+  - благословение без благодарности
+  - брошенные начинания
+  opportunity:  # draft
+  - id: demands_thanks
+    if:
+      all:
+      - hero_at: sanctuary_of_dawn
+      - flag: lathander_blessing_used
+    then: Через отца Марка напоминает герою о благодарности за Благословение -- новое начинание под его именем, тогда благословение возобновится
+    once: false
+    cooldown: 7d
+  origin: pack
+- id: selune
+  name: Селунэ (Лунная Дева)
+  domains:
+  - Луна
+  - звёзды
+  - навигация
+  - путники во тьме
+  - защита от тварей ночи
+  role: Покровительница Мило и Эдрина; знамения (белая сова). Враг Шар. Амулет Мило создал лунный купол против яда; Грей уважает её «решение» и отдал судьбу Эдрина на его выбор
+  motive: 'Каждая живая душа священна; её сила -- в живом и цветущем: чем больше жизни в её землях, тем она сильнее'  # draft
+  pleased_by:  # draft
+  - спасённая жизнь
+  - рождение
+  - исцеление
+  - посеянное и выращенное
+  - цветущая земля
+  angered_by:  # draft
+  - напрасная смерть
+  - нежить
+  - Мор
+  - убийство сдавшихся
+  rivals:  # draft
+  - shar
+  - abyss_demon
+  opportunity:  # draft
+  - id: omen_for_the_living
+    if:
+      all:
+      - not:
+          flag: selune_owl_omen_seen
+      - npc_status:
+          id: edrin
+          is: alive
+      - hero_at: east_shaft
+    then: Посылает отряду знамение (белая сова) -- её взгляд на тех, кто идёт спасать живых
+    once: true
+  - id: weakens_as_mor_spreads
+    if:
+      all:
+      - time_after: 23781600
+      - npc_status:
+          id: nazir
+          is: alive
+      - narrative: Мор разошёлся по долине и губит живое
+    then: Сила Селунэ в этих землях тает -- знамения слабеют, молитвы доходят хуже
+    once: true
+  season_power:  # draft
+    весна: 15
+    лето: 25
+    осень: -15
+    зима: -25
+  origin: pack
+- id: shar
+  name: Шар
+  domains:
+  - тьма
+  - забвение
+  role: Упомянута как враг Селунэ
+  motive: Питается утратами и забытым; хочет, чтобы её боялись и почитали тайно, а свет Селунэ погас  # draft
+  pleased_by:  # draft
+  - предательство
+  - утрата
+  - забытые имена
+  angered_by:  # draft
+  - возвращённая память
+  - знаки Селунэ
+  rivals:  # draft
+  - selune
+  opportunity:  # draft
+  - id: feeds_on_loss
+    if:
+      npc_status:
+        id: milo
+        is: dead
+    then: Шепчет Грею в час утраты -- толкает к отчаянию и тайному поклонению Шар
+    once: true
+  origin: pack

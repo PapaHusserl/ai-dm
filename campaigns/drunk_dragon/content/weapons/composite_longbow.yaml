@@ -1,0 +1,16 @@
+id: composite_longbow
+name: Композитный лук следопыта
+category: martial
+kind: ranged
+damage_dice: 1d8
+damage_type: piercing
+cost_cp: 5000
+properties:
+- ammunition
+- heavy
+- two_handed
+mastery: slow
+range_normal_ft: 150
+range_long_ft: 600
+description: Ясеневый композитный лук Грея (в главе I — длинный сосновый).
+source: campaign:drunk_dragon

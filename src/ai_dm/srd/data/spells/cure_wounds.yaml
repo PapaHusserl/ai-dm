@@ -1,0 +1,19 @@
+id: cure_wounds
+name: Лечение ран
+description: 'Касание: существо восстанавливает 2d8 + модификатор заклинательной характеристики хит-пойнтов.
+  На каждый уровень ячейки выше 1-го — +2d8.'
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: abjuration
+range_kind: touch
+classes:
+- cleric
+- ranger
+effects:
+- type: heal
+  dice: 2d8
+  add: spellcasting_modifier
+upcast:
+  per_slot_level:
+    dice: 2d8

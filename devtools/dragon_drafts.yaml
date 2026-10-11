@@ -1,0 +1,401 @@
+# Черновики ИИ для пака «Пьяный Дракон» (STAGE3-PLAN П7, решение 4а): на утверждение проектировщику.
+# Читает devtools/import_dragon.py: каждое поле попадает в пак с комментарием `# draft`,
+# а docs/decisions/stage3-p7-drafts.md собирается из этого же файла.
+# Запись: kind (npc|faction|god|hero), id, field, value, why (почему так), source (место в источнике).
+# Источник: ch1 = saves/drunk_dragon/_import/source/chapter1_gemini_web.txt, ch2 = chapter2_agy.txt
+# (номер после двоеточия -- строка файла); world.json = slots/manual-import/world/world.json.
+# 23781600 = 0001-10-06 06:00, рассвет дня 6 (ends_at_s события nazir_ritual).
+
+# ---------- мотивы 9 NPC без мотива (все мертвы; мотив выведен из роли и средств) ----------
+- {kind: npc, id: ethan, field: motive, value: "Выследить и выбить гончих Топкого болота, чтобы деревне было безопасно",
+   why: "Мотива в источнике нет. Итан -- охотник, сын Ольгерда, погиб у логова гончих; мотив выведен из роли.",
+   source: "world.json npcs.ethan.relations_text; ch1 -- сюжет Ольгерда и Итана (Чёртов Затон)"}
+- {kind: npc, id: bloodfang, field: motive, value: "Охранять логово у Чёртова Затона и кормить стаю",
+   why: "Мотива в источнике нет. Вожак (альфа) болотных гончих; мотив выведен из роли.",
+   source: "world.json npcs.bloodfang.means"}
+- {kind: npc, id: second_hierarch, field: motive, value: "Доставить синий кристалл Ордена на Гадючий Остров и дальше по цепочке культа",
+   why: "Мотива в источнике нет. Ритуалист вёл обоз с синим кристаллом (Ключом); мотив выведен из этого.",
+   source: "world.json npcs.second_hierarch.means; ch1 -- обоз на Гадючьем Острове"}
+- {kind: npc, id: third_hierarch, field: motive, value: "Хранить Второе Святилище и архив Ордена на Мёртвом Кургане",
+   why: "Мотива в источнике нет. Хранитель Второго Святилища; архив, которым культ шантажировал Варена, лежал там же.",
+   source: "world.json npcs.third_hierarch.means; memory.json chapters.ch1 (Мёртвый Курган)"}
+- {kind: npc, id: warlock_viper, field: motive, value: "Удержать заслон на Гадючьем Острове и не пропустить чужих к обозу",
+   why: "Мотива в источнике нет. Командир заслона на Гадючьем Острове; мотив выведен из роли.",
+   source: "world.json npcs.warlock_viper.means; locations.viper_island"}
+- {kind: npc, id: abbey_tracker, field: motive, value: "Выследить чужаков гончими и защитить Аббатство",
+   why: "Мотива в источнике нет. Командир загонщиков с гончими; мотив выведен из роли.",
+   source: "world.json npcs.abbey_tracker.means"}
+- {kind: npc, id: abbey_captain, field: motive, value: "Удержать Аббатство Алого Тумана, пока Иерарх ведёт ритуал",
+   why: "Мотива в источнике нет. Командир гарнизона Аббатства; Верховный Иерарх вёл в нём ритуал.",
+   source: "world.json npcs.abbey_captain.means, npcs.supreme_hierarch.means"}
+- {kind: npc, id: plague_brute, field: motive, value: "Охранять пленных в казематах Ратуши по воле Братства Мора",
+   why: "Мотива в источнике нет. Мутировавший старший тюремщик; мотив выведен из роли (тюремщик).",
+   source: "world.json npcs.plague_brute.means; ch2 -- бой в Ратуше"}
+- {kind: npc, id: sickle_executioner, field: motive, value: "Освободить Ольбрехта и посеять панику в Ратуше",
+   why: "Мотива в источнике нет. Культист в костяной маске среди диверсантов, освободивших Ольбрехта в Ратуше.",
+   source: "IMPORT_NOTES, противоречие «Ольбрехт» (шаги 126-130); world.json npcs.sickle_executioner"}
+
+# ---------- opportunity ключевых NPC ----------
+- kind: npc
+  id: nazir
+  field: opportunity
+  value:
+    - id: ritual_at_dawn
+      if:
+        all:
+          - {time_after: 23781600}
+          - {npc_status: {id: nazir, is: alive}}
+      then: Начинает ритуал у саркофага над трещиной -- вскрыть Могильник кровавой жертвой и пробудить Мор-Владыку
+      once: true
+      key: true
+    - id: answers_black_spring_alarm
+      if: {flag: alarm_raised_at_black_spring}
+      then: Узнав о налёте у Чёрного Истока, усиливает охрану верхнего яруса и ждёт у алтаря
+      once: true
+  why: "Основная линия главы II: ритуал на рассвете (срок -- по событию nazir_ritual). Условие структурное: время + Назир жив. Второй триггер -- на флаг тревоги, который сейчас false (тревога культу не поднята)."
+  source: "world.json events.nazir_ritual (ends_at_s); session.json current_scene.deadlines; ch2:938 (записка Назира «Владыка просыпается»); ch2:1807 (ритуал на рассвете)"
+- kind: npc
+  id: mor_lord
+  field: opportunity
+  value:
+    - id: awakens
+      if:
+        all:
+          - {time_after: 23781600}
+          - {npc_status: {id: nazir, is: alive}}
+          - {narrative: "Кровавая жертва принесена у саркофага в Древнем Могильнике"}
+      then: Печати Могильника трескаются -- Мор-Владыка просыпается
+      once: true
+      key: true
+  why: "Пробуждение Мор-Владыки -- цель Назира. Структурная часть (срок, Назир жив) отсекает лишние вызовы world; нарративная часть -- факт жертвы."
+  source: "world.json events.mor_lord_awakening; ch2:938; npcs.mor_lord.motive"
+- kind: npc
+  id: captain_of_guard
+  field: opportunity
+  value:
+    - id: advance_on_forge
+      if:
+        all:
+          - {time_after: 23781600}
+          - {npc_status: {id: nazir, is: alive}}
+      then: Не дождавшись вестей от Грея, выводит заслон из предгорных деревень к Кузнице Пепла
+      once: true
+  why: "Мотив -- защитить город и деревни; заслон стоит в предгорьях (сотня-две стражи и ополчения). Если на рассвете Назир жив, Капитан действует сам -- по плану «Щит и Клинок»."
+  source: "flags.war_council_plan; npcs.captain_of_guard.relations_text; IMPORT_NOTES, противоречие «Силы Капитана»"
+- kind: npc
+  id: bran_sedogriv
+  field: opportunity
+  value:
+    - id: kills_edrin_if_betrays
+      if:
+        all:
+          - {flag: edrin_joined_as_guide}
+          - {narrative: "Эдрин предаёт отряд или пытается предупредить часовых"}
+      then: Бран без колебаний убивает Эдрина (месть за перебитых егерей Ложи)
+      once: true
+  why: "Мотив Брана -- не дать пробудить Мор-Владыку и отомстить за егерей. Бран не доверяет культисту; триггер срабатывает только при предательстве Эдрина."
+  source: "npcs.bran_sedogriv.motive; ch2:480 (Бран о перебитых егерях); ch2:1975 (условие Грея для Эдрина)"
+- kind: npc
+  id: edrin
+  field: opportunity
+  value:
+    - id: changes_mind
+      if:
+        all:
+          - {flag: edrin_joined_as_guide}
+          - {narrative: "Эдрин говорит вслух, что передумал"}
+      then: Остаётся у подножия и не идёт к шахте -- Грей обещал не принуждать
+      once: true
+      key: true
+  why: "Грей поставил условие: если Эдрин передумает -- сказать вслух. Триггер на это условие; Эдрин -- ключевой проводник к Восточной шахте."
+  source: "ch2:1975 («скажи мне вслух. Просто скажи»); ch2:1912 (Эдрин обещает провести к шахте); flags.edrin_joined_as_guide"
+- kind: npc
+  id: milo
+  field: opportunity
+  value:
+    - id: waits_in_ratusha
+      if: {npc_status: {id: nazir, is: dead}}
+      then: Мило встречает Грея в Ратуше; Капитан пристраивает его учеником в гильдию оружейников, как обещал
+      once: true
+  why: "Мотив -- верность Грею. Капитан обещал пристроить Мило в гильдию оружейников после похода; триггер -- победа над Назиром."
+  source: "ch2:1032 (Мило в гильдию оружейников); npcs.milo.relations_text"
+- kind: npc
+  id: father_mark
+  field: opportunity
+  value:
+    - id: reads_folio_with_hero
+      if:
+        all:
+          - {hero_at: sanctuary_of_dawn}
+          - {flag: abyss_keys_folio_stored_with_father_mark}
+      then: Предлагает вскрыть печать на фолианте «Ключи Бездны» вместе с героем -- в нём могут быть сведения о печатях Могильника
+      once: true
+  why: "Мотив -- противостоять тьме Бездны. Фолиант лежит у него под печатью, герой в Святилище -- повод вернуться к нему. Содержимое фолианта в источнике не раскрыто -- это допущение."
+  source: "ch1:1039 (отец Марк о фолианте); ch1:1071 (запечатал ларец); flags.abyss_keys_folio_stored_with_father_mark"
+- kind: npc
+  id: varen
+  field: opportunity
+  value:
+    - id: bargains_in_casemates
+      if:
+        all:
+          - {hero_at: city_ratusha}
+          - {flag: varen_in_casemates}
+      then: Торгуется -- за смягчение приговора выдаёт всё, что знает о Магистре Второго Круга
+      once: true
+  why: "Мотив Варена -- власть и заметание следов. Он в казематах и «раскололся», но личность Магистра не раскрыта (секрет magister_secret_1). Триггер даёт повод её раскрыть."
+  source: "ch2:224 (допросы Варена и Ольбрехта); ch1:858 (записка о Магистре); npcs.magister.secrets"
+
+# ---------- opportunity всех 6 фракций ----------
+- kind: faction
+  id: broken_key_brotherhood
+  field: opportunity
+  value:
+    - id: goes_underground
+      if: {npc_status: {id: nazir, is: dead}}
+      then: Остатки Братства уходят в подполье; Магистр Второго Круга берёт руководство и ищет новые Ключи
+      once: true
+  why: "Магистр в источнике -- глава ордена с мотивом «закончить ритуал»; без Назира Братство не исчезает. «Ищет новые Ключи» -- допущение."
+  source: "ch1:858, ch1:1039 (Магистр); world.json npcs.magister.motive"
+- kind: faction
+  id: lodge_north_wind
+  field: opportunity
+  value:
+    - id: returns_to_city
+      if:
+        all:
+          - {npc_status: {id: olbrecht, is: dead}}
+          - {npc_status: {id: nazir, is: dead}}
+      then: Ложа открыто возвращается в Город; указ о «диких бандах» отменён Советом
+      once: true
+  why: "Ложа объявлена браконьерами по указу Ольбрехта. Ольбрехт мёртв; после победы над Назиром у Ложи нет причин скрываться."
+  source: "ch2:480 (указ Ольбрехта о «диких бандах»); world.json factions.lodge_north_wind.motive"
+- kind: faction
+  id: city_guard
+  field: opportunity
+  value:
+    - id: intercepts_raiders
+      if:
+        all:
+          - {event_active: harvest_raids}
+          - {flag: captain_screens_villages}
+      then: Заслон перехватывает рейдовые группы орков и сопровождает жителей деревень в город
+      once: true
+  why: "Заслон Капитана для того и поставлен: событие harvest_raids заканчивается, когда заслон перехватывает рейды."
+  source: "world.json events.harvest_raids.ends_when; flags.captain_screens_villages, signal_fires_lit"
+- kind: faction
+  id: city_council_conspiracy
+  field: opportunity
+  value:
+    - id: silences_varen
+      if:
+        all:
+          - {flag: varen_in_casemates}
+          - {npc_status: {id: olbrecht, is: dead}}
+      then: Уцелевшие заговорщики пытаются освободить Варена или заставить его замолчать
+      once: true
+  why: "Варен в казематах, Ольбрехт мёртв. Диверсанты уже освобождали Ольбрехта из казематов Ратуши -- такой ход Совета в духе источника."
+  source: "IMPORT_NOTES, противоречие «Ольбрехт» (шаги 126-130); flags.varen_in_casemates"
+- kind: faction
+  id: nazir_orcs
+  field: opportunity
+  value:
+    - id: doubles_watch
+      if: {flag: alarm_raised_at_black_spring}
+      then: Орки удваивают караулы у вентиляционных шахт и отменяют «мёртвое окно» смены часовых
+      once: true
+  why: "Сейчас тревога не поднята (флаг false), и отряд рассчитывает на смену часовых. Если её поднять, орки реагируют."
+  source: "session.json current_scene.enemies_known.schedule; flags.alarm_raised_at_black_spring"
+- kind: faction
+  id: chernolesye_village
+  field: opportunity
+  value:
+    - id: bars_the_gates
+      if: {event_active: harvest_raids}
+      then: Деревня запирает ворота, ополчение встаёт на частокол, староста Тобин просит помощи у Города
+      once: true
+  why: "Мотив -- выжить у болот. Набеги за жертвами идут на деревни предгорий (событие harvest_raids). Чернолесье -- деревня за частоколом с ополчением."
+  source: "world.json events.harvest_raids; factions.chernolesye_village.means; npcs.tobin.means"
+
+# ---------- боги: корыстные мотивы по правкам проектировщика (stage3-p7-review.md) ----------
+# Селунэ -- богиня жизни; Латандр -- слава начинаний; Шар -- утраты и забытое; Безликий -- секреты;
+# Ильматер -- сила от принявших чужую боль. Демон Бездны без изменений.
+- {kind: god, id: selune, field: motive, value: "Каждая живая душа священна; её сила -- в живом и цветущем: чем больше жизни в её землях, тем она сильнее",
+   why: "Текст проектировщика (корыстный мотив: покровительство жизни, сила растёт с жизнью).",
+   source: "stage3-p7-review.md, «Мотивы богов»"}
+- {kind: god, id: selune, field: pleased_by, value: ["спасённая жизнь", "рождение", "исцеление", "посеянное и выращенное", "цветущая земля"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: selune, field: angered_by, value: ["напрасная смерть", "нежить", "Мор", "убийство сдавшихся"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: selune, field: rivals, value: [shar, abyss_demon],
+   why: "Текст проектировщика: соперники Шар и демон Бездны (Мор -- порождение культа демона).",
+   source: "stage3-p7-review.md; ch1:160 (Шар -- враг Селунэ)"}
+- {kind: god, id: selune, field: season_power, value: {весна: 15, лето: 25, осень: -15, зима: -25},
+   why: "S1: с весной силы Селунэ возрастают, с осенью убывают. Поправка к шансу божественного вмешательства в процентных пунктах. Числа -- на утверждение проектировщику. Лето +25 (решение проектировщика), сейчас осень (-15).",
+   source: "stage3-p7-review.md, «S1»; имена сезонов -- стандартный календарь (зима, весна, лето, осень)"}
+- kind: god
+  id: selune
+  field: opportunity
+  value:
+    - id: omen_for_the_living
+      if:
+        all:
+          - {not: {flag: selune_owl_omen_seen}}
+          - {npc_status: {id: edrin, is: alive}}
+          - {hero_at: east_shaft}
+      then: Посылает отряду знамение (белая сова) -- её взгляд на тех, кто идёт спасать живых
+      once: true
+    - id: weakens_as_mor_spreads
+      if:
+        all:
+          - {time_after: 23781600}
+          - {npc_status: {id: nazir, is: alive}}
+          - {narrative: "Мор разошёлся по долине и губит живое"}
+      then: Сила Селунэ в этих землях тает -- знамения слабеют, молитвы доходят хуже
+      once: true
+  why: "Мотив Селунэ -- жизнь в её землях. Первый триггер -- знамение у шахты, пока знамения ещё не было (условие «не было», решение проектировщика; Эдрин жив -- повод для её внимания). Второй -- Мор отнимает жизнь: структурная часть (срок ритуала, Назир жив) отсекает лишние вызовы world, нарратив -- сам факт распространения Мора."
+  source: "ch2:1874-1890 (белая сова); ch2:1983; world.json events.nazir_ritual"
+- {kind: god, id: lathander, field: motive, value: "Всё новое должно начинаться под его именем -- храмы, клятвы, первые шаги -- его слава",
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: lathander, field: pleased_by, value: ["дела, начатые с его именем", "восстановленные святилища", "уничтоженная нежить (оскорбляет рассвет)"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: lathander, field: angered_by, value: ["благословение без благодарности", "брошенные начинания"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- kind: god
+  id: lathander
+  field: opportunity
+  value:
+    - id: demands_thanks
+      if:
+        all:
+          - {hero_at: sanctuary_of_dawn}
+          - {flag: lathander_blessing_used}
+      then: Через отца Марка напоминает герою о благодарности за Благословение -- новое начинание под его именем, тогда благословение возобновится
+      once: false
+      cooldown: 7d
+  why: "Мотив -- слава начинаний. Благословение в главе I использовано (флаг); без благодарности Латандр сердится (angered_by). Структурные условия, срок 7d -- допущение."
+  source: "ch1:1085; flags.lathander_blessing_used; stage3-p7-review.md"
+- {kind: god, id: shar, field: motive, value: "Питается утратами и забытым; хочет, чтобы её боялись и почитали тайно, а свет Селунэ погас",
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: shar, field: pleased_by, value: ["предательство", "утрата", "забытые имена"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: shar, field: angered_by, value: ["возвращённая память", "знаки Селунэ"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: shar, field: rivals, value: [selune],
+   why: "Взаимно с Селунэ: источник называет Шар её врагом.",
+   source: "ch1:160"}
+- kind: god
+  id: shar
+  field: opportunity
+  value:
+    - id: feeds_on_loss
+      if: {npc_status: {id: milo, is: dead}}
+      then: Шепчет Грею в час утраты -- толкает к отчаянию и тайному поклонению Шар
+      once: true
+  why: "Мотив -- питаться утратами. Самая личная утрата Грея в источнике -- Мило (дважды спасён, молится Селунэ, враг Шар). Мило жив, триггер спящий. Слабый черновик: у Шар в источнике нет действий."
+  source: "ch1:160; world.json npcs.milo; stage3-p7-review.md"
+- {kind: god, id: faceless, field: motive, value: "Копит секреты: каждое скрытое знание -- его сила",
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: faceless, field: pleased_by, value: ["хранимая тайна", "сделка в тени", "украденное знание"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: faceless, field: angered_by, value: ["раскрытые тайны и имена его служителей"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- kind: god
+  id: faceless
+  field: opportunity
+  value:
+    - id: wants_the_folio
+      if:
+        all:
+          - {hero_at: dead_barrow}
+          - {flag: abyss_keys_folio_stored_with_father_mark}
+      then: Предлагает герою сделку в тени -- тайна за тайну; его интересует фолиант «Ключи Бездны»
+      once: true
+  why: "Мотив -- копить секреты. Самое ценное скрытое знание в источнике -- фолиант «Ключи Бездны», спрятанный у отца Марка; часовня Безликого стоит на Мёртвом Кургане. Слабый черновик."
+  source: "ch1:4674 (часовня Безликого); ch1:1039, ch1:1071 (фолиант); stage3-p7-review.md"
+- {kind: god, id: ilmater, field: motive, value: "Набирает силу от тех, кто принимает чужую боль; ему нужны мученики",
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: ilmater, field: pleased_by, value: ["стойкость в страдании", "боль, взятая за другого"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- {kind: god, id: ilmater, field: angered_by, value: ["спасение себя ценой чужой боли", "лёгкие пути"],
+   why: "Текст проектировщика.",
+   source: "stage3-p7-review.md"}
+- kind: god
+  id: ilmater
+  field: opportunity
+  value:
+    - id: seeks_a_martyr
+      if:
+        all:
+          - {flag: edrin_joined_as_guide}
+          - {hero_at: east_shaft}
+      then: Обращает внимание на того, кто готов взять удар за других -- знамение стойкости для героя или Эдрина
+      once: true
+  why: "Мотив -- мученики. Эдрин идёт искупать вину и рискует собой у шахты -- ближайший кандидат в источнике. Слабый черновик: Ильматер упомянут один раз."
+  source: "ch2:428; ch2:1912 (Эдрин обещает провести к шахте); stage3-p7-review.md"
+- {kind: god, id: abyss_demon, field: motive, value: "Прорваться в мир через Врата Бездны, которые открывает Орден Разбитого Ключа",
+   why: "Источник: культ поклоняется высшему демону Бездны и ищет печати; мотив бога выведен из цели культа. Связь с Мор-Владыкой не подтверждена.",
+   source: "ch1:1029 (слова отца Марка); world.json gods.abyss_demon.role"}
+- {kind: god, id: abyss_demon, field: pleased_by, value: ["вскрытие печатей и Врат", "кровавые жертвы", "служение Братству Мора"],
+   why: "Выведено из целей и обрядов культа.",
+   source: "ch1:1029; world.json factions.broken_key_brotherhood.motive"}
+- {kind: god, id: abyss_demon, field: angered_by, value: ["уничтожение Кристаллов-Ключей", "запечатывание Врат и Могильника", "убийство иерархов Ордена"],
+   why: "Выведено из того, что Грей уже сделал: все три Кристалла уничтожены, иерархи убиты.",
+   source: "flags.all_crystals_destroyed, abbey_hierarch_dead, second_hierarch_dead, third_hierarch_dead"}
+- kind: god
+  id: abyss_demon
+  field: opportunity
+  value:
+    - id: answers_awakening
+      if:
+        all:
+          - {time_after: 23781600}
+          - {npc_status: {id: nazir, is: alive}}
+          - {narrative: "Мор-Владыка пробуждается"}
+      then: Откликается на пробуждение Мор-Владыки и тянется к Вратам Бездны
+      once: true
+  why: "Связь демона с Мор-Владыкой источник не подтверждает (role: «возможно связан»). Слабый черновик: структурное условие то же, что у Назира."
+  source: "world.json gods.abyss_demon.role; ch1:1029"
+
+# ---------- Грей 3 ур.: решения проектировщика (2026-10-04), не черновики ИИ; docs/decisions/ranger-2-5-plan.md ----------
+- {kind: hero, id: grey, field: level, value: 3,
+   why: "Решение проектировщика: Грей начинает на 3 ур., Повелитель зверей.",
+   source: "docs/decisions/stage3-audit.md (решение «Грей: уровень 3»); docs/decisions/ranger-2-5-plan.md, решения"}
+- {kind: hero, id: grey, field: xp, value: 900,
+   why: "Опыт 3 ур. по таблице (xp.yaml).",
+   source: "srd/data/tables/xp.yaml"}
+- kind: hero
+  id: grey
+  field: level_choices
+  value:
+    - level: 2
+      fighting_style: archery
+      expertise: [survival]
+      languages: [celestial, gnomish]
+    - level: 3
+      subclass_id: beast_master
+      spells_add: [cure_wounds, ensnaring_strike, speak_with_animals, fog_cloud]
+  why: "Решения проектировщика 2-4: стиль «Стрельба», экспертиза в Выживании, Повелитель зверей, 4 заклинания 1 круга (Метка охотника подготовлена всегда). Языки (2) -- Великаний и Гномий (рекомендация папы-кабана, пункт В4)."
+  source: "docs/decisions/ranger-2-5-plan.md, разд. 8 (В2-В4) и решения проектировщика"
+- kind: hero
+  id: grey
+  field: companion
+  value:
+    name: Акела
+    kind: волк
+    notes: Серый волк; перед походом его доверил Грею Йорген-зверолов. Идёт по следу, чует ветер, сторожит стоянку; в бою пока не участвует.
+  why: "Решение проектировщика 1: зверь Грея -- волк Акела, введён через Йоргена-зверолова, прошлые сцены не переписываются."
+  source: "docs/decisions/ranger-2-5-plan.md, В1 и решение 1"

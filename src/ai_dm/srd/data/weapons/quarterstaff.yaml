@@ -1,0 +1,13 @@
+id: quarterstaff
+name: Боевой посох
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d6
+damage_type: bludgeoning
+cost_cp: 20
+properties:
+- versatile
+mastery: topple
+versatile_dice: 1d8

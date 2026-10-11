@@ -1,0 +1,20 @@
+id: magic_missile
+name: Волшебная стрела
+description: Три дротика силы, каждый автоматически попадает и наносит 1d4 + 1 урона силовым полем. На
+  каждый уровень ячейки выше 1-го — ещё один дротик.
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: evocation
+range_kind: ranged
+range_ft: 120
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 1d4+1
+  damage_type: force
+  count: 3
+upcast:
+  per_slot_level:
+    count: 1

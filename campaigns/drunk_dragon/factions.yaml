@@ -1,0 +1,133 @@
+# Сгенерировано devtools/import_dragon.py из слота saves/drunk_dragon/slots/manual-import.
+# `# draft` -- поле заполнил ИИ (решение 4а), на утверждение проектировщику; список --
+# docs/decisions/stage3-p7-drafts.md.
+- id: broken_key_brotherhood
+  name: Орден Разбитого Ключа / Братство Бездонного Мора
+  motive: Вскрыть древние печати (Ключи Погребения) и открыть Врата/Могильник, пробудить Мор-Владыку; поклоняются одному из высших демонов Бездны
+  means:
+  - подчинённые твари (троглодиты, болотные гончие, мутанты)
+  - алхимия и яд «слеза Бездонного Мора»
+  - горные орки и наёмники
+  opportunity:  # draft
+  - id: goes_underground
+    if:
+      npc_status:
+        id: nazir
+        is: dead
+    then: Остатки Братства уходят в подполье; Магистр Второго Круга берёт руководство и ищет новые Ключи
+    once: true
+  members:
+  - nazir
+  - supreme_hierarch
+  - second_hierarch
+  - third_hierarch
+  - edrin
+  - magister
+  regions:
+  - abbey_scarlet_mist
+  - black_bogs
+  - iron_ridge
+  - ash_forge
+- id: chernolesye_village
+  name: Деревня Чернолесье
+  motive: Выжить у болот
+  means:
+  - частокол, ополчение
+  opportunity:  # draft
+  - id: bars_the_gates
+    if:
+      event_active: harvest_raids
+    then: Деревня запирает ворота, ополчение встаёт на частокол, староста Тобин просит помощи у Города
+    once: true
+  members:
+  - tobin
+  - olgerd
+  - bron_crafter
+  regions:
+  - chernolesye
+- id: city_council_conspiracy
+  name: Заговорщики Городского Совета / Магистрата и Торговой гильдии
+  motive: Власть над гильдиями и скупка Нижнего Города
+  means:
+  - золото, векселя
+  - контроль шлюзов
+  - подкуп
+  opportunity:  # draft
+  - id: silences_varen
+    if:
+      all:
+      - flag: varen_in_casemates
+      - npc_status:
+          id: olbrecht
+          is: dead
+    then: Уцелевшие заговорщики пытаются освободить Варена или заставить его замолчать
+    once: true
+  members:
+  - varen
+  - olbrecht
+  - horst
+  regions:
+  - city
+  - grey_quarter
+  - city_ratusha
+- id: city_guard
+  name: Городская Стража
+  motive: Защита Города и долины
+  means:
+  - гарнизон, ополчение (сотня–две сотни в заслоне)
+  - арсенал Ратуши
+  - сигнальные костры и вестовые
+  opportunity:  # draft
+  - id: intercepts_raiders
+    if:
+      all:
+      - event_active: harvest_raids
+      - flag: captain_screens_villages
+    then: Заслон перехватывает рейдовые группы орков и сопровождает жителей деревень в город
+    once: true
+  members:
+  - captain_of_guard
+  regions:
+  - city
+  - iron_ridge_foothills
+- id: lodge_north_wind
+  name: Ложа Северного Ветра (Северный Союз Егерей)
+  motive: Держать Мор-Владыку запечатанным; в городе объявлены браконьерами указом Ольбрехта
+  means:
+  - тайные тропы Кряжа
+  - почтовые соколы
+  - оружие из звёздного железа
+  opportunity:  # draft
+  - id: returns_to_city
+    if:
+      all:
+      - npc_status:
+          id: olbrecht
+          is: dead
+      - npc_status:
+          id: nazir
+          is: dead
+    then: Ложа открыто возвращается в Город; указ о «диких бандах» отменён Советом
+    once: true
+  members:
+  - bran_sedogriv
+  - jorgen
+  - lira
+  regions:
+  - city
+  - iron_ridge
+- id: nazir_orcs
+  name: Горные орки Назира
+  motive: Служба Назиру, набеги за жертвами
+  means:
+  - ~30 охранников Кузницы
+  - рейдовые группы с клетками
+  opportunity:  # draft
+  - id: doubles_watch
+    if:
+      flag: alarm_raised_at_black_spring
+    then: Орки удваивают караулы у вентиляционных шахт и отменяют «мёртвое окно» смены часовых
+    once: true
+  regions:
+  - iron_ridge
+  - heather_wastes

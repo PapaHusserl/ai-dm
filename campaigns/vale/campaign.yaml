@@ -1,0 +1,13 @@
+id: vale
+name: Вейл
+version: "1"
+start:
+  date: "0001-01-01"
+  time: "00:00"
+  hero_location: lame_goose
+  heroes: [arn, liel, grey]
+  chapter:
+    number: 1
+    title: ""
+tone:
+  mood: приключенческое фэнтези

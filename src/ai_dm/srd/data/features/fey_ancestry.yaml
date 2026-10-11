@@ -1,0 +1,10 @@
+id: fey_ancestry
+name: Наследие фей
+description: Вы совершаете спасброски от состояния «Очарован» с преимуществом.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: modifier
+  target: saving_throw
+  mode: advantage
+  condition: charmed

@@ -1,0 +1,13 @@
+id: scimitar
+name: Скимитар
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d6
+damage_type: slashing
+cost_cp: 2500
+properties:
+- finesse
+- light
+mastery: nick

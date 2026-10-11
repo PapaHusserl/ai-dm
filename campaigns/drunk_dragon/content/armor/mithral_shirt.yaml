@@ -1,0 +1,10 @@
+id: mithral_shirt
+name: Мифриловая кольчужная рубаха
+category: medium
+ac: 13
+cost_cp: 35000
+dex_cap: 2
+strength_min: 0
+description: Носится под курткой, незаметна, не мешает скрытности. Куплена у Брана
+  за 350 крон.
+source: campaign:drunk_dragon

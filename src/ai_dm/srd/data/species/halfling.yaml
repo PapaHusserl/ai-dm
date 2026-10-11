@@ -1,0 +1,10 @@
+id: halfling
+name: Полурослик
+description: Малый, храбрый и удачливый народ.
+source: srd-5.2
+license: CC-BY-4.0
+speed_ft: 30
+size: small
+traits:
+- luck
+- brave

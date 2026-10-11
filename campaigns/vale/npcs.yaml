@@ -1,0 +1,20 @@
+- id: innkeeper
+  name: Гарт
+  named: true
+  key: false
+  location_id: lame_goose
+  motive: Хочет избавиться от шума в подвале и не растерять посетителей.
+  means:
+  - знает все деревенские слухи
+  - хранит ключ от подвала
+- id: grakh
+  name: Гракх
+  named: true
+  key: true
+  location_id: cellar
+  motive: Хочет захватить припасы таверны и пленников для выкупа.
+  means:
+  - ватага гоблинов
+  combat:
+    monster_id: goblin_boss
+    intent: capture

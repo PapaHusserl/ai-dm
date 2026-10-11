@@ -1,0 +1,111 @@
+id: grey
+choices:
+  name: Грей
+  species_id: human
+  class_id: ranger
+  background:
+    name: Егерь-одиночка
+    abilities:
+    - dex
+    - wis
+    - con
+    skills:
+    - stealth
+    - survival
+    tool: herbalism_kit
+    feat: alert
+    equipment: []
+    gold_cp: 0
+  ability_method: standard_array
+  ability_scores:
+    str: 12
+    dex: 15
+    con: 13
+    int: 10
+    wis: 14
+    cha: 8
+  background_bonus:
+    dex: 2
+    wis: 1
+  class_skills:
+  - perception
+  - insight
+  - nature
+  weapon_masteries:
+  - north_wind_blade
+  - composite_longbow
+  inventory:
+  - mithral_shirt
+  - north_wind_blade
+  equip:
+  - mithral_shirt
+  - north_wind_blade
+  species_choices:
+    skill: intimidation
+    feat: savage_attacker
+inventory_extra:
+- item_id: composite_longbow
+  qty: 1
+- item_id: hunting_dirk
+  qty: 1
+- item_id: harpoon_dart
+  qty: 1
+- item_id: arrow_armor_piercing
+  qty: 20
+- item_id: arrow_frost
+  qty: 10
+- item_id: arrow_fire
+  qty: 10
+- item_id: arrow_silver
+  qty: 10
+- item_id: hunter_jacket
+  qty: 1
+- item_id: snow_ghost_cloak
+  qty: 1
+- item_id: spiked_bogshoes
+  qty: 1
+- item_id: gnome_climbing_kit
+  qty: 1
+- item_id: stoneskin_elixir
+  qty: 2
+- item_id: breath_cleansing_potion
+  qty: 3
+- item_id: mor_antidote
+  qty: 1
+- item_id: bran_mountain_salve
+  qty: 1
+- item_id: spare_bowstring
+  qty: 2
+- item_id: ratusha_master_key
+  qty: 1
+- item_id: olbrecht_signet_ring
+  qty: 1
+- item_id: travel_flask
+  qty: 1
+equipped:
+  armor: mithral_shirt
+  main_hand: north_wind_blade
+money_cp: 5400
+motive: 'Поддерживать баланс мира: как охотник жить в гармонии с природой и беречь жизнь в любом её виде'
+location_id: iron_ridge_foothills
+level: 3
+xp: 900
+level_choices:
+- level: 2
+  fighting_style: archery
+  expertise:
+  - survival
+  languages:
+  - celestial
+  - gnomish
+- level: 3
+  subclass_id: beast_master
+  spells_add:
+  - cure_wounds
+  - ensnaring_strike
+  - speak_with_animals
+  - fog_cloud
+companion:
+  name: Акела
+  kind: волк
+  notes: Серый волк; перед походом его доверил Грею Йорген-зверолов. Идёт по следу, чует ветер, сторожит стоянку; в бою пока не участвует.

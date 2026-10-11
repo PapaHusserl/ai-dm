@@ -1,0 +1,9 @@
+# Сценарий мока: «разговор -> проверка». Ход 2 этапа 2: вызов skill_check, затем рассказ.
+steps:
+  - text: "Стражник прищуривается."
+    tool_calls:
+      - id: call-1
+        name: skill_check
+        input: {type: skill_check, skill: persuasion, category: medium, stakes: normal}
+  - text: "Стражник нехотя кивает и пропускает вас."
+    usage: {input: 1200, output: 80, cache_read: 900}

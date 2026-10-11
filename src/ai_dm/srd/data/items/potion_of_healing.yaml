@@ -1,0 +1,12 @@
+id: potion_of_healing
+name: Зелье лечения
+description: Выпить зелье — бонусное действие; восстанавливает 2d4 + 2 хит-пойнта.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 5000
+category: consumable
+rarity: common
+magic: true
+effects:
+- type: heal
+  dice: 2d4+2

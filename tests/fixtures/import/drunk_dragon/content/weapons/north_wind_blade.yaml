@@ -1,0 +1,14 @@
+id: north_wind_blade
+name: Клинок Северного Ветра
+category: martial
+kind: melee
+damage_dice: 1d8
+damage_type: slashing
+cost_cp: 0
+properties:
+- finesse
+mastery: sap
+description: Тяжёлый егерский тесак из звёздного железа, рукоять в коже виверны. Реликвия
+  Ложи Северного Ветра, подарок Брана. +2d6 урона по нежити и порождениям Мора, рассекает
+  магические щиты (эффект пока описательный).
+source: campaign:drunk_dragon

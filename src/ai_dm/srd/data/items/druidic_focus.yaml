@@ -1,0 +1,6 @@
+id: druidic_focus
+name: Фокусировка друидов
+description: Веточка омелы; магическая фокусировка для друидов и следопытов.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 100

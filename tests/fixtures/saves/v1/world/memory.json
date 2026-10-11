@@ -1,0 +1,27 @@
+{
+  "scenes": [],
+  "chapters": [],
+  "game_summary": "",
+  "recent_turns": [
+    {
+      "turn_seq": 1,
+      "at_s": 90000,
+      "player_input": "Осматриваюсь",
+      "narration": "Таверна гудит.",
+      "requests": [
+        "skill_check"
+      ],
+      "rolls": [
+        "Внимательность 14 vs СЛ 10"
+      ]
+    },
+    {
+      "t": 1
+    },
+    {
+      "turn_seq": 2,
+      "at_s": 90600,
+      "player_input": "Иду"
+    }
+  ]
+}

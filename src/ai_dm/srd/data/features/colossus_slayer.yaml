@@ -1,0 +1,9 @@
+id: colossus_slayer
+name: Убийца колоссов
+description: Раз в ход, попав атакой оружием по существу, у которого не все хит-пойнты, вы наносите ему ещё 1d8 урона.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: extra_damage
+  dice: 1d8
+  when: target_wounded

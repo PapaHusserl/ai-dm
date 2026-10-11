@@ -1,0 +1,307 @@
+# Сгенерировано devtools/import_dragon.py из слота saves/drunk_dragon/slots/manual-import.
+# `# draft` -- поле заполнил ИИ (решение 4а), на утверждение проектировщику; список --
+# docs/decisions/stage3-p7-drafts.md.
+- id: abbey_scarlet_mist
+  name: Аббатство Алого Тумана
+  description: 'Готические руины; крипта, главный зал с Алтарём Бездны, покои Иерарха, винный погреб с тайником, оружейная, надвратная галерея, водосток. Расстояния (оценка): до old_tar_works: 3 версты на север, ~40 минут.'
+  tags:
+  - руины
+  - зачищено
+  - заброшено
+  connections:
+  - to: old_tar_works
+    distance_m: 42680
+  visited: true
+  origin: pack
+- id: ancient_tomb
+  name: Древний Могильник
+  parent_id: iron_ridge
+  description: Катакомбы/шахты с саркофагом Мор-Владыки
+  tags:
+  - гробница
+  visited: false
+  origin: pack
+- id: ash_forge
+  name: Кузница Пепла
+  parent_id: iron_ridge
+  description: 'Старая крепость гномов в жерле потухшего вулкана; три яруса: нижний — кузни и склады реагентов, средний — казармы орков и клетки, верхний — алтарный зал с саркофагом над трещиной'
+  tags:
+  - крепость
+  - логово врага
+  visited: false
+  origin: pack
+- id: black_bogs
+  name: Чёрные Топи (Северные Топи)
+  description: Болота с тайной гатью (Старый Волок)
+  tags:
+  - болото
+  visited: true
+  origin: pack
+- id: black_spring
+  name: Ручей Чёрный Исток
+  parent_id: heather_wastes
+  description: 'Место стоянки рейдеров-орков; брошенная телега с клетками. Расстояния (оценка): до east_shaft: ~1 час верхом + ~2 часа пешком вверх.'
+  tags:
+  - зачищено
+  connections:
+  - to: east_shaft
+    distance_m: 10000
+  visited: true
+  origin: pack
+- id: chernolesye
+  name: Деревня Чернолесье
+  description: 'Деревня за частоколом; постоялый двор «Мшистый Валун» у ратуши, изба Ольгерда на северном краю, кузня Брона. Расстояния (оценка): до tavern_drunken_dragon: полдня; до old_gat: ~30–40 минут по Змеиному хребту.'
+  tags:
+  - деревня
+  connections:
+  - to: tavern_drunken_dragon
+    distance_m: 15000
+  - to: old_gat
+    distance_m: 3333
+  visited: true
+  origin: pack
+- id: city
+  name: Город (Город над Топями)
+  description: 'Город с Нижним, Верхним и Старым городом, Ратушей и водонапорным комплексом. Расстояния (оценка): до abbey_scarlet_mist: через Топи; от Гадючьего Острова до Города 10–12 вёрст, 3–4 часа; до heather_wastes: через северные ворота.'
+  tags:
+  - город
+  connections:
+  - to: abbey_scarlet_mist
+    distance_m: 12804
+  - to: heather_wastes
+    distance_m: 1000
+  visited: true
+  origin: pack
+- id: city_ratusha
+  name: Ратуша и штаб Городской Стражи
+  parent_id: city
+  description: Хранилище, казематы, конюшни, каретный двор, офицерский флигель; ворота выбиты взрывом в гл. II
+  tags:
+  - власть
+  visited: true
+  origin: pack
+- id: city_waterworks
+  name: Водонапорный комплекс / шлюзы
+  parent_id: city
+  description: Резервуары Нижнего Города; яд демонтирован, шлюзы заперты
+  tags:
+  - зачищено
+  visited: true
+  origin: pack
+- id: dead_barrow
+  name: Мёртвый Курган (Второе Святилище)
+  parent_id: black_bogs
+  description: Холм за Чёрным Омутом с часовней Безликого; затопленный лаз у старой мельницы ведёт в алтарный зал
+  tags:
+  - святилище
+  - зачищено
+  visited: true
+  origin: pack
+- id: dead_pine_gorge
+  name: Ущелье Мёртвой Сосны
+  parent_id: iron_ridge
+  description: Быстрый маршрут 18–20 ч, риск засады 75%
+  visited: false
+  origin: pack
+- id: deep_shaft
+  name: Штольня «Глубокий Шурф»
+  parent_id: iron_ridge
+  description: Подземный маршрут 26–28 ч
+  tags:
+  - шахта
+  visited: false
+  origin: pack
+- id: devils_backwater
+  name: Чёртов Затон
+  parent_id: swamp_topkoe
+  description: Зыбучие пески, старая ива — логово гончих, останки Итана
+  tags:
+  - болото
+  visited: true
+  origin: pack
+- id: dry_heather
+  name: Лавка травника «Сухой Вереск»
+  parent_id: city
+  description: Старый Город, квартал травников; убежище Брана
+  tags:
+  - магазин
+  - Ложа
+  visited: true
+  origin: pack
+- id: east_shaft
+  name: Восточная вентиляционная шахта
+  parent_id: ash_forge
+  description: Расселина между двумя скальными иглами; заложена 3 бревнами и щебнем, 2 часовых-орка
+  tags:
+  - вход
+  visited: false
+  origin: pack
+- id: grey_quarter
+  name: Серый Квартал
+  parent_id: city
+  description: Квартал торговой гильдии в Городе; здесь жили Советник Варен и Казначей Ольбрехт.
+  tags:
+  - квартал
+  - гильдия
+  visited: true
+  origin: pack
+- id: heather_wastes
+  name: Вересковые Пустоши
+  description: 'Плоские пустоши (5 лиг) до предгорий. Расстояния (оценка): до black_spring: ~2 часа рыси от северных ворот; до watch_tower_outpost: первые 5 часов пути общие для всех маршрутов.'
+  tags:
+  - равнина
+  connections:
+  - to: black_spring
+    distance_m: 10000
+  - to: watch_tower_outpost
+    distance_m: 25000
+  visited: true
+  origin: pack
+- id: iron_ridge
+  name: Железный Кряж
+  description: 'Горы с перевалом Волчьих Зубов; под ними Древний Могильник. Расстояния (оценка): до city: 3 дня на конях до перевала (по совету); маршруты 18–36 ч.'
+  tags:
+  - горы
+  connections:
+  - to: city
+    distance_m: 1080000
+  visited: false
+  origin: pack
+- id: iron_ridge_foothills
+  name: Предгорья Железного Кряжа
+  parent_id: iron_ridge
+  description: Подножие Кряжа примерно в часе езды от ручья Чёрный Исток. Видна тёмная расселина между двумя скальными иглами — Восточная шахта Кузницы Пепла, около 2 часов пешего подъёма.
+  tags:
+  - горы
+  - ночь
+  connections:
+  - to: east_shaft
+    distance_m: 6000
+  - to: black_spring
+    distance_m: 12000
+  visited: true
+  origin: pack
+- id: iron_ridge_foothills_villages
+  name: Предгорья Кряжа
+  parent_id: iron_ridge
+  description: 'Деревни предгорий Железного Кряжа: сюда идут набеги орков за жертвами; заслон Капитана Стражи держит сигнальные костры.'
+  tags:
+  - деревня
+  - предгорья
+  visited: false
+  origin: pack
+- id: olbrecht_manor
+  name: Усадьба Ольбрехта
+  parent_id: city
+  description: Упомянута как цель для обыска
+  visited: false
+  origin: pack
+- id: old_gat
+  name: Старая Гать
+  parent_id: swamp_topkoe
+  description: 'Полусгнивший настил через реку Вязкую; рядом тропа «Змеиный хребет». Расстояния (оценка): до abbey_scarlet_mist: ~2 часа скрытного хода.'
+  tags:
+  - болото
+  - зачищено
+  connections:
+  - to: abbey_scarlet_mist
+    distance_m: 10000
+  visited: true
+  origin: pack
+- id: old_tar_works
+  name: Старый Смолокуренный завод (Смолокурня)
+  description: 'Гнилые сараи и дегтярные ямы у входа на тайную гать; место засады на Варена. Расстояния (оценка): до viper_island: ~2 версты + 15 минут по гати; до city_waterworks: ~40 минут каретой.'
+  tags:
+  - руины
+  connections:
+  - to: viper_island
+    distance_m: 16005
+  - to: city_waterworks
+    distance_m: 3333
+  visited: true
+  origin: pack
+- id: old_tower
+  name: Старая башня
+  description: 'Руина поместья барона в туманном лесу на холме; склеп под башней, решётчатый водосток-коллектор. Расстояния (оценка): до tavern_drunken_dragon: 2 мили.'
+  tags:
+  - руины
+  - зачищено
+  connections:
+  - to: tavern_drunken_dragon
+    distance_m: 3218
+  visited: true
+  origin: pack
+- id: sanctuary_of_dawn
+  name: Святилище Рассвета
+  parent_id: city
+  description: Белокаменный храм Латандра на холме у края городка; под алтарём тайник с ларцом
+  tags:
+  - храм
+  visited: true
+  origin: pack
+- id: shop_hunting_horn
+  name: Лавка «Охотничий Рог»
+  parent_id: city
+  description: Лавка Хэка на торговой площади
+  tags:
+  - магазин
+  visited: true
+  origin: pack
+- id: swamp_topkoe
+  name: Топкое болото
+  description: Туманные дикие земли без дорог; река Вязкая
+  tags:
+  - болото
+  visited: true
+  origin: pack
+- id: tavern_drunken_dragon
+  name: Таверна «Пьяный Дракон»
+  parent_id: city
+  description: 'Старая таверна на перекрёстке; подвал с проломом в городской коллектор (забаррикадирован Греем), колодец во дворе. Расстояния (оценка): до old_tower: 2 мили на запад, ~30 минут; до sanctuary_of_dawn: в пределах поселения; до chernolesye: полдня пути на север.'
+  tags:
+  - таверна
+  - безопасная зона
+  connections:
+  - to: old_tower
+    distance_m: 48270
+  - to: sanctuary_of_dawn
+    distance_m: 1000
+  - to: chernolesye
+    distance_m: 15000
+  visited: true
+  origin: pack
+- id: varen_manor
+  name: Усадьба Варена
+  parent_id: city
+  description: Богатый квартал; тайник за гобеленом с лилией (опустошён)
+  visited: true
+  origin: pack
+- id: viper_island
+  name: Гадючий Остров
+  parent_id: black_bogs
+  description: 'Сухой островок среди зыбунов, место заслона культа. Расстояния (оценка): до dead_barrow: 1,5–2 версты, 30–40 минут по вешкам.'
+  tags:
+  - зачищено
+  connections:
+  - to: dead_barrow
+    distance_m: 42680
+  visited: true
+  origin: pack
+- id: watch_tower_outpost
+  name: Старая Сторожевая Башня / Заброшенный Блокпост
+  parent_id: heather_wastes
+  description: Развилка маршрутов
+  visited: false
+  origin: pack
+- id: white_winds_ledge
+  name: Карниз Белых Ветров
+  parent_id: iron_ridge
+  description: 'Скрытный маршрут по скалам: 34–36 ч'
+  visited: false
+  origin: pack
+- id: wolf_teeth_pass
+  name: Перевал Волчьих Зубов
+  parent_id: iron_ridge
+  description: Ущелье с туманом
+  visited: false
+  origin: pack

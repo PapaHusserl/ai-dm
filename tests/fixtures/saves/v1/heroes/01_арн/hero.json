@@ -1,0 +1,83 @@
+{
+  "id": "h1",
+  "ordinal": 1,
+  "name": "Арн",
+  "sheet": {
+    "species_id": "human",
+    "class_id": "fighter",
+    "background": {
+      "name": "Солдат",
+      "abilities": [
+        "str",
+        "dex",
+        "con"
+      ],
+      "skills": [
+        "athletics",
+        "intimidation"
+      ],
+      "tool": "dice_set",
+      "feat": "savage_attacker",
+      "equipment": [],
+      "gold_cp": 0,
+      "gold_option_cp": 5000
+    },
+    "abilities": {
+      "str": 17,
+      "dex": 13,
+      "con": 15,
+      "int": 8,
+      "wis": 10,
+      "cha": 12
+    },
+    "subclass_id": null,
+    "level": 1,
+    "skill_proficiencies": [],
+    "tool_proficiencies": [],
+    "feats": [],
+    "weapon_masteries": [],
+    "spells_known": [],
+    "spells_prepared": [],
+    "xp": 0
+  },
+  "creature": {
+    "hp_current": 12,
+    "hp_max": 12,
+    "hp_temp": 0,
+    "conditions": [],
+    "exhaustion": 0,
+    "active_effects": [],
+    "death_saves": {
+      "successes": 0,
+      "failures": 0,
+      "stable": false
+    },
+    "resources": {},
+    "concentration": null
+  },
+  "status": "active",
+  "fate": null,
+  "death": null,
+  "inventory": [
+    {
+      "item_id": "longsword",
+      "qty": 1
+    }
+  ],
+  "equipped": {
+    "armor": null,
+    "shield": null,
+    "main_hand": null,
+    "off_hand": null
+  },
+  "money_cp": 1235,
+  "motive": "",
+  "means": [],
+  "opportunity": [],
+  "favor": {},
+  "scars": [],
+  "heroic_inspiration": false,
+  "location_id": null,
+  "afterlife": null,
+  "legacy_links": []
+}

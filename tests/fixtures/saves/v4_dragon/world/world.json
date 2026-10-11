@@ -1,0 +1,2705 @@
+{
+  "world_id": "dd",
+  "rng": {
+    "algo": "pcg32",
+    "seed": 1,
+    "state": 17525453895893820867,
+    "inc": 109,
+    "draws": 0
+  },
+  "campaign_id": "drunk_dragon",
+  "campaign_version": "1",
+  "clock": {
+    "now_s": 23759400,
+    "calendar": {
+      "months": [
+        {
+          "name": "Заревень",
+          "days": 30
+        },
+        {
+          "name": "Капельник",
+          "days": 30
+        },
+        {
+          "name": "Ветролом",
+          "days": 30
+        },
+        {
+          "name": "Цветень",
+          "days": 30
+        },
+        {
+          "name": "Грозовик",
+          "days": 30
+        },
+        {
+          "name": "Золотень",
+          "days": 30
+        },
+        {
+          "name": "Жарынь",
+          "days": 30
+        },
+        {
+          "name": "Сенокос",
+          "days": 30
+        },
+        {
+          "name": "Дожинник",
+          "days": 30
+        },
+        {
+          "name": "Листопад",
+          "days": 30
+        },
+        {
+          "name": "Морозень",
+          "days": 30
+        },
+        {
+          "name": "Темнозим",
+          "days": 30
+        }
+      ],
+      "holidays": [],
+      "seasons": [
+        {
+          "name": "зима",
+          "months": [
+            11,
+            12,
+            1
+          ]
+        },
+        {
+          "name": "весна",
+          "months": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "лето",
+          "months": [
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "осень",
+          "months": [
+            8,
+            9,
+            10
+          ]
+        }
+      ],
+      "epoch_note": ""
+    }
+  },
+  "npcs": {
+    "abbey_captain": {
+      "id": "abbey_captain",
+      "name": "Капитан стражи Аббатства",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "abbey_scarlet_mist",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Удержать Аббатство Алого Тумана, пока Иерарх ведёт ритуал",
+      "means": [
+        "Командир уцелевшего гарнизона Аббатства"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит арбалетным болтом"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "abbey_scarlet_mist",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Командир уцелевшего гарнизона Аббатства. Вид: человек. Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "abbey_tracker": {
+      "id": "abbey_tracker",
+      "name": "Следопыт гарнизона Аббатства",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "abbey_scarlet_mist",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Выследить чужаков гончими и защитить Аббатство",
+      "means": [
+        "Командир загонщиков с гончими"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит стрелой в горло"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "abbey_scarlet_mist",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Командир загонщиков с гончими. Вид: человек. Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "bloodfang": {
+      "id": "bloodfang",
+      "name": "Кровозуб",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "old_gat",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Охранять логово у Чёртова Затона и кормить стаю",
+      "means": [
+        "Вожак (альфа) болотных гончих"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит Греем бронебойной стрелой в пасть"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "old_gat",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Вожак (альфа) болотных гончих. Вид: искажённая болотная гончая. Сейчас: Мёртв у Старой Гати.",
+      "tags": [
+        "mor"
+      ],
+      "origin": "pack"
+    },
+    "bran_sedogriv": {
+      "id": "bran_sedogriv",
+      "name": "Бран Седогрив",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Не дать пробудить Мор-Владыку; месть за перебитых егерей",
+      "means": [
+        "клинок/тесак из звёздного железа, тяжёлый лук",
+        "тайные тропы Ложи",
+        "алхимия лавки"
+      ],
+      "opportunity": [
+        {
+          "id": "kills_edrin_if_betrays",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "flag",
+                "name": "edrin_joined_as_guide",
+                "value": true
+              },
+              {
+                "type": "narrative",
+                "text": "Эдрин предаёт отряд или пытается предупредить часовых"
+              }
+            ]
+          },
+          "then": "Бран без колебаний убивает Эдрина (месть за перебитых егерей Ложи)",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 85,
+      "known_to_player": [
+        "20 лет назад загонял тварь Мора в шахты Железного Кряжа: из 40 вышли 4",
+        "Левая рука выжжена клеймом Мора",
+        "Ложу объявили браконьерами указом Ольбрехта полгода назад; людей Брана вырезали наёмники Варена"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "iron_ridge_foothills",
+      "follows": "hero",
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Мастер Ложи Северного Ветра; под личиной травника «Сухой Вереск». Вид: человек (≈50 лет, седой, широкоплечий). Сейчас: В отряде Грея у подножия Кряжа. Связи: grey: наставник/союзник; jorgen: егерь Ложи; lira: егерь Ложи.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "bron_crafter": {
+      "id": "bron_crafter",
+      "name": "Брон",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Торговля",
+      "means": [
+        "кузня",
+        "крафт из костяных пластин"
+      ],
+      "opportunity": [],
+      "attitude": 50,
+      "known_to_player": [
+        "Укрепил куртку Грея, сделал костяные бронебойные наконечники"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "chernolesye",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Кузнец/ремесленник в Чернолесье. Вид: человек. Сейчас: Чернолесье.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "captain_of_guard": {
+      "id": "captain_of_guard",
+      "name": "Капитан Городской Стражи (имя не названо)",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Защитить город и деревни",
+      "means": [
+        "гарнизон и ополчение (сотня/две сотни)",
+        "арсенал Ратуши",
+        "конные вестовые, сигнальные костры"
+      ],
+      "opportunity": [
+        {
+          "id": "advance_on_forge",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "time_after",
+                "seconds": 23781600
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "alive"
+              }
+            ]
+          },
+          "then": "Не дождавшись вестей от Грея, выводит заслон из предгорных деревень к Кузнице Пепла",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 90,
+      "known_to_player": [
+        "Ранен в плечо/бок в бою у Ратуши",
+        "Принял план «Щит и Клинок»"
+      ],
+      "secrets": [
+        {
+          "id": "captain_of_guard_secret_1",
+          "text": "Слеп к древней магии (по словам Брана)",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Слеп к древней магии (по словам Брана)"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "iron_ridge_foothills_villages",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Глава городской стражи. Вид: человек. Сейчас: Возглавляет заслон в предгорьях Железного Кряжа: оповещение деревень, перехват рейдеров. Связи: grey: глубокое уважение, «город в неоплатном долгу»; bran: спорили на совете.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "edrin": {
+      "id": "edrin",
+      "name": "Эдрин",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Искупление; вера в Селунэ",
+      "means": [
+        "знание Кузницы Пепла, шахт и смен часовых"
+      ],
+      "opportunity": [
+        {
+          "id": "changes_mind",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "flag",
+                "name": "edrin_joined_as_guide",
+                "value": true
+              },
+              {
+                "type": "narrative",
+                "text": "Эдрин говорит вслух, что передумал"
+              }
+            ]
+          },
+          "then": "Остаётся у подножия и не идёт к шахте -- Грей обещал не принуждать",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": true,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 50,
+      "known_to_player": [
+        "Послушник 3-го круга, взят полгода назад за долг деревни за зерно",
+        "Тайно носит медальон Селунэ (полумесяц/серп и звезда)",
+        "Белая сова Селунэ смотрела на него",
+        "Не берёт оружия и не участвует в бою"
+      ],
+      "secrets": [
+        {
+          "id": "edrin_secret_1",
+          "text": "Расположение личных покоев Назира — не уверен",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Расположение личных покоев Назира — не уверен"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "iron_ridge_foothills",
+      "follows": "hero",
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Аколит/писарь Братства Мора, теперь проводник отряда. Вид: человек (23 года по механике, «лет 25» в нарративе). Сейчас: Едет позади Йоргена, ведёт к Восточной шахте. Связи: grey: сам решил помочь; условие — сказать вслух, если передумает; selune: верующий.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "erik": {
+      "id": "erik",
+      "name": "Эрик",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Выжить; обещаны свобода и серебро",
+      "means": [
+        "знание паролей Ордена"
+      ],
+      "opportunity": [],
+      "attitude": 40,
+      "known_to_player": [
+        "Провёл Грея к лазу на Мёртвом Кургане",
+        "Выманил Варена к Смолокурне",
+        "Готов дать показания"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Наёмный пехотинец культа, завербован Греем. Вид: человек (молодой). Сейчас: Последний раз — у Ратуши со стражей в финале гл. I; дальше не упоминается. Связи: varen: обманул его; grey: служит из страха.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "ethan": {
+      "id": "ethan",
+      "name": "Итан",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "chance",
+        "by": null,
+        "at_s": 0,
+        "location_id": null,
+        "text": "погиб до начала истории, останки найдены Греем в Чёртовом Затоне"
+      },
+      "motive": "Выследить и выбить гончих Топкого болота, чтобы деревне было безопасно",
+      "means": [
+        "Сын Ольгерда, охотник"
+      ],
+      "opportunity": [],
+      "attitude": 0,
+      "known_to_player": [
+        "Погиб у Чёртова Затона; его дневник описывал пути культистов"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "devils_backwater",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Сын Ольгерда, охотник. Вид: человек. Сейчас: Останки у старой ивы (дневник и медальон у Ольгерда). Связи: olgerd: сын.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "father_mark": {
+      "id": "father_mark",
+      "name": "Отец Марк",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Противостоять тьме Бездны",
+      "means": [
+        "Освящённая Печать",
+        "тайник под алтарём",
+        "благословения"
+      ],
+      "opportunity": [
+        {
+          "id": "reads_folio_with_hero",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "hero_at",
+                "location": "sanctuary_of_dawn"
+              },
+              {
+                "type": "flag",
+                "name": "abyss_keys_folio_stored_with_father_mark",
+                "value": true
+              }
+            ]
+          },
+          "then": "Предлагает вскрыть печать на фолианте «Ключи Бездны» вместе с героем -- в нём могут быть сведения о печатях Могильника",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 70,
+      "known_to_player": [
+        "Опознал Орден Разбитого Ключа и свисток подчинения",
+        "Хранит ларец с фолиантом «Ключи Бездны» под Освящённой Печатью"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "sanctuary_of_dawn",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Жрец Латандра, Святилище Рассвета. Вид: человек. Сейчас: Святилище Рассвета (в гл. II не упоминается). Связи: grey: союзник.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "grok_innkeeper": {
+      "id": "grok_innkeeper",
+      "name": "Грок (трактирщик «Пьяного Дракона»)",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Защитить таверну и Мило; благодарен Грею",
+      "means": [
+        "таверна (кров, еда, слухи)",
+        "ключи от подвала",
+        "деньги (заплатил 15 зм)"
+      ],
+      "opportunity": [],
+      "attitude": 85,
+      "known_to_player": [
+        "Нанял Грея спасти Мило за 15 золотых",
+        "Нарисовал схему Старой башни",
+        "Имя «мастер Грок» прозвучало только в гл. II из уст Мило"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "tavern_drunken_dragon",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Хозяин таверны «Пьяный Дракон». Вид: полуорк (одноглазый, грузный). Сейчас: Таверна «Пьяный Дракон». Связи: milo: работодатель/опекун; grey: благодарный должник.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "hek": {
+      "id": "hek",
+      "name": "Хэк",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Торговля",
+      "means": [
+        "снаряжение для болот"
+      ],
+      "opportunity": [],
+      "attitude": 40,
+      "known_to_player": [
+        "Продал Грею стрелы, противоядия, болотоступы, шест, карту болот"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "shop_hunting_horn",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Торговец, лавка «Охотничий Рог». Вид: человек (коренастый ветеран с седой бородой). Сейчас: Лавка «Охотничий Рог» на торговой площади.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "horst": {
+      "id": "horst",
+      "name": "Хорст",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "city_waterworks",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Деньги",
+      "means": [
+        "Старший Смотритель Шлюзов"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Должен был слить яд до заката; убит стрелой Грея, тело унесло течением"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_waterworks",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Старший Смотритель Шлюзов. Вид: человек (грузный, лысеющий). Сейчас: Мёртв. Связи: varen: подкуплен.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "jorgen": {
+      "id": "jorgen",
+      "name": "Йорген",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Служба Ложе",
+      "means": [
+        "двуручная секира",
+        "капканы",
+        "знание берлог Кряжа"
+      ],
+      "opportunity": [],
+      "attitude": 70,
+      "known_to_player": [
+        "Держал коней в засаде; убил/оглушил орков у Чёрного Истока"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "iron_ridge_foothills",
+      "follows": "hero",
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Егерь Ложи, зверолов. Вид: человек (коренастый, медвежий тулуп). Сейчас: В отряде, замыкающий. Связи: bran: подчинённый.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "lira": {
+      "id": "lira",
+      "name": "Лира",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Служба Ложе",
+      "means": [
+        "дальнобойный тисовый лук",
+        "подзорная труба",
+        "совиный свист как сигнал"
+      ],
+      "opportunity": [],
+      "attitude": 70,
+      "known_to_player": [
+        "Зарисовала схему Кузницы по словам Эдрина"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "iron_ridge_foothills",
+      "follows": "hero",
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Егерь Ложи, лучница-разведчица. Вид: полуэльфийка. Сейчас: В отряде, головной дозор. Связи: bran: подчинённая.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "magister": {
+      "id": "magister",
+      "name": "Магистр (Второго Круга)",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Закончить ритуал",
+      "means": [
+        "Покровитель/глава ордена, упомянут в записке и письме"
+      ],
+      "opportunity": [],
+      "attitude": -80,
+      "known_to_player": [
+        "Записка: «несите фолиант в Аббатство... Магистр сам закончит ритуал»",
+        "Письмо Иерарха адресовано «Магистру Второго Круга»; упомянут «Совет Второго Круга»"
+      ],
+      "secrets": [
+        {
+          "id": "magister_secret_1",
+          "text": "Личность не раскрыта (возможно, Варен/Ольбрехт — не подтверждено)",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Личность не раскрыта (возможно, Варен/Ольбрехт — не подтверждено)"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": null,
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Покровитель/глава ордена, упомянут в записке и письме.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "milo": {
+      "id": "milo",
+      "name": "Мило",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Верность Грею, вера в Селунэ",
+      "means": [
+        "медный амулет Селунэ (создаёт лунный купол, защищающий от яда)",
+        "знание конюшен Ратуши и караульных"
+      ],
+      "opportunity": [
+        {
+          "id": "waits_in_ratusha",
+          "if_": {
+            "type": "npc_status",
+            "id": "nazir",
+            "is_": "dead"
+          },
+          "then": "Мило встречает Грея в Ратуше; Капитан пристраивает его учеником в гильдию оружейников, как обещал",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 100,
+      "known_to_player": [
+        "Видел татуировку культиста и подслушал про «печать под старой башней»",
+        "Амулет нагревался и светился, когда Грей сражался; в Ратуше создал лунный барьер",
+        "Амулет потемнел, «впитал скверну», но связь с богиней окрепла"
+      ],
+      "secrets": [
+        {
+          "id": "milo_secret_1",
+          "text": "Почему амулет Селунэ реагирует на Мор — не раскрыто",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Почему амулет Селунэ реагирует на Мор — не раскрыто"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Помощник трактирщика. Сейчас: Офицерский флигель / личные покои коменданта Ратуши под охраной гвардейцев; Капитан обещал после похода пристроить в гильдию оружейников. Связи: grok_innkeeper: помощник; grey: дважды спасён, называет «дядя Грей»; selune: верующий.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "mor_lord": {
+      "id": "mor_lord",
+      "name": "Мор-Владыка",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Пробудиться",
+      "means": [
+        "Первородная тварь, запечатанная в Древнем Могильнике"
+      ],
+      "opportunity": [
+        {
+          "id": "awakens",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "time_after",
+                "seconds": 23781600
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "alive"
+              },
+              {
+                "type": "narrative",
+                "text": "Кровавая жертва принесена у саркофага в Древнем Могильнике"
+              }
+            ]
+          },
+          "then": "Печати Могильника трескаются -- Мор-Владыка просыпается",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": true,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": -100,
+      "known_to_player": [
+        "Запечатана Ложей ~300 лет назад под Железным Кряжем; 20 лет назад загнана в шахты",
+        "«Владыка просыпается» (записка Назира)"
+      ],
+      "secrets": [
+        {
+          "id": "mor_lord_secret_1",
+          "text": "Истинная природа",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Истинная природа"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "ancient_tomb",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Первородная тварь, запечатанная в Древнем Могильнике. Сейчас: Саркофаг в Могильнике под Кузницей Пепла. Связи: nazir: почитатель.",
+      "tags": [
+        "mor"
+      ],
+      "origin": "pack"
+    },
+    "nazir": {
+      "id": "nazir",
+      "name": "Верховный Жрец Назир",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Пробудить Мор-Владыку и вскрыть Могильник; без Ключей — кровавой жертвой",
+      "means": [
+        "~30 горных орков, 8–12 алхимиков, 3 мутанта Мора",
+        "алхимическая лаборатория: серные испарения, кислоты, горючий газ",
+        "рейдеры за жертвами"
+      ],
+      "opportunity": [
+        {
+          "id": "ritual_at_dawn",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "time_after",
+                "seconds": 23781600
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "alive"
+              }
+            ]
+          },
+          "then": "Начинает ритуал у саркофага над трещиной -- вскрыть Могильник кровавой жертвой и пробудить Мор-Владыку",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": true,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        },
+        {
+          "id": "answers_black_spring_alarm",
+          "if_": {
+            "type": "flag",
+            "name": "alarm_raised_at_black_spring",
+            "value": true
+          },
+          "then": "Узнав о налёте у Чёрного Истока, усиливает охрану верхнего яруса и ждёт у алтаря",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": -100,
+      "known_to_player": [
+        "Бывший королевский алхимик, бежал на Север 15 лет назад",
+        "Специализация: чумные миазмы, некроз, трансмутация",
+        "Не спит 4 дня, убил двух помощников, не выходит из алтарного зала 3 дня",
+        "Без колб беззащитен; слепое пятно — сзади, со стороны саркофага",
+        "Уязвим к серебру и звёздной стали (механика)"
+      ],
+      "secrets": [
+        {
+          "id": "nazir_secret_1",
+          "text": "Расположение личных покоев",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Расположение личных покоев"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "ash_forge",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Глава культа Бездонного Мора в Кузнице Пепла. Вид: человек. Сейчас: Верхний ярус Кузницы Пепла, алтарный зал у саркофага. Связи: olbrecht: связной; mor_lord: служит.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "olbrecht": {
+      "id": "olbrecht",
+      "name": "Казначей Ольбрехт",
+      "named": true,
+      "key": true,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23716800,
+        "location_id": "city_ratusha",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Скупить Нижний Город под шум эпидемии; служил силам за Назиром",
+      "means": [
+        "казна",
+        "указы Совета (объявил Ложу бандитами)"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Арестован в финале гл. I, освобождён диверсантами в гл. II",
+        "Сожжён стрелой и обезглавлен Греем в холле Ратуши",
+        "В портфеле — план экспедиции к Железному Кряжу с запиской Назира"
+      ],
+      "secrets": [
+        {
+          "id": "olbrecht_secret_1",
+          "text": "Кто именно стоял за Ольбрехтом, кроме Назира",
+          "reveal_if": {
+            "type": "narrative",
+            "text": "герой узнаёт: Кто именно стоял за Ольбрехтом, кроме Назира"
+          },
+          "revealed": false,
+          "narrative_ok": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Казначей Торговой Гильдии / Городского Совета, вдохновитель сделки с Братством. Вид: человек. Сейчас: Мёртв. Связи: varen: сообщник; nazir: связной; bran: преследовал Ложу.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "olgerd": {
+      "id": "olgerd",
+      "name": "Ольгерд",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Узнать судьбу сына",
+      "means": [
+        "карта скрытых троп",
+        "арбалет «Загонщик» (отдан Грею)"
+      ],
+      "opportunity": [],
+      "attitude": 85,
+      "known_to_player": [
+        "Грей вернул ему медальон и дневник погибшего сына Итана"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "chernolesye",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Старый охотник, знаток троп Топкого болота. Вид: человек. Сейчас: Изба на северном краю Чернолесья. Связи: ethan: отец; grey: благодарен, двери открыты.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "plague_brute": {
+      "id": "plague_brute",
+      "name": "Громила Мора (мутант-тюремщик)",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23716800,
+        "location_id": "city_ratusha",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Охранять пленных в казематах Ратуши по воле Братства Мора",
+      "means": [
+        "Мутировавший старший тюремщик"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит Браном после уничтожения Алого Кристалла"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Мутировавший старший тюремщик. Вид: мутант. Сейчас: Мёртв.",
+      "tags": [
+        "mor"
+      ],
+      "origin": "pack"
+    },
+    "scarred_mercenary": {
+      "id": "scarred_mercenary",
+      "name": "Старший наёмник со шрамом",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Деньги",
+      "means": [
+        "Наёмник культа на Смолокурне"
+      ],
+      "opportunity": [],
+      "attitude": -60,
+      "known_to_player": [
+        "Выдал засаду на Гадючьем Острове и пароль свистка"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "old_tar_works",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Наёмник культа на Смолокурне. Вид: человек. Сейчас: Оставлен связанным с кляпом на Смолокурне; дальнейшая судьба неизвестна.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "second_hierarch": {
+      "id": "second_hierarch",
+      "name": "Второй Иерарх",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "viper_island",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Доставить синий кристалл Ордена на Гадючий Остров и дальше по цепочке культа",
+      "means": [
+        "Ритуалист в тёмно-синей мантии, вёл обоз с синим кристаллом"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит Греем на Гадючьем Острове; при нём письмо Варена"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "viper_island",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Ритуалист в тёмно-синей мантии, вёл обоз с синим кристаллом. Вид: человек (высокий, горбатый). Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "sickle_executioner": {
+      "id": "sickle_executioner",
+      "name": "Палач с серпом",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23716800,
+        "location_id": "city_ratusha",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Освободить Ольбрехта и посеять панику в Ратуше",
+      "means": [
+        "Культист в костяной маске"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Пытался убить Мило; убит двумя стрелами Грея"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Культист в костяной маске. Вид: человек. Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "supreme_hierarch": {
+      "id": "supreme_hierarch",
+      "name": "Верховный Иерарх Ордена",
+      "named": true,
+      "key": true,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "abbey_scarlet_mist",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Открыть Врата Бездны тремя ключами",
+      "means": [
+        "Глава ритуала в Аббатстве Алого Тумана"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Убит костяной стрелой Грея в сердце",
+        "Переписывался с «Магистром Второго Круга»"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "abbey_scarlet_mist",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Глава ритуала в Аббатстве Алого Тумана. Вид: человек. Сейчас: Мёртв. Связи: varen: союзник.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "third_hierarch": {
+      "id": "third_hierarch",
+      "name": "Третий Иерарх",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "dead_barrow",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Хранить Второе Святилище и архив Ордена на Мёртвом Кургане",
+      "means": [
+        "Хранитель Второго Святилища на Мёртвом Кургане"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Сожжён зажигательной стрелой Грея; держал архив Варена"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "dead_barrow",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Хранитель Второго Святилища на Мёртвом Кургане. Вид: человек (высокий, тощий). Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "tobin": {
+      "id": "tobin",
+      "name": "Староста Тобин",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Безопасность деревни",
+      "means": [
+        "деревенская казна",
+        "ополчение"
+      ],
+      "opportunity": [],
+      "attitude": 70,
+      "known_to_player": [
+        "Заплатил 30 зм за голову Кровозуба"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "chernolesye",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Староста деревни Чернолесье. Вид: человек (седеющие усы, резной посох). Сейчас: Чернолесье. Связи: olgerd: односельчанин.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "tower_cult_leader": {
+      "id": "tower_cult_leader",
+      "name": "Главный культист Старой башни (безымянный)",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "old_tower",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Снять печать с фолианта",
+      "means": [
+        "Культист Ордена Разбитого Ключа"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [
+        "Татуировка перевёрнутого замка на запястье; тот самый «тип в балахоне» из таверны (по словам Мило)",
+        "Убит мечом Грея и упал с башни"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "old_tower",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Культист Ордена Разбитого Ключа. Вид: человек. Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "varen": {
+      "id": "varen",
+      "name": "Советник Варен",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Власть над торговыми гильдиями; замести следы",
+      "means": [
+        "золото",
+        "наёмники",
+        "ключи от шлюзов (изъяты)"
+      ],
+      "opportunity": [
+        {
+          "id": "bargains_in_casemates",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "hero_at",
+                "location": "city_ratusha"
+              },
+              {
+                "type": "flag",
+                "name": "varen_in_casemates",
+                "value": true
+              }
+            ]
+          },
+          "then": "Торгуется -- за смягчение приговора выдаёт всё, что знает о Магистре Второго Круга",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": -90,
+      "known_to_player": [
+        "Договор с культом, задерживал стражу, контрабанда реагентов",
+        "Угрожал отравить резервуары «слезой Бездонного Мора»",
+        "Выдал Ольбрехта и Хорста",
+        "Тайник за гобеленом с лилией (500 крон) изъят Греем"
+      ],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "city_ratusha",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Советник торговой гильдии Серого Квартала, покровитель культа. Вид: человек (плотный, перстни, соболий плащ). Сейчас: В казематах Ратуши, «раскололся до самой печёнки» (шаг 136). Связи: olbrecht: сообщник; horst: подкупил; erik: обманут им.",
+      "tags": [],
+      "origin": "pack"
+    },
+    "warlock_viper": {
+      "id": "warlock_viper",
+      "name": "Чернокнижник в костяной маске",
+      "named": true,
+      "key": false,
+      "status": "dead",
+      "death": {
+        "cause": "goal",
+        "by": "grey",
+        "at_s": 23630400,
+        "location_id": "viper_island",
+        "text": "погиб в бою с Греем и его союзниками (импорт, время примерное)"
+      },
+      "motive": "Удержать заслон на Гадючьем Острове и не пропустить чужих к обозу",
+      "means": [
+        "Командир заслона на Гадючьем Острове"
+      ],
+      "opportunity": [],
+      "attitude": -100,
+      "known_to_player": [],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "viper_island",
+      "follows": null,
+      "species_id": "human",
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "Роль: Командир заслона на Гадючьем Острове. Вид: человек. Сейчас: Мёртв.",
+      "tags": [],
+      "origin": "pack"
+    }
+  },
+  "factions": {
+    "broken_key_brotherhood": {
+      "id": "broken_key_brotherhood",
+      "name": "Орден Разбитого Ключа / Братство Бездонного Мора",
+      "motive": "Вскрыть древние печати (Ключи Погребения) и открыть Врата/Могильник, пробудить Мор-Владыку; поклоняются одному из высших демонов Бездны",
+      "means": [
+        "подчинённые твари (троглодиты, болотные гончие, мутанты)",
+        "алхимия и яд «слеза Бездонного Мора»",
+        "горные орки и наёмники"
+      ],
+      "opportunity": [
+        {
+          "id": "goes_underground",
+          "if_": {
+            "type": "npc_status",
+            "id": "nazir",
+            "is_": "dead"
+          },
+          "then": "Остатки Братства уходят в подполье; Магистр Второго Круга берёт руководство и ищет новые Ключи",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [
+        "nazir",
+        "supreme_hierarch",
+        "second_hierarch",
+        "third_hierarch",
+        "edrin",
+        "magister"
+      ],
+      "regions": [
+        "abbey_scarlet_mist",
+        "black_bogs",
+        "iron_ridge",
+        "ash_forge"
+      ]
+    },
+    "chernolesye_village": {
+      "id": "chernolesye_village",
+      "name": "Деревня Чернолесье",
+      "motive": "Выжить у болот",
+      "means": [
+        "частокол, ополчение"
+      ],
+      "opportunity": [
+        {
+          "id": "bars_the_gates",
+          "if_": {
+            "type": "event_active",
+            "event": "harvest_raids"
+          },
+          "then": "Деревня запирает ворота, ополчение встаёт на частокол, староста Тобин просит помощи у Города",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [
+        "tobin",
+        "olgerd",
+        "bron_crafter"
+      ],
+      "regions": [
+        "chernolesye"
+      ]
+    },
+    "city_council_conspiracy": {
+      "id": "city_council_conspiracy",
+      "name": "Заговорщики Городского Совета / Магистрата и Торговой гильдии",
+      "motive": "Власть над гильдиями и скупка Нижнего Города",
+      "means": [
+        "золото, векселя",
+        "контроль шлюзов",
+        "подкуп"
+      ],
+      "opportunity": [
+        {
+          "id": "silences_varen",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "flag",
+                "name": "varen_in_casemates",
+                "value": true
+              },
+              {
+                "type": "npc_status",
+                "id": "olbrecht",
+                "is_": "dead"
+              }
+            ]
+          },
+          "then": "Уцелевшие заговорщики пытаются освободить Варена или заставить его замолчать",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [
+        "varen",
+        "olbrecht",
+        "horst"
+      ],
+      "regions": [
+        "city",
+        "grey_quarter",
+        "city_ratusha"
+      ]
+    },
+    "city_guard": {
+      "id": "city_guard",
+      "name": "Городская Стража",
+      "motive": "Защита Города и долины",
+      "means": [
+        "гарнизон, ополчение (сотня–две сотни в заслоне)",
+        "арсенал Ратуши",
+        "сигнальные костры и вестовые"
+      ],
+      "opportunity": [
+        {
+          "id": "intercepts_raiders",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "event_active",
+                "event": "harvest_raids"
+              },
+              {
+                "type": "flag",
+                "name": "captain_screens_villages",
+                "value": true
+              }
+            ]
+          },
+          "then": "Заслон перехватывает рейдовые группы орков и сопровождает жителей деревень в город",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [
+        "captain_of_guard"
+      ],
+      "regions": [
+        "city",
+        "iron_ridge_foothills"
+      ]
+    },
+    "lodge_north_wind": {
+      "id": "lodge_north_wind",
+      "name": "Ложа Северного Ветра (Северный Союз Егерей)",
+      "motive": "Держать Мор-Владыку запечатанным; в городе объявлены браконьерами указом Ольбрехта",
+      "means": [
+        "тайные тропы Кряжа",
+        "почтовые соколы",
+        "оружие из звёздного железа"
+      ],
+      "opportunity": [
+        {
+          "id": "returns_to_city",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "npc_status",
+                "id": "olbrecht",
+                "is_": "dead"
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "dead"
+              }
+            ]
+          },
+          "then": "Ложа открыто возвращается в Город; указ о «диких бандах» отменён Советом",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [
+        "bran_sedogriv",
+        "jorgen",
+        "lira"
+      ],
+      "regions": [
+        "city",
+        "iron_ridge"
+      ]
+    },
+    "nazir_orcs": {
+      "id": "nazir_orcs",
+      "name": "Горные орки Назира",
+      "motive": "Служба Назиру, набеги за жертвами",
+      "means": [
+        "~30 охранников Кузницы",
+        "рейдовые группы с клетками"
+      ],
+      "opportunity": [
+        {
+          "id": "doubles_watch",
+          "if_": {
+            "type": "flag",
+            "name": "alarm_raised_at_black_spring",
+            "value": true
+          },
+          "then": "Орки удваивают караулы у вентиляционных шахт и отменяют «мёртвое окно» смены часовых",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "members": [],
+      "regions": [
+        "iron_ridge",
+        "heather_wastes"
+      ]
+    }
+  },
+  "pantheon": {
+    "abyss_demon": {
+      "id": "abyss_demon",
+      "name": "Высший демон Бездны (без имени)",
+      "domains": [
+        "Бездна"
+      ],
+      "role": "Объект поклонения Ордена Разбитого Ключа (слова отца Марка). Возможно связан с Мор-Владыкой — не подтверждено",
+      "motive": "Прорваться в мир через Врата Бездны, которые открывает Орден Разбитого Ключа",
+      "pleased_by": [
+        "вскрытие печатей и Врат",
+        "кровавые жертвы",
+        "служение Братству Мора"
+      ],
+      "angered_by": [
+        "уничтожение Кристаллов-Ключей",
+        "запечатывание Врат и Могильника",
+        "убийство иерархов Ордена"
+      ],
+      "rivals": [],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "answers_awakening",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "time_after",
+                "seconds": 23781600
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "alive"
+              },
+              {
+                "type": "narrative",
+                "text": "Мор-Владыка пробуждается"
+              }
+            ]
+          },
+          "then": "Откликается на пробуждение Мор-Владыки и тянется к Вратам Бездны",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {},
+      "status": "alive",
+      "origin": "pack"
+    },
+    "faceless": {
+      "id": "faceless",
+      "name": "Безликий",
+      "domains": [],
+      "role": "Часовня Безликого на Мёртвом Кургане. Подробностей нет",
+      "motive": "Копит секреты: каждое скрытое знание -- его сила",
+      "pleased_by": [
+        "хранимая тайна",
+        "сделка в тени",
+        "украденное знание"
+      ],
+      "angered_by": [
+        "раскрытые тайны и имена его служителей"
+      ],
+      "rivals": [],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "wants_the_folio",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "hero_at",
+                "location": "dead_barrow"
+              },
+              {
+                "type": "flag",
+                "name": "abyss_keys_folio_stored_with_father_mark",
+                "value": true
+              }
+            ]
+          },
+          "then": "Предлагает герою сделку в тени -- тайна за тайну; его интересует фолиант «Ключи Бездны»",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {},
+      "status": "alive",
+      "origin": "pack"
+    },
+    "ilmater": {
+      "id": "ilmater",
+      "name": "Ильматер",
+      "domains": [],
+      "role": "Упомянут в варианте ответа (жрецы Селунэ/Ильматера)",
+      "motive": "Набирает силу от тех, кто принимает чужую боль; ему нужны мученики",
+      "pleased_by": [
+        "стойкость в страдании",
+        "боль, взятая за другого"
+      ],
+      "angered_by": [
+        "спасение себя ценой чужой боли",
+        "лёгкие пути"
+      ],
+      "rivals": [],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "seeks_a_martyr",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "flag",
+                "name": "edrin_joined_as_guide",
+                "value": true
+              },
+              {
+                "type": "hero_at",
+                "location": "east_shaft"
+              }
+            ]
+          },
+          "then": "Обращает внимание на того, кто готов взять удар за других -- знамение стойкости для героя или Эдрина",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {},
+      "status": "alive",
+      "origin": "pack"
+    },
+    "lathander": {
+      "id": "lathander",
+      "name": "Латандр (Светлый Бог, Рассвет)",
+      "domains": [
+        "свет",
+        "новый день",
+        "обновление"
+      ],
+      "role": "Божество Святилища Рассвета и отца Марка. Дал Грею Благословение Латандра (одноразовый урон светом в гл. I)",
+      "motive": "Всё новое должно начинаться под его именем -- храмы, клятвы, первые шаги -- его слава",
+      "pleased_by": [
+        "дела, начатые с его именем",
+        "восстановленные святилища",
+        "уничтоженная нежить (оскорбляет рассвет)"
+      ],
+      "angered_by": [
+        "благословение без благодарности",
+        "брошенные начинания"
+      ],
+      "rivals": [],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "demands_thanks",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "hero_at",
+                "location": "sanctuary_of_dawn"
+              },
+              {
+                "type": "flag",
+                "name": "lathander_blessing_used",
+                "value": true
+              }
+            ]
+          },
+          "then": "Через отца Марка напоминает герою о благодарности за Благословение -- новое начинание под его именем, тогда благословение возобновится",
+          "once": false,
+          "state": "active",
+          "cooldown": "7d",
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {},
+      "status": "alive",
+      "origin": "pack"
+    },
+    "selune": {
+      "id": "selune",
+      "name": "Селунэ (Лунная Дева)",
+      "domains": [
+        "Луна",
+        "звёзды",
+        "навигация",
+        "путники во тьме",
+        "защита от тварей ночи"
+      ],
+      "role": "Покровительница Мило и Эдрина; знамения (белая сова). Враг Шар. Амулет Мило создал лунный купол против яда; Грей уважает её «решение» и отдал судьбу Эдрина на его выбор",
+      "motive": "Каждая живая душа священна; её сила -- в живом и цветущем: чем больше жизни в её землях, тем она сильнее",
+      "pleased_by": [
+        "спасённая жизнь",
+        "рождение",
+        "исцеление",
+        "посеянное и выращенное",
+        "цветущая земля"
+      ],
+      "angered_by": [
+        "напрасная смерть",
+        "нежить",
+        "Мор",
+        "убийство сдавшихся"
+      ],
+      "rivals": [
+        "shar",
+        "abyss_demon"
+      ],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "omen_for_the_living",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "not",
+                "item": {
+                  "type": "flag",
+                  "name": "selune_owl_omen_seen",
+                  "value": true
+                }
+              },
+              {
+                "type": "npc_status",
+                "id": "edrin",
+                "is_": "alive"
+              },
+              {
+                "type": "hero_at",
+                "location": "east_shaft"
+              }
+            ]
+          },
+          "then": "Посылает отряду знамение (белая сова) -- её взгляд на тех, кто идёт спасать живых",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        },
+        {
+          "id": "weakens_as_mor_spreads",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "time_after",
+                "seconds": 23781600
+              },
+              {
+                "type": "npc_status",
+                "id": "nazir",
+                "is_": "alive"
+              },
+              {
+                "type": "narrative",
+                "text": "Мор разошёлся по долине и губит живое"
+              }
+            ]
+          },
+          "then": "Сила Селунэ в этих землях тает -- знамения слабеют, молитвы доходят хуже",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {
+        "весна": 15,
+        "лето": 25,
+        "осень": -15,
+        "зима": -25
+      },
+      "status": "alive",
+      "origin": "pack"
+    },
+    "shar": {
+      "id": "shar",
+      "name": "Шар",
+      "domains": [
+        "тьма",
+        "забвение"
+      ],
+      "role": "Упомянута как враг Селунэ",
+      "motive": "Питается утратами и забытым; хочет, чтобы её боялись и почитали тайно, а свет Селунэ погас",
+      "pleased_by": [
+        "предательство",
+        "утрата",
+        "забытые имена"
+      ],
+      "angered_by": [
+        "возвращённая память",
+        "знаки Селунэ"
+      ],
+      "rivals": [
+        "selune"
+      ],
+      "means": [],
+      "opportunity": [
+        {
+          "id": "feeds_on_loss",
+          "if_": {
+            "type": "npc_status",
+            "id": "milo",
+            "is_": "dead"
+          },
+          "then": "Шепчет Грею в час утраты -- толкает к отчаянию и тайному поклонению Шар",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "kills_hero": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "realm": "",
+      "servants": [],
+      "check_every_days": 7,
+      "season_power": {},
+      "status": "alive",
+      "origin": "pack"
+    }
+  },
+  "locations": {
+    "abbey_scarlet_mist": {
+      "id": "abbey_scarlet_mist",
+      "name": "Аббатство Алого Тумана",
+      "parent_id": null,
+      "description": "Готические руины; крипта, главный зал с Алтарём Бездны, покои Иерарха, винный погреб с тайником, оружейная, надвратная галерея, водосток. Расстояния (оценка): до old_tar_works: 3 версты на север, ~40 минут.",
+      "tags": [
+        "руины",
+        "зачищено",
+        "заброшено"
+      ],
+      "connections": [
+        {
+          "to": "old_tar_works",
+          "distance_m": 42680
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "ancient_tomb": {
+      "id": "ancient_tomb",
+      "name": "Древний Могильник",
+      "parent_id": "iron_ridge",
+      "description": "Катакомбы/шахты с саркофагом Мор-Владыки",
+      "tags": [
+        "гробница"
+      ],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "ash_forge": {
+      "id": "ash_forge",
+      "name": "Кузница Пепла",
+      "parent_id": "iron_ridge",
+      "description": "Старая крепость гномов в жерле потухшего вулкана; три яруса: нижний — кузни и склады реагентов, средний — казармы орков и клетки, верхний — алтарный зал с саркофагом над трещиной",
+      "tags": [
+        "крепость",
+        "логово врага"
+      ],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "black_bogs": {
+      "id": "black_bogs",
+      "name": "Чёрные Топи (Северные Топи)",
+      "parent_id": null,
+      "description": "Болота с тайной гатью (Старый Волок)",
+      "tags": [
+        "болото"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "black_spring": {
+      "id": "black_spring",
+      "name": "Ручей Чёрный Исток",
+      "parent_id": "heather_wastes",
+      "description": "Место стоянки рейдеров-орков; брошенная телега с клетками. Расстояния (оценка): до east_shaft: ~1 час верхом + ~2 часа пешком вверх.",
+      "tags": [
+        "зачищено"
+      ],
+      "connections": [
+        {
+          "to": "east_shaft",
+          "distance_m": 10000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "chernolesye": {
+      "id": "chernolesye",
+      "name": "Деревня Чернолесье",
+      "parent_id": null,
+      "description": "Деревня за частоколом; постоялый двор «Мшистый Валун» у ратуши, изба Ольгерда на северном краю, кузня Брона. Расстояния (оценка): до tavern_drunken_dragon: полдня; до old_gat: ~30–40 минут по Змеиному хребту.",
+      "tags": [
+        "деревня"
+      ],
+      "connections": [
+        {
+          "to": "tavern_drunken_dragon",
+          "distance_m": 15000
+        },
+        {
+          "to": "old_gat",
+          "distance_m": 3333
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "city": {
+      "id": "city",
+      "name": "Город (Город над Топями)",
+      "parent_id": null,
+      "description": "Город с Нижним, Верхним и Старым городом, Ратушей и водонапорным комплексом. Расстояния (оценка): до abbey_scarlet_mist: через Топи; от Гадючьего Острова до Города 10–12 вёрст, 3–4 часа; до heather_wastes: через северные ворота.",
+      "tags": [
+        "город"
+      ],
+      "connections": [
+        {
+          "to": "abbey_scarlet_mist",
+          "distance_m": 12804
+        },
+        {
+          "to": "heather_wastes",
+          "distance_m": 1000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "city_ratusha": {
+      "id": "city_ratusha",
+      "name": "Ратуша и штаб Городской Стражи",
+      "parent_id": "city",
+      "description": "Хранилище, казематы, конюшни, каретный двор, офицерский флигель; ворота выбиты взрывом в гл. II",
+      "tags": [
+        "власть"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "city_waterworks": {
+      "id": "city_waterworks",
+      "name": "Водонапорный комплекс / шлюзы",
+      "parent_id": "city",
+      "description": "Резервуары Нижнего Города; яд демонтирован, шлюзы заперты",
+      "tags": [
+        "зачищено"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "dead_barrow": {
+      "id": "dead_barrow",
+      "name": "Мёртвый Курган (Второе Святилище)",
+      "parent_id": "black_bogs",
+      "description": "Холм за Чёрным Омутом с часовней Безликого; затопленный лаз у старой мельницы ведёт в алтарный зал",
+      "tags": [
+        "святилище",
+        "зачищено"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "dead_pine_gorge": {
+      "id": "dead_pine_gorge",
+      "name": "Ущелье Мёртвой Сосны",
+      "parent_id": "iron_ridge",
+      "description": "Быстрый маршрут 18–20 ч, риск засады 75%",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "deep_shaft": {
+      "id": "deep_shaft",
+      "name": "Штольня «Глубокий Шурф»",
+      "parent_id": "iron_ridge",
+      "description": "Подземный маршрут 26–28 ч",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "devils_backwater": {
+      "id": "devils_backwater",
+      "name": "Чёртов Затон",
+      "parent_id": "swamp_topkoe",
+      "description": "Зыбучие пески, старая ива — логово гончих, останки Итана",
+      "tags": [
+        "болото"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "dry_heather": {
+      "id": "dry_heather",
+      "name": "Лавка травника «Сухой Вереск»",
+      "parent_id": "city",
+      "description": "Старый Город, квартал травников; убежище Брана",
+      "tags": [
+        "магазин",
+        "Ложа"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "east_shaft": {
+      "id": "east_shaft",
+      "name": "Восточная вентиляционная шахта",
+      "parent_id": "ash_forge",
+      "description": "Расселина между двумя скальными иглами; заложена 3 бревнами и щебнем, 2 часовых-орка",
+      "tags": [
+        "вход"
+      ],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "grey_quarter": {
+      "id": "grey_quarter",
+      "name": "Серый Квартал",
+      "parent_id": "city",
+      "description": "Квартал торговой гильдии в Городе; здесь жили Советник Варен и Казначей Ольбрехт.",
+      "tags": [
+        "квартал",
+        "гильдия"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "heather_wastes": {
+      "id": "heather_wastes",
+      "name": "Вересковые Пустоши",
+      "parent_id": null,
+      "description": "Плоские пустоши (5 лиг) до предгорий. Расстояния (оценка): до black_spring: ~2 часа рыси от северных ворот; до watch_tower_outpost: первые 5 часов пути общие для всех маршрутов.",
+      "tags": [
+        "равнина"
+      ],
+      "connections": [
+        {
+          "to": "black_spring",
+          "distance_m": 10000
+        },
+        {
+          "to": "watch_tower_outpost",
+          "distance_m": 25000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "iron_ridge": {
+      "id": "iron_ridge",
+      "name": "Железный Кряж",
+      "parent_id": null,
+      "description": "Горы с перевалом Волчьих Зубов; под ними Древний Могильник. Расстояния (оценка): до city: 3 дня на конях до перевала (по совету); маршруты 18–36 ч.",
+      "tags": [
+        "горы"
+      ],
+      "connections": [
+        {
+          "to": "city",
+          "distance_m": 1080000
+        }
+      ],
+      "visited": false,
+      "origin": "pack"
+    },
+    "iron_ridge_foothills": {
+      "id": "iron_ridge_foothills",
+      "name": "Предгорья Железного Кряжа",
+      "parent_id": "iron_ridge",
+      "description": "Подножие Кряжа примерно в часе езды от ручья Чёрный Исток. Видна тёмная расселина между двумя скальными иглами — Восточная шахта Кузницы Пепла, около 2 часов пешего подъёма.",
+      "tags": [
+        "горы",
+        "ночь"
+      ],
+      "connections": [
+        {
+          "to": "east_shaft",
+          "distance_m": 6000
+        },
+        {
+          "to": "black_spring",
+          "distance_m": 12000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "iron_ridge_foothills_villages": {
+      "id": "iron_ridge_foothills_villages",
+      "name": "Предгорья Кряжа",
+      "parent_id": "iron_ridge",
+      "description": "Деревни предгорий Железного Кряжа: сюда идут набеги орков за жертвами; заслон Капитана Стражи держит сигнальные костры.",
+      "tags": [
+        "деревня",
+        "предгорья"
+      ],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "olbrecht_manor": {
+      "id": "olbrecht_manor",
+      "name": "Усадьба Ольбрехта",
+      "parent_id": "city",
+      "description": "Упомянута как цель для обыска",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "old_gat": {
+      "id": "old_gat",
+      "name": "Старая Гать",
+      "parent_id": "swamp_topkoe",
+      "description": "Полусгнивший настил через реку Вязкую; рядом тропа «Змеиный хребет». Расстояния (оценка): до abbey_scarlet_mist: ~2 часа скрытного хода.",
+      "tags": [
+        "болото",
+        "зачищено"
+      ],
+      "connections": [
+        {
+          "to": "abbey_scarlet_mist",
+          "distance_m": 10000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "old_tar_works": {
+      "id": "old_tar_works",
+      "name": "Старый Смолокуренный завод (Смолокурня)",
+      "parent_id": null,
+      "description": "Гнилые сараи и дегтярные ямы у входа на тайную гать; место засады на Варена. Расстояния (оценка): до viper_island: ~2 версты + 15 минут по гати; до city_waterworks: ~40 минут каретой.",
+      "tags": [
+        "руины"
+      ],
+      "connections": [
+        {
+          "to": "viper_island",
+          "distance_m": 16005
+        },
+        {
+          "to": "city_waterworks",
+          "distance_m": 3333
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "old_tower": {
+      "id": "old_tower",
+      "name": "Старая башня",
+      "parent_id": null,
+      "description": "Руина поместья барона в туманном лесу на холме; склеп под башней, решётчатый водосток-коллектор. Расстояния (оценка): до tavern_drunken_dragon: 2 мили.",
+      "tags": [
+        "руины",
+        "зачищено"
+      ],
+      "connections": [
+        {
+          "to": "tavern_drunken_dragon",
+          "distance_m": 3218
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "sanctuary_of_dawn": {
+      "id": "sanctuary_of_dawn",
+      "name": "Святилище Рассвета",
+      "parent_id": "city",
+      "description": "Белокаменный храм Латандра на холме у края городка; под алтарём тайник с ларцом",
+      "tags": [
+        "храм"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "shop_hunting_horn": {
+      "id": "shop_hunting_horn",
+      "name": "Лавка «Охотничий Рог»",
+      "parent_id": "city",
+      "description": "Лавка Хэка на торговой площади",
+      "tags": [
+        "магазин"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "swamp_topkoe": {
+      "id": "swamp_topkoe",
+      "name": "Топкое болото",
+      "parent_id": null,
+      "description": "Туманные дикие земли без дорог; река Вязкая",
+      "tags": [
+        "болото"
+      ],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "tavern_drunken_dragon": {
+      "id": "tavern_drunken_dragon",
+      "name": "Таверна «Пьяный Дракон»",
+      "parent_id": "city",
+      "description": "Старая таверна на перекрёстке; подвал с проломом в городской коллектор (забаррикадирован Греем), колодец во дворе. Расстояния (оценка): до old_tower: 2 мили на запад, ~30 минут; до sanctuary_of_dawn: в пределах поселения; до chernolesye: полдня пути на север.",
+      "tags": [
+        "таверна",
+        "безопасная зона"
+      ],
+      "connections": [
+        {
+          "to": "old_tower",
+          "distance_m": 48270
+        },
+        {
+          "to": "sanctuary_of_dawn",
+          "distance_m": 1000
+        },
+        {
+          "to": "chernolesye",
+          "distance_m": 15000
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "varen_manor": {
+      "id": "varen_manor",
+      "name": "Усадьба Варена",
+      "parent_id": "city",
+      "description": "Богатый квартал; тайник за гобеленом с лилией (опустошён)",
+      "tags": [],
+      "connections": [],
+      "visited": true,
+      "origin": "pack"
+    },
+    "viper_island": {
+      "id": "viper_island",
+      "name": "Гадючий Остров",
+      "parent_id": "black_bogs",
+      "description": "Сухой островок среди зыбунов, место заслона культа. Расстояния (оценка): до dead_barrow: 1,5–2 версты, 30–40 минут по вешкам.",
+      "tags": [
+        "зачищено"
+      ],
+      "connections": [
+        {
+          "to": "dead_barrow",
+          "distance_m": 42680
+        }
+      ],
+      "visited": true,
+      "origin": "pack"
+    },
+    "watch_tower_outpost": {
+      "id": "watch_tower_outpost",
+      "name": "Старая Сторожевая Башня / Заброшенный Блокпост",
+      "parent_id": "heather_wastes",
+      "description": "Развилка маршрутов",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "white_winds_ledge": {
+      "id": "white_winds_ledge",
+      "name": "Карниз Белых Ветров",
+      "parent_id": "iron_ridge",
+      "description": "Скрытный маршрут по скалам: 34–36 ч",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    },
+    "wolf_teeth_pass": {
+      "id": "wolf_teeth_pass",
+      "name": "Перевал Волчьих Зубов",
+      "parent_id": "iron_ridge",
+      "description": "Ущелье с туманом",
+      "tags": [],
+      "connections": [],
+      "visited": false,
+      "origin": "pack"
+    }
+  },
+  "flags": {
+    "milo_rescued": true,
+    "tavern_cellar_breach_barricaded": true,
+    "old_tower_ritual_disrupted": true,
+    "abyss_keys_folio_stored_with_father_mark": true,
+    "lathander_blessing_used": true,
+    "bloodfang_dead": true,
+    "ethan_fate_returned_to_olgerd": true,
+    "tobin_bounty_paid": true,
+    "abbey_hierarch_dead": true,
+    "abbey_abandoned": true,
+    "second_hierarch_dead": true,
+    "third_hierarch_dead": true,
+    "second_sanctuary_cleared": true,
+    "varen_captured": true,
+    "varen_in_casemates": true,
+    "horst_dead": true,
+    "water_poison_removed": true,
+    "olbrecht_arrested_ch1": true,
+    "olbrecht_dead": true,
+    "olbrecht_killed_by_grey": true,
+    "crystals_handed_to_captain": true,
+    "red_crystal_destroyed": true,
+    "green_crystal_destroyed": true,
+    "blue_crystal_destroyed": true,
+    "all_crystals_destroyed": true,
+    "plague_brute_dead": true,
+    "ratusha_attacked": true,
+    "varen_cache_looted": true,
+    "city_reward_received": false,
+    "noon_audience_with_captain_skipped": true,
+    "bran_trusted": true,
+    "met_bran": true,
+    "nazir_identified": true,
+    "ash_forge_located": true,
+    "war_council_plan": "Щит и Клинок",
+    "captain_screens_villages": true,
+    "signal_fires_lit": true,
+    "party_size": 5,
+    "edrin_joined_as_guide": true,
+    "edrin_secret_selune_follower": true,
+    "selune_owl_omen_seen": true,
+    "black_spring_raiders_dead": true,
+    "alarm_raised_at_black_spring": false,
+    "lodge_reputation_bonus": 3,
+    "east_shaft_target": true,
+    "scarred_mercenary_left_tied": true,
+    "event_bezdonny_mor_poison_finished": true
+  },
+  "events": [
+    {
+      "id": "harvest_raids",
+      "type": "набеги за жертвами на деревни предгорий",
+      "regions": [
+        "iron_ridge_foothills_villages",
+        "heather_wastes"
+      ],
+      "affects": [],
+      "mortality_multiplier": 1,
+      "hazard": null,
+      "started_s": 23673600,
+      "ends_at_s": null,
+      "ends_when": {
+        "type": "narrative",
+        "text": "Заслон Капитана перехватывает рейды / Назир повержен"
+      },
+      "cause": "Назиру нужны сотни жертв; рейдеры с клетками (свитки: пять деревень, «пригоден для жатвы»)",
+      "kind": "caused"
+    },
+    {
+      "id": "mor_lord_awakening",
+      "type": "пробуждение древней твари",
+      "regions": [
+        "ancient_tomb"
+      ],
+      "affects": [],
+      "mortality_multiplier": 1,
+      "hazard": null,
+      "started_s": 23673600,
+      "ends_at_s": null,
+      "ends_when": {
+        "type": "narrative",
+        "text": "Саркофаг остаётся запечатан"
+      },
+      "cause": "«Владыка просыпается» (записка Назира)",
+      "kind": "caused"
+    },
+    {
+      "id": "nazir_ritual",
+      "type": "ритуал пробуждения Мор-Владыки",
+      "regions": [
+        "ash_forge",
+        "iron_ridge"
+      ],
+      "affects": [],
+      "mortality_multiplier": 1,
+      "hazard": null,
+      "started_s": 23673600,
+      "ends_at_s": 23781600,
+      "ends_when": {
+        "type": "narrative",
+        "text": "Назир убит или ритуал сорван; иначе начнётся на рассвете (~через 8 ч от 23:00)"
+      },
+      "cause": "Назир лишился Кристаллов и хочет вскрыть Могильник кровавой жертвой",
+      "kind": "caused"
+    }
+  ],
+  "tone": {
+    "mood": "Тёмное героическое фэнтези: расследование заговора, болота, культ, чума; редкие тёплые моменты с Мило и знамения Селунэ",
+    "violence": "жестоко",
+    "horror": "умеренно",
+    "romance": "есть",
+    "language": "сдержанно",
+    "hard_limits": [],
+    "soft_limits": [],
+    "notes": "- Двигаемся маленькими кусками: одна сцена или один ход за ответ, детальное прохождение\n- Игрок часто спрашивает статус, снаряжение, расстояния и время -- отвечать конкретно\n- Мета-реплики игрок помечает словом «мета-игрово:»; это не игровые действия"
+  },
+  "settings": {},
+  "lore": {
+    "world_text": "Мир «Пьяного Дракона» -- тёмное героическое фэнтези на стыке болот и гор: расследование заговора, культ, чума, редкие тёплые моменты. Осень, год 1.\n\nГород над Топями (Нижний, Верхний и Старый город, Ратуша и штаб Городской Стражи, водонапорный комплекс) стоит на краю Топкого болота и Чёрных Топей. На севере -- Вересковые Пустоши, предгорья Железного Кряжа и Кузница Пепла, старая гномья крепость в жерле потухшего вулкана над Древним Могильником. Таверна «Пьяный Дракон» -- место, откуда всё началось: здесь живёт Мило с медным амулетом Селунэ.\n\nОрден Разбитого Ключа, он же Братство Бездонного Мора, поклоняется высшему демону Бездны и ищет «Ключи Погребения» -- три кристалла, чтобы вскрыть древние печати и Врата и пробудить Мор-Владыку, запечатанного в Древнем Могильнике. Главный враг сейчас -- Верховный Жрец Назир в Кузнице Пепла.\n\nПротив Ордена стоят Городская Стража (Капитан) и тайная Ложа Северного Ветра -- егеря с тайными тропами и оружием из звёздного железа. Боги: Селунэ (Лунная Дева) и Латандр (Светлый Бог, рассвет) дают знамения и благословения; Шар -- враг Селунэ.",
+    "truths": "- Крона -- золотая монета; 1 крона = 100 мм.\n- День 1 кампании -- 0001-10-01 (Листопад, осень).\n- Все три Кристалла (красный/алый, зелёный, синий) уничтожены.\n- Ольбрехт мёртв (убит Греем в Ратуше); Верховный Иерарх, Второй и Третий Иерархи мертвы; Варен жив и сидит в казематах Ратуши.\n- Орден Разбитого Ключа, Братство и Братство Бездонного Мора -- одна фракция.\n- Мило -- мальчишка-подросток, называет Грея «дядя Грей».\n- Брон -- кузнец в Чернолесье; Бран Седогрив -- мастер Ложи Северного Ветра в Городе. Это разные люди.\n- Эдрину 23 года.\n- Ритуал Назира начнётся на рассвете дня 6; Эдрин -- добровольный проводник и в бою не участвует."
+  },
+  "sim": {
+    "last_day": 274,
+    "last_season": "осень",
+    "last_year": 0,
+    "nudge": {
+      "scenes_off_main": 0,
+      "stage": 0,
+      "waiting": true,
+      "contact_npc": "",
+      "flags_seen": {}
+    },
+    "world_calls_today": 0,
+    "world_calls_day": -1,
+    "god_checked_s": {}
+  },
+  "mortality_per_day": 20000,
+  "natural": {
+    "chance_percent_per_season": 5,
+    "kinds": []
+  },
+  "nudge_scenes": 8,
+  "dangers": [],
+  "notices": [],
+  "fired": []
+}

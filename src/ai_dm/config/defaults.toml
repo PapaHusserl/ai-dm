@@ -1,0 +1,228 @@
+[time]
+round_s = 6
+short_rest_s = 3600
+long_rest_s = 28800
+min_advance_s = 600
+
+[time.advance_categories]
+minute = 900
+hour = 3600
+day = 86400
+week = 604800
+
+[time.travel_pace]
+slow = 3200
+normal = 4800
+fast = 6400
+
+[combat]
+max_rounds = 100
+improvise_damage_dice = "1d6"
+
+[parley]
+base_dc = 15
+friendly_attitude = 30
+hostile_attitude = -30
+friendly_bonus = 5
+hp_half_bonus = 2
+hp_quarter_bonus = 5
+losses_bonus = 3
+leader_down_bonus = 3
+overwhelm_bonus = 2
+defect_penalty = 5
+waver_bonus = 2
+key_penalty = 5
+min_int = 3
+immune_types = ["construct", "ooze", "plant"]
+offended_margin = 5
+disarmed_bonus = 2
+surrender_attitude = 10
+defect_attitude = 20
+offended_attitude = -10
+spread_morale = false
+
+[disarm]
+unarmed_types = ["humanoid", "fey"]
+unarmed_proficiency = 2
+
+[defeat]
+robbery_gold_percent = 50
+left_to_die_hours_dice = "1d8"
+left_to_die_hp = 1
+
+[xp]
+quest_minor_percent = 10
+quest_medium_percent = 25
+quest_major_percent = 50
+
+[saves]
+autosave_keep = 3
+
+[scene]
+max_player_turns = 30
+max_time_jump_s = 3600
+max_per_chapter = 15
+
+[attitude]
+step = 10
+per_scene = 20
+
+# благосклонность богов (ТЗ 4.2)
+[favor]
+step = 2
+per_scene = 3
+intervention_percent_9 = 50
+intervention_percent_10 = 75
+debt_then = "{god} требует от {hero} услугу за спасение от смерти"
+servant_cooldown = "30d"
+
+[limits]
+give_item_max_qty = 20
+max_enemies = 6
+# лечебных предметов (расходников), которые можно выдать за сцену
+consumables_per_scene = 3
+
+# сюжетные предметы мастера (give_custom_item)
+[custom_items]
+name_max = 40
+description_max = 200
+per_scene = 5
+cost_cap_cp = 5000
+cost_cap_high_cp = 50000
+high_from_level = 5
+
+# торговля с NPC-торговцем (trade)
+[trade]
+buy_factor = 1.0
+sell_factor = 0.5
+attitude_good_from = 50
+attitude_good_buy_factor = 0.9
+attitude_good_sell_factor = 0.6
+attitude_refuse_at = -50
+ops_per_scene = 20
+new_merchants_per_scene = 1
+restock_days = 7
+# торг Убеждением: поправка цены в процентах (успех / сильный успех / провал), потолок суммы с отношением
+haggle_success_percent = -10
+haggle_strong_percent = -20
+haggle_fail_percent = 10
+haggle_dc = 15
+haggle_good_dc = 10
+haggle_strong_margin = 5
+haggle_hostile_below = 0
+price_mod_cap_percent = 20
+# покупка героем при макс. скидке не ниже лучшей продажи героем * min_margin
+min_margin = 1.3
+
+[trade.presets.general]
+categories = ["gear", "consumable", "clothing", "ammo"]
+purse_cp = 5000
+buys = ["gear", "consumable", "clothing", "ammo", "weapon", "armor"]
+
+[trade.presets.smith]
+categories = ["weapon", "armor", "ammo"]
+purse_cp = 10000
+buys = ["weapon", "armor", "ammo"]
+
+[trade.presets.armorer]
+categories = ["armor"]
+purse_cp = 10000
+buys = ["armor"]
+
+[trade.presets.alchemist]
+categories = ["consumable"]
+magic = true
+purse_cp = 5000
+buys = ["consumable"]
+
+[trade.presets.fence]
+categories = ["gear", "valuable"]
+purse_cp = 3000
+buys = ["weapon", "armor", "ammo", "gear", "consumable", "clothing", "valuable"]
+
+[limits.gold_explicit_max_cp_by_level]
+1 = 5000
+2 = 10000
+3 = 25000
+4 = 50000
+5 = 100000
+6 = 150000
+7 = 200000
+8 = 300000
+9 = 400000
+10 = 500000
+11 = 750000
+12 = 1000000
+13 = 1250000
+14 = 1500000
+15 = 2000000
+16 = 2500000
+17 = 3500000
+18 = 5000000
+19 = 7500000
+20 = 10000000
+
+# бюджет боя (ТЗ 2.3, решение G2а): таблица SRD 5.2, потолок -- moderate на героя
+[encounter]
+tier = "moderate"
+
+# предел редкости магических предметов по уровню героя (ТЗ 2.3; свой порог, source: custom: в SRD 5.2 привязки редкости к уровню нет -- полосы 1-4 до uncommon, 5-10 до rare, 11-16 до very_rare, 17-20 до legendary; решение К0б Q8)
+[loot.rarity_cap_by_level]
+1 = "uncommon"
+2 = "uncommon"
+3 = "uncommon"
+4 = "uncommon"
+5 = "rare"
+6 = "rare"
+7 = "rare"
+8 = "rare"
+9 = "rare"
+10 = "rare"
+11 = "very_rare"
+12 = "very_rare"
+13 = "very_rare"
+14 = "very_rare"
+15 = "very_rare"
+16 = "very_rare"
+17 = "legendary"
+18 = "legendary"
+19 = "legendary"
+20 = "legendary"
+
+# смертность ТЗ 4.1.1: N в «1/N в день на существо»
+[world.mortality_presets]
+calm = 500000
+peaceful = 50000
+normal = 20000
+harsh = 5000
+brutal = 500
+
+# потолок дневных шагов одного тика (ТЗ 4.1: скачок больше -- ошибка конфигурации)
+[world]
+max_tick_days = 400
+
+# шаг старения: процент предела жизни вида, за который даётся -1 СИЛ/ЛОВ/ТЕЛ (ТЗ 4.1 п.4)
+[world.aging]
+step_percent = 10
+
+# множитель смертности для событий, начатых моделью (event_start), по типу; прочие типы -- 1
+[world.event_multipliers]
+plague = 20
+war = 5
+famine = 5
+
+# качество трофейного оружия с тел по ПО тела (ПО 0-1/4 хлам, 1/2-2 поношенное, 3-4 б/у; выше и босс -- полная цена); percent -- цена в процентах от SRD
+[[loot.trophy_quality]]
+max_cr = 0.25
+quality = "junk"
+percent = 10
+
+[[loot.trophy_quality]]
+max_cr = 2
+quality = "worn"
+percent = 25
+
+[[loot.trophy_quality]]
+max_cr = 4
+quality = "used"
+percent = 50

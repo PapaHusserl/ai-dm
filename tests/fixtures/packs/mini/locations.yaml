@@ -1,0 +1,10 @@
+- id: town
+  name: Город
+  connections: [{to: tavern, distance_m: 100}]
+- id: tavern
+  name: Таверна
+  parent_id: town
+  connections: [{to: cellar, distance_m: 10}]
+- id: cellar
+  name: Подвал
+  parent_id: tavern

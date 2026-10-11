@@ -1,0 +1,10 @@
+id: beast_master
+name: Повелитель зверей
+description: Следопыт, связанный узами доверия с диким зверем. Своя редакция проекта, не пересказ чужих правил.
+source: custom
+class_id: ranger
+features:
+- level: 3
+  feature: beast_companion
+- level: 3
+  feature: pack_sense

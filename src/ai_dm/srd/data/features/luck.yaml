@@ -1,0 +1,10 @@
+id: luck
+name: Удача
+description: Когда вы выбрасываете 1 на к20 при проверке, броске атаки или спасброске, вы перебрасываете
+  кость и должны использовать новый результат.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: reroll
+  target: d20_test
+  when: natural_1

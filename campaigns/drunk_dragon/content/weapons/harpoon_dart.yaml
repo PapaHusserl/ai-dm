@@ -1,0 +1,15 @@
+id: harpoon_dart
+name: Гарпунный дротик с тросом
+category: simple
+kind: ranged
+damage_dice: 1d4
+damage_type: piercing
+cost_cp: 100
+properties:
+- finesse
+- thrown
+mastery: vex
+range_normal_ft: 20
+range_long_ft: 60
+description: 'Дротик Ольгерда с тросом: можно подтянуть цель или зацепиться.'
+source: campaign:drunk_dragon

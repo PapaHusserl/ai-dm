@@ -1,0 +1,42 @@
+id: goblin_boss
+name: Босс гоблинов
+source: srd-5.2
+license: CC-BY-4.0
+size: small
+creature_type: fey
+speed_ft: 30
+ac: 17
+hp: 21
+hp_dice: 6d6
+cr: '1'
+abilities:
+  str: 10
+  dex: 15
+  con: 10
+  int: 10
+  wis: 8
+  cha: 10
+traits:
+- nimble_escape
+- redirect_attack
+actions:
+- name: Скимитар
+  weapon_id: scimitar
+  kind: melee
+  attack_bonus: 4
+  damage_dice: 1d6+2
+  damage_type: slashing
+  advantage_damage_dice: 1d4
+  reach_ft: 5
+- name: Короткий лук
+  weapon_id: shortbow
+  kind: ranged
+  attack_bonus: 4
+  damage_dice: 1d6+2
+  damage_type: piercing
+  advantage_damage_dice: 1d4
+  range_normal_ft: 80
+  range_long_ft: 320
+multiattack:
+- action: Скимитар
+  count: 2

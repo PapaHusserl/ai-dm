@@ -1,0 +1,19 @@
+id: fire_bolt
+name: Огненный снаряд
+description: 'Дальнобойная атака заклинанием: 1d10 урона огнём (растёт на 5, 11 и 17 уровнях).'
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: evocation
+range_kind: ranged
+range_ft: 120
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 1d10
+  damage_type: fire
+cantrip_scaling:
+  5: 2d10
+  11: 3d10
+  17: 4d10

@@ -1,0 +1,16 @@
+id: light_crossbow
+name: Лёгкий арбалет
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: ranged
+damage_dice: 1d8
+damage_type: piercing
+cost_cp: 2500
+properties:
+- ammunition
+- loading
+- two_handed
+mastery: slow
+range_normal_ft: 80
+range_long_ft: 320

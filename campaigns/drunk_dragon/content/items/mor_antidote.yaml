@@ -1,0 +1,6 @@
+id: mor_antidote
+name: Антидот Мора
+description: Противоядие от скверны Мора. Найден на теле Ольбрехта.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: consumable

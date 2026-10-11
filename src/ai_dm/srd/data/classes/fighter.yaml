@@ -1,0 +1,78 @@
+id: fighter
+name: Воин
+description: Мастер боевых искусств, владеющий любым оружием и доспехами.
+source: srd-5.2
+license: CC-BY-4.0
+hit_die: 10
+saving_throws:
+- str
+- con
+skill_choices:
+  count: 2
+  options:
+  - acrobatics
+  - animal_handling
+  - athletics
+  - history
+  - insight
+  - intimidation
+  - persuasion
+  - perception
+  - survival
+armor_training:
+- light
+- medium
+- heavy
+- shield
+weapon_training:
+- simple
+- martial
+weapon_mastery_count: 3
+features:
+- level: 1
+  feature: fighting_style
+- level: 1
+  feature: second_wind
+- level: 1
+  feature: weapon_mastery
+- level: 4
+  feature: ability_score_improvement
+- level: 6
+  feature: ability_score_improvement
+- level: 8
+  feature: ability_score_improvement
+- level: 12
+  feature: ability_score_improvement
+- level: 14
+  feature: ability_score_improvement
+- level: 16
+  feature: ability_score_improvement
+- level: 19
+  feature: ability_score_improvement
+starting_kits:
+- id: a
+  items:
+  - chain_mail
+  - greatsword
+  - spear
+  - explorers_pack
+  equip:
+  - chain_mail
+  - greatsword
+  gold_cp: 400
+- id: b
+  items:
+  - studded_leather
+  - scimitar
+  - shortsword
+  - longbow
+  - arrows
+  - quiver
+  - explorers_pack
+  equip:
+  - studded_leather
+  - longbow
+  gold_cp: 1100
+- id: c
+  items: []
+  gold_cp: 15500

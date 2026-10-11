@@ -1,0 +1,27 @@
+id: guard
+name: Стражник
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: humanoid
+speed_ft: 30
+ac: 16
+hp: 11
+hp_dice: 2d8+2
+cr: 1/8
+abilities:
+  str: 13
+  dex: 12
+  con: 12
+  int: 10
+  wis: 11
+  cha: 10
+actions:
+- name: Копьё
+  weapon_id: spear
+  kind: melee
+  attack_bonus: 3
+  damage_dice: 1d6+1
+  damage_type: piercing
+  reach_ft: 5
+  description: Также можно метнуть (20/60 фт.).

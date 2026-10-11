@@ -1,0 +1,67 @@
+id: encounter_budget
+name: Бюджет боя (ПО на одного героя) по уровню героя и сложности
+source: srd-5.2
+license: CC-BY-4.0
+# Таблица «XP Budget per Character» SRD 5.2 (создание боевых встреч). Ключ "уровень:сложность".
+# Уровни 1-20; потолок игры -- moderate (решение G2а).
+rows:
+  '1:low': 50
+  '1:moderate': 75
+  '1:high': 100
+  '2:low': 100
+  '2:moderate': 150
+  '2:high': 200
+  '3:low': 150
+  '3:moderate': 225
+  '3:high': 400
+  '4:low': 250
+  '4:moderate': 375
+  '4:high': 500
+  '5:low': 500
+  '5:moderate': 750
+  '5:high': 1100
+  '6:low': 600
+  '6:moderate': 1000
+  '6:high': 1400
+  '7:low': 750
+  '7:moderate': 1300
+  '7:high': 1700
+  '8:low': 1000
+  '8:moderate': 1700
+  '8:high': 2100
+  '9:low': 1300
+  '9:moderate': 2000
+  '9:high': 2600
+  '10:low': 1600
+  '10:moderate': 2300
+  '10:high': 3100
+  '11:low': 1900
+  '11:moderate': 2900
+  '11:high': 4100
+  '12:low': 2200
+  '12:moderate': 3700
+  '12:high': 4700
+  '13:low': 2600
+  '13:moderate': 4200
+  '13:high': 5400
+  '14:low': 2900
+  '14:moderate': 4900
+  '14:high': 6200
+  '15:low': 3300
+  '15:moderate': 5400
+  '15:high': 7800
+  '16:low': 3800
+  '16:moderate': 6100
+  '16:high': 9800
+  '17:low': 4500
+  '17:moderate': 7200
+  '17:high': 11700
+  '18:low': 5000
+  '18:moderate': 8700
+  '18:high': 14200
+  '19:low': 5500
+  '19:moderate': 10700
+  '19:high': 17000
+  '20:low': 6400
+  '20:moderate': 13200
+  '20:high': 22000

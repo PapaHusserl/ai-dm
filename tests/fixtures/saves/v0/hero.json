@@ -1,0 +1,43 @@
+{
+  "id": "h1",
+  "ordinal": 1,
+  "name": "Старый Арн",
+  "sheet": {
+    "species_id": "human",
+    "class_id": "fighter",
+    "background": {
+      "name": "Солдат",
+      "abilities": [
+        "str",
+        "dex",
+        "con"
+      ],
+      "skills": [
+        "athletics",
+        "intimidation"
+      ],
+      "tool": "dice_set",
+      "feat": "savage_attacker"
+    },
+    "abilities": {
+      "str": 17,
+      "dex": 13,
+      "con": 15,
+      "int": 8,
+      "wis": 10,
+      "cha": 12
+    }
+  },
+  "creature": {
+    "hp_current": 12,
+    "hp_max": 12
+  },
+  "inventory": [
+    {
+      "item_id": "longsword",
+      "qty": 1
+    }
+  ],
+  "money_cp": 1235,
+  "location_id": "tavern"
+}

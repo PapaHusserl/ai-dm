@@ -1,0 +1,12 @@
+id: pass_without_trace
+name: Бесследное передвижение
+description: "Вокруг вас и ваших спутников в пределах 30 фт. сгущается покров тишины (концентрация, до 1 часа): +10 к проверкам Скрытности, а следы этих существ нельзя выследить, кроме как магией."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: abjuration
+range_kind: self
+duration: 1h
+concentration: true
+classes:
+- ranger

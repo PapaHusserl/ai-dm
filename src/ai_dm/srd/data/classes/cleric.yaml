@@ -1,0 +1,79 @@
+id: cleric
+name: Жрец
+description: Служитель божества, проводник божественной магии.
+source: srd-5.2
+license: CC-BY-4.0
+hit_die: 8
+saving_throws:
+- wis
+- cha
+skill_choices:
+  count: 2
+  options:
+  - history
+  - insight
+  - medicine
+  - persuasion
+  - religion
+armor_training:
+- light
+- medium
+- shield
+weapon_training:
+- simple
+spellcasting:
+  ability: wis
+  progression: full
+  cantrips: 3
+  spells: 4
+  prepared: 4
+  prepared_by_level:
+    1: 4
+    2: 5
+    3: 6
+    4: 7
+    5: 9
+    6: 10
+    7: 11
+    8: 12
+    9: 14
+    10: 15
+    11: 16
+    12: 16
+    13: 17
+    14: 17
+    15: 18
+    16: 18
+    17: 19
+    18: 20
+    19: 21
+    20: 22
+features:
+- level: 1
+  feature: spellcasting
+- level: 4
+  feature: ability_score_improvement
+- level: 8
+  feature: ability_score_improvement
+- level: 12
+  feature: ability_score_improvement
+- level: 16
+  feature: ability_score_improvement
+- level: 19
+  feature: ability_score_improvement
+starting_kits:
+- id: a
+  items:
+  - studded_leather
+  - shield
+  - quarterstaff
+  - holy_symbol
+  - explorers_pack
+  equip:
+  - studded_leather
+  - shield
+  - quarterstaff
+  gold_cp: 700
+- id: b
+  items: []
+  gold_cp: 11000

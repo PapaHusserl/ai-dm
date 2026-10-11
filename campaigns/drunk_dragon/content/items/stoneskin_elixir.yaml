@@ -1,0 +1,17 @@
+id: stoneskin_elixir
+name: Эликсир «Каменная Кожа»
+description: 'На 1 час: +2 КД, сопротивление рубящему и дробящему урону.'
+cost_cp: 0
+category: consumable
+source: campaign:drunk_dragon
+short_name: Каменная Кожа
+effects:
+- type: ac_bonus
+  value: 2
+  duration_s: 3600
+- type: resist
+  damage_type: slashing
+  duration_s: 3600
+- type: resist
+  damage_type: bludgeoning
+  duration_s: 3600

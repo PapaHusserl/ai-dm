@@ -1,0 +1,12 @@
+{
+  "schema_version": 4,
+  "engine_version": "0.1.0",
+  "world_id": "old_world",
+  "campaign_id": null,
+  "slot": "auto",
+  "saved_at": "2026-01-01T12:00:00Z",
+  "current_hero_id": "hero",
+  "heroes": [
+    "hero"
+  ]
+}

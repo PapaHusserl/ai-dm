@@ -1,0 +1,13 @@
+id: lifespan
+name: Продолжительность жизни по виду, лет (ключ вид:threshold|limit)
+source: custom  # пороги и пределы — ТЗ 4.1, в SRD 5.2 нет
+license: CC-BY-4.0
+rows:
+  'human:threshold': 60
+  'human:limit': 90
+  'halfling:threshold': 100
+  'halfling:limit': 150
+  'dwarf:threshold': 250
+  'dwarf:limit': 350
+  'elf:threshold': 500
+  'elf:limit': 750

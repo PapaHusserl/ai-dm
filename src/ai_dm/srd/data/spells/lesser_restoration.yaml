@@ -1,0 +1,12 @@
+id: lesser_restoration
+name: Малое восстановление
+description: "Бонусным действием вы касаетесь существа и снимаете с него одно состояние: ослепление, оглушение, паралич или отравление."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: abjuration
+range_kind: touch
+casting_time: bonus_action
+classes:
+- cleric
+- ranger

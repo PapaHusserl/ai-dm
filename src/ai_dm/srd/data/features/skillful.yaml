@@ -1,0 +1,9 @@
+id: skillful
+name: Умелость
+description: Вы получаете владение одним навыком на ваш выбор.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: proficiency
+  target: skill
+  count: 1

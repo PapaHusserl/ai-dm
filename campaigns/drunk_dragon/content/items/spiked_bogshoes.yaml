@@ -1,0 +1,6 @@
+id: spiked_bogshoes
+name: Горные болотоступы с шипами
+description: Для топей и обледенелых склонов.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: clothing

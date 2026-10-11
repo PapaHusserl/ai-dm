@@ -1,0 +1,15 @@
+id: arrow_frost
+name: Морозная стрела
+description: +1d8 холодом, тушит серное пламя.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: extra_damage
+  dice: 1d8
+  damage_type: cold
+- type: slow
+  value: 10

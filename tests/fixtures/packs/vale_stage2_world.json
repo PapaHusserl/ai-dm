@@ -1,0 +1,588 @@
+{
+ "arn": {
+  "clock_now_s": 0,
+  "hero": {
+   "afterlife": null,
+   "attuned": [],
+   "companions": [],
+   "creature": {
+    "active_effects": [],
+    "concentration": null,
+    "conditions": [],
+    "death_saves": {
+     "failures": 0,
+     "stable": false,
+     "successes": 0
+    },
+    "exhaustion": 0,
+    "hp_current": 12,
+    "hp_max": 12,
+    "hp_temp": 0,
+    "resources": {
+     "hit_dice:d10": {
+      "current": 1,
+      "max": 1
+     },
+     "second_wind": {
+      "current": 2,
+      "max": 2
+     }
+    },
+    "temp_form": null
+   },
+   "death": null,
+   "equipped": {
+    "armor": "chain_mail",
+    "main_hand": "longsword",
+    "off_hand": null,
+    "shield": "shield"
+   },
+   "fate": null,
+   "favor": {},
+   "heroic_inspiration": false,
+   "id": "hero",
+   "inventory": [
+    {
+     "item_id": "spear",
+     "qty": 1
+    },
+    {
+     "item_id": "shortbow",
+     "qty": 1
+    },
+    {
+     "item_id": "arrows",
+     "qty": 1
+    },
+    {
+     "item_id": "gaming_set",
+     "qty": 1
+    },
+    {
+     "item_id": "healers_kit",
+     "qty": 1
+    },
+    {
+     "item_id": "quiver",
+     "qty": 1
+    },
+    {
+     "item_id": "travelers_clothes",
+     "qty": 1
+    },
+    {
+     "item_id": "chain_mail",
+     "qty": 1
+    },
+    {
+     "item_id": "shield",
+     "qty": 1
+    },
+    {
+     "item_id": "longsword",
+     "qty": 1
+    }
+   ],
+   "legacy_links": [],
+   "location_id": "lame_goose",
+   "means": [],
+   "money_cp": 1400,
+   "motive": "",
+   "name": "Арн",
+   "opportunity": [],
+   "ordinal": 1,
+   "pending_level": null,
+   "scars": [],
+   "sheet": {
+    "abilities": {
+     "cha": 12,
+     "con": 15,
+     "dex": 13,
+     "int": 8,
+     "str": 17,
+     "wis": 10
+    },
+    "background": {
+     "abilities": [
+      "str",
+      "dex",
+      "con"
+     ],
+     "equipment": [
+      "spear",
+      "shortbow",
+      "arrows",
+      "gaming_set",
+      "healers_kit",
+      "quiver",
+      "travelers_clothes"
+     ],
+     "feat": "savage_attacker",
+     "gold_cp": 1400,
+     "gold_option_cp": 5000,
+     "name": "Солдат",
+     "skills": [
+      "athletics",
+      "intimidation"
+     ],
+     "tool": "gaming_set"
+    },
+    "classes": [
+     {
+      "class_id": "fighter",
+      "level": 1,
+      "subclass_id": null
+     }
+    ],
+    "feats": [
+     "savage_attacker",
+     "defense",
+     "skilled"
+    ],
+    "feature_choices": {},
+    "level_history": [
+     "fighter"
+    ],
+    "skill_proficiencies": [
+     "athletics",
+     "intimidation",
+     "perception",
+     "survival",
+     "stealth",
+     "medicine",
+     "religion",
+     "nature"
+    ],
+    "species_id": "human",
+    "spells_always_prepared": [],
+    "spells_known": {
+     "fighter": []
+    },
+    "spells_prepared": {
+     "fighter": []
+    },
+    "tool_proficiencies": [
+     "gaming_set"
+    ],
+    "weapon_masteries": [
+     "longsword",
+     "greatsword",
+     "shortsword"
+    ],
+    "xp": 0
+   },
+   "status": "active"
+  },
+  "locations": {
+   "cellar": {
+    "connections": [
+     {
+      "distance_m": 20,
+      "to": "lame_goose"
+     }
+    ],
+    "description": "Сырой подвал с бочками. В последнее время там поселились гоблины.",
+    "id": "cellar",
+    "name": "Подвал таверны",
+    "origin": "pack",
+    "parent_id": "lame_goose",
+    "tags": [
+     "подвал"
+    ],
+    "visited": false
+   },
+   "lame_goose": {
+    "connections": [
+     {
+      "distance_m": 150,
+      "to": "vale"
+     },
+     {
+      "distance_m": 20,
+      "to": "cellar"
+     }
+    ],
+    "description": "Единственная таверна в Вейле: низкий зал, стойка, лестница в подвал.",
+    "id": "lame_goose",
+    "name": "Таверна «Хромой гусь»",
+    "origin": "pack",
+    "parent_id": "vale",
+    "tags": [
+     "таверна"
+    ],
+    "visited": false
+   },
+   "vale": {
+    "connections": [
+     {
+      "distance_m": 150,
+      "to": "lame_goose"
+     }
+    ],
+    "description": "Небольшая деревня на берегу реки.",
+    "id": "vale",
+    "name": "Вейл",
+    "origin": "pack",
+    "parent_id": null,
+    "tags": [
+     "долина"
+    ],
+    "visited": false
+   }
+  },
+  "npcs": {
+   "grakh": {
+    "attitude": 0,
+    "birth_s": null,
+    "combat": {
+     "intent": "capture",
+     "monster_id": "goblin_boss"
+    },
+    "creature": null,
+    "death": null,
+    "favor": {},
+    "id": "grakh",
+    "key": true,
+    "known_to_player": [],
+    "location_id": "cellar",
+    "means": [
+     "ватага гоблинов"
+    ],
+    "motive": "Хочет захватить припасы таверны и пленников для выкупа.",
+    "name": "Гракх",
+    "named": true,
+    "opportunity": [],
+    "origin": "pack",
+    "relations_text": "",
+    "secrets": [],
+    "species_id": null,
+    "status": "alive"
+   },
+   "innkeeper": {
+    "attitude": 0,
+    "birth_s": null,
+    "combat": null,
+    "creature": null,
+    "death": null,
+    "favor": {},
+    "id": "innkeeper",
+    "key": false,
+    "known_to_player": [],
+    "location_id": "lame_goose",
+    "means": [
+     "знает все деревенские слухи",
+     "хранит ключ от подвала"
+    ],
+    "motive": "Хочет избавиться от шума в подвале и не растерять посетителей.",
+    "name": "Гарт",
+    "named": true,
+    "opportunity": [],
+    "origin": "pack",
+    "relations_text": "",
+    "secrets": [],
+    "species_id": null,
+    "status": "alive"
+   }
+  },
+  "rng": {
+   "algo": "pcg32",
+   "draws": 0,
+   "inc": 109,
+   "seed": 1,
+   "state": 17525453895893820867
+  },
+  "scene": {
+   "attitude_spent": {},
+   "closed_reason": null,
+   "consumables_given": 0,
+   "id": "scene_1",
+   "location_id": "lame_goose",
+   "player_turns": 0,
+   "started_at_s": 0
+  }
+ },
+ "liel": {
+  "clock_now_s": 0,
+  "hero": {
+   "afterlife": null,
+   "attuned": [],
+   "companions": [],
+   "creature": {
+    "active_effects": [],
+    "concentration": null,
+    "conditions": [],
+    "death_saves": {
+     "failures": 0,
+     "stable": false,
+     "successes": 0
+    },
+    "exhaustion": 0,
+    "hp_current": 8,
+    "hp_max": 8,
+    "hp_temp": 0,
+    "resources": {
+     "hit_dice:d6": {
+      "current": 1,
+      "max": 1
+     },
+     "spell_slot:1": {
+      "current": 2,
+      "max": 2
+     }
+    },
+    "temp_form": null
+   },
+   "death": null,
+   "equipped": {
+    "armor": null,
+    "main_hand": null,
+    "off_hand": null,
+    "shield": null
+   },
+   "fate": null,
+   "favor": {},
+   "heroic_inspiration": false,
+   "id": "hero",
+   "inventory": [
+    {
+     "item_id": "quarterstaff",
+     "qty": 1
+    },
+    {
+     "item_id": "calligraphers_supplies",
+     "qty": 1
+    },
+    {
+     "item_id": "history_book",
+     "qty": 1
+    },
+    {
+     "item_id": "parchment",
+     "qty": 8
+    },
+    {
+     "item_id": "robe",
+     "qty": 1
+    }
+   ],
+   "legacy_links": [],
+   "location_id": "lame_goose",
+   "means": [],
+   "money_cp": 800,
+   "motive": "",
+   "name": "Лиэль",
+   "opportunity": [],
+   "ordinal": 1,
+   "pending_level": null,
+   "scars": [],
+   "sheet": {
+    "abilities": {
+     "cha": 10,
+     "con": 15,
+     "dex": 13,
+     "int": 17,
+     "str": 8,
+     "wis": 12
+    },
+    "background": {
+     "abilities": [
+      "con",
+      "int",
+      "wis"
+     ],
+     "equipment": [
+      "quarterstaff",
+      "calligraphers_supplies",
+      "history_book",
+      "parchment",
+      "parchment",
+      "parchment",
+      "parchment",
+      "parchment",
+      "parchment",
+      "parchment",
+      "parchment",
+      "robe"
+     ],
+     "feat": "magic_initiate",
+     "gold_cp": 800,
+     "gold_option_cp": 5000,
+     "name": "Мудрец",
+     "skills": [
+      "arcana",
+      "history"
+     ],
+     "tool": "calligraphers_supplies"
+    },
+    "classes": [
+     {
+      "class_id": "wizard",
+      "level": 1,
+      "subclass_id": null
+     }
+    ],
+    "feats": [
+     "magic_initiate"
+    ],
+    "feature_choices": {},
+    "level_history": [
+     "wizard"
+    ],
+    "skill_proficiencies": [
+     "arcana",
+     "history",
+     "investigation",
+     "medicine"
+    ],
+    "species_id": "elf",
+    "spells_always_prepared": [],
+    "spells_known": {
+     "wizard": [
+      "fire_bolt",
+      "magic_missile",
+      "burning_hands"
+     ]
+    },
+    "spells_prepared": {
+     "wizard": [
+      "magic_missile",
+      "burning_hands"
+     ]
+    },
+    "tool_proficiencies": [
+     "calligraphers_supplies"
+    ],
+    "weapon_masteries": [],
+    "xp": 0
+   },
+   "status": "active"
+  },
+  "locations": {
+   "cellar": {
+    "connections": [
+     {
+      "distance_m": 20,
+      "to": "lame_goose"
+     }
+    ],
+    "description": "Сырой подвал с бочками. В последнее время там поселились гоблины.",
+    "id": "cellar",
+    "name": "Подвал таверны",
+    "origin": "pack",
+    "parent_id": "lame_goose",
+    "tags": [
+     "подвал"
+    ],
+    "visited": false
+   },
+   "lame_goose": {
+    "connections": [
+     {
+      "distance_m": 150,
+      "to": "vale"
+     },
+     {
+      "distance_m": 20,
+      "to": "cellar"
+     }
+    ],
+    "description": "Единственная таверна в Вейле: низкий зал, стойка, лестница в подвал.",
+    "id": "lame_goose",
+    "name": "Таверна «Хромой гусь»",
+    "origin": "pack",
+    "parent_id": "vale",
+    "tags": [
+     "таверна"
+    ],
+    "visited": false
+   },
+   "vale": {
+    "connections": [
+     {
+      "distance_m": 150,
+      "to": "lame_goose"
+     }
+    ],
+    "description": "Небольшая деревня на берегу реки.",
+    "id": "vale",
+    "name": "Вейл",
+    "origin": "pack",
+    "parent_id": null,
+    "tags": [
+     "долина"
+    ],
+    "visited": false
+   }
+  },
+  "npcs": {
+   "grakh": {
+    "attitude": 0,
+    "birth_s": null,
+    "combat": {
+     "intent": "capture",
+     "monster_id": "goblin_boss"
+    },
+    "creature": null,
+    "death": null,
+    "favor": {},
+    "id": "grakh",
+    "key": true,
+    "known_to_player": [],
+    "location_id": "cellar",
+    "means": [
+     "ватага гоблинов"
+    ],
+    "motive": "Хочет захватить припасы таверны и пленников для выкупа.",
+    "name": "Гракх",
+    "named": true,
+    "opportunity": [],
+    "origin": "pack",
+    "relations_text": "",
+    "secrets": [],
+    "species_id": null,
+    "status": "alive"
+   },
+   "innkeeper": {
+    "attitude": 0,
+    "birth_s": null,
+    "combat": null,
+    "creature": null,
+    "death": null,
+    "favor": {},
+    "id": "innkeeper",
+    "key": false,
+    "known_to_player": [],
+    "location_id": "lame_goose",
+    "means": [
+     "знает все деревенские слухи",
+     "хранит ключ от подвала"
+    ],
+    "motive": "Хочет избавиться от шума в подвале и не растерять посетителей.",
+    "name": "Гарт",
+    "named": true,
+    "opportunity": [],
+    "origin": "pack",
+    "relations_text": "",
+    "secrets": [],
+    "species_id": null,
+    "status": "alive"
+   }
+  },
+  "rng": {
+   "algo": "pcg32",
+   "draws": 0,
+   "inc": 109,
+   "seed": 1,
+   "state": 17525453895893820867
+  },
+  "scene": {
+   "attitude_spent": {},
+   "closed_reason": null,
+   "consumables_given": 0,
+   "id": "scene_1",
+   "location_id": "lame_goose",
+   "player_turns": 0,
+   "started_at_s": 0
+  }
+ }
+}

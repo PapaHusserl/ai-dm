@@ -1,0 +1,42 @@
+# Сценарий мока: «разговор -> проверка -> бой» (критерий «готово» этапа 2, мир «Вейл», герой Арн).
+# Описывает ТОЛЬКО три первых хода вне боя (вызовы explore); бой идёт в тесте дальше, потому что
+# число ходов героя зависит от бросков. Порядок вызовов:
+#   ход 1: offer_choices -> текст
+#   ход 2: skill_check(persuasion, medium) -> текст
+#   ход 3: start_combat (3 зоны, 2 гоблина + Гракх, намерение capture) -> текст
+steps:
+  - tool_calls:
+      - id: call-1
+        name: offer_choices
+        input:
+          type: offer_choices
+          choices: ["Спросить про подвал", "Заказать эль"]
+  - text: "Трактирщик косится на вас из-за стойки: в подвале «Хромого гуся» что-то возится."
+    usage: {input: 1500, output: 60, cache_read: 1200}
+
+  - tool_calls:
+      - id: call-2
+        name: skill_check
+        input: {type: skill_check, skill: persuasion, category: medium, stakes: normal}
+  - text: "Трактирщик вздыхает и кивает на дверь в подвал."
+    usage: {input: 1600, output: 70, cache_read: 1300}
+
+  - tool_calls:
+      - id: call-3
+        name: start_combat
+        input:
+          type: start_combat
+          hero_zone: stairs
+          initiated_by: hero
+          zones:
+            - {id: stairs, name: "Лестница", adjacent: [floor]}
+            - {id: floor, name: "Земляной пол", adjacent: [stairs, barrels]}
+            - {id: barrels, name: "Бочки", adjacent: [floor]}
+          enemies:
+            - {ref: goblin_1, monster_id: goblin_warrior, zone: floor, group: goblins}
+            - {ref: goblin_2, monster_id: goblin_warrior, zone: floor, group: goblins}
+            - {ref: grakh, monster_id: goblin_boss, zone: barrels, group: goblins}
+          groups:
+            - {id: goblins, leader: grakh, intent: capture, lair_location_id: cellar}
+  - text: "Из темноты выскакивают гоблины, а за бочками ухмыляется Гракх."
+    usage: {input: 1700, output: 80, cache_read: 1400}

@@ -1,0 +1,277 @@
+# Мок роли world для критерия 2 этапа 3: 30 границ по дню, мини-пак, флаг met_brann.
+# Кандидаты: нарративный триггер brann_trust и секрет oath (сцена в таверне). День 3: Бранн доверяет, видимая заметка.
+# Два шага на границу: вердикт, затем текст (цикл инструментов).
+steps:
+  - tool_calls:
+      - id: wv-1
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 1"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 1"}
+  - text: "Мир сдвинулся, день 1."
+  - tool_calls:
+      - id: wv-2
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 2"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 2"}
+  - text: "Мир сдвинулся, день 2."
+  - tool_calls:
+      - id: wv-3
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: true, reason: "день 3"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 3"}
+      - id: wn-3
+        name: world_notice
+        input: {type: world_notice, text: "Бранн открыл проход в подвале.", visibility: visible, delay: none, refs: ["trigger:brann:brann_trust"]}
+  - text: "Мир сдвинулся, день 3."
+  - tool_calls:
+      - id: wv-4
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 4"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 4"}
+  - text: "Мир сдвинулся, день 4."
+  - tool_calls:
+      - id: wv-5
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 5"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 5"}
+  - text: "Мир сдвинулся, день 5."
+  - tool_calls:
+      - id: wv-6
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 6"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 6"}
+  - text: "Мир сдвинулся, день 6."
+  - tool_calls:
+      - id: wv-7
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 7"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 7"}
+  - text: "Мир сдвинулся, день 7."
+  - tool_calls:
+      - id: wv-8
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 8"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 8"}
+  - text: "Мир сдвинулся, день 8."
+  - tool_calls:
+      - id: wv-9
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 9"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 9"}
+  - text: "Мир сдвинулся, день 9."
+  - tool_calls:
+      - id: wv-10
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 10"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 10"}
+  - text: "Мир сдвинулся, день 10."
+  - tool_calls:
+      - id: wv-11
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 11"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 11"}
+  - text: "Мир сдвинулся, день 11."
+  - tool_calls:
+      - id: wv-12
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 12"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 12"}
+  - text: "Мир сдвинулся, день 12."
+  - tool_calls:
+      - id: wv-13
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 13"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 13"}
+  - text: "Мир сдвинулся, день 13."
+  - tool_calls:
+      - id: wv-14
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 14"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 14"}
+  - text: "Мир сдвинулся, день 14."
+  - tool_calls:
+      - id: wv-15
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 15"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 15"}
+  - text: "Мир сдвинулся, день 15."
+  - tool_calls:
+      - id: wv-16
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 16"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 16"}
+  - text: "Мир сдвинулся, день 16."
+  - tool_calls:
+      - id: wv-17
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 17"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 17"}
+  - text: "Мир сдвинулся, день 17."
+  - tool_calls:
+      - id: wv-18
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 18"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 18"}
+  - text: "Мир сдвинулся, день 18."
+  - tool_calls:
+      - id: wv-19
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 19"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 19"}
+  - text: "Мир сдвинулся, день 19."
+  - tool_calls:
+      - id: wv-20
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 20"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 20"}
+  - text: "Мир сдвинулся, день 20."
+  - tool_calls:
+      - id: wv-21
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 21"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 21"}
+  - text: "Мир сдвинулся, день 21."
+  - tool_calls:
+      - id: wv-22
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 22"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 22"}
+  - text: "Мир сдвинулся, день 22."
+  - tool_calls:
+      - id: wv-23
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 23"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 23"}
+  - text: "Мир сдвинулся, день 23."
+  - tool_calls:
+      - id: wv-24
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 24"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 24"}
+  - text: "Мир сдвинулся, день 24."
+  - tool_calls:
+      - id: wv-25
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 25"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 25"}
+  - text: "Мир сдвинулся, день 25."
+  - tool_calls:
+      - id: wv-26
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 26"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 26"}
+  - text: "Мир сдвинулся, день 26."
+  - tool_calls:
+      - id: wv-27
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 27"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 27"}
+  - text: "Мир сдвинулся, день 27."
+  - tool_calls:
+      - id: wv-28
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 28"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 28"}
+  - text: "Мир сдвинулся, день 28."
+  - tool_calls:
+      - id: wv-29
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 29"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 29"}
+  - text: "Мир сдвинулся, день 29."
+  - tool_calls:
+      - id: wv-30
+        name: world_verdict
+        input:
+          type: world_verdict
+          items:
+            - {ref: "trigger:brann:brann_trust", holds: false, reason: "день 30"}
+            - {ref: "secret:aldric:oath", holds: false, reason: "день 30"}
+  - text: "Мир сдвинулся, день 30."

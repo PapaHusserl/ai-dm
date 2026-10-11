@@ -1,0 +1,6 @@
+id: breath_cleansing_potion
+name: Зелье Очищения Дыхания
+description: Позволяет дышать в серном и ядовитом дыму.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: consumable

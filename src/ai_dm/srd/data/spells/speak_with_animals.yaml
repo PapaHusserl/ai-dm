@@ -1,0 +1,12 @@
+id: speak_with_animals
+name: Разговор с животными
+description: "На 10 минут вы понимаете зверей и можете говорить с ними. Знания и настроение зверя ограничены его разумом, но он расскажет о том, что видел поблизости. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: divination
+range_kind: self
+casting_time: action
+duration: 10m
+classes:
+- ranger

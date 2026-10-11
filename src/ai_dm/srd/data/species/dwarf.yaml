@@ -1,0 +1,9 @@
+id: dwarf
+name: Дварф
+description: Выносливый горный народ.
+source: srd-5.2
+license: CC-BY-4.0
+speed_ft: 30
+size: medium
+traits:
+- dwarven_resilience

@@ -1,0 +1,14 @@
+id: fog_cloud
+name: Туманное облако
+description: "В пределах 120 фт. возникает сфера тумана радиусом 20 фт. (концентрация, до 1 часа); пространство внутри сильно затемнено. Ветер средней силы рассеивает туман. На каждый уровень ячейки выше 1-го радиус растёт на 20 фт."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: ranged
+range_ft: 120
+duration: 1h
+concentration: true
+classes:
+- ranger
+- wizard

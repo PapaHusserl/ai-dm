@@ -1,0 +1,16 @@
+id: spear
+name: Копьё
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d6
+damage_type: piercing
+cost_cp: 100
+properties:
+- thrown
+- versatile
+mastery: sap
+versatile_dice: 1d8
+range_normal_ft: 20
+range_long_ft: 60

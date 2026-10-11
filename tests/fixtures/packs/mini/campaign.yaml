@@ -1,0 +1,16 @@
+id: mini
+name: Мини
+version: "1"
+start:
+  date: "0100-03-01"
+  time: "08:00"
+  hero_location: tavern
+  heroes: [arn]
+mortality:
+  preset: calm
+natural_events:
+  chance_percent_per_season: 5
+  kinds:
+    - type: harvest_fair
+      duration: 10d
+      regions: [town]

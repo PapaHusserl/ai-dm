@@ -1,0 +1,688 @@
+# Сгенерировано devtools/import_dragon.py из слота saves/drunk_dragon/slots/manual-import.
+# `# draft` -- поле заполнил ИИ (решение 4а), на утверждение проектировщику; список --
+# docs/decisions/stage3-p7-drafts.md.
+- id: abbey_captain
+  name: Капитан стражи Аббатства
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: abbey_scarlet_mist
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Удержать Аббатство Алого Тумана, пока Иерарх ведёт ритуал  # draft
+  means:
+  - Командир уцелевшего гарнизона Аббатства
+  attitude: -100
+  known_to_player:
+  - Убит арбалетным болтом
+  location_id: abbey_scarlet_mist
+  species_id: human
+  relations_text: 'Роль: Командир уцелевшего гарнизона Аббатства. Вид: человек. Сейчас: Мёртв.'
+  origin: pack
+- id: abbey_tracker
+  name: Следопыт гарнизона Аббатства
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: abbey_scarlet_mist
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Выследить чужаков гончими и защитить Аббатство  # draft
+  means:
+  - Командир загонщиков с гончими
+  attitude: -100
+  known_to_player:
+  - Убит стрелой в горло
+  location_id: abbey_scarlet_mist
+  species_id: human
+  relations_text: 'Роль: Командир загонщиков с гончими. Вид: человек. Сейчас: Мёртв.'
+  origin: pack
+- id: bloodfang
+  name: Кровозуб
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: old_gat
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Охранять логово у Чёртова Затона и кормить стаю  # draft
+  means:
+  - Вожак (альфа) болотных гончих
+  attitude: -100
+  known_to_player:
+  - Убит Греем бронебойной стрелой в пасть
+  location_id: old_gat
+  relations_text: 'Роль: Вожак (альфа) болотных гончих. Вид: искажённая болотная гончая. Сейчас: Мёртв у Старой Гати.'
+  tags:
+  - mor
+  origin: pack
+- id: bran_sedogriv
+  name: Бран Седогрив
+  named: true
+  key: true
+  motive: Не дать пробудить Мор-Владыку; месть за перебитых егерей
+  means:
+  - клинок/тесак из звёздного железа, тяжёлый лук
+  - тайные тропы Ложи
+  - алхимия лавки
+  opportunity:  # draft
+  - id: kills_edrin_if_betrays
+    if:
+      all:
+      - flag: edrin_joined_as_guide
+      - narrative: Эдрин предаёт отряд или пытается предупредить часовых
+    then: Бран без колебаний убивает Эдрина (месть за перебитых егерей Ложи)
+    once: true
+  attitude: 85
+  known_to_player:
+  - '20 лет назад загонял тварь Мора в шахты Железного Кряжа: из 40 вышли 4'
+  - Левая рука выжжена клеймом Мора
+  - Ложу объявили браконьерами указом Ольбрехта полгода назад; людей Брана вырезали наёмники Варена
+  location_id: iron_ridge_foothills
+  follows: hero
+  species_id: human
+  relations_text: 'Роль: Мастер Ложи Северного Ветра; под личиной травника «Сухой Вереск». Вид: человек (≈50 лет, седой, широкоплечий). Сейчас: В отряде Грея у подножия Кряжа. Связи: grey: наставник/союзник; jorgen: егерь Ложи; lira: егерь Ложи.'
+  origin: pack
+- id: bron_crafter
+  name: Брон
+  named: true
+  key: false
+  motive: Торговля
+  means:
+  - кузня
+  - крафт из костяных пластин
+  attitude: 50
+  known_to_player:
+  - Укрепил куртку Грея, сделал костяные бронебойные наконечники
+  location_id: chernolesye
+  species_id: human
+  relations_text: 'Роль: Кузнец/ремесленник в Чернолесье. Вид: человек. Сейчас: Чернолесье.'
+  origin: pack
+- id: captain_of_guard
+  name: Капитан Городской Стражи (имя не названо)
+  named: true
+  key: true
+  motive: Защитить город и деревни
+  means:
+  - гарнизон и ополчение (сотня/две сотни)
+  - арсенал Ратуши
+  - конные вестовые, сигнальные костры
+  opportunity:  # draft
+  - id: advance_on_forge
+    if:
+      all:
+      - time_after: 23781600
+      - npc_status:
+          id: nazir
+          is: alive
+    then: Не дождавшись вестей от Грея, выводит заслон из предгорных деревень к Кузнице Пепла
+    once: true
+  attitude: 90
+  known_to_player:
+  - Ранен в плечо/бок в бою у Ратуши
+  - Принял план «Щит и Клинок»
+  secrets:
+  - id: captain_of_guard_secret_1
+    text: Слеп к древней магии (по словам Брана)
+    reveal_if:
+      narrative: 'герой узнаёт: Слеп к древней магии (по словам Брана)'
+  location_id: iron_ridge_foothills_villages
+  species_id: human
+  relations_text: 'Роль: Глава городской стражи. Вид: человек. Сейчас: Возглавляет заслон в предгорьях Железного Кряжа: оповещение деревень, перехват рейдеров. Связи: grey: глубокое уважение, «город в неоплатном долгу»; bran: спорили на совете.'
+  origin: pack
+- id: edrin
+  name: Эдрин
+  named: true
+  key: true
+  motive: Искупление; вера в Селунэ
+  means:
+  - знание Кузницы Пепла, шахт и смен часовых
+  opportunity:  # draft
+  - id: changes_mind
+    if:
+      all:
+      - flag: edrin_joined_as_guide
+      - narrative: Эдрин говорит вслух, что передумал
+    then: Остаётся у подножия и не идёт к шахте -- Грей обещал не принуждать
+    once: true
+    key: true
+  attitude: 50
+  known_to_player:
+  - Послушник 3-го круга, взят полгода назад за долг деревни за зерно
+  - Тайно носит медальон Селунэ (полумесяц/серп и звезда)
+  - Белая сова Селунэ смотрела на него
+  - Не берёт оружия и не участвует в бою
+  secrets:
+  - id: edrin_secret_1
+    text: Расположение личных покоев Назира — не уверен
+    reveal_if:
+      narrative: 'герой узнаёт: Расположение личных покоев Назира — не уверен'
+  location_id: iron_ridge_foothills
+  follows: hero
+  species_id: human
+  relations_text: 'Роль: Аколит/писарь Братства Мора, теперь проводник отряда. Вид: человек (23 года по механике, «лет 25» в нарративе). Сейчас: Едет позади Йоргена, ведёт к Восточной шахте. Связи: grey: сам решил помочь; условие — сказать вслух, если передумает; selune: верующий.'
+  origin: pack
+- id: erik
+  name: Эрик
+  named: true
+  key: false
+  motive: Выжить; обещаны свобода и серебро
+  means:
+  - знание паролей Ордена
+  attitude: 40
+  known_to_player:
+  - Провёл Грея к лазу на Мёртвом Кургане
+  - Выманил Варена к Смолокурне
+  - Готов дать показания
+  location_id: city_ratusha
+  species_id: human
+  relations_text: 'Роль: Наёмный пехотинец культа, завербован Греем. Вид: человек (молодой). Сейчас: Последний раз — у Ратуши со стражей в финале гл. I; дальше не упоминается. Связи: varen: обманул его; grey: служит из страха.'
+  origin: pack
+- id: ethan
+  name: Итан
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: chance
+    by: null
+    at_s: 0
+    location_id: null
+    text: погиб до начала истории, останки найдены Греем в Чёртовом Затоне
+  motive: Выследить и выбить гончих Топкого болота, чтобы деревне было безопасно  # draft
+  means:
+  - Сын Ольгерда, охотник
+  known_to_player:
+  - Погиб у Чёртова Затона; его дневник описывал пути культистов
+  location_id: devils_backwater
+  species_id: human
+  relations_text: 'Роль: Сын Ольгерда, охотник. Вид: человек. Сейчас: Останки у старой ивы (дневник и медальон у Ольгерда). Связи: olgerd: сын.'
+  origin: pack
+- id: father_mark
+  name: Отец Марк
+  named: true
+  key: true
+  motive: Противостоять тьме Бездны
+  means:
+  - Освящённая Печать
+  - тайник под алтарём
+  - благословения
+  opportunity:  # draft
+  - id: reads_folio_with_hero
+    if:
+      all:
+      - hero_at: sanctuary_of_dawn
+      - flag: abyss_keys_folio_stored_with_father_mark
+    then: Предлагает вскрыть печать на фолианте «Ключи Бездны» вместе с героем -- в нём могут быть сведения о печатях Могильника
+    once: true
+  attitude: 70
+  known_to_player:
+  - Опознал Орден Разбитого Ключа и свисток подчинения
+  - Хранит ларец с фолиантом «Ключи Бездны» под Освящённой Печатью
+  location_id: sanctuary_of_dawn
+  species_id: human
+  relations_text: 'Роль: Жрец Латандра, Святилище Рассвета. Вид: человек. Сейчас: Святилище Рассвета (в гл. II не упоминается). Связи: grey: союзник.'
+  origin: pack
+- id: grok_innkeeper
+  name: Грок (трактирщик «Пьяного Дракона»)
+  named: true
+  key: false
+  motive: Защитить таверну и Мило; благодарен Грею
+  means:
+  - таверна (кров, еда, слухи)
+  - ключи от подвала
+  - деньги (заплатил 15 зм)
+  attitude: 85
+  known_to_player:
+  - Нанял Грея спасти Мило за 15 золотых
+  - Нарисовал схему Старой башни
+  - Имя «мастер Грок» прозвучало только в гл. II из уст Мило
+  location_id: tavern_drunken_dragon
+  relations_text: 'Роль: Хозяин таверны «Пьяный Дракон». Вид: полуорк (одноглазый, грузный). Сейчас: Таверна «Пьяный Дракон». Связи: milo: работодатель/опекун; grey: благодарный должник.'
+  origin: pack
+- id: hek
+  name: Хэк
+  named: true
+  key: false
+  motive: Торговля
+  means:
+  - снаряжение для болот
+  attitude: 40
+  known_to_player:
+  - Продал Грею стрелы, противоядия, болотоступы, шест, карту болот
+  location_id: shop_hunting_horn
+  species_id: human
+  relations_text: 'Роль: Торговец, лавка «Охотничий Рог». Вид: человек (коренастый ветеран с седой бородой). Сейчас: Лавка «Охотничий Рог» на торговой площади.'
+  origin: pack
+- id: horst
+  name: Хорст
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: city_waterworks
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Деньги
+  means:
+  - Старший Смотритель Шлюзов
+  attitude: -100
+  known_to_player:
+  - Должен был слить яд до заката; убит стрелой Грея, тело унесло течением
+  location_id: city_waterworks
+  species_id: human
+  relations_text: 'Роль: Старший Смотритель Шлюзов. Вид: человек (грузный, лысеющий). Сейчас: Мёртв. Связи: varen: подкуплен.'
+  origin: pack
+- id: jorgen
+  name: Йорген
+  named: true
+  key: false
+  motive: Служба Ложе
+  means:
+  - двуручная секира
+  - капканы
+  - знание берлог Кряжа
+  attitude: 70
+  known_to_player:
+  - Держал коней в засаде; убил/оглушил орков у Чёрного Истока
+  location_id: iron_ridge_foothills
+  follows: hero
+  species_id: human
+  relations_text: 'Роль: Егерь Ложи, зверолов. Вид: человек (коренастый, медвежий тулуп). Сейчас: В отряде, замыкающий. Связи: bran: подчинённый.'
+  origin: pack
+- id: lira
+  name: Лира
+  named: true
+  key: false
+  motive: Служба Ложе
+  means:
+  - дальнобойный тисовый лук
+  - подзорная труба
+  - совиный свист как сигнал
+  attitude: 70
+  known_to_player:
+  - Зарисовала схему Кузницы по словам Эдрина
+  location_id: iron_ridge_foothills
+  follows: hero
+  relations_text: 'Роль: Егерь Ложи, лучница-разведчица. Вид: полуэльфийка. Сейчас: В отряде, головной дозор. Связи: bran: подчинённая.'
+  origin: pack
+- id: magister
+  name: Магистр (Второго Круга)
+  named: true
+  key: false
+  motive: Закончить ритуал
+  means:
+  - Покровитель/глава ордена, упомянут в записке и письме
+  attitude: -80
+  known_to_player:
+  - 'Записка: «несите фолиант в Аббатство... Магистр сам закончит ритуал»'
+  - Письмо Иерарха адресовано «Магистру Второго Круга»; упомянут «Совет Второго Круга»
+  secrets:
+  - id: magister_secret_1
+    text: Личность не раскрыта (возможно, Варен/Ольбрехт — не подтверждено)
+    reveal_if:
+      narrative: 'герой узнаёт: Личность не раскрыта (возможно, Варен/Ольбрехт — не подтверждено)'
+  relations_text: 'Роль: Покровитель/глава ордена, упомянут в записке и письме.'
+  origin: pack
+- id: milo
+  name: Мило
+  named: true
+  key: true
+  motive: Верность Грею, вера в Селунэ
+  means:
+  - медный амулет Селунэ (создаёт лунный купол, защищающий от яда)
+  - знание конюшен Ратуши и караульных
+  opportunity:  # draft
+  - id: waits_in_ratusha
+    if:
+      npc_status:
+        id: nazir
+        is: dead
+    then: Мило встречает Грея в Ратуше; Капитан пристраивает его учеником в гильдию оружейников, как обещал
+    once: true
+  attitude: 100
+  known_to_player:
+  - Видел татуировку культиста и подслушал про «печать под старой башней»
+  - Амулет нагревался и светился, когда Грей сражался; в Ратуше создал лунный барьер
+  - Амулет потемнел, «впитал скверну», но связь с богиней окрепла
+  secrets:
+  - id: milo_secret_1
+    text: Почему амулет Селунэ реагирует на Мор — не раскрыто
+    reveal_if:
+      narrative: 'герой узнаёт: Почему амулет Селунэ реагирует на Мор — не раскрыто'
+  location_id: city_ratusha
+  relations_text: 'Роль: Помощник трактирщика. Сейчас: Офицерский флигель / личные покои коменданта Ратуши под охраной гвардейцев; Капитан обещал после похода пристроить в гильдию оружейников. Связи: grok_innkeeper: помощник; grey: дважды спасён, называет «дядя Грей»; selune: верующий.'
+  origin: pack
+- id: mor_lord
+  name: Мор-Владыка
+  named: true
+  key: true
+  motive: Пробудиться
+  means:
+  - Первородная тварь, запечатанная в Древнем Могильнике
+  opportunity:  # draft
+  - id: awakens
+    if:
+      all:
+      - time_after: 23781600
+      - npc_status:
+          id: nazir
+          is: alive
+      - narrative: Кровавая жертва принесена у саркофага в Древнем Могильнике
+    then: Печати Могильника трескаются -- Мор-Владыка просыпается
+    once: true
+    key: true
+  attitude: -100
+  known_to_player:
+  - Запечатана Ложей ~300 лет назад под Железным Кряжем; 20 лет назад загнана в шахты
+  - «Владыка просыпается» (записка Назира)
+  secrets:
+  - id: mor_lord_secret_1
+    text: Истинная природа
+    reveal_if:
+      narrative: 'герой узнаёт: Истинная природа'
+  location_id: ancient_tomb
+  relations_text: 'Роль: Первородная тварь, запечатанная в Древнем Могильнике. Сейчас: Саркофаг в Могильнике под Кузницей Пепла. Связи: nazir: почитатель.'
+  tags:
+  - mor
+  origin: pack
+- id: nazir
+  name: Верховный Жрец Назир
+  named: true
+  key: true
+  motive: Пробудить Мор-Владыку и вскрыть Могильник; без Ключей — кровавой жертвой
+  means:
+  - ~30 горных орков, 8–12 алхимиков, 3 мутанта Мора
+  - 'алхимическая лаборатория: серные испарения, кислоты, горючий газ'
+  - рейдеры за жертвами
+  opportunity:  # draft
+  - id: ritual_at_dawn
+    if:
+      all:
+      - time_after: 23781600
+      - npc_status:
+          id: nazir
+          is: alive
+    then: Начинает ритуал у саркофага над трещиной -- вскрыть Могильник кровавой жертвой и пробудить Мор-Владыку
+    once: true
+    key: true
+  - id: answers_black_spring_alarm
+    if:
+      flag: alarm_raised_at_black_spring
+    then: Узнав о налёте у Чёрного Истока, усиливает охрану верхнего яруса и ждёт у алтаря
+    once: true
+  attitude: -100
+  known_to_player:
+  - Бывший королевский алхимик, бежал на Север 15 лет назад
+  - 'Специализация: чумные миазмы, некроз, трансмутация'
+  - Не спит 4 дня, убил двух помощников, не выходит из алтарного зала 3 дня
+  - Без колб беззащитен; слепое пятно — сзади, со стороны саркофага
+  - Уязвим к серебру и звёздной стали (механика)
+  secrets:
+  - id: nazir_secret_1
+    text: Расположение личных покоев
+    reveal_if:
+      narrative: 'герой узнаёт: Расположение личных покоев'
+  location_id: ash_forge
+  species_id: human
+  relations_text: 'Роль: Глава культа Бездонного Мора в Кузнице Пепла. Вид: человек. Сейчас: Верхний ярус Кузницы Пепла, алтарный зал у саркофага. Связи: olbrecht: связной; mor_lord: служит.'
+  origin: pack
+- id: olbrecht
+  name: Казначей Ольбрехт
+  named: true
+  key: true
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23716800
+    location_id: city_ratusha
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Скупить Нижний Город под шум эпидемии; служил силам за Назиром
+  means:
+  - казна
+  - указы Совета (объявил Ложу бандитами)
+  attitude: -100
+  known_to_player:
+  - Арестован в финале гл. I, освобождён диверсантами в гл. II
+  - Сожжён стрелой и обезглавлен Греем в холле Ратуши
+  - В портфеле — план экспедиции к Железному Кряжу с запиской Назира
+  secrets:
+  - id: olbrecht_secret_1
+    text: Кто именно стоял за Ольбрехтом, кроме Назира
+    reveal_if:
+      narrative: 'герой узнаёт: Кто именно стоял за Ольбрехтом, кроме Назира'
+  location_id: city_ratusha
+  species_id: human
+  relations_text: 'Роль: Казначей Торговой Гильдии / Городского Совета, вдохновитель сделки с Братством. Вид: человек. Сейчас: Мёртв. Связи: varen: сообщник; nazir: связной; bran: преследовал Ложу.'
+  origin: pack
+- id: olgerd
+  name: Ольгерд
+  named: true
+  key: false
+  motive: Узнать судьбу сына
+  means:
+  - карта скрытых троп
+  - арбалет «Загонщик» (отдан Грею)
+  attitude: 85
+  known_to_player:
+  - Грей вернул ему медальон и дневник погибшего сына Итана
+  location_id: chernolesye
+  species_id: human
+  relations_text: 'Роль: Старый охотник, знаток троп Топкого болота. Вид: человек. Сейчас: Изба на северном краю Чернолесья. Связи: ethan: отец; grey: благодарен, двери открыты.'
+  origin: pack
+- id: plague_brute
+  name: Громила Мора (мутант-тюремщик)
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23716800
+    location_id: city_ratusha
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Охранять пленных в казематах Ратуши по воле Братства Мора  # draft
+  means:
+  - Мутировавший старший тюремщик
+  attitude: -100
+  known_to_player:
+  - Убит Браном после уничтожения Алого Кристалла
+  location_id: city_ratusha
+  relations_text: 'Роль: Мутировавший старший тюремщик. Вид: мутант. Сейчас: Мёртв.'
+  tags:
+  - mor
+  origin: pack
+- id: scarred_mercenary
+  name: Старший наёмник со шрамом
+  named: true
+  key: false
+  motive: Деньги
+  means:
+  - Наёмник культа на Смолокурне
+  attitude: -60
+  known_to_player:
+  - Выдал засаду на Гадючьем Острове и пароль свистка
+  location_id: old_tar_works
+  species_id: human
+  relations_text: 'Роль: Наёмник культа на Смолокурне. Вид: человек. Сейчас: Оставлен связанным с кляпом на Смолокурне; дальнейшая судьба неизвестна.'
+  origin: pack
+- id: second_hierarch
+  name: Второй Иерарх
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: viper_island
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Доставить синий кристалл Ордена на Гадючий Остров и дальше по цепочке культа  # draft
+  means:
+  - Ритуалист в тёмно-синей мантии, вёл обоз с синим кристаллом
+  attitude: -100
+  known_to_player:
+  - Убит Греем на Гадючьем Острове; при нём письмо Варена
+  location_id: viper_island
+  species_id: human
+  relations_text: 'Роль: Ритуалист в тёмно-синей мантии, вёл обоз с синим кристаллом. Вид: человек (высокий, горбатый). Сейчас: Мёртв.'
+  origin: pack
+- id: sickle_executioner
+  name: Палач с серпом
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23716800
+    location_id: city_ratusha
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Освободить Ольбрехта и посеять панику в Ратуше  # draft
+  means:
+  - Культист в костяной маске
+  attitude: -100
+  known_to_player:
+  - Пытался убить Мило; убит двумя стрелами Грея
+  location_id: city_ratusha
+  species_id: human
+  relations_text: 'Роль: Культист в костяной маске. Вид: человек. Сейчас: Мёртв.'
+  origin: pack
+- id: supreme_hierarch
+  name: Верховный Иерарх Ордена
+  named: true
+  key: true
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: abbey_scarlet_mist
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Открыть Врата Бездны тремя ключами
+  means:
+  - Глава ритуала в Аббатстве Алого Тумана
+  attitude: -100
+  known_to_player:
+  - Убит костяной стрелой Грея в сердце
+  - Переписывался с «Магистром Второго Круга»
+  location_id: abbey_scarlet_mist
+  species_id: human
+  relations_text: 'Роль: Глава ритуала в Аббатстве Алого Тумана. Вид: человек. Сейчас: Мёртв. Связи: varen: союзник.'
+  origin: pack
+- id: third_hierarch
+  name: Третий Иерарх
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: dead_barrow
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Хранить Второе Святилище и архив Ордена на Мёртвом Кургане  # draft
+  means:
+  - Хранитель Второго Святилища на Мёртвом Кургане
+  attitude: -100
+  known_to_player:
+  - Сожжён зажигательной стрелой Грея; держал архив Варена
+  location_id: dead_barrow
+  species_id: human
+  relations_text: 'Роль: Хранитель Второго Святилища на Мёртвом Кургане. Вид: человек (высокий, тощий). Сейчас: Мёртв.'
+  origin: pack
+- id: tobin
+  name: Староста Тобин
+  named: true
+  key: false
+  motive: Безопасность деревни
+  means:
+  - деревенская казна
+  - ополчение
+  attitude: 70
+  known_to_player:
+  - Заплатил 30 зм за голову Кровозуба
+  location_id: chernolesye
+  species_id: human
+  relations_text: 'Роль: Староста деревни Чернолесье. Вид: человек (седеющие усы, резной посох). Сейчас: Чернолесье. Связи: olgerd: односельчанин.'
+  origin: pack
+- id: tower_cult_leader
+  name: Главный культист Старой башни (безымянный)
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: old_tower
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Снять печать с фолианта
+  means:
+  - Культист Ордена Разбитого Ключа
+  attitude: -100
+  known_to_player:
+  - Татуировка перевёрнутого замка на запястье; тот самый «тип в балахоне» из таверны (по словам Мило)
+  - Убит мечом Грея и упал с башни
+  location_id: old_tower
+  species_id: human
+  relations_text: 'Роль: Культист Ордена Разбитого Ключа. Вид: человек. Сейчас: Мёртв.'
+  origin: pack
+- id: varen
+  name: Советник Варен
+  named: true
+  key: true
+  motive: Власть над торговыми гильдиями; замести следы
+  means:
+  - золото
+  - наёмники
+  - ключи от шлюзов (изъяты)
+  opportunity:  # draft
+  - id: bargains_in_casemates
+    if:
+      all:
+      - hero_at: city_ratusha
+      - flag: varen_in_casemates
+    then: Торгуется -- за смягчение приговора выдаёт всё, что знает о Магистре Второго Круга
+    once: true
+  attitude: -90
+  known_to_player:
+  - Договор с культом, задерживал стражу, контрабанда реагентов
+  - Угрожал отравить резервуары «слезой Бездонного Мора»
+  - Выдал Ольбрехта и Хорста
+  - Тайник за гобеленом с лилией (500 крон) изъят Греем
+  location_id: city_ratusha
+  species_id: human
+  relations_text: 'Роль: Советник торговой гильдии Серого Квартала, покровитель культа. Вид: человек (плотный, перстни, соболий плащ). Сейчас: В казематах Ратуши, «раскололся до самой печёнки» (шаг 136). Связи: olbrecht: сообщник; horst: подкупил; erik: обманут им.'
+  origin: pack
+- id: warlock_viper
+  name: Чернокнижник в костяной маске
+  named: true
+  key: false
+  status: dead
+  death:
+    cause: goal
+    by: grey
+    at_s: 23630400
+    location_id: viper_island
+    text: погиб в бою с Греем и его союзниками (импорт, время примерное)
+  motive: Удержать заслон на Гадючьем Острове и не пропустить чужих к обозу  # draft
+  means:
+  - Командир заслона на Гадючьем Острове
+  attitude: -100
+  location_id: viper_island
+  species_id: human
+  relations_text: 'Роль: Командир заслона на Гадючьем Острове. Вид: человек. Сейчас: Мёртв.'
+  origin: pack

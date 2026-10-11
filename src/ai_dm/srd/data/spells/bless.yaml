@@ -1,0 +1,26 @@
+id: bless
+name: Благословение
+description: До трёх существ в пределах 30 фт. добавляют 1d4 к броскам атаки и спасброскам. Концентрация,
+  1 минута.
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: enchantment
+range_kind: ranged
+range_ft: 30
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: modifier
+  target: attack_roll
+  dice: 1d4
+  targets: 3
+- type: modifier
+  target: saving_throw
+  dice: 1d4
+  targets: 3
+upcast:
+  per_slot_level:
+    targets: 1

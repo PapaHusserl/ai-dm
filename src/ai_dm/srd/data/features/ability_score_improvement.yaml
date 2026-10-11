@@ -1,0 +1,5 @@
+id: ability_score_improvement
+name: Повышение характеристик
+description: Вы получаете черту «Повышение характеристик» или другую черту, подходящую по условиям.
+source: srd-5.2
+license: CC-BY-4.0

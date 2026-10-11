@@ -1,0 +1,11 @@
+id: goodberry
+name: Чудо-ягоды
+description: "В вашей руке появляются десять ягод, наделённых магией. Съеденная ягода восстанавливает 1 хит-пойнт, а десяти ягод достаточно, чтобы насытить существо на день. Через 24 часа нетронутые ягоды теряют силу."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: self
+duration: 1d
+classes:
+- ranger

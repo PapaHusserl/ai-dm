@@ -1,0 +1,31 @@
+id: acolyte
+name: Прислужник
+description: Служитель храма. Черта «Посвящённый в магию» со списком жреца.
+source: srd-5.2
+license: CC-BY-4.0
+abilities:
+- int
+- wis
+- cha
+skills:
+- insight
+- religion
+tool: calligraphers_supplies
+feat: magic_initiate
+equipment:
+- calligraphers_supplies
+- prayer_book
+- holy_symbol
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- robe
+gold_cp: 800
+gold_option_cp: 5000

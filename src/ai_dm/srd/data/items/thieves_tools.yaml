@@ -1,0 +1,6 @@
+id: thieves_tools
+name: Воровские инструменты
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 2500
+tool: true

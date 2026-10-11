@@ -1,0 +1,5 @@
+id: deafened
+name: Оглохший
+description: Вы не слышите и автоматически проваливаете проверки, требующие слуха.
+source: srd-5.2
+license: CC-BY-4.0

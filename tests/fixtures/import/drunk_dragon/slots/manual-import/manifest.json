@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "engine_version": "0.1.0",
+  "world_id": "drunk_dragon",
+  "campaign_id": "drunk_dragon",
+  "slot": "manual-import",
+  "saved_at": "2026-10-02T14:29:36+00:00",
+  "current_hero_id": "grey",
+  "heroes": [
+    "grey"
+  ]
+}

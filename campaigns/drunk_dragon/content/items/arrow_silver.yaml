@@ -1,0 +1,18 @@
+id: arrow_silver
+name: Серебряная стрела
+description: Наконечник из чистого серебра, против нежити и тварей Мора. Подарок Капитана
+  Стражи.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: extra_damage
+  dice: 2d6
+  damage_type: piercing
+  vs:
+  - undead
+  - mor
+- type: silvered

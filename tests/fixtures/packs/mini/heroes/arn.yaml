@@ -1,0 +1,16 @@
+id: arn
+choices:
+  name: Арн
+  species_id: human
+  class_id: fighter
+  background: soldier
+  ability_method: standard_array
+  ability_scores: {str: 15, dex: 13, con: 14, int: 8, wis: 10, cha: 12}
+  background_bonus: {str: 2, con: 1}
+  class_skills: [perception, survival]
+  weapon_masteries: [longsword, greatsword, shortsword]
+  fighting_style: defense
+  inventory: [chain_mail, shield, longsword]
+  equip: [chain_mail, shield, longsword]
+  species_choices: {skill: stealth, feat: skilled}
+  feat_choices: {skilled: [medicine, religion, nature]}

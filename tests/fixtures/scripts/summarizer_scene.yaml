@@ -1,0 +1,14 @@
+# Мок роли summarizer (этап 4, P1): три границы сцены, на каждую -- один вызов scene_summary (после него вызова модели нет).
+steps:
+  - tool_calls:
+      - id: ss-1
+        name: scene_summary
+        input: {type: scene_summary, title: "Первая сцена", summary: "Выжимка первой сцены."}
+  - tool_calls:
+      - id: ss-2
+        name: scene_summary
+        input: {type: scene_summary, title: "", summary: "Выжимка второй сцены."}
+  - tool_calls:
+      - id: ss-3
+        name: scene_summary
+        input: {type: scene_summary, title: "", summary: "Выжимка третьей сцены."}

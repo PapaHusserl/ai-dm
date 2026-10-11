@@ -1,0 +1,24 @@
+id: soldier
+name: Солдат
+description: Закалённый службой воин.
+source: srd-5.2
+license: CC-BY-4.0
+abilities:
+- str
+- dex
+- con
+skills:
+- athletics
+- intimidation
+tool: gaming_set
+feat: savage_attacker
+equipment:
+- spear
+- shortbow
+- arrows
+- gaming_set
+- healers_kit
+- quiver
+- travelers_clothes
+gold_cp: 1400
+gold_option_cp: 5000

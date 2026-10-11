@@ -1,0 +1,40 @@
+# Мок-сценарий Б1б: герой на лету. Шаг 1 -- вызов hero_sheet (валидный лист для пака vale:
+# воин Борин, standard_array, набор класса a, один narrative-триггер), шаг 2 -- рассказ первого хода.
+steps:
+- tool_calls:
+  - id: sheet-1
+    name: hero_sheet
+    input:
+      type: hero_sheet
+      name: Борин
+      species_id: human
+      class_id: fighter
+      ability_method: standard_array
+      ability_scores: {str: 15, dex: 13, con: 14, int: 8, wis: 10, cha: 12}
+      bonus_plus2: dex
+      bonus_plus1: [con]
+      class_skills: [perception, survival]
+      weapon_masteries: [longsword, greatsword, shortsword]
+      fighting_style: defense
+      class_kit: a
+      spells: []
+      prepared: []
+      species_skill: stealth
+      species_feat: skilled
+      feat_skills: []
+      species_feat_skills: [medicine, religion, nature]
+      background:
+        name: Бывший цирковой акробат
+        abilities: [dex, con, cha]
+        skills: [acrobatics, performance]
+        tool: thieves_tools
+        feat: alert
+        equipment: [crowbar]
+        gold_cp: 1000
+        description: Вырос в бродячем цирке.
+      background_gear: equipment
+      motive: Найти сестру.
+      means: [острый ум]
+      opportunity:
+      - {id: o1, then: отомстить, kind: narrative, ref: герой узнаёт о сестре, status: '', gte: 0}
+- {text: Огонь в очаге трещит.}

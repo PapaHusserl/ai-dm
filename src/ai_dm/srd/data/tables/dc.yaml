@@ -1,0 +1,11 @@
+id: dc
+name: Сложность проверок по категориям
+source: srd-5.2
+license: CC-BY-4.0
+rows:
+  'very_easy': 5
+  'easy': 10
+  'medium': 15
+  'hard': 20
+  'very_hard': 25
+  'nearly_impossible': 30

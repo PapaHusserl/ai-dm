@@ -1,0 +1,6 @@
+- id: cold_snap
+  type: cold
+  regions: [town]
+  mortality_multiplier: 2
+  kind: natural
+  cause: "season:winter"

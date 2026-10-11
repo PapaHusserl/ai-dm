@@ -1,0 +1,13 @@
+id: liel
+choices:
+  name: Лиэль
+  species_id: elf
+  class_id: wizard
+  background: sage
+  ability_method: standard_array
+  ability_scores: {str: 8, dex: 13, con: 14, int: 15, wis: 12, cha: 10}
+  background_bonus: {int: 2, con: 1}
+  class_skills: [investigation, medicine]
+  weapon_masteries: []
+  spells: [fire_bolt, magic_missile, burning_hands]
+  prepared: [magic_missile, burning_hands]

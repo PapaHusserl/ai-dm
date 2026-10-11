@@ -1,0 +1,280 @@
+{
+  "world_id": "old_world",
+  "rng": {
+    "algo": "pcg32",
+    "seed": 1,
+    "state": 7712769973955757386,
+    "inc": 109,
+    "draws": 35
+  },
+  "campaign_id": null,
+  "campaign_version": null,
+  "clock": {
+    "now_s": 4536,
+    "calendar": {
+      "months": [
+        {
+          "name": "Заревень",
+          "days": 30
+        },
+        {
+          "name": "Капельник",
+          "days": 30
+        },
+        {
+          "name": "Ветролом",
+          "days": 30
+        },
+        {
+          "name": "Цветень",
+          "days": 30
+        },
+        {
+          "name": "Грозовик",
+          "days": 30
+        },
+        {
+          "name": "Золотень",
+          "days": 30
+        },
+        {
+          "name": "Жарынь",
+          "days": 30
+        },
+        {
+          "name": "Сенокос",
+          "days": 30
+        },
+        {
+          "name": "Дожинник",
+          "days": 30
+        },
+        {
+          "name": "Листопад",
+          "days": 30
+        },
+        {
+          "name": "Морозень",
+          "days": 30
+        },
+        {
+          "name": "Темнозим",
+          "days": 30
+        }
+      ],
+      "holidays": [],
+      "seasons": [
+        {
+          "name": "зима",
+          "months": [
+            11,
+            12,
+            1
+          ]
+        },
+        {
+          "name": "весна",
+          "months": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "лето",
+          "months": [
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "осень",
+          "months": [
+            8,
+            9,
+            10
+          ]
+        }
+      ],
+      "epoch_note": ""
+    }
+  },
+  "npcs": {
+    "innkeeper": {
+      "id": "innkeeper",
+      "name": "Гарт",
+      "named": true,
+      "key": false,
+      "status": "alive",
+      "death": null,
+      "motive": "Хочет избавиться от шума в подвале и не растерять посетителей.",
+      "means": [
+        "знает все деревенские слухи",
+        "хранит ключ от подвала"
+      ],
+      "opportunity": [],
+      "attitude": 0,
+      "known_to_player": [],
+      "secrets": [],
+      "combat": null,
+      "creature": null,
+      "location_id": "lame_goose",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "",
+      "tags": [],
+      "origin": "pack",
+      "trade": null
+    },
+    "grakh": {
+      "id": "grakh",
+      "name": "Гракх",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "Хочет захватить припасы таверны и пленников для выкупа.",
+      "means": [
+        "ватага гоблинов"
+      ],
+      "opportunity": [],
+      "attitude": 0,
+      "known_to_player": [],
+      "secrets": [],
+      "combat": {
+        "monster_id": "goblin_boss",
+        "intent": "capture"
+      },
+      "creature": {
+        "hp_current": 10,
+        "hp_max": 21,
+        "hp_temp": 0,
+        "conditions": [],
+        "exhaustion": 0,
+        "active_effects": [],
+        "death_saves": {
+          "successes": 0,
+          "failures": 0,
+          "stable": false
+        },
+        "resources": {},
+        "concentration": null
+      },
+      "location_id": "cellar",
+      "follows": null,
+      "species_id": null,
+      "birth_s": null,
+      "groups": [],
+      "aging_steps": 0,
+      "favor": {},
+      "relations_text": "",
+      "tags": [],
+      "origin": "pack",
+      "trade": null
+    }
+  },
+  "factions": {},
+  "pantheon": {},
+  "locations": {
+    "vale": {
+      "id": "vale",
+      "name": "Вейл",
+      "parent_id": null,
+      "description": "Небольшая деревня на берегу реки.",
+      "tags": [],
+      "connections": [
+        {
+          "to": "lame_goose",
+          "distance_m": 150
+        }
+      ],
+      "visited": false,
+      "origin": "pack"
+    },
+    "lame_goose": {
+      "id": "lame_goose",
+      "name": "Таверна «Хромой гусь»",
+      "parent_id": "vale",
+      "description": "Единственная таверна в Вейле: низкий зал, стойка, лестница в подвал.",
+      "tags": [],
+      "connections": [
+        {
+          "to": "vale",
+          "distance_m": 150
+        },
+        {
+          "to": "cellar",
+          "distance_m": 20
+        }
+      ],
+      "visited": false,
+      "origin": "pack"
+    },
+    "cellar": {
+      "id": "cellar",
+      "name": "Подвал таверны",
+      "parent_id": "lame_goose",
+      "description": "Сырой подвал с бочками. В последнее время там поселились гоблины.",
+      "tags": [],
+      "connections": [
+        {
+          "to": "lame_goose",
+          "distance_m": 20
+        }
+      ],
+      "visited": false,
+      "origin": "pack"
+    }
+  },
+  "flags": {
+    "combat_ended:combat_1": true,
+    "visited:cellar": true
+  },
+  "events": [],
+  "tone": {
+    "mood": "приключенческое фэнтези",
+    "violence": "реалистично",
+    "horror": "",
+    "romance": "есть",
+    "language": "",
+    "hard_limits": [],
+    "soft_limits": [],
+    "notes": "violence: реалистично; horror: кровавый; language: русский"
+  },
+  "settings": {},
+  "lore": {
+    "world_text": "",
+    "truths": ""
+  },
+  "sim": {
+    "last_day": 0,
+    "last_season": "",
+    "last_year": 0,
+    "nudge": {
+      "scenes_off_main": 0,
+      "stage": 0,
+      "waiting": true,
+      "contact_npc": "",
+      "flags_seen": {}
+    },
+    "world_calls_today": 0,
+    "world_calls_day": -1,
+    "god_checked_s": {}
+  },
+  "mortality_per_day": 20000,
+  "natural": {
+    "chance_percent_per_season": 5,
+    "kinds": []
+  },
+  "nudge_scenes": 8,
+  "dangers": [],
+  "notices": [],
+  "fired": [],
+  "custom_items": {},
+  "custom_item_seq": 0
+}

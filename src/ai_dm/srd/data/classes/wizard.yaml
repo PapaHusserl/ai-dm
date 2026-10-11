@@ -1,0 +1,76 @@
+id: wizard
+name: Волшебник
+description: Заклинатель, черпающий силу из изучения магии.
+source: srd-5.2
+license: CC-BY-4.0
+hit_die: 6
+saving_throws:
+- int
+- wis
+skill_choices:
+  count: 2
+  options:
+  - arcana
+  - history
+  - insight
+  - investigation
+  - medicine
+  - nature
+  - religion
+armor_training: []
+weapon_training:
+- simple
+spellcasting:
+  ability: int
+  progression: full
+  cantrips: 3
+  spells: 6
+  prepared: 4
+  prepared_by_level:
+    1: 4
+    2: 5
+    3: 6
+    4: 7
+    5: 9
+    6: 10
+    7: 11
+    8: 12
+    9: 14
+    10: 15
+    11: 16
+    12: 16
+    13: 17
+    14: 18
+    15: 19
+    16: 21
+    17: 22
+    18: 23
+    19: 24
+    20: 25
+features:
+- level: 1
+  feature: spellcasting
+- level: 4
+  feature: ability_score_improvement
+- level: 8
+  feature: ability_score_improvement
+- level: 12
+  feature: ability_score_improvement
+- level: 16
+  feature: ability_score_improvement
+- level: 19
+  feature: ability_score_improvement
+starting_kits:
+- id: a
+  items:
+  - dagger
+  - dagger
+  - quarterstaff
+  - robe
+  - explorers_pack
+  equip:
+  - quarterstaff
+  gold_cp: 500
+- id: b
+  items: []
+  gold_cp: 5500

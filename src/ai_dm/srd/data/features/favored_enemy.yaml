@@ -1,0 +1,21 @@
+id: favored_enemy
+name: Избранный враг
+description: Заклинание «Метка охотника» у вас всегда подготовлено. Вы можете накладывать его без траты ячейки — два раза (три на 5 уровне); все использования возвращаются после продолжительного отдыха.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: resource
+  pool: favored_enemy
+  max: 2
+  max_by_level:
+    1: 2
+    2: 2
+    3: 2
+    4: 2
+    5: 3
+  recover:
+  - "on": long_rest
+    amount: all
+- type: spell_access
+  spell: hunters_mark
+  pool: favored_enemy

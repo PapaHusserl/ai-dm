@@ -1,0 +1,38 @@
+{
+  "world_id": "old_world",
+  "rng": {
+    "algo": "pcg32",
+    "seed": 7,
+    "state": 6364136223846793005,
+    "inc": 109,
+    "draws": 3
+  },
+  "campaign_id": null,
+  "campaign_version": null,
+  "clock": {
+    "now_s": 90000
+  },
+  "npcs": {
+    "mentor_aldric": {
+      "id": "mentor_aldric",
+      "name": "Олдрик",
+      "means": [
+        "магия крови"
+      ],
+      "attitude": 15,
+      "status": "alive"
+    }
+  },
+  "factions": {},
+  "locations": {
+    "tavern": {
+      "id": "tavern",
+      "name": "Таверна"
+    }
+  },
+  "flags": {
+    "met_aldric": true
+  },
+  "events": [],
+  "settings": {}
+}

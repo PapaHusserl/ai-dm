@@ -1,0 +1,7 @@
+id: snow_ghost_cloak
+name: Плащ «Снежный Призрак»
+description: Мех горного снежного барса, руна тепла, водоотталкивающий; маскировка
+  в снегу и скалах (+2 к Скрытности).
+cost_cp: 0
+source: campaign:drunk_dragon
+category: clothing

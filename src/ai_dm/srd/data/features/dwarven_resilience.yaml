@@ -1,0 +1,14 @@
+id: dwarven_resilience
+name: Дварфийская стойкость
+description: Вы имеете сопротивление урону ядом и совершаете спасброски от состояния «Отравлен» с преимуществом.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: modifier
+  target: damage
+  mode: resistance
+  damage_type: poison
+- type: modifier
+  target: saving_throw
+  mode: advantage
+  condition: poisoned

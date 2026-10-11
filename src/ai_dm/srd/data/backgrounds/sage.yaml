@@ -1,0 +1,29 @@
+id: sage
+name: Мудрец
+description: Учёный-книжник. Черта «Посвящённый в магию» со списком волшебника.
+source: srd-5.2
+license: CC-BY-4.0
+abilities:
+- con
+- int
+- wis
+skills:
+- arcana
+- history
+tool: calligraphers_supplies
+feat: magic_initiate
+equipment:
+- quarterstaff
+- calligraphers_supplies
+- history_book
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- parchment
+- robe
+gold_cp: 800
+gold_option_cp: 5000

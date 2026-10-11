@@ -1,0 +1,16 @@
+id: arrow_fire
+name: Зажигательная стрела
+description: Поджигает цель и горючее.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: extra_damage
+  dice: 1d6
+  damage_type: fire
+- type: burn
+  dice: 1d6
+  damage_type: fire

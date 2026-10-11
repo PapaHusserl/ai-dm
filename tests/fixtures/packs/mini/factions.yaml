@@ -1,0 +1,8 @@
+- id: guild
+  name: Гильдия воров
+  members: [aldric]
+  regions: [town]
+  opportunity:
+    - id: guild_hunt
+      if: {npc_status: {id: mara, is: dead}}
+      then: Гильдия начинает охоту

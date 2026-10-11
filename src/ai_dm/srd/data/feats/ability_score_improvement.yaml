@@ -1,0 +1,7 @@
+id: ability_score_improvement
+name: Повышение характеристик
+description: Одна характеристика растёт на 2 или две — на 1 (не выше 20). Можно брать повторно.
+source: srd-5.2
+license: CC-BY-4.0
+category: general
+repeatable: true

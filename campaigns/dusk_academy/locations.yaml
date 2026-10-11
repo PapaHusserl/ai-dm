@@ -1,0 +1,117 @@
+- id: dusk_cape
+  name: Сумеречный Мыс
+  description: Дождливый северный остров с соснами, скалами и вечным туманом.
+  tags:
+  - остров
+  connections:
+  - to: misty_haven
+    distance_m: 1000
+- id: misty_haven
+  name: Туманная Гавань
+  parent_id: dusk_cape
+  description: Городок у залива — мокрая брусчатка, фонари, чайная и книжная лавка.
+  tags:
+  - городок
+  connections:
+  - to: dusk_cape
+    distance_m: 1000
+  - to: ferry_pier
+    distance_m: 300
+  - to: rain_teahouse
+    distance_m: 100
+  - to: academy
+    distance_m: 800
+  - to: silverbrook
+    distance_m: 1500
+- id: ferry_pier
+  name: Паромный пирс
+  parent_id: misty_haven
+  description: Деревянный пирс, качающиеся фонари, запах соли и мокрых сосен.
+  tags:
+  - пирс
+  connections:
+  - to: misty_haven
+    distance_m: 300
+- id: rain_teahouse
+  name: Чайная «Под дождём»
+  parent_id: misty_haven
+  description: Тёплая чайная с запотевшими окнами, где студенты сидят до закрытия.
+  tags:
+  - чайная
+  connections:
+  - to: misty_haven
+    distance_m: 100
+- id: academy
+  name: Академия Сумеречного Мыса
+  parent_id: dusk_cape
+  description: Старая школа магии на холме — шпили, витражи, длинные коридоры.
+  tags:
+  - школа
+  connections:
+  - to: misty_haven
+    distance_m: 800
+  - to: candle_library
+    distance_m: 50
+  - to: glass_greenhouse
+    distance_m: 150
+  - to: north_tower
+    distance_m: 100
+- id: candle_library
+  name: Библиотека Неугасимых Свечей
+  parent_id: academy
+  description: Высокие стеллажи, лестницы и свечи, которые не гаснут; тихий зал для двоих.
+  tags:
+  - библиотека
+  connections:
+  - to: academy
+    distance_m: 50
+- id: glass_greenhouse
+  name: Стеклянная оранжерея
+  parent_id: academy
+  description: Тёплая оранжерея с лунными цветами, которые раскрываются только ночью.
+  tags:
+  - оранжерея
+  connections:
+  - to: academy
+    distance_m: 150
+- id: north_tower
+  name: Северная башня
+  parent_id: academy
+  description: Общежитие первокурсников; с крыши видно весь залив.
+  tags:
+  - общежитие
+  connections:
+  - to: academy
+    distance_m: 100
+- id: silverbrook
+  name: Ручей Серебровод
+  parent_id: dusk_cape
+  description: Светлый ручей в лесу — граница между землями ночного народа и клана.
+  tags:
+  - лес
+  - граница
+  connections:
+  - to: misty_haven
+    distance_m: 1500
+  - to: velar_house
+    distance_m: 700
+  - to: coast_forest
+    distance_m: 500
+- id: velar_house
+  name: Дом Веларов
+  parent_id: dusk_cape
+  description: Стеклянный дом в лесу, полный книг, старинной музыки и тихого света.
+  tags:
+  - усадьба
+  connections:
+  - to: silverbrook
+    distance_m: 700
+- id: coast_forest
+  name: Прибрежный лес
+  parent_id: dusk_cape
+  description: Сосновый лес у скал, где живёт Прибрежный клан; костры и деревянные дома.
+  tags:
+  - лес
+  connections:
+  - to: silverbrook
+    distance_m: 500

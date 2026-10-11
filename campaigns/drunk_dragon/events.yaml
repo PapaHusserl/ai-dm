@@ -1,0 +1,33 @@
+# Сгенерировано devtools/import_dragon.py из слота saves/drunk_dragon/slots/manual-import.
+# `# draft` -- поле заполнил ИИ (решение 4а), на утверждение проектировщику; список --
+# docs/decisions/stage3-p7-drafts.md.
+- id: harvest_raids
+  type: набеги за жертвами на деревни предгорий
+  regions:
+  - iron_ridge_foothills_villages
+  - heather_wastes
+  started_s: 23673600
+  ends_when:
+    narrative: Заслон Капитана перехватывает рейды / Назир повержен
+  cause: 'Назиру нужны сотни жертв; рейдеры с клетками (свитки: пять деревень, «пригоден для жатвы»)'
+  kind: caused
+- id: mor_lord_awakening
+  type: пробуждение древней твари
+  regions:
+  - ancient_tomb
+  started_s: 23673600
+  ends_when:
+    narrative: Саркофаг остаётся запечатан
+  cause: «Владыка просыпается» (записка Назира)
+  kind: caused
+- id: nazir_ritual
+  type: ритуал пробуждения Мор-Владыки
+  regions:
+  - ash_forge
+  - iron_ridge
+  started_s: 23673600
+  ends_at_s: 23781600
+  ends_when:
+    narrative: Назир убит или ритуал сорван; иначе начнётся на рассвете (~через 8 ч от 23:00)
+  cause: Назир лишился Кристаллов и хочет вскрыть Могильник кровавой жертвой
+  kind: caused

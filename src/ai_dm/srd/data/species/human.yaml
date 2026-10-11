@@ -1,0 +1,11 @@
+id: human
+name: Человек
+description: Универсальный и находчивый народ.
+source: srd-5.2
+license: CC-BY-4.0
+speed_ft: 30
+size: medium
+traits:
+- resourceful
+- skillful
+- versatile

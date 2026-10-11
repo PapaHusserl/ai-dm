@@ -1,0 +1,164 @@
+{
+  "world_id": "old_world",
+  "rng": {
+    "algo": "pcg32",
+    "seed": 7,
+    "state": 370039017845924049,
+    "inc": 109,
+    "draws": 0
+  },
+  "campaign_id": "vale",
+  "campaign_version": null,
+  "clock": {
+    "now_s": 0,
+    "calendar": {
+      "months": [
+        {
+          "name": "Заревень",
+          "days": 30
+        },
+        {
+          "name": "Капельник",
+          "days": 30
+        },
+        {
+          "name": "Ветролом",
+          "days": 30
+        },
+        {
+          "name": "Цветень",
+          "days": 30
+        },
+        {
+          "name": "Грозовик",
+          "days": 30
+        },
+        {
+          "name": "Золотень",
+          "days": 30
+        },
+        {
+          "name": "Жарынь",
+          "days": 30
+        },
+        {
+          "name": "Сенокос",
+          "days": 30
+        },
+        {
+          "name": "Дожинник",
+          "days": 30
+        },
+        {
+          "name": "Листопад",
+          "days": 30
+        },
+        {
+          "name": "Морозень",
+          "days": 30
+        },
+        {
+          "name": "Темнозим",
+          "days": 30
+        }
+      ]
+    }
+  },
+  "npcs": {
+    "mentor_aldric": {
+      "id": "mentor_aldric",
+      "name": "Олдрик",
+      "named": true,
+      "key": true,
+      "status": "alive",
+      "death": null,
+      "motive": "спасти сестру",
+      "means": [
+        "магия крови",
+        "долг гильдии воров"
+      ],
+      "opportunity": [
+        {
+          "id": "steal_grail",
+          "if_": {
+            "type": "all",
+            "items": [
+              {
+                "type": "hero_has",
+                "item": "blood_grail"
+              },
+              {
+                "type": "npc_status",
+                "id": "mentor_aldric",
+                "is_": "alive"
+              }
+            ]
+          },
+          "then": "выкрадет Грааль",
+          "once": true,
+          "state": "active",
+          "cooldown": null,
+          "key": false,
+          "fired_count": 0,
+          "last_fired_at": null
+        }
+      ],
+      "attitude": 20,
+      "known_to_player": [],
+      "secrets": [
+        {
+          "id": "sister_vampire",
+          "text": "сестра -- вампир",
+          "reveal_if": {
+            "type": "flag",
+            "name": "found",
+            "value": true
+          },
+          "revealed": false
+        }
+      ],
+      "combat": null,
+      "creature": null,
+      "location_id": null,
+      "species_id": null,
+      "birth_s": null,
+      "favor": {},
+      "relations_text": "",
+      "origin": "pack"
+    }
+  },
+  "factions": {},
+  "pantheon": {},
+  "locations": {},
+  "flags": {
+    "met_aldric": true
+  },
+  "events": [
+    {
+      "id": "grey_plague",
+      "type": "plague",
+      "regions": [
+        "port_vale"
+      ],
+      "affects": [],
+      "mortality_multiplier": 1,
+      "hazard": null,
+      "started_s": null,
+      "ends_at_s": null,
+      "ends_when": null,
+      "cause": null
+    }
+  ],
+  "tone": {
+    "mood": "мрачный",
+    "violence": "реалистично",
+    "horror": "",
+    "romance": "",
+    "language": "",
+    "hard_limits": [
+      "насилие над детьми"
+    ],
+    "soft_limits": []
+  },
+  "settings": {}
+}

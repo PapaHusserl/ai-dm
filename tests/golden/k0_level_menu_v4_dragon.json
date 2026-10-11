@@ -1,0 +1,41 @@
+{
+  "hp_gain": 7,
+  "level": 4,
+  "steps": [
+    {
+      "step": "asi_or_feat",
+      "options": [
+        "str+2",
+        "str+dex",
+        "str+con",
+        "str+int",
+        "str+wis",
+        "str+cha",
+        "dex+2",
+        "dex+con",
+        "dex+int",
+        "dex+wis",
+        "dex+cha",
+        "con+2",
+        "con+int",
+        "con+wis",
+        "con+cha",
+        "int+2",
+        "int+wis",
+        "int+cha",
+        "wis+2",
+        "wis+cha",
+        "cha+2"
+      ]
+    },
+    {
+      "step": "spells",
+      "options": [
+        "alarm",
+        "entangle",
+        "goodberry",
+        "longstrider"
+      ]
+    }
+  ]
+}

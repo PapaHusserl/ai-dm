@@ -1,0 +1,10 @@
+{
+  "current_scene": {
+    "id": "tavern"
+  },
+  "current_chapter": {
+    "id": "c1"
+  },
+  "active_combat": null,
+  "pending_decision": null
+}

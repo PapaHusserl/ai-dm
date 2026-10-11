@@ -1,0 +1,16 @@
+id: hunting_dirk
+name: Охотничий кортик
+category: simple
+kind: melee
+damage_dice: 1d4
+damage_type: piercing
+cost_cp: 200
+properties:
+- finesse
+- light
+- thrown
+mastery: nick
+range_normal_ft: 20
+range_long_ft: 60
+description: Трофейный капитанский кортик из главы I.
+source: campaign:drunk_dragon

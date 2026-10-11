@@ -1,0 +1,11 @@
+id: archery
+name: Стрельба
+description: Вы получаете +2 к броскам атаки дальнобойным оружием.
+source: srd-5.2
+license: CC-BY-4.0
+category: fighting_style
+effects:
+- type: modifier
+  target: attack_roll
+  value: 2
+  when: ranged_weapon

@@ -1,0 +1,13 @@
+id: greatsword
+name: Двуручный меч
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 2d6
+damage_type: slashing
+cost_cp: 5000
+properties:
+- heavy
+- two_handed
+mastery: graze

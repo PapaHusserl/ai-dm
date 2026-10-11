@@ -1,0 +1,6 @@
+id: travelers_clothes
+name: Дорожная одежда
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 200
+category: clothing

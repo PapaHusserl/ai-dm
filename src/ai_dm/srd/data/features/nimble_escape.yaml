@@ -1,0 +1,6 @@
+id: nimble_escape
+name: Проворное бегство
+description: Бонусным действием существо совершает действие Отход или Засада.
+source: srd-5.2
+license: CC-BY-4.0
+activation: bonus_action

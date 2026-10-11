@@ -1,0 +1,11 @@
+id: defense
+name: Защита
+description: Пока вы носите доспех, вы получаете бонус +1 к КД.
+source: srd-5.2
+license: CC-BY-4.0
+category: fighting_style
+effects:
+- type: modifier
+  target: ac
+  value: 1
+  when: wearing_armor

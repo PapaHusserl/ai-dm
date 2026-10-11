@@ -1,0 +1,5 @@
+id: fighting_style
+name: Боевой стиль
+description: Вы получаете черту боевого стиля на ваш выбор (например, «Защита»).
+source: srd-5.2
+license: CC-BY-4.0

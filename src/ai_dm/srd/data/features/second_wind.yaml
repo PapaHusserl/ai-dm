@@ -1,0 +1,22 @@
+id: second_wind
+name: Второе дыхание
+description: Бонусным действием вы восстанавливаете 1d10 + уровень воина хит-пойнтов. Два использования;
+  одно восстанавливается после короткого отдыха, все — после продолжительного.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: resource
+  pool: second_wind
+  max: 2
+  recover:
+  - "on": short_rest
+    amount: 1
+  - "on": long_rest
+    amount: all
+- type: action
+  target: bonus_action
+- type: heal
+  dice: 1d10
+  add: class_level
+  class_id: fighter
+activation: bonus_action

@@ -1,0 +1,10 @@
+id: leather_armor
+name: Кожаный доспех
+description: КД 11 + модификатор Ловкости.
+source: srd-5.2
+license: CC-BY-4.0
+category: light
+ac: 11
+cost_cp: 1000
+dex_cap: null
+strength_min: 0

@@ -1,0 +1,11 @@
+id: savage_attacker
+name: Свирепый атакующий
+description: Один раз за ход при попадании оружием вы можете бросить кости урона оружия дважды и использовать
+  любой результат.
+source: srd-5.2
+license: CC-BY-4.0
+category: origin
+effects:
+- type: reroll
+  target: weapon_damage
+  when: once_per_turn

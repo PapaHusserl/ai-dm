@@ -1,0 +1,107 @@
+# Мок-сценарий Б3: import пака. Шаг 1 -- вызов pack (валидный пак: площадь и трактир, NPC Мара,
+# стража, фракция, бог Селунэ); те же данные, что import_kit.pack_input().
+steps:
+- tool_calls:
+  - id: pack-1
+    name: pack
+    input:
+      type: pack
+      name: Мини-импорт
+      start:
+        date: '0100-03-01'
+        time: 08:00
+        hero_location: inn
+        chapter_number: 1
+        chapter_title: ''
+        scene_summary: В трактире шумно, Мара считает монеты.
+      tone:
+        mood: мрачное фэнтези
+        violence: жестоко
+        horror: умеренно
+        romance: намёки
+        language: грубо
+        hard_limits: []
+        soft_limits: []
+        notes: Мир суров.
+      world_text: 'Город у реки: площадь и трактир.'
+      truths: Река не замерзает.
+      locations:
+      - id: square
+        name: Площадь
+        parent_id: ''
+        description: Шумная площадь.
+        connections:
+        - to: inn
+          distance_m: 50
+      - id: inn
+        name: Трактир
+        parent_id: square
+        description: ''
+        connections:
+        - to: square
+          distance_m: 50
+      npcs:
+      - id: mara
+        name: Мара
+        means:
+        - знает все слухи
+        named: true
+        key: true
+        motive: Хочет выкупить долг.
+        location_id: inn
+        trade_kind: none
+        species_id: human
+        opportunity:
+        - id: leave
+          then: уходит из города
+          kind: flag
+          ref: debt_paid
+          status: ''
+          gte: 0
+        secrets:
+        - id: debt
+          text: Мара должна гильдии.
+          kind: narrative
+          ref: герой завоевал её доверие
+          status: ''
+          gte: 0
+      - id: guard
+        name: Стражник
+        means:
+        - копьё
+        named: false
+        key: false
+        motive: ''
+        location_id: square
+        trade_kind: none
+        species_id: ''
+        opportunity: []
+        secrets: []
+      factions:
+      - id: watch
+        name: Стража
+        motive: Порядок в городе.
+        means:
+        - патрули
+        members:
+        - guard
+        regions:
+        - square
+        opportunity: []
+      pantheon:
+      - id: selune
+        name: Селунэ
+        domains:
+        - луна
+        role: богиня ночи
+        motive: ''
+        pleased_by:
+        - милосердие
+        angered_by: []
+        rivals: []
+        means:
+        - знамения
+        realm: ''
+        servants:
+        - mara
+        opportunity: []

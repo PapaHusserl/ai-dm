@@ -1,0 +1,8 @@
+id: hunters_prey
+name: Добыча охотника
+description: Вы выбираете один из двух приёмов — «Убийца колоссов» или «Истребитель орд». После короткого или продолжительного отдыха выбор можно сменить.
+source: srd-5.2
+license: CC-BY-4.0
+options:
+- colossus_slayer
+- horde_breaker

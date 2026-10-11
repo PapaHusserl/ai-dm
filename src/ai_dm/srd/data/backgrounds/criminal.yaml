@@ -1,0 +1,24 @@
+id: criminal
+name: Преступник
+description: Вор или мошенник с тёмным прошлым.
+source: srd-5.2
+license: CC-BY-4.0
+abilities:
+- dex
+- con
+- int
+skills:
+- sleight_of_hand
+- stealth
+tool: thieves_tools
+feat: alert
+equipment:
+- dagger
+- dagger
+- thieves_tools
+- crowbar
+- pouch
+- pouch
+- travelers_clothes
+gold_cp: 1600
+gold_option_cp: 5000

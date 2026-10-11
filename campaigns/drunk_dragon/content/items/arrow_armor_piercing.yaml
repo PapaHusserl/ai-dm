@@ -1,0 +1,12 @@
+id: arrow_armor_piercing
+name: Бронебойная стрела
+description: Пробивает доспехи и щиты культистов.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: pierce_armor
+  value: 12

@@ -1,0 +1,6 @@
+id: ratusha_master_key
+name: Мастер-ключ Ратуши
+description: Скелетный ключ от всех сейфов Ратуши. С тела Ольбрехта.
+cost_cp: 0
+source: campaign:drunk_dragon
+category: valuable

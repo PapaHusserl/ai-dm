@@ -1,0 +1,12 @@
+id: barkskin
+name: Дубовая кора
+description: "Бонусным действием вы касаетесь согласного существа (на 1 час, концентрация не нужна): его кожа становится жёсткой, как кора, и КД не может быть ниже 17."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+casting_time: bonus_action
+duration: 1h
+classes:
+- ranger
