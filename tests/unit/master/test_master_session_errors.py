@@ -363,3 +363,37 @@ def test_two_invalid_in_one_response_then_one_more_invalid_is_still_ok(tmp_path,
     result = go()
     assert result.invalid_count == 2
     assert result.texts[-1] == "Ок."
+
+
+# К0-фикс (Q7): сырой повод отказа попадает в сообщение игроку
+
+def refusal_with_detail(detail, tmp_path, registry, cfg):
+    adapter = scripted([{"stop": "refusal"}])
+    complete = adapter.complete
+
+    def with_detail(req):
+        response = complete(req)
+        response.stop_detail = detail
+        return response
+
+    adapter.complete = with_detail
+    session, _, _, _ = make_session(adapter, tmp_path)
+    ctx = make_ctx(registry, cfg, mode="explore")
+    return failure_of(lambda: session.run(ctx, "Иду.", apply, "explore"))
+
+
+def test_refusal_message_names_the_detail(tmp_path, registry, cfg):
+    error = refusal_with_detail("SAFETY", tmp_path, registry, cfg)
+    assert error.reason == "refusal"
+    assert "(SAFETY)" in str(error)
+    assert error.report_tags == ["refusal"]
+
+
+def test_refusal_message_names_prohibited_content(tmp_path, registry, cfg):
+    error = refusal_with_detail("PROHIBITED_CONTENT", tmp_path, registry, cfg)
+    assert "(PROHIBITED_CONTENT)" in str(error)
+
+
+def test_refusal_message_without_detail_is_plain(tmp_path, registry, cfg):
+    _, _, _, _, go = run([{"stop": "refusal"}], tmp_path, registry, cfg)
+    assert str(failure_of(go)) == "Модель отказалась отвечать."

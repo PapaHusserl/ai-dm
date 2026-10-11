@@ -570,3 +570,21 @@ def test_meta_does_not_change_fingerprint(tmp_path):
     record(journal, 2, req=request)
     first, second = journal.read_records()
     assert first["request"]["fingerprint"] == second["request"]["fingerprint"]
+
+
+# К0-фикс: stop_detail (сырой повод отказа) попадает в запись журнала
+
+def test_stop_detail_is_written_to_the_response_record(tmp_path):
+    journal = make_journal(tmp_path)
+    resp = make_response(text="", stop_reason="refusal")
+    resp.stop_detail = "PROHIBITED_CONTENT"
+    record(journal, resp=resp)
+    rec = journal.read_records()[0]
+    assert rec["response"]["stop_detail"] == "PROHIBITED_CONTENT"
+    assert rec["stop_reason"] == "refusal"
+
+
+def test_stop_detail_is_none_in_record_when_not_set(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal)
+    assert journal.read_records()[0]["response"]["stop_detail"] is None

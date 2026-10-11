@@ -207,3 +207,23 @@ def test_replay_without_role_keeps_all_records(tmp_path):
     adapter = ReplayAdapter(journal.read_records())
     adapter.complete(narrator)
     adapter.complete(world)
+
+
+def test_replay_keeps_stop_detail(tmp_path):
+    journal = make_journal(tmp_path)
+    resp = make_response(text="", stop_reason="refusal")
+    resp.stop_detail = "SAFETY"
+    log(journal, 1, make_request("раз"), resp)
+    got = ReplayAdapter(journal.read_records()).complete(make_request("раз"))
+    assert got.stop_detail == "SAFETY"
+
+
+def test_replay_of_record_without_stop_detail_key_gives_none(tmp_path):
+    # старые журналы: в response поля stop_detail нет
+    journal = make_journal(tmp_path)
+    log(journal, 1, make_request("раз"), make_response("старый"))
+    records = journal.read_records()
+    del records[0]["response"]["stop_detail"]
+    got = ReplayAdapter(records).complete(make_request("раз"))
+    assert (got.text if hasattr(got, "text") else got.content[0].text) == "старый"
+    assert got.stop_detail is None

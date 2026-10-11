@@ -8,6 +8,7 @@ from ai_dm.state.creature import CreatureState, Equipment
 from ai_dm.state.hero import InventoryEntry
 
 Intent = Literal["kill", "capture", "rob", "drive_off", "spare"]
+ImproviseEffect = Literal["advantage", "prone", "extra_damage", "push", "disarm"]
 Outcome = Literal[
     "victory", "defeat_pending", "hero_dying", "hero_dead", "fled", "ended_by_master"
 ]

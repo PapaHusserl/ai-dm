@@ -646,3 +646,8 @@ def test_four_cache_points_with_memory():
     points = [b for b in kwargs["system"] if "cache_control" in b]
     points += [b for b in kwargs["messages"][0]["content"] if "cache_control" in b]
     assert len(points) == 4
+
+
+def test_refusal_has_no_stop_detail():
+    adapter, _, _ = make([api_response([Block(type="text", text="не могу")], "refusal")])
+    assert adapter.complete(make_request()).stop_detail is None

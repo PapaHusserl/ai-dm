@@ -36,6 +36,7 @@ from combat_kit import (
 )
 from pydantic import ValidationError
 
+from ai_dm.combat.actions.improvise import spec_problem
 from ai_dm.combat.controllers import ScriptedController
 from ai_dm.config.settings import load_rules_config
 from ai_dm.rules.results import Rejected
@@ -270,3 +271,83 @@ def test_improvise_log_line_translates_another_skill(registry, cfg):
     improvise(engine, "advantage", skill="acrobatics")
     line = [x for x in engine.state.log if "импровизация" in x][0]
     assert "), Акробатика: Акробатика (Лов): d20" in line
+
+
+# 38 а: spec_problem -- чистая проверка спека по состоянию боя
+# (зоны door-hall-balcony, гоблин в hall)
+
+def test_spec_problem_is_none_for_a_valid_push(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "push", "goblin_1", "balcony") is None
+
+
+def test_spec_problem_is_none_for_advantage_without_target(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "advantage", None, None) is None
+
+
+def test_spec_problem_unknown_effect(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "grapple", "goblin_1", None) == "unknown_effect"
+
+
+@pytest.mark.parametrize("effect", ["prone", "extra_damage", "push", "disarm"])
+def test_spec_problem_target_required(registry, cfg, effect):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, effect, None, "balcony") == "target_required"
+
+
+def test_spec_problem_unknown_target_is_target_required(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "prone", "ghost", None) == "target_required"
+
+
+def test_spec_problem_push_without_zone(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "push", "goblin_1", None) == "zone_required"
+
+
+def test_spec_problem_push_into_the_own_zone_of_the_target(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    assert spec_problem(engine.state, "push", "goblin_1", "hall") == "zone_not_adjacent"
+
+
+def test_spec_problem_push_into_a_far_zone(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    engine.state.participants[1].zone_id = "door"
+    assert spec_problem(engine.state, "push", "goblin_1", "balcony") == "zone_not_adjacent"
+
+
+def test_spec_problem_does_not_touch_the_state(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    before = engine.state.model_dump_json()
+    spec_problem(engine.state, "push", "goblin_1", "balcony")
+    assert engine.state.model_dump_json() == before
+
+
+def test_check_request_not_a_hero_comes_before_spec_problems(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng())
+    result = engine.improvise("goblin_1", skill="athletics", category="medium", effect="grapple")
+    assert result.reason == "not_a_hero"
+
+
+def test_check_request_not_available_after_the_action_is_spent(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[10, 10]))
+    improvise(engine, "advantage")
+    assert improvise(engine, "advantage").reason == "not_available"
+
+
+@pytest.mark.parametrize(
+    ("effect", "target", "zone", "reason"),
+    [
+        ("grapple", "goblin_1", None, "unknown_effect"),
+        ("prone", None, None, "target_required"),
+        ("push", "goblin_1", None, "zone_required"),
+        ("push", "goblin_1", "hall", "zone_not_adjacent"),
+    ],
+)
+def test_check_request_keeps_engine_codes(registry, cfg, effect, target, zone, reason):
+    engine = duel(registry, cfg, ScriptedRng())
+    result = improvise(engine, effect, target=target, zone=zone)
+    assert result.reason == reason
+    assert turn(engine, "hero").action is True

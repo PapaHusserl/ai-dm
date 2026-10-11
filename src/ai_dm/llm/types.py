@@ -81,6 +81,7 @@ class Usage(LlmModel):
 class ChatResponse(LlmModel):
     content: list[Block]
     stop_reason: Literal["end_turn", "tool_use", "max_tokens", "refusal", "other"]
+    stop_detail: str | None = None
     usage: Usage = Usage()
     request_id: str | None = None
     model: str

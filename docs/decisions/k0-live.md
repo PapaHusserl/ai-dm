@@ -16,7 +16,7 @@
 Баги (К0-фикс): а) improvise с прозой в `effect` (t94); б) ход без `offer_choices` (t76); в) NPC «оставлен», но в сцене (t53);
 г) F2 в широком окне. Идеи: д) бой вытесняет сюжет из recent_turns (t113) → Р1; е) темп сюжета → Р2; ж) refusal Gemini (t50) →
 `safety_settings` в К0-фикс, повтор/фолбэк в Р2; з) урон от падения → К7х; и) шрифт — настройка cmux, задержка Gemini ~3 мин.
-Роадмап пересобран — R5 (`docs/decisions/roadmap-r5-proposal.md`).
+Партия «К0-фикс-а» (шаги 1–6 docs/K0-FIX-PLAN.md): а–г + safety_settings + stop_detail. Роадмап пересобран — R5 (`docs/decisions/roadmap-r5-proposal.md`).
 
 ## Прочее
 - `.git` проекта удалён пользователем во время прогона; история утрачена, репозиторий пересоздан снимком, remote — GitHub PapaHusserl/ai-dm.

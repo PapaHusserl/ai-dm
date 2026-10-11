@@ -15,6 +15,11 @@ FINISH_REASONS = {
     "RECITATION": "refusal",
 }
 
+SAFETY_CATEGORIES = (
+    "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
+    "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
+)
+
 
 def strip_additional(node):
     # у Gemini схема функции -- подмножество OpenAPI: additionalProperties не нужен
@@ -126,11 +131,20 @@ class GeminiAdapter:
             fields["tools"] = [sdk.Tool(function_declarations=declarations)]
         return fields
 
+    def safety_settings(self):
+        mode = self.cfg.llm.gemini_safety
+        if mode == "default":
+            return None
+        threshold = "BLOCK_NONE" if mode == "block_none" else "OFF"
+        sdk = self.get_sdk()
+        return [sdk.SafetySetting(category=c, threshold=threshold) for c in SAFETY_CATEGORIES]
+
     def build_config(self, req, cache_name=None):
         sdk = self.get_sdk()
         fields = {
             "automatic_function_calling": sdk.AutomaticFunctionCallingConfig(disable=True),
             "max_output_tokens": req.max_tokens,
+            "safety_settings": self.safety_settings(),
         }
         if cache_name is None:
             fields.update(self.build_prefix_fields(req))
@@ -255,7 +269,21 @@ class GeminiAdapter:
             content=content, stop_reason=self.stop_reason(response, candidate, calls),
             usage=self.usage(response), request_id=request_id,
             model=response.model_version or req.model,
+            stop_detail=self.stop_detail(response, candidate, calls),
         )
+
+    def stop_detail(self, response, candidate, calls):
+        # сырой повод отказа или обрыва (SAFETY, PROHIBITED_CONTENT, причина блока промпта)
+        if calls:
+            return None
+        if candidate is None:
+            feedback = response.prompt_feedback
+            reason = None if feedback is None else feedback.block_reason
+            return None if reason is None else reason.name
+        reason = candidate.finish_reason
+        if reason is None or FINISH_REASONS.get(reason.name) in ("end_turn", "max_tokens"):
+            return None
+        return reason.name
 
     def stop_reason(self, response, candidate, calls):
         if calls:

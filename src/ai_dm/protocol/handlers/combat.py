@@ -1,5 +1,6 @@
 from pydantic import ValidationError
 
+from ai_dm.combat.actions.improvise import EFFECTS, spec_problem
 from ai_dm.combat.defeat import DefeatParams, apply_defeat_outcome
 from ai_dm.combat.engine import CombatEngine
 from ai_dm.combat.setup import validate_start
@@ -24,6 +25,33 @@ SETUP_HINTS = {
     "group_intent_missing": "у группы врагов должно быть намерение (intent)",
     "group_leader_invalid": "лидер группы должен быть врагом из этой же группы",
 }
+
+
+# коды spec_problem -> подсказка модели; {…} подставляет improvise_problem
+IMPROVISE_HINTS = {
+    "target_required": "эффект {effect} требует target — ref врага: {enemies}",
+    "zone_required": "push требует zone — зона, соседняя с зоной цели {target} ({home}): "
+    "{adjacent}",
+    "zone_not_adjacent": "зона {zone!r} не подходит для push: цель {target} стоит в зоне {home}"
+    "{own}; нужна соседняя зона: {adjacent}",
+    "unknown_effect": "нет эффекта {effect!r}; допустимые: {effects}",
+}
+
+
+def improvise_problem(state, spec):
+    code = spec_problem(state, spec.effect, spec.target, spec.zone)
+    if code is None:
+        return None
+    home = next((p.zone_id for p in state.participants if p.ref == spec.target), "")
+    adjacent = next((z.adjacent for z in state.zones if z.id == home), [])
+    message = IMPROVISE_HINTS[code].format(
+        effects=", ".join(EFFECTS), effect=spec.effect, target=spec.target,
+        zone=spec.zone, home=home,
+        adjacent=", ".join(adjacent),
+        enemies=", ".join(p.ref for p in state.participants if p.side == "enemies"),
+        own=", это её собственная зона" if spec.zone == home else "",
+    )
+    return Invalid(code=code, message=message)
 
 
 def setup_message(codes, state):
@@ -209,6 +237,10 @@ def player_action(ctx, request):
                 code="unknown_step",
                 message=f"первый шаг {request.steps[0]!r} не из combat.options: {ids}",
             )
+    if request.improvise is not None:
+        problem = improvise_problem(ctx.bundle.session.active_combat, request.improvise)
+        if problem is not None:
+            return problem
     result = {"steps": list(request.steps)}
     if request.improvise is not None:
         result["improvise"] = request.improvise.model_dump()

@@ -1,3 +1,5 @@
+from typing import get_args
+
 from ai_dm.combat import disarm, downed
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.core.events import DomainEvent
@@ -5,10 +7,11 @@ from ai_dm.rules.checks import dc_for_category, skill_check
 from ai_dm.rules.damage import apply_damage
 from ai_dm.rules.names import SKILL_NAMES
 from ai_dm.rules.results import Rejected
+from ai_dm.state.combat import ImproviseEffect
 from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 
 # фиксированный набор эффектов (ТЗ 7); какие из них требуют цель и зону
-EFFECTS = ("advantage", "prone", "extra_damage", "push", "disarm")
+EFFECTS = get_args(ImproviseEffect)
 NEEDS_TARGET = ("prone", "extra_damage", "push", "disarm")
 # подписи эффектов в логе; «prone» берётся из названия состояния в реестре
 EFFECT_WORDS = {
@@ -21,25 +24,31 @@ def rejected(reason) -> Rejected:
     return Rejected(reason=reason, report_tag=None)
 
 
+def spec_problem(state, effect, target, zone) -> str | None:
+    # проверка эффекта, цели и зоны по состоянию боя; код отказа или None
+    if effect not in EFFECTS:
+        return "unknown_effect"
+    zones = {q.ref: q.zone_id for q in state.participants}
+    if effect in NEEDS_TARGET and (target is None or target not in zones):
+        return "target_required"
+    if effect == "push":
+        if zone is None:
+            return "zone_required"
+        target_zone = [z for z in state.zones if z.id == zones[target]][0]
+        if zone not in target_zone.adjacent:
+            return "zone_not_adjacent"
+    return None
+
+
 def check_request(engine, ref, effect, target, zone):
     # возвращает Rejected или None; ничего не бросает и не тратит
     p = engine.part(ref)
     if ref not in engine.heroes:
         return rejected("not_a_hero")
-    if effect not in EFFECTS:
-        return rejected("unknown_effect")
     if p.status != "active" or not p.turn.action:
         return rejected("not_available")
-    refs = [q.ref for q in engine.state.participants]
-    if effect in NEEDS_TARGET and (target is None or target not in refs):
-        return rejected("target_required")
-    if effect == "push":
-        if zone is None:
-            return rejected("zone_required")
-        target_zone = [z for z in engine.state.zones if z.id == engine.part(target).zone_id][0]
-        if zone not in target_zone.adjacent:
-            return rejected("zone_not_adjacent")
-    return None
+    problem = spec_problem(engine.state, effect, target, zone)
+    return None if problem is None else rejected(problem)
 
 
 def improvise(engine, ref, *, skill, category, effect, target=None, zone=None):

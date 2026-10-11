@@ -98,6 +98,8 @@ class LlmConfig(BaseModel):
     cache_ttl: Literal["5m", "1h"] = "1h"
     # явный кэш роли world, только Gemini (редкие вызовы, хранение дороже); по умолчанию выкл.
     gemini_cache_world: bool = False
+    # safety_settings Gemini: block_none/off снимают фильтры, default не передаёт
+    gemini_safety: Literal["default", "block_none", "off"] = "block_none"
 
 
 class UiConfig(BaseModel):

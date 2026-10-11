@@ -3,13 +3,14 @@ from typing import Annotated, ClassVar, Literal, get_args
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 from ai_dm.content.models.common import Ability, DcCategory, Skill
-from ai_dm.state.combat import Intent
+from ai_dm.state.combat import ImproviseEffect, Intent
 from ai_dm.state.world import Tone
 
 # strict-схема без union: необязательные поля обязательны для модели и имеют нейтральное значение
 # («» / 0 / «none» / [] = нет); при разборе нейтральное значение превращается в None
 AbilityOrNone = Literal[(*get_args(Ability), "none")]
 SkillOrNone = Literal[(*get_args(Skill), "none")]
+ImproviseEffectOrNone = Literal[(*get_args(ImproviseEffect), "none")]
 DcCategoryOrNone = Literal[(*get_args(DcCategory), "none")]
 ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
 ParleyOutcomeOrNone = Literal["surrender", "flee", "defect", "waver", "none"]
@@ -84,10 +85,16 @@ class ImproviseSpec(Request):
     category: DcCategoryOrNone = Field(
         "none", description="Категория сложности проверки; none, если импровизации нет."
     )
-    effect: str = Field("", description="Желаемый эффект при успехе.")
+    effect: ImproviseEffectOrNone = Field(
+        "none",
+        description="Эффект при успехе, только из набора: advantage — преимущество на следующую "
+        "атаку героя; prone — цель сбита с ног (нужен target); extra_damage — доп. урон цели "
+        "(target); push — цель отброшена в соседнюю зону (target и zone: зона, соседняя с зоной "
+        "цели, не её собственная); disarm — выбить оружие (target); none — импровизации нет.",
+    )
     target: str = Field("", description="ref цели; пусто = нет.")
     zone: str = Field("", description="Идентификатор зоны, если действие про зону; пусто = нет.")
-    NEUTRAL: ClassVar[dict] = {"target": "", "zone": ""}
+    NEUTRAL: ClassVar[dict] = {"effect": "none", "target": "", "zone": ""}
 
 
 class ParleySpec(Request):
@@ -178,6 +185,9 @@ class PlayerAction(Request):
             self.improvise = None
         elif spec.skill == "none" or spec.category == "none":
             raise ValueError("improvise: skill и category задаются вместе или обе none")
+        elif spec.effect is None:
+            effects = ", ".join(get_args(ImproviseEffect))
+            raise ValueError(f"improvise: effect обязателен ({effects})")
         return self
 
     @model_validator(mode="after")

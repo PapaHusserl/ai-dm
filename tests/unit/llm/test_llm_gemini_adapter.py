@@ -121,13 +121,17 @@ class CreateCachedContentConfig(Rec):
     pass
 
 
+class SafetySetting(Rec):
+    pass
+
+
 FAKE_SDK = SimpleNamespace(
     Content=Content, Part=Part, FunctionCall=FunctionCall, FunctionResponse=FunctionResponse,
     Tool=Tool,
     FunctionDeclaration=FunctionDeclaration, GenerateContentConfig=GenerateContentConfig,
     ToolConfig=ToolConfig, FunctionCallingConfig=FunctionCallingConfig,
     AutomaticFunctionCallingConfig=AutomaticFunctionCallingConfig,
-    CreateCachedContentConfig=CreateCachedContentConfig,
+    CreateCachedContentConfig=CreateCachedContentConfig, SafetySetting=SafetySetting,
 )
 
 

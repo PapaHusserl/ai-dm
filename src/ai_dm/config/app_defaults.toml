@@ -109,6 +109,8 @@ strict_tools = true
 cache_ttl = "1h"
 # явный кэш Gemini для роли world (флаг действует только на Gemini): редкие вызовы, хранение дороже повторной отправки префикса
 gemini_cache_world = false
+# safety_settings Gemini (только Gemini): "block_none" / "off" -- не блокировать по категориям; "default" -- не передавать (если API модели их отвергнет)
+gemini_safety = "block_none"
 
 [ui]
 width = 80

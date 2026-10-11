@@ -147,3 +147,129 @@ def test_input_has_focus_after_start(registry, tmp_path, tui):
         return app.query_one("#input").has_focus
 
     assert run(app, (140, 40), steps) is True
+
+
+# К0-фикс, 38 г: F2 в широком окне прячет и возвращает #side; смена режима сбрасывает ручное F2
+
+def test_f2_hides_side_panel_in_wide_terminal(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        side = app.query_one("#side")
+        before = tui.shown(side), app.query_one("#feed").region.width
+        await pilot.press("f2")
+        await pilot.pause()
+        after = tui.shown(side), app.query_one("#feed").region.width
+        return before, after
+
+    before, after = run(app, (140, 40), steps)
+    assert before[0] is True
+    assert after[0] is False
+    assert after[1] > before[1]
+
+
+def test_second_f2_in_wide_terminal_shows_side_panel_again(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        widths = [app.query_one("#feed").region.width]
+        for _ in range(2):
+            await pilot.press("f2")
+            await pilot.pause()
+        widths.append(app.query_one("#feed").region.width)
+        return tui.shown(app.query_one("#side")), widths
+
+    shown, widths = run(app, (140, 40), steps)
+    assert shown is True
+    assert widths[0] == widths[1]
+
+
+def test_f2_in_wide_terminal_does_not_use_open_class(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        side = app.query_one("#side")
+        return side.has_class("closed"), side.has_class("open")
+
+    assert run(app, (140, 40), steps) == (True, False)
+
+
+def test_f2_in_narrow_terminal_does_not_use_closed_class(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        side = app.query_one("#side")
+        return side.has_class("open"), side.has_class("closed")
+
+    assert run(app, (100, 40), steps) == (True, False)
+
+
+def test_resize_to_narrow_clears_manual_f2_of_wide_mode(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        await pilot.resize_terminal(100, 40)
+        await pilot.pause()
+        side = app.query_one("#side")
+        narrow = tui.shown(side), side.has_class("closed")
+        await pilot.resize_terminal(140, 40)
+        await pilot.pause()
+        return narrow, tui.shown(side), side.has_class("closed")
+
+    narrow, wide_shown, wide_closed = run(app, (140, 40), steps)
+    assert narrow == (False, False)
+    assert wide_shown is True
+    assert wide_closed is False
+
+
+def test_resize_to_wide_clears_manual_f2_of_narrow_mode(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        await pilot.resize_terminal(140, 40)
+        await pilot.pause()
+        side = app.query_one("#side")
+        wide = tui.shown(side), side.has_class("open")
+        await pilot.resize_terminal(100, 40)
+        await pilot.pause()
+        return wide, tui.shown(side), side.has_class("open")
+
+    wide, narrow_shown, narrow_open = run(app, (100, 40), steps)
+    assert wide == (True, False)
+    assert narrow_shown is False
+    assert narrow_open is False
+
+
+def test_resize_inside_the_same_mode_keeps_manual_f2(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        await pilot.resize_terminal(150, 40)
+        await pilot.pause()
+        return tui.shown(app.query_one("#side")), app.query_one("#side").has_class("closed")
+
+    assert run(app, (140, 40), steps) == (False, True)
+
+
+def test_resize_exactly_to_120_columns_is_a_mode_change_and_clears_f2(registry, tmp_path, tui):
+    app, _ = tui.app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await pilot.press("f2")
+        await pilot.pause()
+        await pilot.resize_terminal(120, 40)
+        await pilot.pause()
+        side = app.query_one("#side")
+        return app.has_class("wide"), side.has_class("open"), tui.shown(side)
+
+    assert run(app, (100, 40), steps) == (True, False, True)

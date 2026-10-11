@@ -60,6 +60,11 @@ def message_lines(message) -> list[str]:
     return lines
 
 
+def stop_detail_text(record) -> str:
+    detail = (record["response"] or {}).get("stop_detail")
+    return "" if detail is None else f" ({detail})"
+
+
 def call_lines(record) -> list[str]:
     request = record["request"]
     lines = [
@@ -67,7 +72,7 @@ def call_lines(record) -> list[str]:
         "",
         f"- run_id: {record['run_id']}",
         f"- модель: {record['model']} (запрошена {record['requested_model']})",
-        f"- stop_reason: {record['stop_reason']}",
+        f"- stop_reason: {record['stop_reason']}{stop_detail_text(record)}",
         f"- статус хода: {record['turn_status']}",
         f"- system: journal/blobs/{request['system_sha256']}.json",
         f"- tools: journal/blobs/{request['tools_sha256']}.json",

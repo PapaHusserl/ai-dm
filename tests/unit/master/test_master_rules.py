@@ -202,3 +202,47 @@ def test_import_rules_file_exists_and_names_the_tool():
 def test_import_rules_are_in_russian():
     text = import_rules_text()
     assert len(re.findall("[а-яА-ЯёЁ]", text)) > len(re.findall("[a-zA-Z]", text))
+
+
+# К0-фикс (38 а-в): effect импровизации, обязательный offer_choices, смысл scene_npcs
+
+def section(title):
+    text = rules_text()
+    start = text.index(title)
+    end = text.find("\n## ", start + 1)
+    return text[start:] if end == -1 else text[start:end]
+
+
+def test_rules_list_improvise_effects():
+    assert "advantage, prone, extra_damage, push, disarm" in rules_text()
+
+
+def test_rules_say_push_zone_is_adjacent():
+    text = rules_text()
+    at = text.index("push: zone")
+    assert "соседняя" in text[at:at + 200]
+
+
+def test_rules_forbid_free_text_effect():
+    assert "своими словами движок не принимает" in rules_text()
+
+
+def test_rules_choices_section_makes_offer_choices_mandatory():
+    text = section("## Выбор игроку")
+    assert "offer_choices" in text
+    assert "обязателен" in text
+    assert "вопрос" in text.lower()
+
+
+def test_rules_choices_section_has_no_when_appropriate():
+    assert "когда уместно" not in section("## Выбор игроку").lower()
+
+
+def test_rules_explain_scene_npcs_and_leaving_npc():
+    text = rules_text()
+    at = text.index("`scene_npcs` — живые NPC")
+    assert "не вводи" in text[at:at + 700]
+
+
+def test_rules_say_staying_companion_gets_follows_none():
+    assert 'follows: "none"' in rules_text()

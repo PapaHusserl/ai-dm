@@ -125,10 +125,14 @@ class AiDmApp(App):
         self.apply_width(event.size.width)
 
     def apply_width(self, width):
+        if self.has_class("wide") != (width >= WIDE):
+            # смена режима сбрасывает ручное F2
+            self.query_one("#side").remove_class("open", "closed")
         self.set_class(width >= WIDE, "wide")
 
     def action_toggle_side(self):
-        self.query_one("#side").toggle_class("open")
+        side = self.query_one("#side")
+        side.toggle_class("closed" if self.has_class("wide") else "open")
 
     def close(self, return_code=None):
         # публичный признак выхода для тестов: closing выставляется до App.exit

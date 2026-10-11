@@ -280,3 +280,27 @@ def test_call_without_request_blocks_shows_status_and_blob_lines_exactly(registr
     assert "- модель: claude-opus-5-5 (запрошена claude-opus-5-5)" in lines
     assert "Запрос:" in lines
     assert "Ответ:" in lines
+
+
+def test_stop_detail_is_printed_after_refusal(registry):
+    record = call(stop_reason="refusal", response={"content": [], "stop_detail": "SAFETY"})
+    report = render(make_capture(registry), "текст", [record])
+    assert "- stop_reason: refusal (SAFETY)" in report
+
+
+def test_no_stop_detail_leaves_stop_reason_plain(registry):
+    record = call(stop_reason="refusal", response={"content": [], "stop_detail": None})
+    report = render(make_capture(registry), "текст", [record])
+    assert "- stop_reason: refusal\n" in report
+
+
+def test_old_record_without_stop_detail_key_is_plain(registry):
+    record = call(stop_reason="refusal", response={"content": []})
+    report = render(make_capture(registry), "текст", [record])
+    assert "- stop_reason: refusal\n" in report
+
+
+def test_record_without_response_is_plain(registry):
+    record = call(stop_reason="end_turn", response=None)
+    report = render(make_capture(registry), "текст", [record])
+    assert "- stop_reason: end_turn\n" in report

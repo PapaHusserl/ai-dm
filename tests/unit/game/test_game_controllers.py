@@ -563,7 +563,10 @@ def test_text_rejected_improvise_keeps_turn_open(registry, cfg):
     from ai_dm.protocol.requests import ImproviseSpec
 
     _, engine = hero_engine(registry, cfg)
-    spec = ImproviseSpec(skill="athletics", category="medium", effect="bogus", target="g1", zone="")
+    own_zone = engine.part("g1").zone_id
+    spec = ImproviseSpec(
+        skill="athletics", category="medium", effect="push", target="g1", zone=own_zone
+    )
     controller = PlayerController([], improvise=spec)
     controller.attach(engine)
     engine.controllers["hero"] = controller

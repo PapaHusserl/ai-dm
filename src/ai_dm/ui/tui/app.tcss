@@ -43,6 +43,10 @@
     dock: none;
 }
 
+.wide #side.closed {
+    display: none;
+}
+
 #side Static {
     height: auto;
     border: round $primary;
