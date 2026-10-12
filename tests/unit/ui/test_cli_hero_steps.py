@@ -241,7 +241,7 @@ def test_stepwise_end_of_input_cancels_like_cancel(tmp_path):
 def test_stepwise_error_then_fix_still_gives_a_hero(tmp_path):
     script = wizard_script()
     lines = [line for key, line in script if key != "name"]
-    name_at = len(lines) - 2
+    name_at = len(lines) - 4
     lines[name_at:name_at] = ["гракх", "Борин"]
     code, out, root = stepwise(tmp_path, [STEPS_NO, "1", *lines, "1", "/quit"])
     assert code == 0
@@ -285,7 +285,8 @@ def test_existing_describe_menu_item_four_still_describes(tmp_path):
 def words_lines():
     script = wizard_script()
     scores = [line for key, line in script if key == "scores"]
-    tail = [line for key, line in script if key in ("name", "motive", "means")]
+    keys = ("name", "gender", "pronouns", "motive", "means")
+    tail = [line for key, line in script if key in keys]
     # эльф-воин: у эльфа нет выборов вида; предыстория из ИИ: dex, con, cha
     return [
         "2", "2", "5", DESCRIPTION, "1", *scores, "1", "1", "1", "1", "1", "1", "1", "1", "1",

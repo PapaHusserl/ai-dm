@@ -172,6 +172,16 @@ def test_pack_trade_kind_survives_the_round_trip(tmp_path, registry):
     assert next(npc for npc in pack.npcs if npc.id == "mara").trade.kind == "smith"
 
 
+def test_pack_gender_survives_the_round_trip(tmp_path, registry):
+    folder = written_pack(
+        tmp_path, npcs=[npc_input(gender="female", pronouns="она"), guard_input()]
+    )
+    pack = load_pack(folder, registry)
+    mara = next(npc for npc in pack.npcs if npc.id == "mara")
+    assert (mara.gender, mara.pronouns) == ("female", "она")
+    assert next(npc for npc in pack.npcs if npc.id == "guard").gender is None
+
+
 def test_bad_hero_location_is_reported_with_file_and_field(tmp_path, registry):
     folder = written_pack(tmp_path, start=start_input(hero_location="nowhere"))
     lines = check_pack_dir(folder, registry)

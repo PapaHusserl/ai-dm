@@ -4,12 +4,15 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator,
 
 from ai_dm.content.models.common import Ability, DcCategory, Skill
 from ai_dm.state.combat import ImproviseEffect, Intent
+from ai_dm.state.gender import Gender
 from ai_dm.state.world import Tone
 
 # strict-схема без union: необязательные поля обязательны для модели и имеют нейтральное значение
 # («» / 0 / «none» / [] = нет); при разборе нейтральное значение превращается в None
 AbilityOrNone = Literal[(*get_args(Ability), "none")]
 SkillOrNone = Literal[(*get_args(Skill), "none")]
+GenderOrNone = Literal[(*get_args(Gender), "none")]
+GenderUpdate = Literal[(*get_args(Gender), "none", "unset")]
 ImproviseEffectOrNone = Literal[(*get_args(ImproviseEffect), "none")]
 DcCategoryOrNone = Literal[(*get_args(DcCategory), "none")]
 ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
@@ -414,7 +417,15 @@ class NpcCreate(Request):
     trade_kind: str = Field(
         "none", description="Тип торговца (пресет ассортимента), если NPC торгует; none = нет."
     )
-    NEUTRAL: ClassVar[dict] = {"motive": "", "location_id": "", "trade_kind": "none"}
+    gender: GenderOrNone = Field(
+        "none", description="Пол NPC: male, female, other; none = не известен."
+    )
+    pronouns: str = Field(
+        "", description="Местоимения/обращение, если отличаются от пола или важны; пусто = нет."
+    )
+    NEUTRAL: ClassVar[dict] = {
+        "motive": "", "location_id": "", "trade_kind": "none", "gender": "none", "pronouns": ""
+    }
 
 
 class LocationCreate(Request):
@@ -449,9 +460,15 @@ class NpcUpdateBase(Request):
         "keep", description="hero = NPC присоединился к герою и идёт с ним; none = отстал; "
         "keep = без изменений."
     )
+    gender: GenderUpdate = Field(
+        "none", description="Пол NPC: male, female, other; none = не менять; unset = сбросить."
+    )
+    pronouns: str = Field(
+        "", description="Местоимения/обращение NPC; пусто = не менять; - = сбросить."
+    )
     NEUTRAL: ClassVar[dict] = {
         "attitude_delta": 0, "status": "none", "cause": "none", "evidence_ref": "", "by": "",
-        "text": "", "follows": "keep",
+        "text": "", "follows": "keep", "gender": "none", "pronouns": "",
     }
 
 
@@ -688,6 +705,12 @@ class HeroSheetRequest(Request):
 
     type: Literal["hero_sheet"]
     name: str = Field(description="Имя героя; не из taken_names.")
+    gender: GenderOrNone = Field(
+        "none", description="Пол героя по описанию игрока; не ясно -- по имени; none = не известен."
+    )
+    pronouns: str = Field(
+        "", description="Местоимения героя, только если игрок их назвал; пусто = нет."
+    )
     species_id: str = Field(description="id вида из справочника.")
     class_id: str = Field(description="id класса из справочника.")
     ability_method: Literal["standard_array", "point_buy", "explicit"] = Field(
@@ -724,7 +747,7 @@ class HeroSheetRequest(Request):
         description="Возможности героя, от нуля до двух; пусто = нет."
     )
     NEUTRAL: ClassVar[dict] = {"fighting_style": "", "species_feat": "", "species_skill": "none",
-                               "bonus_plus2": "none"}
+                               "bonus_plus2": "none", "gender": "none", "pronouns": ""}
 
 
 class SecretSpec(Request):
@@ -765,12 +788,19 @@ class PackNpc(Request):
         "none", description="Тип торговца (пресет ассортимента), если NPC торгует; none = нет."
     )
     species_id: str = Field("", description="Id вида из справочника; пусто = не задан.")
+    gender: GenderOrNone = Field(
+        "none", description="Пол NPC: male, female, other; none = не известен."
+    )
+    pronouns: str = Field(
+        "", description="Местоимения/обращение, если отличаются от пола или важны; пусто = нет."
+    )
     opportunity: list[HeroTriggerSpec] = Field(
         [], description="Возможности NPC: что он сделает при условии; пусто = нет."
     )
     secrets: list[SecretSpec] = Field([], description="Секреты NPC и раскрытие; пусто = нет.")
     NEUTRAL: ClassVar[dict] = {
-        "motive": "", "location_id": "", "trade_kind": "none", "species_id": ""
+        "motive": "", "location_id": "", "trade_kind": "none", "species_id": "",
+        "gender": "none", "pronouns": ""
     }
 
 

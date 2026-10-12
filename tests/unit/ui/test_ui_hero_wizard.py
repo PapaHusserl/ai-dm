@@ -265,6 +265,8 @@ def test_back_to_steps_then_back_twice_returns_to_the_name(registry, cfg):
     wizard.submit("2")
     wizard.submit("назад")
     wizard.submit("назад")
+    wizard.submit("назад")
+    wizard.submit("назад")
     assert key_of(wizard) == "name"
 
 
@@ -566,16 +568,23 @@ def test_name_of_a_pack_npc_is_taken(registry, cfg):
     assert "уже занято" in texts(wizard.submit("Гарт"))
 
 
-def test_free_name_goes_on_to_motive(registry, cfg):
+def to_motive(registry, cfg):
+    # имя, пол «не указывать», местоимения «-»
+    wizard = to_name(registry, cfg)
+    for line in ("Борин", "4", "-"):
+        wizard.submit(line)
+    return wizard
+
+
+def test_free_name_goes_on_to_gender(registry, cfg):
     wizard = to_name(registry, cfg)
     wizard.submit("Борин")
-    assert key_of(wizard) == "motive"
+    assert key_of(wizard) == "gender"
     assert wizard.draft.name == "Борин"
 
 
 def test_empty_motive_is_refused(registry, cfg):
-    wizard = to_name(registry, cfg)
-    wizard.submit("Борин")
+    wizard = to_motive(registry, cfg)
     step = wizard.submit("")
     assert key_of(wizard) == "motive"
     assert texts(step).strip()
@@ -584,23 +593,20 @@ def test_empty_motive_is_refused(registry, cfg):
 def test_too_long_motive_is_refused_with_validator_text(registry, cfg):
     from ai_dm.rules.builder import hooks_problems
 
-    wizard = to_name(registry, cfg)
-    wizard.submit("Борин")
+    wizard = to_motive(registry, cfg)
     step = wizard.submit("м" * 201)
     assert hooks_problems("м" * 201, ["а"])[0][1] in texts(step)
     assert key_of(wizard) == "motive"
 
 
 def test_motive_of_200_characters_is_accepted(registry, cfg):
-    wizard = to_name(registry, cfg)
-    wizard.submit("Борин")
+    wizard = to_motive(registry, cfg)
     wizard.submit("м" * 200)
     assert key_of(wizard) == "means"
 
 
 def to_means(registry, cfg):
-    wizard = to_name(registry, cfg)
-    wizard.submit("Борин")
+    wizard = to_motive(registry, cfg)
     wizard.submit("Найти сестру.")
     return wizard
 

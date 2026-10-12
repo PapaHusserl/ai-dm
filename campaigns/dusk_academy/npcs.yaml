@@ -1,5 +1,6 @@
 - id: maya
   name: Майя Ольсен
+  gender: female
   named: true
   key: false
   location_id: ferry_pier
@@ -9,6 +10,7 @@
   - знает все слухи Академии
 - id: lucian
   name: Люциан Велар
+  gender: male
   named: true
   key: true
   location_id: candle_library
@@ -19,6 +21,7 @@
   - помнит историю острова
 - id: selena
   name: Селена Велар
+  gender: female
   named: true
   key: false
   location_id: glass_greenhouse
@@ -28,6 +31,7 @@
   - уход за лунными цветами
 - id: kai
   name: Кай Тайга
+  gender: male
   named: true
   key: true
   location_id: rain_teahouse
@@ -37,6 +41,7 @@
   - знает каждую тропу Прибрежного леса
 - id: edith
   name: Эдит Гримсдоттир
+  gender: female
   named: true
   key: true
   location_id: academy
@@ -46,6 +51,7 @@
   - старая обережная магия
 - id: old_ruth
   name: Матушка Рут
+  gender: female
   named: true
   key: false
   location_id: rain_teahouse

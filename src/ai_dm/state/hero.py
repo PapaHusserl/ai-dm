@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from ai_dm.state.creature import CreatureState
 from ai_dm.state.death import DeathRecord
+from ai_dm.state.gender import Gender
 from ai_dm.state.triggers import Trigger
 
 
@@ -177,6 +178,8 @@ class HeroState(BaseModel):
     id: str
     ordinal: int
     name: str
+    gender: Gender | None = None
+    pronouns: str = ""
     sheet: CharacterSheet
     creature: CreatureState
     status: Literal["active", "dead", "retired", "in_afterlife", "ascended", "gone"] = "active"

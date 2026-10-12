@@ -1,5 +1,6 @@
 - id: innkeeper
   name: Гарт
+  gender: male
   named: true
   key: false
   location_id: lame_goose
@@ -9,6 +10,7 @@
   - хранит ключ от подвала
 - id: grakh
   name: Гракх
+  gender: male
   named: true
   key: true
   location_id: cellar

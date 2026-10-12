@@ -123,7 +123,8 @@ def test_standard_array_hero_with_taken_name_error(registry, cfg, tmp_path):
     [expected] = messages_of(defect, registry, task)
     assert expected in texts(step)
     assert "уже занято" in expected
-    walk_rest = [line for key, line in SCRIPT if key in ("name", "motive", "means")]
+    keys = ("name", "gender", "pronouns", "motive", "means")
+    walk_rest = [line for key, line in SCRIPT if key in keys]
     for line in walk_rest:
         step = wizard.submit(line)
     assert menu_of(step) == list(WIZARD_REVIEW_MENU)

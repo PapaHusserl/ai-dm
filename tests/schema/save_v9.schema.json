@@ -2353,6 +2353,23 @@
           "title": "Favor",
           "type": "object"
         },
+        "gender": {
+          "anyOf": [
+            {
+              "enum": [
+                "male",
+                "female",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gender"
+        },
         "heroic_inspiration": {
           "default": false,
           "title": "Heroic Inspiration",
@@ -2430,6 +2447,11 @@
             }
           ],
           "default": null
+        },
+        "pronouns": {
+          "default": "",
+          "title": "Pronouns",
+          "type": "string"
         },
         "scars": {
           "items": {
@@ -3065,6 +3087,23 @@
           "default": null,
           "title": "Follows"
         },
+        "gender": {
+          "anyOf": [
+            {
+              "enum": [
+                "male",
+                "female",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gender"
+        },
         "groups": {
           "items": {
             "type": "string"
@@ -3138,6 +3177,11 @@
             "engine"
           ],
           "title": "Origin",
+          "type": "string"
+        },
+        "pronouns": {
+          "default": "",
+          "title": "Pronouns",
           "type": "string"
         },
         "relations_text": {

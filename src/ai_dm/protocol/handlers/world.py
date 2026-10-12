@@ -7,6 +7,7 @@ from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
 from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
+from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.memory import add_entry
 from ai_dm.state.world import NPC, Connection, DangerMark, GlobalEvent, Location, TradeProfile
 
@@ -72,11 +73,14 @@ def npc_create(ctx, request):
             "NPC не создан: " + "; ".join(conflicts) + ". Придумай другое имя и id.",
         )
     world.npcs[npc.id] = npc
-    log = [f"Новый NPC: {npc.name}"]
+    decision = Decision(
+        status="accepted", result={"npc_id": npc.id}, log=[f"Новый NPC: {npc.name}"]
+    )
+    change_identity(npc, request, decision)
     if request.trade_kind is not None:
         make_merchant(ctx, npc, request.trade_kind)
-        log.append(f"{npc.name} торгует: {request.trade_kind}")
-    return Decision(status="accepted", result={"npc_id": npc.id}, log=log)
+        decision.log.append(f"{npc.name} торгует: {request.trade_kind}")
+    return decision
 
 
 def new_merchant_problem(ctx, kind, key):
@@ -178,6 +182,18 @@ def change_follows(ctx, npc, request, decision):
     decision.result["follows"] = npc.follows
 
 
+def change_identity(npc, request, decision):
+    # пол и местоимения: None -- не менять
+    # gender "unset" и pronouns "-" (только npc_update) -- сбросить
+    if request.gender is not None:
+        npc.gender = None if request.gender == "unset" else request.gender
+        word = "не задан" if npc.gender is None else GENDER_WORDS[npc.gender]
+        decision.log.append(f"{npc.name}: пол {word}")
+    if request.pronouns is not None:
+        npc.pronouns = "" if request.pronouns == "-" else request.pronouns
+        decision.log.append(f"{npc.name}: местоимения {npc.pronouns or 'не заданы'}")
+
+
 def death_refused(ctx, npc, request) -> bool:
     # смерть или уход принимаются: причина goal/hazard и ещё не потраченный бросок этого хода
     evidence = ctx.rolls.get(request.evidence_ref)
@@ -201,11 +217,14 @@ def change_status(ctx, npc, request, decision):
     decision.result["status"] = npc.status
 
 
+def nothing_to_change(request, *names) -> bool:
+    return all(getattr(request, name) is None for name in names)
+
+
 def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
-    if (
-        request.attitude_delta is None and request.status is None and request.follows is None
-        and request.trade_kind is None
+    if nothing_to_change(
+        request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns"
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -242,6 +261,7 @@ def npc_update(ctx, request):
     decision = Decision(status="accepted")
     if request.follows is not None:
         change_follows(ctx, npc, request, decision)
+    change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)
     if request.status is not None:

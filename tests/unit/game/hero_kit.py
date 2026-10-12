@@ -52,7 +52,8 @@ def trigger_input(**changes):
 
 def sheet_input(**changes):
     data = {
-        "type": "hero_sheet", "name": HERO_NAME, "species_id": "human", "class_id": "fighter",
+        "type": "hero_sheet", "name": HERO_NAME, "gender": "none", "pronouns": "",
+        "species_id": "human", "class_id": "fighter",
         "ability_method": "standard_array", "ability_scores": dict(SCORES),
         "bonus_plus2": "dex", "bonus_plus1": ["con"],
         "class_skills": ["perception", "survival"],
@@ -131,8 +132,10 @@ def deps(adapter, registry, cfg, tmp_path=None, **kw):
 
 
 # Б2а (B2-PLAN, раздел B): помощники пошагового создания героя (HeroWizard).
-#   wizard_script(**kw)   -- канонические ответы [(ключ шага, строка)] для человека-воина/солдата,
-#                            стандартного набора: воспроизводят base_sheet() Б1 с
+#   wizard_script(**kw)   -- (пол -- «не указывать», местоимения -- «-»: экран пустую строку не
+#                            принимает) канонические ответы [(ключ шага, строка)] для
+#                            человека-воина/солдата, стандартного набора: воспроизводят
+#                            base_sheet() Б1 с
 #                            background="soldier"; kw: name, motive, means -- тексты шагов;
 #   wizard_picks(**kw)    -- то же списком строк (цифры считаются по тем же запросам
 #                            rules.hero_options, что строят меню шагов, поэтому порядок пунктов
@@ -144,7 +147,9 @@ def deps(adapter, registry, cfg, tmp_path=None, **kw):
 #                            -- политика «всегда 1», кроме выбора вида/класса/предыстории/метода и
 #                            текстовых шагов (имя, мотив, средства, свободный ввод
 #                            характеристик); доходит до ревью; started=True -- продолжить мастер.
-FIRST_OPTION_TEXTS = {"name": "Борин", "motive": "Найти сестру.", "means": "острый ум"}
+FIRST_OPTION_TEXTS = {
+    "name": "Борин", "pronouns": "-", "motive": "Найти сестру.", "means": "острый ум",
+}
 FIRST_OPTION_LIMIT = 200
 
 
@@ -210,7 +215,9 @@ def wizard_script(**kw):
     kits = [k.id for k in opts.kit_options(char_class)]
     script.append(("kit", number_in(kits, "a")))
     script.append(("gear", "1"))
-    script += [("name", texts["name"]), ("motive", texts["motive"]), ("means", texts["means"])]
+    # пол: четвёртый пункт «не указывать»; местоимения: «-» = нет (К0-фикс-б, Q11)
+    script += [("name", texts["name"]), ("gender", "4"), ("pronouns", "-")]
+    script += [("motive", texts["motive"]), ("means", texts["means"])]
     return script
 
 

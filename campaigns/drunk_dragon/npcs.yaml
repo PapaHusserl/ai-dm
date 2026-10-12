@@ -3,6 +3,7 @@
 # docs/decisions/stage3-p7-drafts.md.
 - id: abbey_captain
   name: Капитан стражи Аббатства
+  gender: male
   named: true
   key: false
   status: dead
@@ -24,6 +25,7 @@
   origin: pack
 - id: abbey_tracker
   name: Следопыт гарнизона Аббатства
+  gender: male
   named: true
   key: false
   status: dead
@@ -45,6 +47,7 @@
   origin: pack
 - id: bloodfang
   name: Кровозуб
+  gender: male
   named: true
   key: false
   status: dead
@@ -67,6 +70,7 @@
   origin: pack
 - id: bran_sedogriv
   name: Бран Седогрив
+  gender: male
   named: true
   key: true
   motive: Не дать пробудить Мор-Владыку; месть за перебитых егерей
@@ -94,6 +98,7 @@
   origin: pack
 - id: bron_crafter
   name: Брон
+  gender: male
   named: true
   key: false
   motive: Торговля
@@ -109,6 +114,7 @@
   origin: pack
 - id: captain_of_guard
   name: Капитан Городской Стражи (имя не названо)
+  gender: male
   named: true
   key: true
   motive: Защитить город и деревни
@@ -141,6 +147,7 @@
   origin: pack
 - id: edrin
   name: Эдрин
+  gender: male
   named: true
   key: true
   motive: Искупление; вера в Селунэ
@@ -173,6 +180,7 @@
   origin: pack
 - id: erik
   name: Эрик
+  gender: male
   named: true
   key: false
   motive: Выжить; обещаны свобода и серебро
@@ -189,6 +197,7 @@
   origin: pack
 - id: ethan
   name: Итан
+  gender: male
   named: true
   key: false
   status: dead
@@ -209,6 +218,7 @@
   origin: pack
 - id: father_mark
   name: Отец Марк
+  gender: male
   named: true
   key: true
   motive: Противостоять тьме Бездны
@@ -234,6 +244,7 @@
   origin: pack
 - id: grok_innkeeper
   name: Грок (трактирщик «Пьяного Дракона»)
+  gender: male
   named: true
   key: false
   motive: Защитить таверну и Мило; благодарен Грею
@@ -251,6 +262,7 @@
   origin: pack
 - id: hek
   name: Хэк
+  gender: male
   named: true
   key: false
   motive: Торговля
@@ -265,6 +277,7 @@
   origin: pack
 - id: horst
   name: Хорст
+  gender: male
   named: true
   key: false
   status: dead
@@ -286,6 +299,7 @@
   origin: pack
 - id: jorgen
   name: Йорген
+  gender: male
   named: true
   key: false
   motive: Служба Ложе
@@ -303,6 +317,7 @@
   origin: pack
 - id: lira
   name: Лира
+  gender: female
   named: true
   key: false
   motive: Служба Ложе
@@ -319,6 +334,7 @@
   origin: pack
 - id: magister
   name: Магистр (Второго Круга)
+  gender: male
   named: true
   key: false
   motive: Закончить ритуал
@@ -337,6 +353,7 @@
   origin: pack
 - id: milo
   name: Мило
+  gender: male
   named: true
   key: true
   motive: Верность Грею, вера в Селунэ
@@ -366,6 +383,7 @@
   origin: pack
 - id: mor_lord
   name: Мор-Владыка
+  gender: male
   named: true
   key: true
   motive: Пробудиться
@@ -399,6 +417,7 @@
   origin: pack
 - id: nazir
   name: Верховный Жрец Назир
+  gender: male
   named: true
   key: true
   motive: Пробудить Мор-Владыку и вскрыть Могильник; без Ключей — кровавой жертвой
@@ -440,6 +459,7 @@
   origin: pack
 - id: olbrecht
   name: Казначей Ольбрехт
+  gender: male
   named: true
   key: true
   status: dead
@@ -469,6 +489,7 @@
   origin: pack
 - id: olgerd
   name: Ольгерд
+  gender: male
   named: true
   key: false
   motive: Узнать судьбу сына
@@ -484,6 +505,7 @@
   origin: pack
 - id: plague_brute
   name: Громила Мора (мутант-тюремщик)
+  gender: male
   named: true
   key: false
   status: dead
@@ -506,6 +528,7 @@
   origin: pack
 - id: scarred_mercenary
   name: Старший наёмник со шрамом
+  gender: male
   named: true
   key: false
   motive: Деньги
@@ -520,6 +543,7 @@
   origin: pack
 - id: second_hierarch
   name: Второй Иерарх
+  gender: male
   named: true
   key: false
   status: dead
@@ -541,6 +565,7 @@
   origin: pack
 - id: sickle_executioner
   name: Палач с серпом
+  gender: male
   named: true
   key: false
   status: dead
@@ -562,6 +587,7 @@
   origin: pack
 - id: supreme_hierarch
   name: Верховный Иерарх Ордена
+  gender: male
   named: true
   key: true
   status: dead
@@ -584,6 +610,7 @@
   origin: pack
 - id: third_hierarch
   name: Третий Иерарх
+  gender: male
   named: true
   key: false
   status: dead
@@ -605,6 +632,7 @@
   origin: pack
 - id: tobin
   name: Староста Тобин
+  gender: male
   named: true
   key: false
   motive: Безопасность деревни
@@ -620,6 +648,7 @@
   origin: pack
 - id: tower_cult_leader
   name: Главный культист Старой башни (безымянный)
+  gender: male
   named: true
   key: false
   status: dead
@@ -642,6 +671,7 @@
   origin: pack
 - id: varen
   name: Советник Варен
+  gender: male
   named: true
   key: true
   motive: Власть над торговыми гильдиями; замести следы
@@ -669,6 +699,7 @@
   origin: pack
 - id: warlock_viper
   name: Чернокнижник в костяной маске
+  gender: male
   named: true
   key: false
   status: dead

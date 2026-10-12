@@ -1,5 +1,6 @@
 - id: aldric
   name: Олдрик
+  gender: male
   named: true
   key: true
   location_id: tavern
@@ -19,6 +20,7 @@
       reveal_if: {narrative: герой завоевал доверие Олдрика}
 - id: mara
   name: Мара
+  gender: female
   named: true
   location_id: town
   species_id: human
@@ -31,6 +33,7 @@
       cooldown: 7d
 - id: brann
   name: Бранн
+  gender: male
   named: true
   location_id: cellar
   species_id: dwarf

@@ -11,7 +11,7 @@
 - tone: оси только из tone_axes или none (не задано); mood, notes — словами; пустой список — не задано.
 - world_text: мир, его история и атмосфера. truths: неизменные факты мира; может быть пусто.
 - locations: не меньше одной. parent_id, connections и все ссылки — только на id твоих же локаций.
-- npcs: means от одного до трёх. named — у именованных, key — у ключевых для сюжета. location_id — id своей локации. species_id — из species_ids, пусто, если вида в выжимке нет (не подбирай ближайший). trade_kind — из trade_kinds, если NPC торгует, иначе none.
+- npcs: gender (male, female, other) — из выжимки, none, если не ясно; pronouns — только если названы, иначе пусто. means от одного до трёх. named — у именованных, key — у ключевых для сюжета. location_id — id своей локации. species_id — из species_ids, пусто, если вида в выжимке нет (не подбирай ближайший). trade_kind — из trade_kinds, если NPC торгует, иначе none.
 - factions: members — id твоих NPC, regions — id твоих локаций. pantheon: rivals — id твоих богов, servants — id твоих NPC.
 - opportunity (возможности NPC, фракций и богов) и secrets (секреты NPC): одно условие — kind и ref. Структурные виды (flag, hero_has, hero_at, npc_status, attitude, favor) используй только с id из своего же вывода или справочника; npc_status — со status; attitude и favor — с gte больше нуля. Если подходящего id нет — kind narrative и условие словами в ref.
 - Существ и монстров, боёвку (combat) не описывай. Героев не описывай: у пака нет пресетов героя, герой создаётся при старте.

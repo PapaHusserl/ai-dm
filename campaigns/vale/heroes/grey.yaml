@@ -3,6 +3,7 @@ id: grey
 money_cp: 700
 choices:
   name: Грей
+  gender: male
   species_id: human
   class_id: ranger
   background:

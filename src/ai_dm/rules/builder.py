@@ -9,6 +9,7 @@ from ai_dm.rules.progression import sync_resources
 from ai_dm.rules.triggers_eval import validate_refs
 from ai_dm.rules.uniqueness import name_taken
 from ai_dm.state.creature import CreatureState
+from ai_dm.state.gender import Gender
 from ai_dm.state.hero import BackgroundSpec, CharacterSheet, ClassLevel, HeroState
 from ai_dm.state.triggers import Trigger
 
@@ -46,6 +47,8 @@ OPPORTUNITY_THEN_MAX = 200
 class CharacterChoices(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
+    gender: Gender | None = None
+    pronouns: str = ""
     species_id: str
     class_id: str
     background: str | BackgroundSpec
@@ -504,6 +507,8 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
         id=choices.hero_id,
         ordinal=choices.ordinal,
         name=choices.name,
+        gender=choices.gender,
+        pronouns=choices.pronouns,
         sheet=sheet,
         creature=CreatureState(hp_current=hp, hp_max=hp),
     )

@@ -4,7 +4,7 @@ from importlib import resources
 
 from ai_dm.core.rng import Rng
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
-from ai_dm.master.prompt import dump
+from ai_dm.master.prompt import dump, identity_data
 from ai_dm.master.relevance import relevant_npcs
 from ai_dm.master.session import MasterSession
 from ai_dm.protocol.apply import apply
@@ -90,7 +90,7 @@ class WorldPromptBuilder:
             n = world.npcs[npc_id]
             npcs.append(
                 {"id": n.id, "name": n.name, "location_id": n.location_id, "key": n.key,
-                 "attitude": n.attitude}
+                 "attitude": n.attitude, **identity_data(n)}
             )
             place_ids.add(n.location_id)
         locations = [

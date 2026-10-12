@@ -5,9 +5,11 @@ from ai_dm.protocol.handlers import checks
 from ai_dm.protocol.handlers.world import (
     change_attitude,
     change_follows,
+    change_identity,
     change_status,
     death_refused,
     favor_change_for,
+    nothing_to_change,
     rejected,
 )
 from ai_dm.protocol.handlers.world import (
@@ -107,9 +109,8 @@ def npc_update(ctx, request):
         return Invalid(
             code="unknown_npc", message=f"нет NPC {request.npc_id!r}" + allowed(world.npcs)
         )
-    if (
-        request.attitude_delta is None and request.status is None
-        and request.location_id is None and request.follows is None
+    if nothing_to_change(
+        request, "attitude_delta", "status", "location_id", "follows", "gender", "pronouns"
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -137,6 +138,7 @@ def npc_update(ctx, request):
         decision.log.append(f"{npc.name}: теперь в {world.locations[npc.location_id].name}")
     if request.follows is not None:
         change_follows(ctx, npc, request, decision)
+    change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)
     if request.status is not None:

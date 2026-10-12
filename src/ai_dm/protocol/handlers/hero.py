@@ -61,7 +61,8 @@ def sheet_from_request(request) -> HeroSheet:
         if chosen:
             feat_choices[key] = list(chosen)
     choices = CharacterChoices(
-        name=request.name, species_id=request.species_id, class_id=request.class_id,
+        name=request.name, gender=request.gender, pronouns=request.pronouns or "",
+        species_id=request.species_id, class_id=request.class_id,
         background=spec, ability_method=request.ability_method,
         ability_scores=request.ability_scores.model_dump(by_alias=True),
         background_bonus=bonus, class_skills=list(request.class_skills),
@@ -103,7 +104,8 @@ def request_from_sheet(sheet) -> dict:
     keys = [key for key, _ in origin_feat_keys(spec, c.species_choices)]
     picks = [c.feat_choices.get(key, []) for key in keys] + [[], []]
     return {
-        "type": "hero_sheet", "name": c.name, "species_id": c.species_id, "class_id": c.class_id,
+        "type": "hero_sheet", "name": c.name, "gender": c.gender or "none",
+        "pronouns": c.pronouns, "species_id": c.species_id, "class_id": c.class_id,
         "ability_method": c.ability_method, "ability_scores": dict(c.ability_scores),
         "bonus_plus2": plus2[0] if plus2 else "none",
         "bonus_plus1": [a for a, n in c.background_bonus.items() if n == 1],

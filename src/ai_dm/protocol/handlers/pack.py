@@ -33,6 +33,7 @@ def npc_data(npc) -> dict:
         "opportunity": [trigger_data(t) for t in npc.opportunity],
         "secrets": [secret_data(s) for s in npc.secrets],
         "location_id": npc.location_id, "species_id": npc.species_id, "trade": trade,
+        "gender": npc.gender, "pronouns": npc.pronouns,
     }))
     return data
 

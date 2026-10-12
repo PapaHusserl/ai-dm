@@ -8,6 +8,7 @@ from ai_dm.core.duration import Duration
 from ai_dm.core.rng import RngState
 from ai_dm.state.creature import CreatureState, Equipment
 from ai_dm.state.death import DeathRecord
+from ai_dm.state.gender import Gender
 from ai_dm.state.hero import InventoryEntry
 from ai_dm.state.triggers import Condition, Secret, Trigger
 
@@ -82,6 +83,9 @@ class NPC(BaseModel):
     # id героя, с которым NPC идёт (путь героя переносит и его); None -- сам по себе
     follows: str | None = None
     species_id: str | None = None
+    # None -- пол не известен; pronouns -- местоимения/обращение, если важны ("" = нет)
+    gender: Gender | None = None
+    pronouns: str = ""
     birth_s: int | None = None
     # группы для affects событий
     groups: list[str] = Field(default_factory=list)

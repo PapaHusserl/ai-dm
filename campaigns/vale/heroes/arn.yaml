@@ -1,6 +1,7 @@
 id: arn
 choices:
   name: Арн
+  gender: male
   species_id: human
   class_id: fighter
   background: soldier

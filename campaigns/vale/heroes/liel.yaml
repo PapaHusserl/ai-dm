@@ -1,6 +1,7 @@
 id: liel
 choices:
   name: Лиэль
+  gender: female
   species_id: elf
   class_id: wizard
   background: sage

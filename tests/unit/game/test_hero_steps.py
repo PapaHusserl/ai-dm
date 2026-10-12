@@ -29,7 +29,8 @@ from ai_dm.state.hero import BackgroundSpec  # noqa: E402
 KEYS = [
     "species", "class", "background", "method", "scores", "bonus_scheme", "bonus", "class_skills",
     "masteries", "style", "cantrips", "spells", "prepared", "species_skill", "species_feat",
-    "feat_picks_bg", "feat_picks_species", "kit", "gear", "name", "motive", "means",
+    "feat_picks_bg", "feat_picks_species", "kit", "gear", "name", "gender", "pronouns", "motive",
+    "means",
 ]
 
 

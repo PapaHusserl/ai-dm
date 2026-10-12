@@ -111,7 +111,7 @@ def test_hero_sheet_tool_description_is_docstring():
 def test_hero_sheet_tool_has_all_top_fields():
     props = tool()["input_schema"]["properties"]
     assert set(props) == {
-        "type", "name", "species_id", "class_id", "ability_method", "ability_scores",
+        "type", "name", "gender", "pronouns", "species_id", "class_id", "ability_method", "ability_scores",
         "bonus_plus2", "bonus_plus1", "class_skills", "weapon_masteries", "fighting_style",
         "class_kit", "spells", "prepared", "species_skill", "species_feat", "feat_skills",
         "species_feat_skills", "background", "background_gear", "motive", "means", "opportunity",

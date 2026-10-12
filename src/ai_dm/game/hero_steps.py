@@ -39,6 +39,7 @@ from ai_dm.rules.hero_options import (
 )
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES
+from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.hero import BackgroundSpec
 
 # значение пункта «Описать словами» на шаге предыстории: его разбирает автомат
@@ -74,6 +75,8 @@ class Draft:
     kit: str | None = None
     gear: str = ""
     name: str = ""
+    gender: str = ""
+    pronouns: str = ""
     motive: str = ""
     means: list = field(default_factory=list)
     # занятые имена мира: служебное поле шага имени, не выбор игрока и не сбрасывается clear_from
@@ -397,6 +400,18 @@ def put_name(draft, value, registry):
     return None
 
 
+def options_gender(draft, registry):
+    options = [Option(gender, word.capitalize()) for gender, word in GENDER_WORDS.items()]
+    return options + [Option("", "Не указывать")]
+
+
+def put_pronouns(draft, value, registry):
+    # «-» -- без особых местоимений (пустой ввод экран не принимает)
+    text = value.strip()
+    draft.pronouns = "" if text == "-" else text
+    return None
+
+
 def put_motive(draft, value, registry):
     problems = motive_problems(value.strip())
     if problems:
@@ -475,6 +490,11 @@ STEPS = (
     StepDef("kit", "kit", "pick", "Набор класса", needs=needs_kit, options=options_kit),
     StepDef("gear", "gear", "pick", "Снаряжение предыстории", options=options_gear),
     StepDef("name", "name", "text", "Имя героя", put=put_name),
+    StepDef("gender", "gender", "pick", "Пол героя", options=options_gender),
+    StepDef(
+        "pronouns", "pronouns", "text", "Местоимения или обращение («-» — по полу)",
+        put=put_pronouns,
+    ),
     StepDef(
         "motive", "motive", "text", "Мотив героя — чего он добивается (до 200 символов)",
         put=put_motive,
@@ -565,7 +585,8 @@ def to_sheet(draft, registry) -> HeroSheet:
         if picks:
             feat_choices[key] = list(picks)
     choices = CharacterChoices(
-        name=draft.name, species_id=draft.species_id, class_id=draft.class_id,
+        name=draft.name, gender=draft.gender or None, pronouns=draft.pronouns,
+        species_id=draft.species_id, class_id=draft.class_id,
         background=draft.background, ability_method=draft.ability_method,
         ability_scores=dict(draft.scores), background_bonus=dict(draft.bonus),
         class_skills=list(draft.class_skills), weapon_masteries=list(draft.masteries),

@@ -38,6 +38,16 @@ def dump(data):
     return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
 
+def identity_data(who):
+    # пол и местоимения NPC или героя: ключи только если заданы
+    data = {}
+    if who.gender is not None:
+        data["gender"] = who.gender
+    if who.pronouns:
+        data["pronouns"] = who.pronouns
+    return data
+
+
 def inventory_data(hero, registry):
     # стек с названием и ценой одной вещи; качество только если оно есть (экономия токенов);
     # у сюжетных предметов мира ещё описание и признак квестового
@@ -357,6 +367,7 @@ class PromptBuilder:
                     item = {"id": npc.id, "name": npc.name, "attitude": npc.attitude}
                     if npc.follows == hero.id:
                         item["follows"] = hero.id
+                    item.update(identity_data(npc))
                     if npc.trade is not None:
                         item["merchant"] = npc.trade.kind
                     scene_npcs.append(item)
@@ -365,6 +376,7 @@ class PromptBuilder:
         for npc_id in sorted(context_plan.npc_ids):
             n = world.npcs[npc_id]
             item = {"id": n.id, "name": n.name, "location_id": n.location_id, "key": n.key}
+            item.update(identity_data(n))
             if n.follows == hero.id:
                 item["follows"] = hero.id
             known_npcs.append(item)
@@ -392,6 +404,7 @@ class PromptBuilder:
             "xp": hero.sheet.xp,
         }
         hero_data.update(self.sheet_data(hero, ctx.registry))
+        hero_data.update(identity_data(hero))
         if hero.motive:
             hero_data["motive"] = hero.motive
         if hero.means:
