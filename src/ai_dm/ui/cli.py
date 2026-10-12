@@ -20,7 +20,7 @@ from ai_dm.campaign.loader import (
     pack_content_dir,
     pack_npc_trade,
 )
-from ai_dm.campaign.presets import PACK_TONE, load_presets
+from ai_dm.campaign.presets import PACK_TONE, load_presets, preset_packs
 from ai_dm.config.app import ModelRole
 from ai_dm.config.user import AUDIO_FILE, AudioPrefs, config_dir, load_user_settings
 from ai_dm.content.loader import load_registry
@@ -184,17 +184,51 @@ def make_hero_session(kind, deps, task, width):
     return HeroSession(deps, task, width)
 
 
-def preset_label(preset):
+def preset_label(preset, hint=""):
     name = preset.name
     if preset.codename:
         name += f" (в духе «{preset.codename}»)"
-    return f"{name} — {preset.description}"
+    label = f"{name} — {preset.description}"
+    if hint:
+        label += f" {hint}"
+    return label
 
 
-def choose_preset(stdin, stdout, notes, setup):
+def pack_hints(campaigns_dir, current_id):
+    # пресет -> паки, которым он подходит, кроме текущего
+    hints = {}
+    for preset_id, packs in preset_packs(campaigns_dir).items():
+        others = [pack for pack in packs if pack[0] != current_id]
+        if others:
+            hints[preset_id] = others
+    return hints
+
+
+def hint_suffix(packs):
+    if not packs:
+        return ""
+    names = ", ".join(f"«{name}» ({pack_id})" for pack_id, name in packs)
+    return f"Лучше подходит пак {names}."
+
+
+def hint_lines(preset_id, hints, presets):
+    # заметки старта: готовая команда нового мира с подходящим паком
+    if not preset_id or preset_id == PACK_TONE:
+        return []
+    return [
+        f"Пресету «{presets[preset_id].name}» лучше подходит пак «{name}»: "
+        f"новый мир — ai-dm --new --campaign {pack_id} --preset {preset_id}"
+        for pack_id, name in hints.get(preset_id, ())
+    ]
+
+
+def choose_preset(stdin, stdout, notes, setup, hints=None):
     # пресет мира меню: id или None (как в паке; Esc и конец ввода -- тоже как в паке)
     presets = load_presets()
-    names = [PRESET_AS_PACK] + [preset_label(p) for p in presets.values()]
+    hints = hints or {}
+    names = [PRESET_AS_PACK] + [
+        preset_label(p, hint_suffix(hints.get(p.id, ()))) for p in presets.values()
+    ]
     number = choose_number(stdin, stdout, notes, setup, ("пресета", PRESET_TITLE, names, False))
     if number is None or number == 1:
         return None
@@ -834,6 +868,7 @@ def prepare(args, stdin, stdout, notes, setup):
     model = narrator.model
     preset = args.preset
     created = None
+    hints = {}
     world_model = world_role.model
     if args.replay:
         world_model = journal_world_model(records, world_model)
@@ -848,6 +883,7 @@ def prepare(args, stdin, stdout, notes, setup):
             for line in error.lines:
                 say(notes, line)
             return 1
+        hints = pack_hints(campaigns_dir, pack.manifest.id)
         if args.hero_describe is not None:
             hero = NEW_HERO
         elif args.hero:
@@ -857,7 +893,7 @@ def prepare(args, stdin, stdout, notes, setup):
         else:
             hero = choose_hero(stdin, stdout, notes, pack, setup)
             if hero is not None and preset is None:
-                preset = choose_preset(stdin, stdout, notes, setup)
+                preset = choose_preset(stdin, stdout, notes, setup, hints)
         if hero is NEW_HERO or hero is STEP_HERO:
             created = HeroCreateDeps(
                 adapter=adapter, app_cfg=settings.app, registry=registry, cfg=settings.rules,
@@ -921,6 +957,8 @@ def prepare(args, stdin, stdout, notes, setup):
             if preset == PACK_TONE:
                 seed_text += " (как в паке)"
         say(notes, f"Мир: {world_id}{seed_text} (продолжить: ai-dm --world {world_id})")
+        for line in hint_lines(preset, hints, load_presets()):
+            say(notes, line)
 
     app = GameApp(
         settings, registry, bundle, adapter, saves_root=saves_root,

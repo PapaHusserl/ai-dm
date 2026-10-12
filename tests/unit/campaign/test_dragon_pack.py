@@ -151,19 +151,39 @@ def test_dragon_entities_have_origin_pack(cfg):
         assert all(e.origin == "pack" for e in group.values())
 
 
-def test_dragon_tone_is_approved(cfg):
-    tone = dragon_world(cfg).world.tone
+def test_dragon_pack_tone_is_approved():
+    tone = dragon_pack().manifest.tone
     assert tone.violence == "жестоко"
     assert tone.horror == "умеренно"
     assert tone.romance == "откровенно"
     assert tone.language == "сдержанно"
     assert tone.mood
     assert tone.hard_limits == []
-    assert tone.soft_limits == []
 
 
-def test_dragon_narration_style_is_in_tone_notes(cfg):
-    assert dragon_world(cfg).world.tone.notes
+def test_dragon_world_tone_is_manifest_preset_grim(cfg):
+    from ai_dm.campaign.presets import apply_preset, load_presets
+
+    manifest = dragon_pack().manifest
+    assert manifest.preset == "grim"
+    assert dragon_world(cfg).world.tone == apply_preset(manifest.tone, load_presets()["grim"])
+
+
+def test_dragon_world_tone_is_grimmer_than_pack(cfg):
+    tone = dragon_world(cfg).world.tone
+    assert tone.horror == "сильно"
+    assert tone.language == "грубо"
+    assert tone.romance == "откровенно"
+
+
+def test_dragon_pack_style_lines_survive_in_world_soft_limits(cfg):
+    manifest = dragon_pack().manifest
+    assert manifest.tone.soft_limits
+    assert set(manifest.tone.soft_limits) <= set(dragon_world(cfg).world.tone.soft_limits)
+
+
+def test_dragon_narration_style_is_in_tone_notes():
+    assert dragon_pack().manifest.tone.notes
 
 
 def test_dragon_grey_has_54_crowns(cfg):

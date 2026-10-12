@@ -562,10 +562,13 @@ def test_sheet_hero_with_preset_gets_preset_tone(registry, cfg):
     assert bundle.world.tone == expected
 
 
-def test_sheet_hero_without_preset_keeps_pack_tone(registry, cfg):
+def test_sheet_hero_without_preset_uses_manifest_preset_tone(registry, cfg):
+    from ai_dm.campaign.presets import apply_preset, load_presets
+
     pack = vale_pack(registry)
     bundle = build_sheet(registry, cfg, pack)
-    assert bundle.world.tone == pack.manifest.tone
+    preset = load_presets()[pack.manifest.preset]
+    assert bundle.world.tone == apply_preset(pack.manifest.tone, preset)
 
 
 def test_sheet_hero_build_does_not_change_the_sheet(registry, cfg):

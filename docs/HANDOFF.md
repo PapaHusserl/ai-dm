@@ -201,3 +201,6 @@ FUNCS разворачивается в шаблоны mutmut `ai_dm.mod.x_func_
 - Роадмап ред. 3 (BACKLOG 24–32, блок У «Услуги NPC»): docs/decisions/roadmap-r3-proposal.md (компромисс с кабаном-тестем, решения проектировщика в конце), docs/decisions/roadmap-r3-cost.md (заменён ред. 4). HTML: https://claude.ai/artifact/4J8j5zwtaoKNACPgTK9NA3. Расходы: papa-kaban ~46+54 тыс.; kaban-test ~22 тыс.
 - AD1, Q4 (решение проектировщика): после раннего выхода summarizer старые репорты 6а с границей сцены/главы (в журнале лишний вызов summarizer с текстом «Готово.») могут не воспроизвестись: `--replay-report` вернёт код 1 «расхождение». Новые репорты не затронуты; в tests/fixtures и tests/golden журналов с summarizer нет, эталонов replay для правки нет.
 - Расходы: papa-kaban ~45+77+45 тыс.; kaban-test ~34 тыс.
+- **2026-10-12:** живой прогон К0-фикс отменён проектировщиком; К0-фикс закрыта без прогона (чек-лист остаётся для будущих прогонов). Дальше — П37 (код kaban + тесты kaban-doeba по docs/P37-PLAN.md).
+- **П37:** код kaban ✅ 2026-10-12 (manifest.preset у 3 паков, `preset_packs`, подсказка в меню/заметках cli.py, Q1/Q2 данными); тесты kaban-doeba и ревью — дальше.
+- П37 расходы: kaban ~51 тыс. (~12 мин); kaban-doeba ~83 тыс. (~27 мин, mutmut); mama-kaban ~25 тыс. Ревью docs/decisions/p37-review.md (В-1 — по умолчанию а).

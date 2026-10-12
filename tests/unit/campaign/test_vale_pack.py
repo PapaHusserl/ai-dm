@@ -131,10 +131,24 @@ def test_vale_world_has_chapter_one_and_campaign_id(registry):
     assert "Вейл" in bundle.world.lore.world_text
 
 
-def test_vale_tone_keeps_mood_and_has_typed_scales(registry):
-    tone = new_world(registry, "arn").world.tone
+def test_vale_pack_tone_keeps_mood_and_has_typed_scales(registry):
+    tone = vale(registry).manifest.tone
     assert tone.mood == "приключенческое фэнтези"
     assert tone.language in ("", "сдержанно", "грубо")
+
+
+def test_vale_world_tone_is_manifest_preset_heroic(registry):
+    from ai_dm.campaign.presets import apply_preset, load_presets
+
+    manifest = vale(registry).manifest
+    assert manifest.preset == "heroic"
+    world = new_world(registry, "arn").world
+    assert world.tone == apply_preset(manifest.tone, load_presets()["heroic"])
+
+
+def test_vale_world_writes_one_tone_chronicle_entry(registry):
+    entries = new_world(registry, "arn").chronicle.entries
+    assert [e.text for e in entries if e.kind == "tone"] == ["Пресет мира: Героическое приключение"]
 
 
 # Грей: набор следопыта (BACKLOG 7)

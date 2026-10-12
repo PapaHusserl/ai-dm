@@ -1,4 +1,5 @@
 from importlib import resources
+from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -46,3 +47,24 @@ def apply_preset(pack_tone: Tone, preset: WorldPreset) -> Tone:
             "soft_limits": merge_limits(pack_tone.soft_limits, preset.tone.soft_limits),
         },
     )
+
+
+def preset_packs(campaigns_dir) -> dict[str, list[tuple[str, str]]]:
+    # пресет -> [(id пака, имя)] по campaign.yaml в каталоге; чужие и битые паки молча пропускаются
+    root = Path(campaigns_dir)
+    result = {}
+    if not root.is_dir():
+        return result
+    for folder in sorted(root.iterdir()):
+        manifest = folder / "campaign.yaml"
+        if folder.name.startswith(".") or not manifest.is_file():
+            continue
+        try:
+            data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, yaml.YAMLError):
+            continue
+        if not isinstance(data, dict) or not data.get("preset") or data["preset"] == PACK_TONE:
+            continue
+        pack_id = data.get("id") or folder.name
+        result.setdefault(data["preset"], []).append((pack_id, data.get("name") or pack_id))
+    return result
