@@ -92,6 +92,19 @@ def stand_up(engine, ref) -> None:
     engine.log(f"{engine.name(ref)} встаёт")
 
 
+def participant_name(state, heroes, ref) -> str:
+    if ref in heroes:
+        return heroes[ref].name
+    name = next(p.name for p in state.participants if p.ref == ref)
+    if name == "":
+        return ref
+    # одинаковые имена различаются номером по порядку участников
+    same = [p.ref for p in state.participants if p.name == name and p.ref not in heroes]
+    if len(same) > 1:
+        return f"{name} {same.index(ref) + 1}"
+    return name
+
+
 class CombatEngine:
     def __init__(self, state, world, heroes, registry, cfg, rng, controllers=None):
         self.held = False
@@ -158,19 +171,7 @@ class CombatEngine:
         return not self.is_hero(ref) and self.part(ref).monster_id is not None
 
     def name(self, ref) -> str:
-        if ref in self.heroes:
-            return self.heroes[ref].name
-        name = self.part(ref).name
-        if name == "":
-            return ref
-        # одинаковые имена различаются номером по порядку участников
-        same = [
-            p.ref for p in self.state.participants
-            if p.name == name and p.ref not in self.heroes
-        ]
-        if len(same) > 1:
-            return f"{name} {same.index(ref) + 1}"
-        return name
+        return participant_name(self.state, self.heroes, ref)
 
     def hp_text(self, ref) -> str:
         creature = self.creature(ref)

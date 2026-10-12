@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from ai_dm.combat.engine import CombatRoundLimit
 from ai_dm.core.rng import Rng
-from ai_dm.game import boundary, combat_flow
+from ai_dm.game import boundary, combat_flow, combat_fold
 from ai_dm.game.controllers import PlayerController
 from ai_dm.game.scene import check_close, hero_of
 from ai_dm.master.prompt import PromptBuilder
@@ -387,8 +387,7 @@ class TurnRunner:
             narration += "\n\n" + self.narrate_combat(
                 work, rng, "", result.log, session, run_id, result
             )
-            combat_flow.settle_parley(work, self.cfg)
-            result.combat_outcome = combat_flow.finish_combat(work, self.registry)
+            self.end_fight(work, result, fold=False)
         return narration
 
     # ход героя в бою
@@ -442,9 +441,15 @@ class TurnRunner:
         result.log = state.log[log_start:]
         narration = self.narrate_combat(work, rng, said, result.log, session, run_id, result)
         if combat_flow.is_finished(state):
-            combat_flow.settle_parley(work, self.cfg)
-            result.combat_outcome = combat_flow.finish_combat(work, self.registry)
+            self.end_fight(work, result, fold=True)
         return narration
+
+    def end_fight(self, work, result, fold) -> None:
+        state = work.session.active_combat
+        combat_flow.settle_parley(work, self.cfg)
+        result.combat_outcome = combat_flow.finish_combat(work, self.registry)
+        if fold:
+            combat_fold.fold_fight(work, state, self.registry)
 
     def narrate_combat(self, work, rng, said, log_lines, session, run_id, result) -> str:
         ctx = TurnContext(
