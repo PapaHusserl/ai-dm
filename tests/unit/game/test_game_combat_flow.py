@@ -985,3 +985,46 @@ def test_number_with_bonus_step_still_keeps_turn_open(registry, cfg, tmp_path):
     rig.runner.play(str(number_of(rig.runner, "move:hall")))
     assert hero_is_up(rig.runner)
     assert combat_of(rig.runner).round == round_before
+
+
+# К1: строка концентрации с временем конца («до 14:05» -- время суток из until_s)
+
+def held_bundle(registry, until_s):
+    from protocol_kit import make_bundle
+
+    from ai_dm.state.creature import Concentration
+
+    bundle = make_bundle(registry)
+    bundle.heroes[0].creature.concentration = Concentration(
+        spell_id="hunters_mark", circle=1, until_s=until_s
+    )
+    return bundle
+
+
+def test_concentration_line_shows_the_end_time(registry, cfg):
+    from ai_dm.game.combat_flow import concentration_line
+
+    bundle = held_bundle(registry, 14 * 3600 + 5 * 60)
+    assert concentration_line(bundle, registry, cfg) == "Концентрация: Метка охотника до 14:05"
+
+
+def test_concentration_line_wraps_the_end_time_to_the_day(registry, cfg):
+    from ai_dm.game.combat_flow import concentration_line
+
+    bundle = held_bundle(registry, 86400 + 3600 + 16 * 60)
+    assert concentration_line(bundle, registry, cfg).endswith(" до 01:16")
+
+
+def test_concentration_line_without_end_time_has_no_until(registry, cfg):
+    from ai_dm.game.combat_flow import concentration_line
+
+    bundle = held_bundle(registry, None)
+    assert concentration_line(bundle, registry, cfg) == "Концентрация: Метка охотника"
+
+
+def test_concentration_line_is_empty_without_concentration(registry, cfg):
+    from protocol_kit import make_bundle
+
+    from ai_dm.game.combat_flow import concentration_line
+
+    assert concentration_line(make_bundle(registry), registry, cfg) == ""

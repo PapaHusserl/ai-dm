@@ -37,7 +37,9 @@
 #     advance_time{category: minute|hour|day|week|month|None, travel_to: str|None,
 #                  pace: slow|normal|fast|None}   -- ровно одно из category / travel_to проверяет
 #                  обработчик (Invalid("category_or_travel_to")), не модель
-#     rest{kind: short|long, hit_dice: int|None}
+#     rest{kind: short|long, hit_dice: int|None, prepared_swap: PreparedSwapSpec|None}
+#       PreparedSwapSpec{drop: [str], take: [str]} -- смена подготовленных после длинного отдыха;
+#       оба списка пусты -> None (cut_swap); в схеме вложенный объект без union
 #     set_flag{name: str, value: bool|int|str}
 #     npc_create{id, name: str, means: [str]; named: bool|None, key: bool|None, motive: str|None,
 #                location_id: str|None}   -- named=None -> False; origin созданного NPC = "ai"

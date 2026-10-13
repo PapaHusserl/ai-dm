@@ -11,7 +11,6 @@ from ai_dm.combat.actions.attack import (
 )
 from ai_dm.combat.area import affected_zones
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
-from ai_dm.core.dice import parse_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.damage import apply_damage
@@ -29,6 +28,9 @@ from ai_dm.rules.spellcasting import (
     roll_cast_checks,
     roll_heal,
     spell_kind,
+    upcast_dice,
+    upcast_steps,
+    usable_circles,
 )
 from ai_dm.rules.spellcasting import free_cast_left as rules_free_cast_left
 from ai_dm.state.creature import ActiveEffect, Concentration, Expiry
@@ -45,16 +47,13 @@ def castable_spells(engine, ref) -> list:
         spell = engine.registry.get("spell", spell_id)
         if spell.level == 0 and spell not in result:
             result.append(spell)
-    pools = hero.creature.resources
     prepared = list(hero.sheet.prepared_of())
     for spell_id in always_prepared(hero, engine.registry):
         if spell_id not in prepared:
             prepared.append(spell_id)
     for spell_id in prepared:
         spell = engine.registry.get("spell", spell_id)
-        pool = pools.get(f"spell_slot:{spell.level}")
-        has_slot = pool is not None and pool.current > 0
-        usable = has_slot or free_cast_left(engine, hero, spell)
+        usable = bool(usable_circles(hero, spell)) or free_cast_left(engine, hero, spell)
         if spell.level >= 1 and usable and spell not in result:
             checks = engine.cast_checks.check(hero, spell.id, engine.registry)
             if not any(c.kind == "forbidden" for c in checks):
@@ -83,7 +82,7 @@ def uses_bonus_action(spell) -> bool:
     return spell.casting_time == "bonus_action"
 
 
-def cast_targets(engine, ref, spell) -> list[str]:
+def cast_targets(engine, ref, spell, circle=None) -> list[str]:
     p = engine.part(ref)
     zones = engine.state.zones
     kind = spell_kind(spell)
@@ -94,9 +93,6 @@ def cast_targets(engine, ref, spell) -> list[str]:
                 continue
             steps = distance(zones, p.zone_id, p_target.zone_id)
             band = range_band_ft(steps)
-            if steps == 2:
-                # через одну зону -- 60 фт, а не «дальше»: Метка охотника (90 фт) достаёт
-                band = 60
             if band <= spell.range_ft:
                 result.append(p_target.ref)
     elif kind == "rider":
@@ -122,23 +118,40 @@ def cast_targets(engine, ref, spell) -> list[str]:
                 allies.append(q.ref)
         # цель варианта -- от одной до `targets` разных союзников через запятую
         limit = max([e.targets or 1 for e in spell.effects if e.type == "modifier"])
+        if upcast_steps(spell, circle) > 0:
+            limit += upcast_steps(spell, circle) * (spell.upcast.per_slot_level.targets or 0)
         for count in range(1, limit + 1):
             for group in combinations(allies, count):
                 result.append(",".join(group))
     return result
 
 
-def scaled_dice(spell, hero, effect) -> str:
-    # заговоры растут с уровнем героя
+def scaled_dice(spell, hero, effect, circle) -> str:
+    # заговоры растут с уровнем героя, заклинания -- с кругом ячейки
     dice = effect.dice
     if spell.cantrip_scaling is not None:
         for level in sorted(spell.cantrip_scaling):
             if level <= hero.sheet.level:
                 dice = spell.cantrip_scaling[level]
+    steps = upcast_steps(spell, circle)
+    if steps > 0 and spell.upcast.per_slot_level.dice is not None:
+        dice = upcast_dice(dice, spell.upcast.per_slot_level.dice, steps)
     return dice
 
 
-def cast_attack(engine, ref, spell, target_ref) -> list[DomainEvent]:
+def hold_concentration(engine, ref, spell, circle) -> None:
+    # новая концентрация сбрасывает прежнюю; срок -- по часам мира
+    caster = engine.creature(ref)
+    if caster.concentration is not None:
+        end_concentration(caster)
+        engine.drop_concentration_effects(ref)
+    until_s = None
+    if spell.duration_s is not None:
+        until_s = engine.world.clock.now_s + spell.duration_s
+    caster.concentration = Concentration(spell_id=spell.id, circle=circle, until_s=until_s)
+
+
+def cast_attack(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     hero = engine.heroes[ref]
     effect = effect_of(spell, "damage")
     base_adv = "normal"
@@ -155,7 +168,7 @@ def cast_attack(engine, ref, spell, target_ref) -> list[DomainEvent]:
     if result.outcome not in ("hit", "crit"):
         return [attack_event(ref, target_ref, spell.id, "spell", "miss", 0)]
     crit = result.outcome == "crit"
-    dice, bonus = split_dice(scaled_dice(spell, hero, effect))
+    dice, bonus = split_dice(scaled_dice(spell, hero, effect, circle))
     rolled = roll_damage(
         engine, ref, dice, bonus, crit, label=f"Урон ({spell.name})",
         parts=[(spell.name, bonus)], damage_type=effect.damage_type,
@@ -208,13 +221,9 @@ def transfer_mark(engine, ref, option) -> list[DomainEvent]:
     return []
 
 
-def cast_mark(engine, ref, spell, target_ref) -> list[DomainEvent]:
+def cast_mark(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     hero = engine.heroes[ref]
-    caster = hero.creature
-    if caster.concentration is not None:
-        end_concentration(caster)
-        engine.drop_concentration_effects(ref)
-    caster.concentration = Concentration(spell_id=spell.id, circle=spell.level)
+    hold_concentration(engine, ref, spell, circle)
     place_mark(engine, ref, spell, target_ref)
     engine.log(f"{engine.name(ref)}: {spell.name} на {engine.name(target_ref)}")
     if "hunters_lore" in hero_feature_ids(hero, engine.registry):
@@ -226,23 +235,17 @@ def cast_mark(engine, ref, spell, target_ref) -> list[DomainEvent]:
     return []
 
 
-def cast_rider(engine, ref, spell, target_ref) -> list[DomainEvent]:
+def cast_rider(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     # заряд на следующее попадание оружием: срабатывает в attack.weapon_rider
     hero = engine.heroes[ref]
-    caster = hero.creature
-    if caster.concentration is not None:
-        end_concentration(caster)
-        engine.drop_concentration_effects(ref)
-    caster.concentration = Concentration(spell_id=spell.id, circle=spell.level)
+    hold_concentration(engine, ref, spell, circle)
     effect = effect_of(spell, "rider")
-    # повышение круга движок не поддерживает: circle всегда равен кругу заклинания
-    circle = spell.level
-    sides = parse_dice(effect.dice).sides
-    caster.active_effects.append(
+    dice = scaled_dice(spell, hero, effect, circle)
+    hero.creature.active_effects.append(
         ActiveEffect(
             id=spell.id, source=ref, kind="weapon_rider",
             params={
-                "dice": f"{circle}d{sides}", "damage_type": effect.damage_type,
+                "dice": dice, "damage_type": effect.damage_type,
                 "condition": effect.condition, "ability": effect.ability,
                 "dc": spell_save_dc(hero, engine.registry), "circle": circle,
             },
@@ -253,11 +256,14 @@ def cast_rider(engine, ref, spell, target_ref) -> list[DomainEvent]:
     return []
 
 
-def cast_darts(engine, ref, spell, target_ref) -> list[DomainEvent]:
+def cast_darts(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     effect = effect_of(spell, "damage")
     dice, bonus = split_dice(effect.dice)
+    count = effect.count
+    if upcast_steps(spell, circle) > 0:
+        count += upcast_steps(spell, circle) * (spell.upcast.per_slot_level.count or 0)
     total = 0
-    for _ in range(effect.count):
+    for _ in range(count):
         total += roll_damage(
             engine, ref, dice, bonus, False, label=f"Урон ({spell.name})",
             parts=[(spell.name, bonus)], damage_type=effect.damage_type,
@@ -272,7 +278,7 @@ def cast_darts(engine, ref, spell, target_ref) -> list[DomainEvent]:
     return events + downed.after_damage(engine, target_ref, dealt, ref)
 
 
-def cast_area(engine, ref, spell, zone_id) -> list[DomainEvent]:
+def cast_area(engine, ref, spell, zone_id, circle) -> list[DomainEvent]:
     hero = engine.heroes[ref]
     area = effect_of(spell, "area")
     save = effect_of(spell, "save_effect")
@@ -280,7 +286,7 @@ def cast_area(engine, ref, spell, zone_id) -> list[DomainEvent]:
     covered = affected_zones(
         engine.state.zones, engine.part(ref).zone_id, area.shape, area.size_ft, zone_id
     )
-    dice, bonus = split_dice(scaled_dice(spell, hero, effect))
+    dice, bonus = split_dice(scaled_dice(spell, hero, effect, circle))
     rolled = roll_damage(
         engine, ref, dice, bonus, False, label=f"Урон ({spell.name})",
         parts=[(spell.name, bonus)], damage_type=effect.damage_type,
@@ -309,9 +315,9 @@ def cast_area(engine, ref, spell, zone_id) -> list[DomainEvent]:
     return events
 
 
-def cast_heal(engine, ref, spell, target_ref) -> list[DomainEvent]:
+def cast_heal(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     hero = engine.heroes[ref]
-    amount, _ = roll_heal(spell, hero, engine.registry, engine.rng)
+    amount, _ = roll_heal(spell, hero, engine.registry, engine.rng, circle)
     healed = heal(engine.actor(target_ref), amount)
     p = engine.part(target_ref)
     if p.status == "down" and engine.creature(target_ref).hp_current > 0:
@@ -321,12 +327,8 @@ def cast_heal(engine, ref, spell, target_ref) -> list[DomainEvent]:
     return []
 
 
-def cast_buff(engine, ref, spell, target_ref) -> list[DomainEvent]:
-    caster = engine.creature(ref)
-    if caster.concentration is not None:
-        end_concentration(caster)
-        engine.drop_concentration_effects(ref)
-    caster.concentration = Concentration(spell_id=spell.id, circle=spell.level)
+def cast_buff(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
+    hold_concentration(engine, ref, spell, circle)
     # все эффекты-модификаторы заклинания (атака и спасброски) на каждую цель
     effects = [e for e in spell.effects if e.type == "modifier"]
     names = []
@@ -369,17 +371,23 @@ def perform(engine, ref, option) -> list[DomainEvent]:
     else:
         engine.part(ref).turn.action = False
     free = spell.level > 0 and option.params.get("free", False)
+    circle = option.params["circle"]
     if free:
         # бесплатное использование тратится первым, ячейка остаётся
         hero.creature.resources[free_cast_pool(hero, engine.registry, spell.id)].current -= 1
     elif spell.level > 0:
-        hero.creature.resources[f"spell_slot:{spell.level}"].current -= 1
-    engine.log(f"{engine.name(ref)} читает {spell.name}")
+        hero.creature.resources[f"spell_slot:{circle}"].current -= 1
+    higher = ""
+    if circle > spell.level:
+        higher = f" ({circle} круг)"
+    engine.log(f"{engine.name(ref)} читает {spell.name}{higher}")
     if spell.level > 0 and cast_wasted(engine, hero, spell):
         engine.log("  заклинание не удалось, ячейка потрачена впустую")
         reveal(engine, ref)
         return [DomainEvent(type="spell_wasted", data={"id": ref, "spell": spell.id})]
-    events = CASTERS[spell_kind(spell)](engine, ref, spell, option.params["target"])
+    events = CASTERS[spell_kind(spell)](
+        engine, ref, spell, option.params["target"], circle
+    )
     # скрытность кончается с заклинанием (атака заклинанием уже раскрыла)
     reveal(engine, ref)
     return events

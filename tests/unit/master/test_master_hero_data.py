@@ -214,3 +214,24 @@ def test_hero_data_of_hunter_has_neither_companion_nor_due(registry, cfg):
     data = hero_data(grey_ctx(registry, cfg, subclass="hunter", companion=False))
     assert "companion_due" not in data
     assert "companion" not in data
+
+
+# К1 (В7): в промпт идут только подготовленные заклинания; после смены -- новый список,
+# снятые в промпт не попадают
+
+def test_hero_data_after_a_swap_has_the_new_prepared_list(registry, cfg):
+    from ai_dm.rules.spellcasting import swap_prepared
+
+    ctx = grey_ctx(registry, cfg)
+    swap_prepared(ctx.bundle.heroes[0], registry, ["fog_cloud"], ["longstrider"])
+    data = hero_data(ctx)
+    assert data["spells_prepared"] == ["cure_wounds", "longstrider"]
+    assert "fog_cloud" not in data["spells_prepared"]
+
+
+def test_hero_data_shows_the_second_circle_slots_when_the_hero_has_them(registry, cfg):
+    ctx = grey_ctx(registry, cfg)
+    hero = ctx.bundle.heroes[0]
+    hero.sheet.primary.level = 5
+    sync_resources(hero, registry)
+    assert hero_data(ctx)["spell_slots"]["2"] == {"current": 2, "max": 2}

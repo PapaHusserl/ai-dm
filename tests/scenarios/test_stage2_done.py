@@ -77,7 +77,7 @@ IMPROVISE = {
 INPUTS = [TALK, "1", DESCEND, "/quit"]
 # подобран; при изменении правил подобрать заново:
 #   uv run python tests/scenarios/find_honest_seed.py 1 200
-HONEST_SEED = 57
+HONEST_SEED = 156  # К1: 57 больше не победа (лук гоблина без помехи «дальность»)
 NARRATION = [
     "в подвале «Хромого гуся» что-то возится",
     "Трактирщик вздыхает и кивает на дверь в подвал.",

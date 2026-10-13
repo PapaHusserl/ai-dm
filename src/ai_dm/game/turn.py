@@ -16,6 +16,7 @@ from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.decision import Decision
 from ai_dm.reports.capture import TurnCapture
 from ai_dm.rules.custom_items import world_registry
+from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.state.scene import TurnRecord
 
 ERROR_MENU = ["retry", "switch_model", "save_and_quit"]
@@ -228,6 +229,8 @@ class TurnRunner:
         except Exception:
             self.mark_journal(run_id, "aborted")
             raise
+        # страховка: любой сдвиг часов в ходе (в т.ч. left_to_die) мог закончить концентрацию
+        expire_concentration(hero_of(work), work.world)
         return work, rng, narration
 
     def retry_result(self, started) -> TurnResult:

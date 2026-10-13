@@ -26,6 +26,7 @@ spellcasting:
   cantrips: 3
   spells: 6
   prepared: 4
+  prepared_swap: all
   prepared_by_level:
     1: 4
     2: 5

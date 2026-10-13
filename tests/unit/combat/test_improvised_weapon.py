@@ -93,12 +93,13 @@ def test_thrown_is_offered_against_a_neighbour_zone(registry, cfg):
     assert "attack:improvised_thrown:goblin_1" in ids
 
 
-def test_thrown_is_not_offered_beyond_sixty_feet(registry, cfg):
+def test_thrown_is_offered_across_one_zone(registry, cfg):
+    # 2 шага = 60 фт = дальняя дистанция броска 20/60: вариант есть (с помехой)
     engine = make_engine(
         registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(),
         monsters=[mon("goblin_1", "goblin_warrior", "balcony")], hero_zone="door",
     )
-    assert "attack:improvised_thrown:goblin_1" not in option_ids(engine, "hero")
+    assert "attack:improvised_thrown:goblin_1" in option_ids(engine, "hero")
 
 
 # броски

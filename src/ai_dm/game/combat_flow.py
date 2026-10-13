@@ -4,7 +4,7 @@ from ai_dm.core.events import DomainEvent
 from ai_dm.core.rng import Rng
 from ai_dm.game.controllers import MasterChoiceController, PlayerController
 from ai_dm.game.scene import hero_of
-from ai_dm.rules.derived import ac_summary
+from ai_dm.rules.derived import ac_summary, clock_text
 from ai_dm.rules.inventory import effects_line
 from ai_dm.rules.xp import combat_xp
 from ai_dm.state.session import LastCombat
@@ -123,12 +123,13 @@ def concentration_line(bundle, registry, cfg) -> str:
         return ""
     spell_id = held.spell_id
     line = "Концентрация: " + registry.get("spell", spell_id).name
-    if bundle.session.active_combat is None:
-        return line
-    engine, hero = preview_engine(bundle, registry, cfg)
-    names = engine.concentration_targets(hero.id).get(spell_id, [])
-    if names:
-        line += " → " + ", ".join(names)
+    if bundle.session.active_combat is not None:
+        engine, hero = preview_engine(bundle, registry, cfg)
+        names = engine.concentration_targets(hero.id).get(spell_id, [])
+        if names:
+            line += " → " + ", ".join(names)
+    if held.until_s is not None:
+        line += " до " + clock_text(held.until_s)
     return line
 
 

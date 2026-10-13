@@ -200,3 +200,11 @@ def test_turn_ends_by_itself_when_nothing_is_left(registry, tmp_path):
         assert [t for _, t in numbered_lines(last_menu(out.lines))] != ["Закончить ход"]
     # «Закончить ход» не выбирали, но враги уже ходили
     assert "--- раунд" in out.text
+
+
+def test_sheet_shows_the_end_time_after_the_target(registry, tmp_path):
+    app, out = fight_out(registry, tmp_path)
+    hold_mark(app)
+    app.bundle.heroes[0].creature.concentration.until_s = 14 * 3600 + 5 * 60
+    text = "\n".join(app.handle("/sheet").lines)
+    assert "Концентрация: Метка охотника → Воин-гоблин 1 до 14:05" in text

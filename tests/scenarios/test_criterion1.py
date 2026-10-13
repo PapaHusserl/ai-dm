@@ -49,7 +49,7 @@ from ai_dm.state.memory import Chronicle, Memory
 from ai_dm.state.save import Manifest, SaveBundle
 from ai_dm.state.session import SessionState
 
-S_WIN = 3  # первый сид победы воина (find-outcome victory)
+S_WIN = 2  # первый сид победы воина (find-outcome victory)
 S_DOWN_CAPTURE = 0  # первый сид defeat_pending: weak, capture
 S_DOWN_KILL = 0  # первый сид hero_dead: weak, kill (есть спасброски от смерти)
 
@@ -99,6 +99,13 @@ def test_log_shows_numbered_monster_names_instead_of_refs(registry, cfg):
         assert f"Воин-гоблин {number}" in text
     for ref in ("goblin_1", "goblin_2", "goblin_3"):
         assert ref not in text
+
+
+def test_no_shot_in_the_three_zone_hall_has_the_range_penalty(registry, cfg):
+    # К1 (В1а): через одну зону 60 фт < 80 фт короткого лука -- «помеха: дальность» здесь невозможна
+    for seed in range(40):
+        result, _ = run(registry, cfg, seed)
+        assert "помеха: дальность" not in "\n".join(result.log)
 
 
 def test_hero_dead_only_with_a_dead_hero_in_every_run(registry, cfg):

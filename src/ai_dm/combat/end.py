@@ -4,7 +4,7 @@ from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.death_saves import is_dying, is_stable
 from ai_dm.rules.inventory import add_item
-from ai_dm.rules.spellcasting import spell_kind
+from ai_dm.rules.spellcasting import expire_concentration, spell_kind
 from ai_dm.rules.time_ops import rounds_to_seconds
 
 # подписи исходов боя в логе
@@ -115,15 +115,26 @@ def settle_ground(engine) -> None:
         ]
 
 
+def release_concentration(engine) -> None:
+    # после сдвига часов: заряд Опутывающего удара не переживает бой (лозы и опутанные NPC
+    # освобождаются); остальные концентрации кончаются по сроку
+    for ref, hero in engine.heroes.items():
+        held = hero.creature.concentration
+        if held is None:
+            continue
+        spell = engine.registry.get("spell", held.spell_id)
+        if spell_kind(spell) == "rider":
+            end_concentration(hero.creature)
+            engine.drop_concentration_effects(ref)
+        elif expire_concentration(hero, engine.world) is not None:
+            engine.drop_concentration_effects(ref)
+            engine.log(f"{engine.name(ref)}: {spell.name} кончается")
+
+
 def conclude(engine) -> list[DomainEvent]:
     # раунд, в котором бой закончился, считается целиком
     engine.world.clock.advance(rounds_to_seconds(engine.state.round, engine.cfg))
-    # заряд Опутывающего удара не переживает бой: лозы и опутанные NPC освобождаются
-    for ref, hero in engine.heroes.items():
-        held = hero.creature.concentration
-        if held is not None and spell_kind(engine.registry.get("spell", held.spell_id)) == "rider":
-            end_concentration(hero.creature)
-            engine.drop_concentration_effects(ref)
+    release_concentration(engine)
     settle_ground(engine)
     # скрытность не переживает бой
     for hero in engine.heroes.values():

@@ -24,11 +24,14 @@ from ai_dm.rules.spellcasting import (
     add_spell_duration,
     cast_problem,
     effect_of,
+    expire_concentration,
     roll_cast_checks,
     roll_heal,
     spell_kind,
     spend_cast,
     start_concentration,
+    swap_prepared,
+    swap_problem,
 )
 from ai_dm.state.creature import ActiveEffect, Expiry
 from ai_dm.state.hero import InventoryEntry
@@ -416,21 +419,26 @@ def cast_spell(ctx, request):
     kind = spell_kind(spell)
     if kind == "rider":
         return Invalid(code="combat_only", message=f"{spell.name} заряжается только в бою")
+    if kind == "buff" and request.circle > spell.level:
+        return Invalid(
+            code="bad_circle",
+            message=f"вне боя {spell.name} — базовым кругом: цель одна",
+        )
     who, invalid = spell_target(ctx, spell, kind, request.target)
     if invalid is not None:
         return invalid
     world = ctx.bundle.world
     now_s = world.clock.now_s
-    spend_cast(hero, ctx.registry, spell, request.free)
+    spend_cast(hero, ctx.registry, spell, request.free, request.circle)
     if spell.level == 0:
         head = f"{hero.name} читает {spell.name} (заговор)"
     elif request.free:
         head = f"{hero.name} читает {spell.name} ({spell.level} круг, бесплатное применение)"
     else:
-        pool = hero.creature.resources[f"spell_slot:{spell.level}"]
+        pool = hero.creature.resources[f"spell_slot:{request.circle}"]
         head = (
             f"{hero.name} читает {spell.name} "
-            f"({spell.level} круг, ячейки {pool.current}/{pool.max})"
+            f"({request.circle} круг, ячейки {pool.current}/{pool.max})"
         )
     log = [head]
     result = {"spell_id": spell.id, "circle": request.circle}
@@ -444,7 +452,7 @@ def cast_spell(ctx, request):
         result["wasted"] = True
         return Decision(status="accepted", result=result, log=log)
     if kind == "heal":
-        amount, text = roll_heal(spell, hero, ctx.registry, ctx.rng)
+        amount, text = roll_heal(spell, hero, ctx.registry, ctx.rng, request.circle)
         healed = heal(who, amount)
         creature = who.creature
         log.append(
@@ -455,7 +463,7 @@ def cast_spell(ctx, request):
         result["hp"] = creature.hp_current
     elif kind == "mark":
         effect = effect_of(spell, "extra_damage")
-        start_concentration(hero, world, spell, request.circle)
+        start_concentration(hero, world, spell, request.circle, now_s)
         hero.creature.active_effects.append(
             ActiveEffect(
                 id=spell.id, source=hero.id, kind="mark_pending",
@@ -468,7 +476,7 @@ def cast_spell(ctx, request):
         result["concentration"] = spell.id
     else:
         if spell.concentration or kind == "buff":
-            start_concentration(hero, world, spell, request.circle)
+            start_concentration(hero, world, spell, request.circle, now_s)
             result["concentration"] = spell.id
         if kind == "buff":
             for effect in spell.effects:
@@ -483,9 +491,9 @@ def cast_spell(ctx, request):
                     )
             result["target"] = who.name
             log.append(f"  {spell.name}: на {who.name}")
-        add_spell_duration(hero, spell, now_s)
-        if spell.duration_s is not None:
-            result["until"] = clock_text(now_s + spell.duration_s)
+    add_spell_duration(hero, spell, now_s)
+    if spell.duration_s is not None:
+        result["until"] = clock_text(now_s + spell.duration_s)
     return Decision(status="accepted", result=result, log=log)
 
 
@@ -647,9 +655,46 @@ def award_xp(ctx, request):
     )
 
 
+def concentration_note(ctx, log, result) -> None:
+    # после сдвига часов: концентрация героя кончилась по сроку
+    ended = expire_concentration(ctx.hero, ctx.bundle.world)
+    if ended is not None:
+        name = ctx.registry.get("spell", ended).name
+        log.append(f"Концентрация: {name} кончилась")
+        result["concentration_ended"] = ended
+
+
+def apply_swap(ctx, request, log, result) -> None:
+    # смена подготовленных после длинного отдыха (проверена в rest до отдыха)
+    spec = request.prepared_swap
+    if spec is None:
+        return
+    swap_prepared(ctx.hero, ctx.registry, spec.drop, spec.take)
+    taken = ", ".join(spec.take) or "ничего"
+    dropped = ", ".join(spec.drop) or "ничего"
+    log.append(f"Подготовлено: {taken}; снято: {dropped}")
+    result["prepared"] = list(ctx.hero.sheet.prepared_of())
+
+
+def swap_invalid(ctx, request):
+    # смена подготовленных не годится: Invalid до отдыха (отдых не применяется)
+    spec = request.prepared_swap
+    if spec is None:
+        return None
+    if request.kind != "long":
+        return Invalid(code="swap_long_only", message="подготовленные меняют после длинного отдыха")
+    problem = swap_problem(ctx.hero, ctx.registry, spec.drop, spec.take)
+    if problem is None:
+        return None
+    return Invalid(code=problem[0], message=problem[1])
+
+
 def rest(ctx, request):
     hero = ctx.hero
     world = ctx.bundle.world
+    invalid = swap_invalid(ctx, request)
+    if invalid is not None:
+        return invalid
     hit_dice = request.hit_dice or 0
     cut = False
     if request.kind == "short" and hit_dice > 0:
@@ -669,6 +714,8 @@ def rest(ctx, request):
     except ValueError as error:
         return Invalid(code="rest_impossible", message=str(error))
     result = {"hp": hero.creature.hp_current, "now_s": world.clock.now_s}
+    apply_swap(ctx, request, log, result)
+    concentration_note(ctx, log, result)
     if cut:
         return clamped(
             f"запрошено костей хитов {request.hit_dice}, потрачено {hit_dice}",
@@ -687,10 +734,10 @@ def advance_time(ctx, request):
     world = ctx.bundle.world
     if request.category is not None:
         seconds = time_ops.advance_by_category(world.clock, request.category, ctx.cfg)
-        return Decision(
-            status="accepted", result={"seconds": seconds, "now_s": world.clock.now_s},
-            log=[f"Время идёт: {seconds} с"],
-        )
+        result = {"seconds": seconds, "now_s": world.clock.now_s}
+        log = [f"Время идёт: {seconds} с"]
+        concentration_note(ctx, log, result)
+        return Decision(status="accepted", result=result, log=log)
     return travel(ctx, request)
 
 
@@ -734,8 +781,6 @@ def travel(ctx, request):
     log = [f"Путь в «{name}»: {seconds} с"]
     if companions:
         log.append("С тобой: " + ", ".join(companions))
-    return Decision(
-        status="accepted",
-        result={"seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to},
-        log=log,
-    )
+    result = {"seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to}
+    concentration_note(ctx, log, result)
+    return Decision(status="accepted", result=result, log=log)

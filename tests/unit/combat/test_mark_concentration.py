@@ -145,11 +145,11 @@ def test_transfer_option_is_gone_once_the_mark_is_placed(registry, cfg):
 
 # К0а: концентрация -- объект Concentration(spell_id, circle); в бою круг = уровень заклинания
 
-def test_mark_cast_in_combat_stores_spell_and_circle(registry, cfg):
+def test_mark_cast_in_combat_stores_spell_circle_and_end_time(registry, cfg):
     engine = ranger_engine(registry, cfg, ScriptedRng(), monsters=TWO)
     engine.perform("hero", MARK)
     held = engine.heroes["hero"].creature.concentration
-    assert (held.spell_id, held.circle, held.until_s) == ("hunters_mark", 1, None)
+    assert (held.spell_id, held.circle, held.until_s) == ("hunters_mark", 1, 3600)
 
 
 def test_mark_circle_equals_the_spell_level(registry, cfg):

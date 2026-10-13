@@ -4,7 +4,7 @@
 #   Цели -- участники другой стороны со status "active" или "down" (лежачего можно добить),
 #   но не "dead" и не "fled".
 #   Ближнее оружие (melee): цель только в своей зоне. Дальнее (ranged, range_normal/long_ft):
-#     полоса до цели по таблице ТЗ 7 (та же зона 10 фт, соседняя 30, через одну 120):
+#     полоса до цели по таблице ТЗ 7 (та же зона 10 фт, соседняя 30, через одну 60, дальше 120):
 #     полоса <= range_normal -- без штрафа; <= range_long -- помеха ("дальняя дистанция");
 #     дальше -- варианта нет. Помеха и при боеспособном враге в зоне стреляющего (в т.ч. не цели).
 #   Бонус атаки героя: derived.attack_bonus; урон: кубики оружия + derived.damage_bonus;
@@ -20,6 +20,7 @@ from combat_kit import (
     hp,
     make_engine,
     make_fighter,
+    make_line,
     mon,
     move_to,
     option_ids,
@@ -159,13 +160,24 @@ def test_ranged_attack_on_neighbour_zone_has_no_penalty(registry, cfg):
 
 
 def test_ranged_attack_beyond_normal_range_has_disadvantage(registry, cfg):
-    # через одну зону: 120 фт > 80 фт, но < 320 фт -- дальняя дистанция, помеха: берётся 2
-    engine = duel(
-        registry, cfg, ScriptedRng(d20=[18, 2]), hero=archer(registry),
-        hero_zone="door", goblin_zone="balcony",
+    # через две зоны (3 шага): 120 фт > 80 фт, но < 320 фт -- дальняя дистанция, помеха: берётся 2
+    engine = make_engine(
+        registry, cfg, heroes=[(archer(registry), "z0")], rng=ScriptedRng(d20=[18, 2]),
+        monsters=[mon("goblin_1", "goblin_warrior", "z3")], zones=make_line(4),
     )
     engine.perform("hero", "attack:shortbow:goblin_1")
     assert hp(engine, "goblin_1") == 10
+
+
+def test_ranged_attack_across_one_zone_has_no_disadvantage(registry, cfg):
+    # через одну зону (2 шага): 60 фт < 80 фт -- обычная дистанция, второй d20 не бросается
+    rng = ScriptedRng(d20=[18], d6=[4])
+    engine = duel(
+        registry, cfg, rng, hero=archer(registry), hero_zone="door", goblin_zone="balcony",
+    )
+    engine.perform("hero", "attack:shortbow:goblin_1")
+    assert rng.left("d20") == 0
+    assert hp(engine, "goblin_1") == 10 - (4 + 1)
 
 
 def test_ranged_attack_in_range_hits_with_the_same_roll_that_missed_at_long_range(registry, cfg):

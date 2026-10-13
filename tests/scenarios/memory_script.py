@@ -37,7 +37,9 @@ MODEL = "mock"
 # 23500 -> 24000: Ф1 (схема companion_update, правило о звере, companion_due): пик 18880 > 18800.
 # 24000 -> 24500: Р2 (раздел «Темп» в narrator_rules): пик 19302 > бюджета 19200;
 # 24200 уже проходит, берём 24500 с запасом (бюджет 19600).
-WINDOW = 24500
+# 24500 -> 25000: К1 (апкаст и prepared_swap в схемах rest/cast_spell, абзац в narrator_rules):
+# пик 19666 > бюджета 19600; с 25000 бюджет 20000.
+WINDOW = 25000
 SCENES = 52
 TURNS_PER_SCENE = 3
 SCENES_PER_CHAPTER = 12

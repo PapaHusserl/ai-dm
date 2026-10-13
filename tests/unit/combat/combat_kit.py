@@ -145,6 +145,18 @@ def make_zones(door=(), hall=(), balcony=(), door_exit=False):
     ]
 
 
+def make_line(count):
+    # линейная карта из count зон z0 - z1 - ... (2..5): расстояние между зонами i и j = |i - j|
+    ids = [f"z{i}" for i in range(count)]
+    return [
+        Zone(
+            id=zid, name=f"Зона {i}",
+            adjacent=[ids[j] for j in (i - 1, i + 1) if 0 <= j < count],
+        )
+        for i, zid in enumerate(ids)
+    ]
+
+
 def wizard_choices(hero_id):
     return CharacterChoices(
         name="Лиэль",

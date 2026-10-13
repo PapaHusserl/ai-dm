@@ -1,3 +1,4 @@
+from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.rules.time_ops import ensure_min_advance
 from ai_dm.state.scene import SceneState
 from ai_dm.state.session import ChapterState
@@ -41,6 +42,7 @@ def close_scene(bundle, reason, cfg) -> None:
     scene = bundle.session.current_scene
     scene.closed_reason = reason
     ensure_min_advance(bundle.world.clock, scene.started_at_s, cfg)
+    expire_concentration(hero_of(bundle), bundle.world)
 
 
 def ensure_chapter(bundle) -> ChapterState:

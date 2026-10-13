@@ -13,7 +13,7 @@
 #   ai_dm.combat.zones
 #     distance(zones: list[Zone], a_id, b_id) -> int
 #         -- BFS по adjacent; неизвестная зона -> ValueError
-#     range_band_ft(steps: int) -> int                     -- 0 -> 10, 1 -> 30, 2 и больше -> 120
+#     range_band_ft(steps: int) -> int         -- 0 -> 10, 1 -> 30, 2 -> 60, 3 и больше -> 120
 #         (None не принимается, константы OUT_OF_FIELD_FT нет: расстояние всегда посчитано по графу)
 #     cover_dc_bonus(zone: Zone) -> int
 #         -- cover_half +2, cover_three_quarters +5 (больший, не сумма) -- dc_bonus конвейера (D1)
@@ -307,9 +307,13 @@ def test_band_for_neighbour_is_30_ft():
     assert range_band_ft(1) == 30
 
 
-def test_band_for_two_and_more_is_120_ft():
-    assert range_band_ft(2) == 120
+def test_band_for_two_steps_is_60_ft():
+    assert range_band_ft(2) == 60
+
+
+def test_band_for_three_and_more_is_120_ft():
     assert range_band_ft(3) == 120
+    assert range_band_ft(4) == 120
 
 
 # особенности зон

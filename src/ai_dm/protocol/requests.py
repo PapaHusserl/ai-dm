@@ -100,6 +100,13 @@ class ImproviseSpec(Request):
     NEUTRAL: ClassVar[dict] = {"effect": "none", "target": "", "zone": ""}
 
 
+class PreparedSwapSpec(Request):
+    drop: list[str] = Field([], description="Id подготовленных, которые снять; пусто = нет.")
+    take: list[str] = Field(
+        [], description="Id заклинаний класса, которые подготовить; пусто = нет."
+    )
+
+
 class ParleySpec(Request):
     skill: ParleySkillOrNone = Field(
         "none", description="Навык переговоров: intimidation, persuasion, deception; none = нет."
@@ -294,7 +301,10 @@ class CastSpell(Request):
 
     type: Literal["cast_spell"]
     spell_id: str = Field(description="Id заклинания героя (известный заговор или подготовленное).")
-    circle: int = Field(description="Круг ячейки: круг заклинания; 0 для заговоров.")
+    circle: int = Field(
+        description="Круг ячейки: круг заклинания или выше у заклинаний с усилением (upcast); "
+        "0 для заговоров; бесплатное применение -- только круг заклинания."
+    )
     target: str = Field(
         "", description="hero или id NPC в локации; пусто = на себя или без цели."
     )
@@ -392,7 +402,18 @@ class Rest(Request):
     type: Literal["rest"]
     kind: Literal["short", "long"] = Field(description="short: короткий, long: длинный.")
     hit_dice: int = Field(0, description="Сколько костей хитов потратить (короткий); 0 = нет.")
+    prepared_swap: PreparedSwapSpec = Field(
+        default_factory=PreparedSwapSpec,
+        description="Смена подготовленных после длинного отдыха; без неё оба списка пусты.",
+    )
     NEUTRAL: ClassVar[dict] = {"hit_dice": 0}
+
+    @model_validator(mode="after")
+    def cut_swap(self):
+        spec = self.prepared_swap
+        if not spec.drop and not spec.take:
+            self.prepared_swap = None
+        return self
 
 
 class SetFlag(Request):

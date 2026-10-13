@@ -22,11 +22,13 @@ def distance(zones, a_id, b_id) -> int:
 
 
 def range_band_ft(steps: int) -> int:
-    # та же зона -- 10 фт, соседняя -- 30, дальше -- 120
+    # та же зона -- 10 фт, соседняя -- 30, через одну -- 60, дальше -- 120
     if steps == 0:
         return 10
     if steps == 1:
         return 30
+    if steps == 2:
+        return 60
     return 120
 
 

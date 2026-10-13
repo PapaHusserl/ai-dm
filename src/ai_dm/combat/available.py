@@ -129,32 +129,45 @@ def cast_options(engine, ref) -> list[ActionOption]:
                 continue
         elif not turn.action:
             continue
-        hero = engine.heroes[ref]
-        pool = hero.creature.resources.get(f"spell_slot:{spell.level}")
-        has_slot = spell.level == 0 or (pool is not None and pool.current > 0)
-        free_pool = None
-        if spell.level > 0 and cast.free_cast_left(engine, hero, spell):
-            free_pool = hero.creature.resources[free_cast_pool(hero, engine.registry, spell.id)]
-        for target in cast.cast_targets(engine, ref, spell):
-            params = {"spell": spell.id, "circle": spell.level, "target": target}
+        result += spell_entries(engine, ref, spell, cost)
+    return result
+
+
+def spell_entries(engine, ref, spell, cost) -> list[ActionOption]:
+    # пункты заклинания: по кругу с ячейкой (базовый первым), бесплатное применение -- базовый круг
+    hero = engine.heroes[ref]
+    usable = cast.usable_circles(hero, spell)
+    circles = usable
+    free_pool = None
+    if spell.level > 0 and cast.free_cast_left(engine, hero, spell):
+        free_pool = hero.creature.resources[free_cast_pool(hero, engine.registry, spell.id)]
+        if spell.level not in usable:
+            circles = [spell.level] + usable
+    result = []
+    for circle in circles:
+        for target in cast.cast_targets(engine, ref, spell, circle):
+            params = {"spell": spell.id, "circle": circle, "target": target}
             # заряд ложится на самого заклинателя: цель в подписи не нужна
             where = f"→ {target_text(engine, target)}"
             if cast.spell_kind(spell) == "rider":
                 where = "(заряд)"
-            if has_slot:
+            name = spell.name
+            if circle > spell.level:
+                name = f"{spell.name} ({circle} круг)"
+            if circle in usable:
                 result.append(
                     ActionOption(
-                        id=f"cast:{spell.id}:{spell.level}:{target}", kind="cast",
-                        label=f"{spell.name} {where}", params=params,
+                        id=f"cast:{spell.id}:{circle}:{target}", kind="cast",
+                        label=f"{name} {where}", params=params,
                         cost=cost,
                     )
                 )
-            if free_pool is not None:
-                label = f"{spell.name} {where} "
+            if circle == spell.level and free_pool is not None:
+                label = f"{name} {where} "
                 label += f"(без ячейки, {free_pool.current}/{free_pool.max})"
                 result.append(
                     ActionOption(
-                        id=f"cast:{spell.id}:{spell.level}:{target}:free", kind="cast",
+                        id=f"cast:{spell.id}:{circle}:{target}:free", kind="cast",
                         label=label, params={**params, "free": True}, cost=cost,
                     )
                 )

@@ -59,7 +59,7 @@
 | Проверки | `skill_check`, `saving_throw` (ИИ выбирает навык и **категорию** сложности, опц. `stakes: critical`; движок переводит в СЛ и бросает) |
 | Бой | `start_combat` (состав, зоны, намерения врагов), `player_action` (классификация фразы игрока + импровизированный эффект), `npc_action` (выбор действия напарника / ключевого NPC из списка движка), `defeat_outcome` (1–2 последствия из таблицы 5.1), `end_combat` |
 | Ресурсы | `damage` вне боя (по тяжести), `give_item` / `take_item`, `gold`, `award_xp` (ИИ указывает повод, объём — по таблице движка) |
-| Мир | `advance_time`, `rest`, `warn_danger`, `set_flag`, `npc_create`, `location_create`, `npc_update`, `favor_change`, `reveal_secret`, `event_start` / `event_end` (глобальные события 4.1.2, только с `cause`) |
+| Мир | `advance_time`, `rest` (длинный -- с `prepared_swap`: смена подготовленных), `warn_danger`, `set_flag`, `npc_create`, `location_create`, `npc_update`, `favor_change`, `reveal_secret`, `event_start` / `event_end` (глобальные события 4.1.2, только с `cause`) |
 | Сцена | `offer_choices`, `end_scene`, `end_chapter` |
 | Посмертие | `afterlife_action` (тип: короткое / долгое / эпическое — движок проверяет по списку 5.1) |
 | Служебное | `unsupported_action` (→ авто-репорт) |

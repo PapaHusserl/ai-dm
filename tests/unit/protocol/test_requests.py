@@ -274,7 +274,7 @@ OPTIONAL_FIELDS = {
     "damage": ["failed_roll_ref"],
     "gold": ["amount_cp", "cr"],
     "advance_time": ["category", "travel_to", "pace"],
-    "rest": ["hit_dice"],
+    "rest": ["hit_dice"],  # prepared_swap -- вложенный объект: см. тесты cut_swap ниже
     "npc_create": ["named", "key", "motive", "location_id"],
     "location_create": ["parent_id", "description", "connections"],
     "npc_update": ["attitude_delta", "status", "cause", "evidence_ref", "by", "text"],
@@ -458,3 +458,59 @@ def test_take_item_unknown_why_is_error():
 def test_take_item_accepts_each_why(why):
     model = parse_request({"type": "take_item", "item_id": "crowbar", "qty": 1, "why": why})
     assert model.why == why
+
+
+# К1: rest.prepared_swap -- вложенная необязательная модель; оба списка пусты -> None (cut_swap)
+
+def test_rest_without_prepared_swap_has_none():
+    assert parse_request({"type": "rest", "kind": "long"}).prepared_swap is None
+
+
+def test_rest_with_empty_prepared_swap_has_none():
+    data = {"type": "rest", "kind": "long", "prepared_swap": {"drop": [], "take": []}}
+    assert parse_request(data).prepared_swap is None
+
+
+def test_rest_with_drop_keeps_the_swap_object():
+    data = {"type": "rest", "kind": "long", "prepared_swap": {"drop": ["fog_cloud"], "take": []}}
+    swap = parse_request(data).prepared_swap
+    assert (swap.drop, swap.take) == (["fog_cloud"], [])
+
+
+def test_rest_with_take_only_keeps_the_swap_object():
+    data = {"type": "rest", "kind": "long", "prepared_swap": {"drop": [], "take": ["alarm"]}}
+    assert parse_request(data).prepared_swap.take == ["alarm"]
+
+
+def test_rest_prepared_swap_lists_default_to_empty():
+    swap = parse_request({"type": "rest", "kind": "long", "prepared_swap": {"drop": ["a"]}})
+    assert swap.prepared_swap.take == []
+
+
+def test_rest_prepared_swap_rejects_unknown_fields():
+    data = {"type": "rest", "kind": "long", "prepared_swap": {"drop": [], "take": [], "x": 1}}
+    with pytest.raises(ValidationError):
+        parse_request(data)
+
+
+def test_rest_schema_has_prepared_swap_as_an_inline_object_without_union():
+    prop = tool_defs(["rest"])[0]["input_schema"]["properties"]["prepared_swap"]
+    assert prop["type"] == "object"
+    assert sorted(prop["properties"]) == ["drop", "take"]
+    assert prop["properties"]["drop"]["type"] == "array"
+    assert prop["properties"]["drop"]["description"]
+    assert prop["properties"]["take"]["description"]
+    assert "anyOf" not in prop
+    assert prop["additionalProperties"] is False
+
+
+def test_rest_schema_requires_prepared_swap_and_describes_it():
+    schema = tool_defs(["rest"])[0]["input_schema"]
+    assert "prepared_swap" in schema["required"]
+    assert schema["properties"]["prepared_swap"]["description"]
+
+
+def test_cast_spell_circle_description_mentions_upcast():
+    prop = tool_defs(["cast_spell"])[0]["input_schema"]["properties"]["circle"]
+    assert "upcast" in prop["description"]
+    assert len(prop["description"]) <= 150

@@ -17,6 +17,8 @@ class Spellcasting(ContentModel):
     prepared: int | None = None
     # сколько заклинаний подготовлено на уровне героя (ключ -- уровень); None = только prepared
     prepared_by_level: dict[int, int] | None = None
+    # сколько подготовленных можно заменить после длинного отдыха; None = нельзя
+    prepared_swap: int | Literal["all"] | None = None
 
 
 class StartingKit(ContentModel):

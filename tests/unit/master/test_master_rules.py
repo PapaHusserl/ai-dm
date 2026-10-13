@@ -69,6 +69,7 @@ def test_rules_mention_only_known_tools():
         "can_pray", "god_id", "hero_hidden", "spell_id", "game_summary", "improvised_thrown",
         "lost_items", "gear_looted", "purse_cp", "sell_factor", "min_cp", "max_cp", "total_cp",
         "cost_cp", "price_cp", "item_id", "trade_kind", "holder_npc_id", "haggle_percent",
+            "bad_circle", "prepared_swap",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []
@@ -246,3 +247,10 @@ def test_rules_explain_scene_npcs_and_leaving_npc():
 
 def test_rules_say_staying_companion_gets_follows_none():
     assert 'follows: "none"' in rules_text()
+
+
+def test_rules_explain_upcast_and_prepared_swap():
+    text = rules_text()
+    assert "prepared_swap" in text
+    assert "bad_circle" in text
+    assert "drop" in text and "take" in text

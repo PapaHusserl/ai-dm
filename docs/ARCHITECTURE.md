@@ -62,7 +62,7 @@ ui ──> game ──> master ──> llm
 - **`CreatureState`** (общая часть героя / NPC в бою / монстра): `hp_current`, `hp_max`, `hp_temp`,
   `conditions`, `exhaustion`, `active_effects` (`id, source, kind, params, expires`), `death_saves`,
   `resources: dict[str, ResourcePool]` (кости хитов — `hit_dice:d{N}`, ячейки договора — `pact_slot`),
-  `concentration: Concentration | None` (`spell_id`, `circle`, `until_s`), `temp_form: TempForm | None`.
+  `concentration: Concentration | None` (`spell_id`, `circle`, `until_s` -- конец концентрации по часам мира, `None` = бессрочно), `temp_form: TempForm | None`.
 - **`HeroState`**: `id`, `ordinal`, `name`, `status: active|dead|retired|in_afterlife|ascended`, `fate`,
   `death`, `sheet: CharacterSheet` (вид, `classes: list[ClassLevel]` + `level_history`, `BackgroundSpec` 5.2,
   характеристики, владения, черты, мастерства, `spells_known`/`spells_prepared` по class_id,
@@ -301,7 +301,7 @@ ai-dm/
     Контракт событий для авто-флагов (партия 5): `location_visited {id}`, `combat_ended {id}`,
     `item_gained {hero, item}` — ровно эти ключи; `hero_died` → флаг `hero_dead:<id>`.
 15. **Зоны** — валидация старта (2–5 зон, уникальные имена, связный симметричный граф, все размещены,
-    у каждой группы `intent` и лидер), BFS → полосы 10/30/120/>120 фт, механические особенности
+    у каждой группы `intent` и лидер), BFS → полосы 10/30/60/120 фт (одна шкала для оружия и заклинаний), механические особенности
     (`cover_half`, `cover_three_quarters`, `difficult`, `hazard`).
 16. **Инициатива и цикл** — `CombatEngine.step()`, `run_to_end(max_rounds)`, экономия хода.
 17. **Действия** — атака (ближняя/дальняя, помеха при враге в зоне, `nonlethal`), заклинания (ячейки,
@@ -309,8 +309,18 @@ ai-dm/
     стабилизация, импровизация (фиксированный набор эффектов), провоцированная атака, Nimble Escape;
     безоружный удар (`unarmed`, урон без костей) и импровизированное оружие (`improvised`, `improvised_thrown`) --
     всегда в `attacks_of` героя; заряд-«всадник» (`spell_kind == "rider"`, Опутывающий удар): `weapon_rider` на
-    герое, срабатывает в `attack.weapon_rider`, опутанная цель -- `ensnared` + `restrained` до конца концентрации,
+    герое (кости заряда по кругу ячейки через `upcast`), срабатывает в `attack.weapon_rider`, опутанная цель -- `ensnared` + `restrained` до конца концентрации,
     вырваться -- вариант `escape:<заклинание>`.
+    Апкаст: у заклинаний с `upcast` (лечение, стрела, огненные руки, благословение, опутывающий удар) пункт меню на каждый
+    круг с ячейкой, `usable_circles`, id `cast:<id>:<круг>:<цель>`, базовый круг первым; бесплатное применение и Метка --
+    только базовый круг; вне боя `cast_spell.circle` выше базового принимается у тех же заклинаний (Благословение --
+    `bad_circle`). Эффект растёт по `per_slot_level` (`upcast_dice`, `upcast_steps`).
+    Концентрация по часам: `until_s` ставится при касте (`hold_concentration` в бою, `start_concentration(now_s)` вне боя);
+    `expire_concentration` зовётся после каждого сдвига часов -- `rest`, `advance_time`, `travel`, `end.conclude`
+    (`release_concentration`), конец хода (`TurnRunner.attempt`), граница сцены (`close_scene`); новый сдвиг часов обязан
+    звать её же. Старый сейв с `until_s=None` -- бессрочно до следующего заклинания.
+    Смена подготовленных: `rest` `long` с `prepared_swap{drop, take}` (`swap_problem` до отдыха, `swap_prepared` после);
+    лимит смены -- `Spellcasting.prepared_swap` класса (`1` или `all`).
     Переговоры (`actions/parley.py`, `PlayerAction.parley: ParleySpec{skill, outcome, target}` и пункты меню
     `parley:<цель>:<навык>:<исход>`): навык intimidation/persuasion/deception × исход surrender/flee/defect/waver,
     СЛ и допустимость считает движок (`parley_dc`, `[parley]` в конфиге), враг без отношения NPC -- помеха
