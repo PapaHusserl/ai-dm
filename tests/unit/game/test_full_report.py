@@ -107,7 +107,7 @@ def test_before_differs_from_after_for_committed_turn(registry, tmp_path):
 
 
 def test_aborted_turn_has_before_but_no_after(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]), auto_reports=True)
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), auto_reports=True)
     app.handle("Иду")
     path = issues(tmp_path)[0]
     assert (path / "before").is_dir()
@@ -115,14 +115,14 @@ def test_aborted_turn_has_before_but_no_after(registry, tmp_path):
 
 
 def test_aborted_turn_before_equals_state_after_rollback(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]), auto_reports=True)
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), auto_reports=True)
     app.handle("Иду")
     loaded = load_snapshot(issues(tmp_path)[0], "before", tmp_path)
     assert core_dump(loaded) == core_dump(app.bundle)
 
 
 def test_manual_report_after_abort_has_before_equal_to_live_state(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]))
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2))
     app.handle("Иду")
     app.handle("/report не отвечает")
     path = issues(tmp_path)[0]
@@ -132,7 +132,7 @@ def test_manual_report_after_abort_has_before_equal_to_live_state(registry, tmp_
 
 def test_snapshot_is_taken_at_report_time_not_live(registry, tmp_path):
     # замечание ревью P0: before откатанного хода был живым бандлом; поздние мутации не в репорт
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]), auto_reports=True)
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), auto_reports=True)
     app.handle("Иду")
     snapshot = core_dump(app.bundle)
     app.bundle.world.rng.draws += 100
@@ -180,7 +180,7 @@ def test_calls_jsonl_has_final_turn_status_committed(registry, tmp_path):
 
 
 def test_calls_jsonl_has_final_turn_status_aborted(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]), auto_reports=True)
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), auto_reports=True)
     app.handle("Иду")
     records = calls_of(issues(tmp_path)[0])
     assert records
@@ -438,7 +438,7 @@ def test_full_report_files_have_no_api_keys(registry, tmp_path, monkeypatch, man
     gemini = "AIza-MARKER-gemini-7d2b5e"
     monkeypatch.setenv("ANTHROPIC_API_KEY", anthropic)
     monkeypatch.setenv("GEMINI_API_KEY", gemini)
-    steps = [{"stop": "refusal"}] if not manual else [text_step("Рассказ.")]
+    steps = [{"stop": "refusal"}] * 2 if not manual else [text_step("Рассказ.")]
     app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
     app.handle("Иду")
     if manual:

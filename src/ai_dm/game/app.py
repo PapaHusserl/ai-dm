@@ -111,7 +111,7 @@ class GameApp:
         world_text="", sleeper=time.sleep, now=None, model=None,
         use_stored_model=True, run_tag=None, campaigns_dir=CAMPAIGNS_DIR, world_adapter=None,
         world_model=None, summarizer_adapter=None, summarizer_model=None, auto_reports=True,
-        secrets=(),
+        secrets=(), summarizer_backup=None,
     ):
         self.settings = settings
         self.auto_reports = auto_reports
@@ -142,7 +142,7 @@ class GameApp:
             journal=self.journal, ledger=self.ledger, world_text=world_text, sleeper=sleeper,
             now=self.now, model=model, run_tag=run_tag, world_adapter=world_adapter,
             world_model=world_model, summarizer_adapter=summarizer_adapter,
-            summarizer_model=summarizer_model,
+            summarizer_model=summarizer_model, summarizer_backup=summarizer_backup,
         )
         self.pending = None
         if hero_of(bundle).pending_level is not None:

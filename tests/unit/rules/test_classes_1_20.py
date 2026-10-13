@@ -15,7 +15,12 @@ from test_class_kits import minimal_choices  # noqa: E402
 
 from ai_dm.content.models.common import ABILITIES  # noqa: E402
 from ai_dm.rules.builder import build_character  # noqa: E402
-from ai_dm.rules.derived import hero_feature_ids, prepared_limit, proficiency, spell_slots  # noqa: E402
+from ai_dm.rules.derived import (  # noqa: E402
+    hero_feature_ids,
+    prepared_limit,
+    proficiency,
+    spell_slots,
+)
 from ai_dm.rules.progression import (  # noqa: E402
     FIXED_CHOICES,
     apply_level_choices,

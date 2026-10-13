@@ -202,7 +202,7 @@ def test_recent_turns_reach_next_request(registry, cfg, tmp_path):
 NETWORK = [{"error": "transient", "message": "сеть"}] * 4
 INVALID = [tools_step(BAD_CHECK)] * 3
 ROUNDS = [tools_step(flag_call(f"f{i}")) for i in range(9)]
-REFUSAL = [{"stop": "refusal"}]
+REFUSAL = [{"stop": "refusal"}] * 2
 FATAL = [{"error": "fatal", "message": "ключ отозван"}]
 CASES = [
     ("network", NETWORK), ("invalid", INVALID), ("rounds", ROUNDS), ("refusal", REFUSAL),
@@ -278,7 +278,7 @@ def test_refusal_adds_hint_about_model_and_tone_and_tag(registry, cfg, tmp_path)
     _, _, result = failed(registry, cfg, tmp_path, REFUSAL)
     assert "tone" in result.hint
     assert "модел" in result.hint
-    assert result.report_tags == ["refusal"]
+    assert result.report_tags == ["refusal_retry", "refusal"]
 
 
 def test_other_failures_have_no_tone_hint(registry, cfg, tmp_path):

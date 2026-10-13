@@ -110,6 +110,11 @@ class SummRig:
     def summarizer_requests(self):
         return [r for r in self.summarizer.requests if r.role == "summarizer"]
 
+    def narrator_view(self):
+        # запасные вызовы summarizer (Р2) идут через адаптер рассказчика: те же запросы роли,
+        # но из narrator.requests
+        return SummRig(self.runner, self.narrator, self.narrator, self.journal)
+
 
 def make_summ_rig(
     registry, cfg, tmp_path, narrator_steps, summarizer, *, bundle=None, summarizer_model=None,

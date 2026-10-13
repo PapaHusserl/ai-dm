@@ -312,7 +312,7 @@ def test_error_menu_shows_failure_hint(registry, tmp_path):
 
 
 def test_refusal_hint_mentions_tone_and_model(registry, tmp_path):
-    app = text_app(registry, tmp_path, [{"stop": "refusal"}])
+    app = text_app(registry, tmp_path, [{"stop": "refusal"}] * 2)
     out = play(app, ["Иду"]).text.lower()
     assert "tone" in out
     assert "модел" in out

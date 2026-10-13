@@ -4,10 +4,12 @@ from importlib import resources
 
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
 from ai_dm.master.prompt import dump
-from ai_dm.master.session import MasterSession
+from ai_dm.master.session import MasterSession, TurnFailed
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.schema import tool_set
+
+SOFT_REASONS = ("refusal", "invalid")
 
 
 def scene_turns(bundle, scene):
@@ -140,7 +142,7 @@ class SummarizerSession:
 
     def __init__(
         self, adapter, app_cfg, *, journal=None, ledger=None, sleeper=time.sleep, now=None,
-        model=None, call_numbers=None,
+        model=None, call_numbers=None, backup=None,
     ):
         self.adapter = adapter
         self.app_cfg = app_cfg
@@ -150,6 +152,38 @@ class SummarizerSession:
         self.now = now or (lambda: datetime.now(UTC))
         self.model = model
         self.call_numbers = call_numbers
+        # запасной SummarizerSession на модели рассказчика или None
+        self.backup = backup
+
+    def chain(self, call, ok):
+        # (ctx, был ли сбой): мягкий сбой или негодная выжимка -- к запасному, затем (None, True)
+        fell = False
+        for session in (self, self.backup):
+            if session is None:
+                continue
+            try:
+                ctx = call(session)
+            except TurnFailed as error:
+                if not soft_failure(error):
+                    raise
+                fell = True
+                continue
+            if ok(ctx):
+                return ctx, fell
+            fell = True
+        return None, True
+
+    def try_scene(self, bundle, registry, cfg, run_id):
+        return self.chain(
+            lambda s: s.run_scene(bundle, registry, cfg, run_id),
+            lambda c: bool(c.summary_text),
+        )
+
+    def try_chapter(self, bundle, registry, cfg, run_id):
+        return self.chain(
+            lambda s: s.run_chapter(bundle, registry, cfg, run_id),
+            lambda c: bool(c.chapter_text and c.game_text),
+        )
 
     def run_scene(self, bundle, registry, cfg, run_id) -> TurnContext:
         # bundle -- рабочая копия границы; результат -- контекст с summary_text и summary_title
@@ -175,3 +209,7 @@ class SummarizerSession:
         )
         session.run(ctx, "", apply, "summarize_chapter", run_id=run_id)
         return ctx
+
+
+def soft_failure(error) -> bool:
+    return isinstance(error, TurnFailed) and error.reason in SOFT_REASONS

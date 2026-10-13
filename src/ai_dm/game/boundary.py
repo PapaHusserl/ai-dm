@@ -70,14 +70,21 @@ def summarize_scene(work, cfg, registry, summarizer, run_id, result) -> None:
     else:
         result.summary_run_id = run_id
         try:
-            ctx = summarizer.run_scene(work, registry, cfg, run_id)
+            ctx, fell = summarizer.try_scene(work, registry, cfg, run_id)
         except (TurnFailed, LlmError):
             result.failed_role = "summarizer"
             raise
-        # название нарратора важнее
-        title = scene.title or ctx.summary_title
-        text = ctx.summary_text
-        source = "summarizer"
+        if fell:
+            result.report_tags.append("refusal_fallback")
+        if ctx is None:
+            title = scene.title
+            text = fallback_summary(work, scene)
+            source = "fallback"
+        else:
+            # название нарратора важнее
+            title = scene.title or ctx.summary_title
+            text = ctx.summary_text
+            source = "summarizer"
     # world видит закрытую сцену с итоговой выжимкой
     scene.summary = text
     scene.title = title
@@ -128,6 +135,12 @@ def update_nudge(work, cfg, check) -> None:
     nudge.step(work, check)
 
 
+def concat_chapter(work, chapter) -> tuple[str, str]:
+    # запасная выжимка главы: склейка выжимок сцен
+    texts = [s.summary for s in work.memory.scenes if s.chapter_id == chapter.id and s.summary]
+    return chapter.title, " ".join(texts)
+
+
 def close_chapter(work, cfg, registry, summarizer, run_id, result) -> tuple[int, str] | None:
     # шаг 3: глава закрыта -- свёртка summarizer (выжимка главы и новый game_summary);
     # без summarizer (тесты, инструменты) -- склейка выжимок сцен, game_summary не меняется
@@ -136,21 +149,20 @@ def close_chapter(work, cfg, registry, summarizer, run_id, result) -> tuple[int,
         chapter.closed_reason = "scene_limit"
     if chapter.closed_reason is None:
         return None
-    if summarizer is None:
-        texts = [s.summary for s in work.memory.scenes if s.chapter_id == chapter.id and s.summary]
-        title = chapter.title
-        text = " ".join(texts)
-        source = "concat"
-    else:
+    ctx = None
+    if summarizer is not None:
         result.summary_run_id = run_id
         try:
-            ctx = summarizer.run_chapter(work, registry, cfg, run_id)
+            ctx, fell = summarizer.try_chapter(work, registry, cfg, run_id)
         except (TurnFailed, LlmError):
             result.failed_role = "summarizer"
             raise
-        if not ctx.chapter_text or not ctx.game_text:
-            result.failed_role = "summarizer"
-            raise TurnFailed("invalid", "Summarizer не дал выжимку главы и game_summary.")
+        if fell:
+            result.report_tags.append("refusal_fallback")
+    if ctx is None:
+        title, text = concat_chapter(work, chapter)
+        source = "concat"
+    else:
         # название нарратора важнее
         title = chapter.title or ctx.chapter_title_new
         text = ctx.chapter_text

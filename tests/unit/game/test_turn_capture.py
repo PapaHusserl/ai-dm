@@ -73,14 +73,14 @@ def test_capture_turn_seq_follows_turns(registry, cfg, tmp_path):
 
 
 def test_aborted_capture_has_no_after_and_failure_reason(registry, cfg, tmp_path):
-    rig = make_rig(registry, cfg, tmp_path, scripted([text_step(), {"stop": "refusal"}]))
+    rig = make_rig(registry, cfg, tmp_path, scripted([text_step()] + [{"stop": "refusal"}] * 2))
     rig.runner.play("раз")
     result = rig.runner.play("два")
     capture = rig.runner.last_capture
     assert capture.status == "aborted"
     assert capture.after is None
     assert capture.failure_reason == "refusal"
-    assert capture.tags == ["refusal"]
+    assert capture.tags == ["refusal_retry", "refusal"]
     assert capture.run_ids == [result.run_id]
     # номер хода, который не состоялся: следующий за последним принятым
     assert capture.turn_seq == 2
@@ -88,7 +88,7 @@ def test_aborted_capture_has_no_after_and_failure_reason(registry, cfg, tmp_path
 
 
 def test_aborted_result_keeps_before(registry, cfg, tmp_path):
-    rig = make_rig(registry, cfg, tmp_path, scripted([{"stop": "refusal"}]))
+    rig = make_rig(registry, cfg, tmp_path, scripted([{"stop": "refusal"}] * 2))
     before = rig.runner.bundle.model_dump_json()
     result = rig.runner.play("Иду")
     assert result.before.model_dump_json() == before
@@ -103,7 +103,7 @@ def test_capture_tags_have_no_duplicates(registry, cfg, tmp_path):
 
 
 def test_retry_after_failure_makes_new_capture(registry, cfg, tmp_path):
-    rig = make_rig(registry, cfg, tmp_path, scripted([{"stop": "refusal"}, text_step()]))
+    rig = make_rig(registry, cfg, tmp_path, scripted([{"stop": "refusal"}] * 2 + [text_step()]))
     failed = rig.runner.play("Иду")
     result = rig.runner.retry()
     capture = rig.runner.last_capture

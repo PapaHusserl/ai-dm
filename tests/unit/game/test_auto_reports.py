@@ -101,20 +101,20 @@ def test_invalid_death_writes_report(registry, tmp_path):
 
 
 def test_refusal_writes_report_of_aborted_turn(registry, tmp_path):
-    app, reply = play_with(registry, tmp_path, [{"stop": "refusal"}], auto_reports=True)
+    app, reply = play_with(registry, tmp_path, [{"stop": "refusal"}] * 2, auto_reports=True)
     assert reply.turn.committed is False
     assert len(issues(tmp_path)) == 1
     path = issues(tmp_path)[0]
-    assert path.name.endswith("-refusal")
+    assert path.name.endswith("-refusal_retry+refusal")
     meta = meta_of(path)
-    assert meta["tags"] == ["refusal"]
+    assert meta["tags"] == ["refusal_retry", "refusal"]
     assert meta["status"] == "aborted"
     assert meta["failure_reason"] == "refusal"
     assert meta["run_ids"] == [reply.turn.run_id]
 
 
 def test_refusal_report_turn_is_rolled_back(registry, tmp_path):
-    app, _ = play_with(registry, tmp_path, [{"stop": "refusal"}], auto_reports=True)
+    app, _ = play_with(registry, tmp_path, [{"stop": "refusal"}] * 2, auto_reports=True)
     assert app.bundle.session.turn_seq == 0
     assert app.pending == "error_menu"
     assert len(issues(tmp_path)) == 1
@@ -236,7 +236,7 @@ def test_auto_report_meta_is_not_manual(registry, tmp_path):
 
 
 def test_error_menu_reply_has_report_line_and_menu(registry, tmp_path):
-    _, reply = play_with(registry, tmp_path, [{"stop": "refusal"}], auto_reports=True)
+    _, reply = play_with(registry, tmp_path, [{"stop": "refusal"}] * 2, auto_reports=True)
     assert "Записан репорт" in text_of(reply)
     assert reply.menu == ["retry", "switch_model", "save_and_quit"]
 

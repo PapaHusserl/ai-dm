@@ -437,7 +437,7 @@ ui ──> game ──> master ──> llm
   `docs/llm-notes/claude-api-facts.md`) проверяет линтер схем; редкие инструменты `explore` (`end_chapter`,
   `location_create`) идут без strict.
 - Бюджеты цикла: невалидных ответов не больше 2 на ход, раундов инструментов не больше 8. Отказ модели (`refusal`) —
-  откат хода и подсказка про тон и модель. Ответ `max_tokens` с вызовами — невалидный.
+  один автоповтор хода с припиской (тег `refusal_retry`), затем откат хода и подсказка про тон и модель. Ответ `max_tokens` с вызовами — невалидный.
 
 ## C3. Атомарный ход
 
@@ -590,7 +590,7 @@ ui ──> game ──> master ──> llm
 ## E3. Граница сцены с summarizer
 
 Закрытие → автосейв → на копии: **выжимка сцены** → тик → триггеры → `world` → глава (**выжимка главы + свёртка
-`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer — меню 2.2, новая сцена не стартует (Д2);
+`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer `refusal`/`invalid` — повтор на модели рассказчика → запасная выжимка (`fallback`/`concat`, тег `refusal_fallback`); `network`/`fatal` — меню 2.2, новая сцена не стартует (Д2);
 незавершённая граница достраивается при загрузке. Журнал `role: summarizer`, `run_id` границы; replay по роли.
 
 ## E4. Бюджет и вытеснение
@@ -794,7 +794,7 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
   грузятся `load_slot` из копии во временной папке, репорт не меняется), `compare(expected, actual) -> list[str]` (построчные расхождения
   дампов бандлов; из сравнения исключены только `TIME_FIELDS` = `manifest.saved_at`; не более 20 строк). Ход крутит `ui.cli.replay_report`
   (`reports` не импортирует `game`): `GameApp(auto_reports=False, use_stored_model=False, now=meta.now, sleeper=без паузы)` во временном
-  `saves_root`, `ReplayAdapter` по ролям narrator/world/summarizer (нет записей роли -- адаптер None), модели запросов -- `requested_model`
+  `saves_root`, `ReplayAdapter` по ролям narrator/world/summarizer (нет записей роли -- адаптер None; `summarizer_backup` -- адаптер запасного вызова summarizer), модели запросов -- `requested_model`
   из записей (рассказчик -- `meta.model`), `app.handle(player_input)` или `choose("retry")` для достройки границы (`player_input=None`).
   Детерминизм: `run_id`/`stamp` в сообщения запроса не входят (отпечаток от них не зависит), `run_ids` границы идут отсортированно,
   `saved_at` -- единственное поле реального времени. Коды: 0 -- совпало; 1 -- расхождение состояния, причины сбоя или `ReplayDivergence`;

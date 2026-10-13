@@ -430,7 +430,7 @@ def test_network_failure_after_retries_gives_error_menu_on_mock_clock(registry, 
 
 
 def test_refusal_gives_error_menu_with_hint(registry, tmp_path, tui):
-    app = tui_of(text_app(registry, tmp_path, [{"stop": "refusal"}]))
+    app = tui_of(text_app(registry, tmp_path, [{"stop": "refusal"}] * 2))
 
     async def steps(app, pilot):
         await tui.submit(app, pilot)

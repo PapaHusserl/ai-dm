@@ -700,6 +700,7 @@ def play_report(report, registry, saves_root, stdout, setup):
         use_stored_model=False, campaigns_dir=setup.campaigns_dir, auto_reports=False,
         secrets=setup.secrets, world_adapter=world_adapter, world_model=world,
         summarizer_adapter=summarizer_adapter, summarizer_model=summarizer,
+        summarizer_backup=summarizer_adapter,
         # отпечаток запроса от времени не зависит; now фиксируется ради stamp и saved_at
         now=lambda: now, sleeper=lambda seconds: None,
     )
@@ -971,6 +972,7 @@ def prepare(args, stdin, stdout, notes, setup):
         world_model=None if world_adapter is None else world_model,
         summarizer_adapter=summarizer_adapter,
         summarizer_model=None if summarizer_adapter is None else summarizer_model,
+        summarizer_backup=summarizer_adapter if args.replay else None,
     )
     if created is not None:
         # траты создания входят в сессию (лимиты, /cost)

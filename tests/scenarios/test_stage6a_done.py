@@ -153,7 +153,7 @@ def test_several_fight_turns_each_replay_from_their_own_report(registry, tmp_pat
 
 def test_aborted_turn_replays_with_same_failure_and_state_before(registry, tmp_path):
     root = tmp_path / "saves"
-    app = build_app(registry, root, scripted([{"stop": "refusal"}]), hp=200)
+    app = build_app(registry, root, scripted([{"stop": "refusal"}] * 2), hp=200)
     app.handle("Иду")
     path = reports_of(root)[-1]
     assert not (path / "after").exists()
@@ -164,7 +164,7 @@ def test_aborted_turn_replays_with_same_failure_and_state_before(registry, tmp_p
 
 def test_aborted_turn_with_other_failure_in_journal_is_a_difference(registry, tmp_path):
     root = tmp_path / "saves"
-    app = build_app(registry, root, scripted([{"stop": "refusal"}]), hp=200)
+    app = build_app(registry, root, scripted([{"stop": "refusal"}] * 2), hp=200)
     app.handle("Иду")
     path = reports_of(root)[-1]
     meta = json.loads((path / "meta.json").read_text(encoding="utf-8"))
@@ -344,7 +344,7 @@ def test_committed_in_replay_but_aborted_in_report_is_a_difference(registry, tmp
 
 def test_aborted_in_replay_but_committed_in_report_is_a_difference(registry, tmp_path):
     root = tmp_path / "saves"
-    app = build_app(registry, root, scripted([{"stop": "refusal"}]), hp=200)
+    app = build_app(registry, root, scripted([{"stop": "refusal"}] * 2), hp=200)
     app.handle("Иду")
     path = reports_of(root)[-1]
     meta = json.loads((path / "meta.json").read_text(encoding="utf-8"))
@@ -359,7 +359,7 @@ def test_aborted_in_replay_but_committed_in_report_is_a_difference(registry, tmp
 
 def test_aborted_with_other_failure_reason_says_which(registry, tmp_path):
     root = tmp_path / "saves"
-    app = build_app(registry, root, scripted([{"stop": "refusal"}]), hp=200)
+    app = build_app(registry, root, scripted([{"stop": "refusal"}] * 2), hp=200)
     app.handle("Иду")
     path = reports_of(root)[-1]
     meta = json.loads((path / "meta.json").read_text(encoding="utf-8"))

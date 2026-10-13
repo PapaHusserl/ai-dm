@@ -233,7 +233,7 @@ def test_level_cap_is_20():
 def test_level_cap_equals_max_level_of_xp_table(registry):
     from ai_dm.rules.progression import max_level
 
-    assert LEVEL_CAP == max_level(registry)
+    assert max_level(registry) == LEVEL_CAP
 
 
 def test_default_rarity_cap_by_level():

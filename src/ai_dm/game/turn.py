@@ -22,6 +22,10 @@ ERROR_MENU = ["retry", "switch_model", "save_and_quit"]
 REFUSAL_HINT = (
     "Модель отказалась отвечать. Если так повторяется, смягчите tone мира или смените модель."
 )
+SOFTEN_NOTE = (
+    "Системная приписка: опиши эту сцену сдержанно, без натурализма; "
+    "насилие и откровенность — за кадром или намёком."
+)
 
 
 class TurnResult:
@@ -56,6 +60,7 @@ class TurnRunner:
         self, bundle, registry, cfg, app_cfg, adapter, *, saves_root, journal=None, ledger=None,
         world_text="", sleeper=time.sleep, now=None, model=None, run_tag=None,
         world_adapter=None, world_model=None, summarizer_adapter=None, summarizer_model=None,
+        summarizer_backup=None,
     ):
         self.bundle = bundle
         self.base_registry = registry
@@ -79,6 +84,10 @@ class TurnRunner:
         # (None -- профиль)
         self.summarizer_adapter = summarizer_adapter
         self.summarizer_model = summarizer_model
+        # адаптер вызова запасного summarizer (None -- адаптер рассказчика); нужен replay
+        self.summarizer_backup = summarizer_backup
+        # приписка к запросам рассказчика на время повтора хода после отказа
+        self.note = None
         # роль, на которой оборвалась граница ("summarizer" или None): кого менять в меню 2.2
         self.failed_role = None
         # номера вызовов по run_id: общий у ролей одной границы (world и summarizer)
@@ -183,25 +192,49 @@ class TurnRunner:
             self.mark_journal(run_id, "aborted")
             self.deferred_input = player_input
             return result
+        time_before_s = self.bundle.world.clock.now_s
+        try:
+            work, rng, narration = self.attempt(player_input, run_id, result)
+        except TurnFailed as failure:
+            if failure.reason != "refusal":
+                return self.failed(result, failure)
+            # один автоповтор хода на той же модели с припиской, с новой копии
+            result = self.retry_result(result)
+            self.note = SOFTEN_NOTE
+            try:
+                work, rng, narration = self.attempt(player_input, run_id, result)
+            except TurnFailed as again:
+                return self.failed(result, again)
+            finally:
+                self.note = None
+        self.commit(work, rng, player_input, narration, result)
+        self.mark_journal(run_id, "committed")
+        self.close_scene_if_needed(result, time_before_s)
+        return result
+
+    def attempt(self, player_input, run_id, result):
         # ход идёт на копии: откат -- выбросить копию
         work = self.bundle.model_copy(deep=True)
         rng = Rng.from_state(work.world.rng)
-        time_before_s = work.world.clock.now_s
         try:
             if work.session.active_combat is None:
                 narration = self.explore_turn(work, rng, player_input, run_id, result)
             else:
                 narration = self.combat_turn(work, rng, player_input, run_id, result)
         except CombatRoundLimit as error:
-            return self.failed(result, TurnFailed("round_limit", str(error)))
-        except TurnFailed as failure:
-            return self.failed(result, failure)
+            raise TurnFailed("round_limit", str(error)) from error
+        except TurnFailed:
+            raise
         except Exception:
             self.mark_journal(run_id, "aborted")
             raise
-        self.commit(work, rng, player_input, narration, result)
-        self.mark_journal(run_id, "committed")
-        self.close_scene_if_needed(result, time_before_s)
+        return work, rng, narration
+
+    def retry_result(self, started) -> TurnResult:
+        result = TurnResult(started.run_id)
+        result.run_ids = started.run_ids
+        result.before = started.before
+        result.report_tags = ["refusal_retry"]
         return result
 
     def failed(self, started, failure) -> TurnResult:
@@ -210,7 +243,7 @@ class TurnRunner:
         result.run_ids = started.run_ids
         result.before = started.before
         result.failure = failure
-        result.report_tags = list(failure.report_tags)
+        result.report_tags = list(dict.fromkeys(started.report_tags + failure.report_tags))
         result.menu = list(ERROR_MENU)
         result.hint = REFUSAL_HINT if failure.reason == "refusal" else str(failure)
         return result
@@ -218,6 +251,7 @@ class TurnRunner:
     def mark_journal(self, run_id, status):
         if self.journal is not None:
             self.journal.mark_turn(run_id, status)
+        self.call_numbers.pop(run_id, None)
 
     def commit(self, work, rng, player_input, narration, result):
         work.world.rng = rng.state
@@ -293,9 +327,18 @@ class TurnRunner:
             profile = self.app_cfg.profiles.get(adapter.info().provider)
             if profile is not None:
                 model = profile.summarizer.model
+        backup = None
+        if adapter is not self.adapter or model != self.model:
+            # запасной на модели рассказчика; если summarizer и так на ней -- повтор бесполезен
+            backup = SummarizerSession(
+                self.summarizer_backup or self.adapter, self.app_cfg, journal=self.journal,
+                ledger=self.ledger, sleeper=self.sleeper, now=self.now, model=self.model,
+                call_numbers=self.call_numbers,
+            )
         return SummarizerSession(
             adapter, self.app_cfg, journal=self.journal, ledger=self.ledger,
             sleeper=self.sleeper, now=self.now, model=model, call_numbers=self.call_numbers,
+            backup=backup,
         )
 
     def take_boundary(self, done, result):
@@ -323,7 +366,8 @@ class TurnRunner:
     def new_session(self, run_id):
         return MasterSession(
             self.adapter, self.app_cfg, journal=self.journal, ledger=self.ledger, run_id=run_id,
-            sleeper=self.sleeper, now=self.now, builder=self.builder,
+            sleeper=self.sleeper, now=self.now, builder=self.builder, note=self.note,
+            call_numbers=self.call_numbers,
         )
 
     def take_scene_fields(self, ctx, result):

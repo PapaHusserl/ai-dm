@@ -29,6 +29,7 @@ from ai_dm.persistence.store import load_slot, save_slot
 from ai_dm.state.memory import SceneSummary
 
 ERROR_MENU = ["retry", "switch_model", "save_and_quit"]
+REFUSAL = [{"stop": "refusal"}]
 
 
 def limit_cfg(cfg, n):
@@ -37,9 +38,10 @@ def limit_cfg(cfg, n):
     return cfg2
 
 
-def close_rig(registry, cfg, tmp_path, summarizer, title="Пролог", bundle=None):
+def close_rig(registry, cfg, tmp_path, summarizer, title="Пролог", bundle=None, backup=None):
+    # backup -- шаги рассказчика для запасного вызова summarizer на модели рассказчика (Р2)
     rig = make_summ_rig(
-        registry, cfg, tmp_path, end_scene_and_chapter(title),
+        registry, cfg, tmp_path, end_scene_and_chapter(title) + (backup or []),
         summarizer, bundle=bundle or chapter_bundle(registry),
     )
     return rig
@@ -184,16 +186,17 @@ def test_answer_with_one_tool_is_invalid_and_retried(partial, registry, cfg, tmp
 
 
 @pytest.mark.parametrize("partial", [only_chapter_steps, only_game_steps])
-def test_three_one_tool_answers_give_error_menu_and_nothing_is_written(
+def test_three_one_tool_answers_go_to_concat_and_game_summary_stays(
     partial, registry, cfg, tmp_path
 ):
     steps = summ_steps("Сцена.") + partial("1") + partial("2") + partial("3")
-    rig = close_rig(registry, cfg, tmp_path, steps)
+    rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
     result = rig.runner.play("ход")
     memory = rig.runner.bundle.memory
-    assert result.boundary_failed is True
-    assert result.menu == ERROR_MENU
-    assert memory.chapters == []
+    assert result.boundary_failed is False
+    assert result.menu is None
+    assert [c.source for c in memory.chapters] == ["concat"]
+    assert memory.chapters[0].summary == "Сцена."
     assert memory.game_summary == ""
     assert memory.game_summary_chapter == 0
 
@@ -423,18 +426,19 @@ def test_empty_chapter_or_game_summary_is_invalid(which, registry, cfg, tmp_path
     assert rig.runner.bundle.memory.game_summary == "Новая свёртка игры."
 
 
-def test_three_over_limit_answers_give_error_menu_and_chapter_not_closed(
+def test_three_over_limit_answers_go_to_concat_and_chapter_is_closed(
     registry, cfg, tmp_path
 ):
     steps = summ_steps("Сцена.")
     for n in range(3):
         steps += chapter_steps(game="я" * 3001, suffix=str(n))
-    rig = close_rig(registry, cfg, tmp_path, steps)
+    rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
     result = rig.runner.play("ход")
-    assert result.boundary_failed is True
-    assert rig.runner.bundle.memory.chapters == []
-    assert rig.runner.bundle.session.current_chapter.number == 1
-    assert rig.runner.bundle.memory.scenes == []
+    memory = rig.runner.bundle.memory
+    assert result.boundary_failed is False
+    assert [c.source for c in memory.chapters] == ["concat"]
+    assert rig.runner.bundle.session.current_chapter.number == 2
+    assert [s.summary for s in memory.scenes] == ["Сцена."]
 
 
 # память в следующем ходе нарратора
@@ -512,38 +516,103 @@ def test_tools_in_two_different_rounds_are_not_accepted_and_retried(registry, cf
     assert len(chapter_requests(rig)) >= 3
 
 
-def test_tools_in_two_rounds_forever_give_error_menu_and_bundle_unchanged(
-    registry, cfg, tmp_path
-):
+def test_tools_in_two_rounds_forever_go_to_concat(registry, cfg, tmp_path):
     steps = summ_steps("Сцена.")
     for n in range(4):
         steps += [
             tools_step(chapter_summary_call("Только глава.", call_id=f"cs-{n}")),
             tools_step(game_summary_call("Только игра.", call_id=f"gs-{n}")),
         ]
-    rig = close_rig(registry, cfg, tmp_path, steps)
+    rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
     result = rig.runner.play("ход")
-    assert result.boundary_failed is True
-    assert rig.runner.bundle.memory.chapters == []
-    assert rig.runner.bundle.memory.game_summary == ""
-    assert core_dump(rig.runner.bundle) == core_dump(load_slot(tmp_path, "w1", "auto"))
+    memory = rig.runner.bundle.memory
+    assert result.boundary_failed is False
+    assert [c.source for c in memory.chapters] == ["concat"]
+    assert memory.game_summary == ""
 
 
-def test_valid_chapter_and_invalid_game_until_retries_exhausted_keep_bundle(
+def test_valid_chapter_and_invalid_game_until_retries_exhausted_go_to_concat(
     registry, cfg, tmp_path
 ):
     steps = summ_steps("Сцена.")
     for n in range(4):
         steps += chapter_steps(chapter="Годная глава.", game="я" * 3001, suffix=str(n))
-    rig = close_rig(registry, cfg, tmp_path, steps)
+    rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
     result = rig.runner.play("ход")
     bundle = rig.runner.bundle
-    assert result.boundary_failed is True
-    assert bundle.memory.chapters == []
+    assert result.boundary_failed is False
+    assert [c.source for c in bundle.memory.chapters] == ["concat"]
+    assert bundle.memory.chapters[0].summary == "Сцена."
     assert bundle.memory.game_summary == ""
-    assert bundle.memory.scenes == []
-    assert bundle.session.current_chapter.number == 1
-    assert core_dump(bundle) == core_dump(load_slot(tmp_path, "w1", "auto"))
+    assert bundle.session.current_chapter.number == 2
+
+
+# Р2: отказ и цепочка свёртки главы
+
+def test_chapter_refusal_then_narrator_backup_writes_chapter_and_game(registry, cfg, tmp_path):
+    rig = close_rig(
+        registry, cfg, tmp_path, summ_steps("Сцена.") + REFUSAL,
+        backup=chapter_steps(chapter="От рассказчика.", game="Свёртка рассказчика."),
+    )
+    result = rig.runner.play("ход")
+    memory = rig.runner.bundle.memory
+    assert result.boundary_failed is False
+    assert memory.chapters[0].source == "summarizer"
+    assert memory.chapters[0].summary == "От рассказчика."
+    assert memory.game_summary == "Свёртка рассказчика."
+    assert memory.game_summary_chapter == 1
+    assert "refusal_fallback" in result.report_tags
+
+
+def test_chapter_backup_request_is_summarizer_role_on_narrator_model(registry, cfg, tmp_path):
+    rig = close_rig(
+        registry, cfg, tmp_path, summ_steps("Сцена.") + REFUSAL,
+        backup=chapter_steps(chapter="От рассказчика."),
+    )
+    rig.runner.play("ход")
+    backup = chapter_requests(rig.narrator_view())
+    assert backup
+    assert backup[0].role == "summarizer"
+    assert backup[0].model == rig.narrator.requests[0].model
+
+
+def test_chapter_both_refused_gives_concat_of_scene_summaries(registry, cfg, tmp_path):
+    bundle = chapter_bundle(registry, count=3)
+    bundle.memory.game_summary = "ПРЕЖНЯЯ СВЁРТКА"
+    bundle.memory.game_summary_chapter = 0
+    bundle.memory.scenes = [
+        SceneSummary(id="s_a", chapter_id="chapter_1", summary="СЦЕНА А"),
+        SceneSummary(id="s_x", chapter_id="chapter_0", summary="ЧУЖАЯ"),
+    ]
+    rig = close_rig(
+        registry, cfg, tmp_path, summ_steps("Сцена.") + REFUSAL, bundle=bundle, backup=REFUSAL
+    )
+    result = rig.runner.play("ход")
+    after = rig.runner.bundle
+    chapter = after.memory.chapters[0]
+    assert result.boundary_failed is False
+    assert chapter.source == "concat"
+    assert chapter.summary == "СЦЕНА А Сцена."
+    assert chapter.title == "Пролог"
+    assert after.memory.game_summary == "ПРЕЖНЯЯ СВЁРТКА"
+    assert after.memory.game_summary_chapter == 0
+    assert after.session.current_chapter.number == 2
+    assert after.session.boundary_pending is False
+    assert result.report_tags.count("refusal_fallback") == 1
+
+
+def test_chapter_fatal_still_gives_error_menu_and_backup_is_not_called(
+    registry, cfg, tmp_path
+):
+    rig = close_rig(
+        registry, cfg, tmp_path, summ_steps("Сцена.") + summ_fail_steps(),
+        backup=chapter_steps(),
+    )
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is True
+    assert result.menu == ERROR_MENU
+    assert rig.runner.failed_role == "summarizer"
+    assert chapter_requests(rig.narrator_view()) == []
 
 
 # at_s

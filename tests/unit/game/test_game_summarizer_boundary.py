@@ -324,16 +324,307 @@ def test_summary_of_600_chars_is_valid(registry, cfg, tmp_path):
     assert len(rig.runner.bundle.memory.scenes[0].summary) == 600
 
 
-def test_three_invalid_answers_give_error_menu(registry, cfg, tmp_path):
+def empty_answers(n=3):
     steps = []
-    for n in range(3):
-        steps += summ_steps("", call_id=f"ss-{n}")
-    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator(), steps)
+    for k in range(n):
+        steps += summ_steps("", call_id=f"ss-{k}")
+    return steps
+
+
+def test_three_invalid_answers_go_to_narrator_backup(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, empty_answers())
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is False
+    assert result.menu is None
+    assert rig.runner.bundle.session.boundary_pending is False
+    assert rig.runner.bundle.memory.scenes[0].summary == "От рассказчика."
+    assert rig.runner.bundle.memory.scenes[0].source == "summarizer"
+
+
+def test_three_invalid_answers_and_invalid_backup_give_fallback(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + empty_answers()
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, empty_answers())
+    result = rig.runner.play("ход")
+    scene = rig.runner.bundle.memory.scenes[0]
+    assert result.boundary_failed is False
+    assert scene.source == "fallback"
+    assert scene.summary == "Подсказка."
+
+
+# Р2: отказ summarizer -> повтор на модели рассказчика -> запасная выжимка
+
+REFUSAL = [{"stop": "refusal"}]
+
+
+def test_refusal_goes_to_narrator_backup_and_boundary_finishes(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL)
+    result = rig.runner.play("ход")
+    bundle = rig.runner.bundle
+    assert result.boundary_failed is False
+    assert result.menu is None
+    assert rig.runner.failed_role is None
+    assert bundle.session.boundary_pending is False
+    assert bundle.session.current_scene.id == "scene_2"
+    assert bundle.memory.scenes[0].summary == "От рассказчика."
+    assert bundle.memory.scenes[0].source == "summarizer"
+    assert "refusal_fallback" in result.report_tags
+
+
+def test_backup_request_is_summarizer_role_on_narrator_model(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL)
+    rig.runner.play("ход")
+    backup = rig.narrator_view().summarizer_requests()
+    assert len(backup) == 1
+    assert backup[0].role == "summarizer"
+    assert {t.name for t in backup[0].tools} == {"scene_summary"}
+    assert backup[0].model == rig.narrator.requests[0].model
+    assert len(rig.summarizer.requests) == 1
+
+
+def test_journal_has_two_summarizer_records_under_one_boundary_run_id(
+    registry, cfg, tmp_path
+):
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL)
+    rig.runner.play("ход")
+    records = rig.summarizer_records()
+    assert len(records) == 2
+    assert len({r["run_id"] for r in records}) == 1
+    assert records[0]["run_id"].startswith("bnd-")
+    assert records[1]["requested_model"] == rig.narrator.requests[0].model
+    assert records[0]["requested_model"] != records[1]["requested_model"]
+    assert [r["call_id"] for r in records] == [
+        f"{records[0]['run_id']}-1", f"{records[0]['run_id']}-2"
+    ]
+
+
+def test_both_refused_give_fallback_with_hint_title_and_one_tag(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.title = "Название нарратора"
+    narrator = end_narrator("Подсказка.") + REFUSAL
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL, bundle=bundle)
+    result = rig.runner.play("ход")
+    after = rig.runner.bundle
+    assert result.boundary_failed is False
+    assert result.menu is None
+    assert after.memory.scenes[0].summary == "Подсказка."
+    assert after.memory.scenes[0].source == "fallback"
+    assert after.memory.scenes[0].title == "Название нарратора"
+    assert after.session.boundary_pending is False
+    assert after.session.current_scene.id == "scene_2"
+    assert result.report_tags.count("refusal_fallback") == 1
+
+
+def test_both_refused_without_hint_give_numbered_scene_line(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator("") + REFUSAL, REFUSAL)
+    rig.runner.play("ход")
+    assert rig.runner.bundle.memory.scenes[0].summary.startswith("Сцена 1")
+    assert rig.runner.bundle.memory.scenes[0].source == "fallback"
+
+
+def test_both_refused_still_ticks_the_world_day(registry, cfg, tmp_path, monkeypatch):
+    import ai_dm.game.boundary as boundary
+
+    calls = []
+    original = boundary.tick_days
+    monkeypatch.setattr(
+        boundary, "tick_days", lambda *a, **k: calls.append(1) or original(*a, **k)
+    )
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator("П.") + REFUSAL, REFUSAL)
+    rig.runner.play("ход")
+    assert calls == [1]
+
+
+def test_clean_summary_has_no_fallback_tag(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator(), summ_steps("Итог."))
+    result = rig.runner.play("ход")
+    assert "refusal_fallback" not in result.report_tags
+
+
+def test_fatal_summarizer_still_gives_menu_and_backup_is_not_called(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, summ_fail_steps())
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is True
+    assert result.menu == ERROR_MENU
+    assert rig.runner.failed_role == "summarizer"
+    assert rig.runner.bundle.session.boundary_pending is True
+    assert rig.narrator_view().summarizer_requests() == []
+    assert "refusal_fallback" not in result.report_tags
+
+
+def test_network_summarizer_still_gives_menu_and_backup_is_not_called(registry, cfg, tmp_path):
+    network = [{"error": "transient", "message": "сеть"}] * 4
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, network)
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is True
+    assert rig.runner.failed_role == "summarizer"
+    assert rig.narrator_view().summarizer_requests() == []
+
+
+def test_backup_fatal_gives_error_menu(registry, cfg, tmp_path):
+    narrator = end_narrator("Подсказка.") + summ_fail_steps()
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL)
     result = rig.runner.play("ход")
     assert result.boundary_failed is True
     assert result.menu == ERROR_MENU
     assert rig.runner.bundle.session.boundary_pending is True
-    assert rig.runner.bundle.memory.scenes == []
+
+
+def test_no_backup_when_summarizer_is_the_narrator_itself(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator("Подсказка.") + REFUSAL, [])
+    rig.runner.summarizer_adapter = rig.narrator
+    rig.runner.summarizer_model = rig.runner.model
+    result = rig.runner.play("ход")
+    assert len(rig.narrator_view().summarizer_requests()) == 1
+    assert rig.runner.bundle.memory.scenes[0].source == "fallback"
+    assert result.boundary_failed is False
+
+
+def test_session_has_no_backup_when_adapter_and_model_equal_narrator(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), [])
+    rig.runner.summarizer_adapter = rig.narrator
+    rig.runner.summarizer_model = rig.runner.model
+    assert rig.runner.new_summarizer_session().backup is None
+
+
+def test_same_adapter_but_other_model_still_has_backup(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), [])
+    rig.runner.summarizer_adapter = rig.narrator
+    rig.runner.summarizer_model = SONNET
+    assert rig.runner.new_summarizer_session().backup is not None
+
+
+def test_session_without_summarizer_adapter_has_no_session(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), [])
+    rig.runner.summarizer_adapter = None
+    assert rig.runner.new_summarizer_session() is None
+
+
+def test_backup_is_built_on_narrator_adapter_and_model(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), summ_steps())
+    backup = rig.runner.new_summarizer_session().backup
+    assert backup.adapter is rig.narrator
+    assert backup.model == rig.runner.model
+    assert backup.backup is None
+
+
+def test_explicit_summarizer_backup_adapter_is_used_with_narrator_model(
+    registry, cfg, tmp_path
+):
+    from game_kit import scripted
+
+    other = scripted(summ_steps("Из явного бэкапа."))
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator("Подсказка."), REFUSAL)
+    rig.runner.summarizer_backup = other
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is False
+    assert rig.runner.bundle.memory.scenes[0].summary == "Из явного бэкапа."
+    assert other.requests[0].model == rig.runner.model
+    assert rig.narrator_view().summarizer_requests() == []
+
+
+def test_game_app_passes_summarizer_backup_to_runner(registry, tmp_path):
+    from game_kit import scripted
+
+    from ai_dm.game.app import GameApp
+
+    other = scripted(summ_steps())
+    app = GameApp(
+        settings(), registry, make_bundle(registry), scripted([]), saves_root=tmp_path,
+        sleeper=lambda s: None, use_stored_model=False, summarizer_backup=other,
+    )
+    assert app.runner.summarizer_backup is other
+
+
+def test_default_summarizer_backup_is_none(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), [])
+    assert rig.runner.summarizer_backup is None
+
+
+def test_backup_follows_narrator_changed_by_set_adapter(registry, cfg, tmp_path):
+    from game_kit import scripted
+
+    rig = make_summ_rig(registry, cfg, tmp_path, quiet_narrator(), summ_steps())
+    new = scripted([])
+    rig.runner.set_adapter(new, SONNET)
+    backup = rig.runner.new_summarizer_session().backup
+    assert backup.adapter is new
+    assert backup.model == SONNET
+
+
+def test_refusing_summarizer_does_not_block_three_turns_in_a_row(registry, cfg, tmp_path):
+    narrator = []
+    for _ in range(3):
+        narrator += end_narrator("Подсказка.") + REFUSAL
+    rig = make_summ_rig(registry, cfg, tmp_path, narrator, REFUSAL * 3)
+    results = rig.play(3)
+    scenes = rig.runner.bundle.memory.scenes
+    assert all(r.committed and not r.boundary_failed for r in results)
+    assert [s.source for s in scenes] == ["fallback"] * 3
+    assert rig.runner.bundle.session.current_scene.id == "scene_4"
+    assert rig.runner.bundle.session.turn_seq == 3
+
+
+def test_pending_boundary_is_finished_by_fallback_on_first_turn(registry, cfg, tmp_path):
+    failed_rig(registry, cfg, tmp_path)
+    loaded = load_slot(tmp_path, "w1", "auto")
+    assert loaded.session.boundary_pending is True
+    rig = make_summ_rig(
+        registry, cfg, tmp_path, REFUSAL + quiet_narrator(), REFUSAL, bundle=loaded
+    )
+    result = rig.runner.play("новый ход")
+    bundle = rig.runner.bundle
+    assert result.committed is True
+    assert result.boundary_failed is False
+    assert rig.runner.deferred_input is None
+    assert bundle.memory.scenes[0].source == "fallback"
+    assert bundle.session.current_scene.id == "scene_2"
+    assert bundle.session.boundary_pending is False
+    assert bundle.memory.recent_turns[-1].player_input == "новый ход"
+
+
+def test_retry_after_menu_finishes_boundary_with_fallback(registry, cfg, tmp_path):
+    rig = failed_rig(
+        registry, cfg, tmp_path, summ_fail_steps() + REFUSAL,
+        narrator=end_narrator("Подсказка.") + REFUSAL,
+    )
+    result = rig.runner.retry()
+    assert rig.runner.bundle.session.boundary_pending is False
+    assert rig.runner.bundle.memory.scenes[0].source == "fallback"
+    assert result.boundary_failed is False
+
+
+def test_player_gets_no_words_about_summary_on_fallback(registry, tmp_path, monkeypatch):
+    force_close(monkeypatch, "end_scene")
+    narrator = ReactiveNarrator([text_step("Ты идёшь дальше."), REFUSAL[0]])
+    app = make_summ_app(registry, tmp_path, narrator, make_scripted_refusal())
+    reply = app.handle("Иду")
+    shown = "\n".join(reply.lines + [reply.narration]).lower()
+    assert reply.turn.boundary_failed is False
+    assert "выжимк" not in shown
+    assert app.bundle.memory.scenes[0].source == "fallback"
+
+
+def test_narrator_set_by_model_command_becomes_the_backup(registry, tmp_path, monkeypatch):
+    force_close(monkeypatch, "end_scene")
+    factory = SummFactory()
+    narrator = ReactiveSummarizer()
+    app = make_summ_app(
+        registry, tmp_path, narrator, make_scripted_refusal(), adapter_factory=factory
+    )
+    app.handle(f"/model narrator anthropic:{SONNET}")
+    reply = app.handle("Иду")
+    new = factory.made[0]
+    backup = [r for r in new.requests if r.role == "summarizer"]
+    assert backup
+    assert backup[0].model == SONNET
+    assert reply.turn.boundary_failed is False
+    assert app.bundle.memory.scenes[0].source == "summarizer"
 
 
 # модель summarizer
@@ -471,6 +762,25 @@ def make_scripted_failing():
     return scripted(summ_fail_steps())
 
 
+def make_scripted_refusal():
+    from game_kit import scripted
+
+    return scripted([{"stop": "refusal"}])
+
+
+class ReactiveNarrator(ReactiveSummarizer):
+    # рассказчик по шагам для app-тестов: сначала шаги, затем (запасной вызов summarizer) отказ
+    def __init__(self, steps):
+        super().__init__()
+        from game_kit import scripted
+
+        self.script = scripted(steps)
+
+    def complete(self, request):
+        self.requests.append(request.model_copy(deep=True))
+        return self.script.complete(request)
+
+
 def test_meta_context_is_only_on_narrator_records(registry, cfg, tmp_path):
     rig = make_summ_rig(
         registry, cfg, tmp_path, end_narrator("Подсказка."), summ_steps("Выжимка.", "Т")
@@ -485,3 +795,22 @@ def test_meta_context_is_only_on_narrator_records(registry, cfg, tmp_path):
     assert rig.summarizer_records()
     assert all(r["meta"] == {} for r in others)
     assert all("context_overflow" not in r["report_tags"] for r in others)
+
+
+def test_replay_of_boundary_with_backup_gives_same_memory(registry, cfg, tmp_path):
+    from ai_dm.llm.replay import ReplayAdapter
+
+    narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
+    first = make_summ_rig(registry, cfg, tmp_path / "a", narrator, REFUSAL)
+    first.runner.play("ход")
+    replay = ReplayAdapter(first.journal.read_records(), role="summarizer")
+    model = first.summarizer_records()[0]["requested_model"]
+    second = make_summ_rig(
+        registry, cfg, tmp_path / "b", end_narrator("Подсказка."), replay,
+        summarizer_model=model,
+    )
+    second.runner.summarizer_backup = replay
+    second.runner.play("ход")
+    assert dumps(first.runner.bundle.memory) == dumps(second.runner.bundle.memory)
+    assert dumps(first.runner.bundle.session) == dumps(second.runner.bundle.session)
+    assert second.runner.bundle.memory.scenes[0].summary == "От рассказчика."

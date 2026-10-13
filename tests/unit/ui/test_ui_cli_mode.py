@@ -490,3 +490,54 @@ def test_play_fallback_to_simple_keeps_opening_and_secrets(tmp_path, monkeypatch
     code, calls = play_with_opening(tmp_path, monkeypatch, (0, "сломалось"))
     assert code == 5
     assert calls["simple"] == {"replay": False, "secrets": ["секрет"], "opening": "Начало."}
+
+
+# Р2: --mock + --mock-summarizer с отказом -- запасной вызов берёт шаг из сценария рассказчика
+
+def write_steps(path, steps):
+    import yaml
+
+    path.write_text(yaml.safe_dump({"steps": steps}, allow_unicode=True), encoding="utf-8")
+    return path
+
+
+def summary_step(text):
+    call = {"id": "ss-1", "name": "scene_summary",
+            "input": {"type": "scene_summary", "title": "", "summary": text}}
+    return {"tool_calls": [call]}
+
+
+def end_scene_step():
+    call = {"id": "es-1", "name": "end_scene", "input": {"type": "end_scene", "summary": "П."}}
+    return {"tool_calls": [call]}
+
+
+def last_auto_scenes(saves):
+    from ai_dm.persistence.store import load_slot
+
+    world = [p for p in saves.iterdir() if p.is_dir()][0].name
+    return load_slot(saves, world, "auto").memory.scenes
+
+
+def test_mock_summarizer_refusal_takes_backup_step_from_narrator_mock(tmp_path):
+    narrator = write_steps(
+        tmp_path / "n.yaml",
+        [end_scene_step(), {"text": "Конец."}, summary_step("От мока рассказчика.")],
+    )
+    summarizer = write_steps(tmp_path / "s.yaml", [{"stop": "refusal"}])
+    argv = BASE + ["--mock", str(narrator), "--mock-summarizer", str(summarizer),
+                   "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, ["Иду"], env={})
+    assert code == 0, out.text
+    scenes = last_auto_scenes(tmp_path / "saves")
+    assert [s.summary for s in scenes] == ["От мока рассказчика."]
+    assert scenes[0].source == "summarizer"
+
+
+def test_mock_without_mock_summarizer_still_uses_plain_fallback(tmp_path):
+    narrator = write_steps(tmp_path / "n.yaml", [end_scene_step(), {"text": "Конец."}])
+    argv = BASE + ["--mock", str(narrator), "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, ["Иду"], env={})
+    assert code == 0, out.text
+    scenes = last_auto_scenes(tmp_path / "saves")
+    assert [s.source for s in scenes] == ["fallback"]

@@ -84,6 +84,7 @@ class MasterSession:
     def __init__(
         self, adapter, app_cfg, *, journal=None, ledger=None, run_id="run-1",
         sleeper=time.sleep, now=None, builder=None, role="narrator", call_numbers=None,
+        note=None,
     ):
         self.adapter = adapter
         self.app_cfg = app_cfg
@@ -96,6 +97,8 @@ class MasterSession:
         self.builder = builder or PromptBuilder(app_cfg, role=role)
         # run_id -> сколько вызовов уже записано; общий словарь на роли одной границы
         self.call_numbers = {} if call_numbers is None else call_numbers
+        # приписка к запросу (повтор после отказа): отдельный блок после JSON состояния
+        self.note = note
 
     def required_tool(self, ctx, mode):
         required = REQUIRED_BY_MODE.get(mode)
@@ -106,6 +109,14 @@ class MasterSession:
             if combat is not None and combat.outcome == "defeat_pending":
                 required = "defeat_outcome"
         return required
+
+    def with_note(self, req):
+        if self.note is None:
+            return req
+        first = req.messages[0]
+        content = list(first.content) + [Text(text=self.note)]
+        messages = [first.model_copy(update={"content": content})] + list(req.messages[1:])
+        return req.model_copy(update={"messages": messages})
 
     def call(self, ctx, req, run_id, plan=None):
         info = self.adapter.info()
@@ -245,6 +256,7 @@ class MasterSession:
         run_id = run_id or self.run_id
         result = MasterResult()
         req = self.builder.build(ctx, user_input, mode, world_text=world_text)
+        req = self.with_note(req)
         # план контекста есть только у PromptBuilder нарратора (у world/summarizer builder другой);
         # фиксируется на первом build прогона, раунды инструментов его не пересчитывают
         plan = getattr(self.builder, "last_plan", None) if self.role == "narrator" else None

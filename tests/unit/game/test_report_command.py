@@ -99,7 +99,7 @@ def test_report_before_first_turn_has_empty_run_ids(registry, tmp_path):
 
 
 def test_report_works_in_error_menu(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]))
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2))
     app.handle("Иду")
     assert app.pending == "error_menu"
     reply = app.handle("/report не отвечает")
@@ -109,7 +109,7 @@ def test_report_works_in_error_menu(registry, tmp_path):
 
 
 def test_report_of_aborted_turn_has_status_aborted(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]))
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2))
     app.handle("Иду")
     app.handle("/report не отвечает")
     manual = [p for p in issues(tmp_path) if p.name.endswith("-manual")][0]

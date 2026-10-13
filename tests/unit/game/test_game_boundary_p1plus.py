@@ -6,14 +6,15 @@ from game_kit import end_scene_call, text_step, tools_step
 from protocol_kit import make_bundle
 from summarizer_kit import force_close, make_summ_rig, summ_steps
 
-from ai_dm.game.boundary import fallback_summary, summarize_scene
+from ai_dm.game.boundary import close_chapter, fallback_summary, summarize_scene
+from ai_dm.state.session import ChapterState
 
 
 def fake_summarizer(title="", text="Выжимка."):
-    def run_scene(work, registry, cfg, run_id):
-        return SimpleNamespace(summary_title=title, summary_text=text)
+    def try_scene(work, registry, cfg, run_id):
+        return SimpleNamespace(summary_title=title, summary_text=text), False
 
-    return SimpleNamespace(run_scene=run_scene)
+    return SimpleNamespace(try_scene=try_scene)
 
 
 def run_boundary(registry, cfg, summarizer, scene_title=""):
@@ -86,3 +87,102 @@ def test_take_boundary_cleans_call_numbers_of_boundary_runs(registry, cfg, tmp_p
     assert rig.summarizer_records() != []
     assert [k for k in rig.runner.call_numbers if k.startswith("bnd-")] == []
 
+
+
+# Р2: summarize_scene / close_chapter передают аргументы в цепочку и разбирают (ctx, fell)
+
+def recording(kind, ctx, fell=False):
+    seen = []
+
+    def call(*args):
+        seen.append(args)
+        return ctx, fell
+
+    return seen, SimpleNamespace(**{kind: call})
+
+
+def test_summarize_scene_passes_bundle_registry_cfg_and_run_id(registry, cfg):
+    bundle = make_bundle(registry)
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.")
+    seen, summarizer = recording("try_scene", ctx)
+    result = SimpleNamespace(report_tags=[])
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert seen == [(bundle, registry, cfg, "bnd-9")]
+    assert result.summary_run_id == "bnd-9"
+
+
+def test_summarize_scene_writes_text_title_and_time_to_scene_and_memory(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.world.clock.now_s = 777
+    ctx = SimpleNamespace(summary_title="Имя", summary_text="Текст.")
+    _, summarizer = recording("try_scene", ctx)
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[]))
+    scene = bundle.session.current_scene
+    assert (scene.summary, scene.title) == ("Текст.", "Имя")
+    assert bundle.memory.scenes[0].at_s == 777
+
+
+def test_summarize_scene_fell_adds_tag_once(registry, cfg):
+    bundle = make_bundle(registry)
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.")
+    _, summarizer = recording("try_scene", ctx, fell=True)
+    result = SimpleNamespace(report_tags=[])
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert result.report_tags == ["refusal_fallback"]
+
+
+def closing_bundle(registry, number=2, reason="end_chapter"):
+    bundle = make_bundle(registry)
+    bundle.session.current_chapter = ChapterState(
+        id=f"ch_{number}", number=number, started_at_s=0, scene_count=1, closed_reason=reason,
+    )
+    return bundle
+
+
+def test_close_chapter_passes_arguments_and_run_id(registry, cfg):
+    bundle = closing_bundle(registry)
+    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
+    seen, summarizer = recording("try_chapter", ctx)
+    result = SimpleNamespace(report_tags=[])
+    close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert seen == [(bundle, registry, cfg, "bnd-9")]
+    assert result.summary_run_id == "bnd-9"
+    assert result.report_tags == []
+
+
+def test_close_chapter_opens_next_chapter_and_returns_number_and_title(registry, cfg):
+    bundle = closing_bundle(registry, number=2)
+    bundle.session.current_chapter.title = "Название"
+    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
+    _, summarizer = recording("try_chapter", ctx)
+    closed = close_chapter(
+        bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[])
+    )
+    assert closed == (2, "Название")
+    assert bundle.session.current_chapter.id == "ch_3"
+    assert bundle.session.current_chapter.number == 3
+    assert bundle.memory.game_summary == "И."
+    assert bundle.memory.game_summary_chapter == 2
+
+
+def test_close_chapter_by_scene_limit_sets_reason(registry, cfg):
+    bundle = closing_bundle(registry, reason=None)
+    bundle.session.current_chapter.scene_count = cfg.scene.max_per_chapter
+    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
+    _, summarizer = recording("try_chapter", ctx)
+    closed = close_chapter(
+        bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[])
+    )
+    assert closed is not None
+    assert bundle.memory.chapters[0].id == "ch_2"
+
+
+def test_close_chapter_none_ctx_gives_concat_and_tag(registry, cfg):
+    bundle = closing_bundle(registry)
+    bundle.memory.game_summary = "ПРЕЖНЯЯ"
+    _, summarizer = recording("try_chapter", None, fell=True)
+    result = SimpleNamespace(report_tags=[])
+    close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert bundle.memory.chapters[0].source == "concat"
+    assert bundle.memory.game_summary == "ПРЕЖНЯЯ"
+    assert result.report_tags == ["refusal_fallback"]

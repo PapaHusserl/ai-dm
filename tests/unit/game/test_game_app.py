@@ -155,7 +155,7 @@ def test_failed_turn_opens_error_menu(registry, tmp_path):
 
 
 def test_refusal_menu_has_model_and_tone_hint(registry, tmp_path):
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]))
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2))
     reply = app.handle("Иду")
     assert "tone" in reply.hint
     assert "модел" in reply.hint
@@ -223,7 +223,7 @@ def test_switch_model_offers_models_and_returns_to_menu(registry, tmp_path):
 
 def test_retry_after_model_switch_uses_new_model(registry, tmp_path):
     factory = FactorySpy()
-    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}]), adapter_factory=factory)
+    app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), adapter_factory=factory)
     app.handle("Иду")
     app.choose("switch_model")
     app.choose(f"anthropic:{SONNET}")
