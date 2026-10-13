@@ -207,15 +207,15 @@ class FightInput:
         options = numbered_lines(new)
         if self.reads > self.limit or not options:
             return None
-        for number, text in options:
-            if "средн" in text.lower():
-                return str(number)
-        for number, text in options:
-            if text.startswith("Атака:"):
-                return str(number)
-        for number, text in options:
-            if text in self.MOVES:
-                return str(number)
+        preferred = (
+            lambda text: "средн" in text.lower(),
+            lambda text: text.startswith("Атака:"),
+            lambda text: text in self.MOVES,
+        )
+        for matches in preferred:
+            for number, text in options:
+                if matches(text):
+                    return str(number)
         return str(options[-1][0])
 
 
@@ -246,6 +246,13 @@ def roll_text(line):
 
 def indent_of(line):
     return len(line) - len(line.lstrip(" "))
+
+
+def continues_item(prev_item, prev_indent, indent, body, line):
+    # перенос пункта списка / броска: строка глубже предыдущего пункта и сама не пункт
+    if not prev_item or prev_indent is None or indent <= prev_indent:
+        return False
+    return not NUMBERED.match(body) and roll_text(line) is None
 
 
 def plain_lines(raw):
@@ -281,10 +288,7 @@ def plain_lines(raw):
             prev_item = False
             continue
         indent = indent_of(line)
-        if (
-            prev_item and prev_indent is not None and indent > prev_indent
-            and not NUMBERED.match(body) and roll_text(line) is None
-        ):
+        if continues_item(prev_item, prev_indent, indent, body, line):
             result[-1] += " " + body
             continue
         rolled = roll_text(line)

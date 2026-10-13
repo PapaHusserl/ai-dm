@@ -745,18 +745,19 @@ def hero_flag_refusal(args, notes):
     # код выхода при неверном --hero-describe или None
     if args.hero_describe is None:
         return None
-    if not args.hero_describe.strip():
-        say(notes, "--hero-describe: пустое описание.")
-        return 2
-    if args.replay:
-        say(notes, "--hero-describe несовместим с --replay: лист героя берётся из meta мира.")
-        return 2
-    if not args.new:
-        say(notes, "--hero-describe нужен только для нового мира (--new).")
-        return 2
-    if args.hero:
-        say(notes, "--hero-describe несовместим с --hero.")
-        return 2
+    refusals = [
+        (not args.hero_describe.strip(), "--hero-describe: пустое описание."),
+        (
+            bool(args.replay),
+            "--hero-describe несовместим с --replay: лист героя берётся из meta мира.",
+        ),
+        (not args.new, "--hero-describe нужен только для нового мира (--new)."),
+        (bool(args.hero), "--hero-describe несовместим с --hero."),
+    ]
+    for hit, text in refusals:
+        if hit:
+            say(notes, text)
+            return 2
     return None
 
 

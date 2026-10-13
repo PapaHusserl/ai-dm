@@ -67,6 +67,7 @@ VALID = {
     },
     "favor_change": {"target": "hero", "god_id": "morrah", "delta": 1, "reason": "помог жрецу"},
     "pray": {"god_id": "selune"},
+    "companion_update": {"action": "join", "name": "Акела", "kind": "волк"},
     "reveal_secret": {"npc_id": "aldric", "secret_id": "sister_vampire"},
     "event_start": {"id": "plague_1", "event_type": "plague", "cause": "trigger:morrah"},
     "event_end": {"id": "plague_1"},
@@ -82,8 +83,8 @@ def example(type_name):
     return {"type": type_name, **copy.deepcopy(VALID[type_name])}
 
 
-def test_there_are_34_request_types():
-    assert len(ALL_TYPES) == 34
+def test_there_are_35_request_types():
+    assert len(ALL_TYPES) == 35
     assert sorted(REQUEST_MODELS) == sorted(ALL_TYPES)
 
 
@@ -92,7 +93,7 @@ def test_examples_cover_every_type():
 
 
 def test_visible_hidden_and_npc_only_partition_all_types():
-    assert len(VISIBLE_TYPES) == 32
+    assert len(VISIBLE_TYPES) == 33
     assert sorted(HIDDEN_TYPES) == ["afterlife_action"]
     assert NPC_ONLY_TYPES == ("npc_action",)
     assert sorted(VISIBLE_TYPES + HIDDEN_TYPES + NPC_ONLY_TYPES) == sorted(ALL_TYPES)
@@ -106,7 +107,7 @@ def test_visible_set_matches_plan():
         "advance_time",
         "rest", "set_flag", "npc_create", "location_create", "npc_update", "offer_choices",
         "end_scene", "end_chapter", "unsupported_action", "reveal_secret", "event_start",
-        "event_end", "favor_change", "pray", "warn_danger", "cast_spell",
+        "event_end", "favor_change", "pray", "warn_danger", "cast_spell", "companion_update",
     ]
     assert sorted(VISIBLE_TYPES) == sorted(plan)
 

@@ -481,6 +481,19 @@ class NpcUpdate(NpcUpdateBase):
     NEUTRAL: ClassVar[dict] = {**NpcUpdateBase.NEUTRAL, "trade_kind": "none"}
 
 
+class CompanionUpdate(Request):
+    """Зверь-спутник героя (Повелитель зверей): появление зверя, его гибель или уход."""
+
+    type: Literal["companion_update"]
+    action: Literal["join", "dead", "gone"] = Field(
+        description="join = зверь появился; dead = погиб; gone = ушёл."
+    )
+    name: str = Field("", description="Имя зверя; обязательно при join.")
+    kind: str = Field("", description="Вид словами: волк, капибара; обязательно при join.")
+    notes: str = Field("", description="Откуда, повадки; пусто = нет.")
+    NEUTRAL: ClassVar[dict] = {"name": "", "kind": "", "notes": ""}
+
+
 class WarnDanger(Request):
     """Предупреждение об опасности в локации."""
 
@@ -910,6 +923,7 @@ REQUEST_MODELS = {
     "npc_update": NpcUpdate,
     "favor_change": FavorChange,
     "pray": Pray,
+    "companion_update": CompanionUpdate,
     "reveal_secret": RevealSecret,
     "event_start": EventStart,
     "event_end": EventEnd,
@@ -961,8 +975,8 @@ MasterRequest = Annotated[
     | AwardXp
     | AdvanceTime | Rest
     | WarnDanger
-    | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | RevealSecret
-    | EventStart | EventEnd
+    | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | CompanionUpdate
+    | RevealSecret | EventStart | EventEnd
     | OfferChoices | EndScene | EndChapter | AfterlifeAction | UnsupportedAction,
     Field(discriminator="type"),
 ]

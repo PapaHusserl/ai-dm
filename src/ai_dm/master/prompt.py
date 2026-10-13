@@ -13,7 +13,7 @@ from ai_dm.master.context import (
 from ai_dm.master.relevance import nearby_locations, npc_reasons, rank_npcs
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
-from ai_dm.rules.derived import always_prepared, hero_feature_ids
+from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.trade import (
@@ -315,6 +315,8 @@ class PromptBuilder:
             data["favored_enemy"] = {"current": pool.current, "max": pool.max}
         if hero.companions:
             data["companion"] = hero.companions[0].model_dump(mode="json")
+        if companion_due(hero, registry):
+            data["companion_due"] = True
         return data
 
     def nudge_signal(self, world):

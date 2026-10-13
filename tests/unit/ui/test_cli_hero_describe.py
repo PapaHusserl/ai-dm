@@ -258,6 +258,32 @@ def test_refusal_with_replay_is_code_2():
     assert "--replay" in "\n".join(notes.lines)
 
 
+def test_refusal_with_blank_description_is_code_2():
+    code, notes = refusal_of("--new", "--hero-describe", "  ")
+    assert code == 2
+    assert "пустое" in "\n".join(notes.lines)
+
+
+def test_refusal_blank_description_comes_first():
+    code, notes = refusal_of("--replay", "--hero", "arn", "--hero-describe", " ")
+    assert code == 2
+    assert [line.strip() for line in notes.lines] == ["--hero-describe: пустое описание."]
+
+
+def test_refusal_replay_comes_before_missing_new():
+    code, notes = refusal_of("--replay", "--hero-describe", "воин")
+    assert code == 2
+    assert "--replay" in "\n".join(notes.lines)
+    assert len(notes.lines) == 1
+
+
+def test_refusal_missing_new_comes_before_hero():
+    code, notes = refusal_of("--hero", "arn", "--hero-describe", "воин")
+    assert code == 2
+    assert "--new" in "\n".join(notes.lines)
+    assert len(notes.lines) == 1
+
+
 def test_replay_records_drops_hero_creation_records():
     from ai_dm.ui.cli import replay_records
 

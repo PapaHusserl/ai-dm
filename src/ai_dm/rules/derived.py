@@ -282,6 +282,11 @@ def spell_slots(hero, registry) -> dict[int, int]:
     return spell_slots_for(registry, spellcasting.progression, hero.sheet.level)
 
 
+def companion_due(hero, registry) -> bool:
+    # герой с умением Зверь-спутник, у которого зверя нет
+    return "beast_companion" in hero_feature_ids(hero, registry) and not hero.companions
+
+
 def hero_feature_ids(hero, registry) -> list[str]:
     # умения класса/подкласса/вида по уровню героя и выбранные варианты умений
     char_class = registry.get("class", hero.sheet.class_id)

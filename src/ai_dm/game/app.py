@@ -21,6 +21,7 @@ from ai_dm.llm.keys import redact
 from ai_dm.persistence.migrations import MigrationContext, SaveTooNew
 from ai_dm.persistence.store import load_slot, save_auto, save_slot
 from ai_dm.reports.writer import write_report
+from ai_dm.rules.derived import companion_due
 from ai_dm.rules.level_up import (
     begin_level_up,
     commit_level_up,
@@ -340,7 +341,13 @@ class GameApp:
     def finish_level_up(self, hero) -> Reply:
         if not can_level_up(hero, self.registry):
             self.pending = None
-        return self.reply([f"{hero.name}: уровень {hero.sheet.level}."])
+        lines = [f"{hero.name}: уровень {hero.sheet.level}."]
+        if companion_due(hero, self.registry):
+            lines.append(
+                "Повелитель зверей: зверь-спутник появится по сюжету — "
+                "скажи рассказчику, кого и как зовут."
+            )
+        return self.reply(lines)
 
     def choose_error(self, key) -> Reply:
         if key == "retry":

@@ -291,14 +291,9 @@ class MasterSession:
                     return self.finish(result)
                 all_free = all(c.name in FREE_TOOLS for c in calls)
                 told = any(t.strip() for t in result.texts + texts)
-                if (
-                    self.role == "narrator"
-                    and not has_invalid
-                    and all_free
-                    and accepted
-                    and (required is None or required_done)
-                    and told
-                ):
+                clean = not has_invalid and all_free and bool(accepted)
+                done = required is None or required_done
+                if self.role == "narrator" and clean and done and told:
                     # варианты предложены, рассказ уже есть -- завершающий вызов не нужен
                     result.texts += texts
                     return self.finish(result)

@@ -23,7 +23,8 @@ def fight_tail(turns, scene_id) -> int:
 
 def enemy_names(state, hero) -> list[str]:
     heroes = {hero.id: hero}
-    return [participant_name(state, heroes, p.ref) for p in state.participants if p.side == "enemies"]
+    enemies = [p for p in state.participants if p.side == "enemies"]
+    return [participant_name(state, heroes, p.ref) for p in enemies]
 
 
 def defeated_text(state, hero) -> str:
@@ -32,7 +33,9 @@ def defeated_text(state, hero) -> str:
     for p in state.participants:
         if p.side != "enemies":
             continue
-        status = "surrendered" if state.outcome == "ended_by_master" and p.status == "active" else p.status
+        status = p.status
+        if state.outcome == "ended_by_master" and status == "active":
+            status = "surrendered"
         if status in DEFEATED_WORDS:
             name = participant_name(state, heroes, p.ref)
             parts.append(f"{name} — {DEFEATED_WORDS[status]}")
@@ -64,7 +67,11 @@ def part(label, text) -> str:
     return f"{label}: {text}" if text else ""
 
 
-def fold_text(state, hero, last_combat, registry, first_seq, last_seq) -> str:
+def fold_text(bundle, state, registry, folded) -> str:
+    hero = hero_of(bundle)
+    last_combat = bundle.session.last_combat
+    first_seq = folded[0].turn_seq
+    last_seq = folded[-1].turn_seq
     parts = [
         f"Бой: {', '.join(enemy_names(state, hero))} — {OUTCOME_WORDS[state.outcome]}, "
         f"раундов: {state.round}",
@@ -83,10 +90,7 @@ def fold_fight(bundle, state, registry) -> bool:
     if len(folded) < 2:
         return False
     last = folded[-1]
-    text = fold_text(
-        state, hero_of(bundle), bundle.session.last_combat, registry,
-        folded[0].turn_seq, last.turn_seq,
-    )
+    text = fold_text(bundle, state, registry, folded)
     record = TurnRecord(
         turn_seq=last.turn_seq, at_s=last.at_s, scene_id=last.scene_id,
         player_input="", narration=text, requests=[], rolls=[],

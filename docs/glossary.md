@@ -165,6 +165,6 @@
 | Colossus Slayer | Убийца колоссов | `colossus_slayer` | +1d8 раз в ход по раненой цели |
 | Horde Breaker | Истребитель орд | `horde_breaker` | текст для мастера |
 | Beast Master | Повелитель зверей | `beast_master` | подкласс следопыта, своя редакция (custom) |
-| Beast companion | Зверь-спутник | `beast_companion`, `HeroState.companion` | вне боя; в бою — этап 7 |
+| Beast companion | Зверь-спутник | `beast_companion`, `HeroState.companions`, `companion_update`, `companion_due` | вне боя; вводит рассказчик запросом; в бою — этап 7 |
 | Pack Sense | Чутьё стаи | `pack_sense` | текст |
 | Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания |

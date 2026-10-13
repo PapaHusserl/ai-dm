@@ -35,6 +35,41 @@ def new_part(world, pack):
     })
 
 
+def fill_npc_gender(world, pack, report) -> None:
+    # пол NPC пака в мирах до К0-фикс-б: заполняем только пустой (рассказчик не перебивается)
+    for npc in pack.npcs:
+        old = world.npcs.get(npc.id)
+        if old is None or old.origin != "pack" or old.gender is not None or npc.gender is None:
+            continue
+        old.gender = npc.gender
+        if not old.pronouns:
+            old.pronouns = npc.pronouns
+        report.added.append(f"gender:{npc.id}")
+
+
+def preset_choices(hero, pack):
+    # выборы пресета пака с полом, имя и класс совпадают с героем; иначе None
+    key = (hero.name, hero.sheet.class_id)
+    found = [p.choices for p in pack.heroes if (p.choices.name, p.choices.class_id) == key]
+    return next((c for c in found if c.gender is not None), None)
+
+
+def fill_hero_gender(bundle, pack, report) -> None:
+    # пол героя пака: пресет с тем же именем и классом
+    for hero in bundle.heroes:
+        choices = preset_choices(hero, pack) if hero.gender is None else None
+        if choices is None:
+            continue
+        hero.gender = choices.gender
+        hero.pronouns = hero.pronouns or choices.pronouns
+        report.added.append(f"gender:{hero.id}")
+
+
+def fill_identity(bundle, pack, report) -> None:
+    fill_npc_gender(bundle.world, pack, report)
+    fill_hero_gender(bundle, pack, report)
+
+
 def merge_new(bundle, pack) -> MergeReport:
     # добавляет в идущий мир новые сущности пака; существующие не меняет
     world = bundle.world
@@ -69,6 +104,7 @@ def merge_new(bundle, pack) -> MergeReport:
         if old is not None and old.origin == "pack" and not old.tags and npc.tags:
             old.tags = list(npc.tags)
             report.added.append(f"tags:{npc.id}")
+    fill_identity(bundle, pack, report)
     world.campaign_version = pack.manifest.version
     # миры этапа 2 мигрируют с пустым текстом мира: берём из пака, только если пуст
     if not world.lore.world_text:

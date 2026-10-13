@@ -120,6 +120,43 @@ def test_ranger_level_3_beast_master_needs_only_the_subclass(registry, tmp_path)
     assert app.bundle.heroes[0].sheet.subclass_id == "beast_master"
 
 
+def test_beast_master_gets_companion_hint_at_the_end_of_level_up(registry, tmp_path):
+    app = offered(registry, tmp_path, xp_for_level(3, registry), level=2)
+    app.choose("average")
+    reply = finish_spells(app, app.choose("beast_master"))
+    assert reply.pending is None
+    text = "\n".join(reply.lines)
+    assert "Повелитель зверей" in text
+    assert "зверь-спутник" in text
+
+
+def test_hunter_gets_no_companion_hint(registry, tmp_path):
+    app = offered(registry, tmp_path, xp_for_level(3, registry), level=2)
+    app.choose("average")
+    reply = app.choose("hunter")
+    reply = finish_spells(app, app.choose(reply.menu[0]))
+    assert app.bundle.heroes[0].sheet.subclass_id == "hunter"
+    assert "зверь-спутник" not in "\n".join(reply.lines)
+
+
+def test_beast_master_with_beast_gets_no_hint(registry, tmp_path):
+    from ai_dm.state.hero import Companion
+
+    app = offered(registry, tmp_path, xp_for_level(3, registry), level=2)
+    app.bundle.heroes[0].companions = [Companion(name="Акела", kind="волк")]
+    app.choose("average")
+    reply = finish_spells(app, app.choose("beast_master"))
+    assert "зверь-спутник" not in "\n".join(reply.lines)
+
+
+def test_level_up_without_beast_feature_has_only_the_level_line(registry, tmp_path):
+    app = offered(registry, tmp_path, xp_for_level(2, registry))
+    app.choose("average")
+    app.choose("archery")
+    reply = finish_spells(app, app.choose("survival"))
+    assert "Повелитель зверей" not in "\n".join(reply.lines)
+
+
 # регрессия: воин без выборов
 
 def test_fighter_level_2_has_no_choice_menu_after_hp(registry, tmp_path):

@@ -95,6 +95,15 @@ def test_check_close_turn_limit_is_strictly_more_than_max(registry, cfg):
     assert check(bundle, cfg) == "turn_limit"
 
 
+def test_check_close_time_jump_uses_difference_not_sum(registry, cfg):
+    bundle = make_bundle(registry)
+    start = cfg.scene.max_time_jump_s * 2
+    bundle.world.clock.advance(start)
+    assert check(bundle, cfg, time_before_s=start) is None
+    bundle.world.clock.advance(cfg.scene.max_time_jump_s + 1)
+    assert check(bundle, cfg, time_before_s=start) == "time_jump"
+
+
 def test_check_close_does_not_change_bundle(registry, cfg):
     bundle = make_bundle(registry)
     bundle.heroes[0].location_id = "forest"
@@ -110,6 +119,26 @@ def test_check_close_priority_end_scene_then_location_then_time(registry, cfg):
     assert check(bundle, cfg, time_before_s=0) == "location_changed"
     bundle.session.current_scene.closed_reason = "end_scene"
     assert check(bundle, cfg, time_before_s=0) == "end_scene"
+
+
+def test_check_close_time_jump_beats_combat_ended_and_turn_limit(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.world.clock.advance(cfg.scene.max_time_jump_s + 1)
+    bundle.session.current_scene.player_turns = cfg.scene.max_player_turns + 1
+    assert check(bundle, cfg, time_before_s=0, combat_ended=True) == "time_jump"
+
+
+def test_check_close_combat_ended_beats_turn_limit(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.player_turns = cfg.scene.max_player_turns + 1
+    assert check(bundle, cfg, combat_ended=True) == "combat_ended"
+
+
+def test_check_close_end_scene_beats_everything(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.closed_reason = "end_scene"
+    bundle.heroes[0].location_id = "forest"
+    assert check(bundle, cfg, combat_ended=True) == "end_scene"
 
 
 def test_close_scene_sets_reason_and_adds_min_advance(registry, cfg):

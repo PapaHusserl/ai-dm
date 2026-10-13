@@ -77,3 +77,20 @@ def test_world_rules_describe_gender_reset():
     text = rules("world_rules.md")
     assert "unset" in text
     assert '"-"' in text
+
+
+# Ф1 (F1-PLAN п.2.6): правило про зверя-спутника
+
+def test_narrator_rules_describe_companion_update_and_due():
+    text = rules("narrator_rules.md")
+    assert "companion_due" in text
+    assert "companion_update" in text
+    assert "join" in text
+    assert "dead" in text
+    assert "gone" in text
+
+
+def test_narrator_rules_say_new_beast_needs_the_rite():
+    text = rules("narrator_rules.md")
+    assert "обряд" in text
+    assert "костр" in text

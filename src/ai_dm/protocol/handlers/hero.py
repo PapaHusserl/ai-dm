@@ -6,7 +6,8 @@ from ai_dm.rules.builder import (
     origin_feat_keys,
     sheet_check,
 )
-from ai_dm.state.hero import BackgroundSpec
+from ai_dm.rules.derived import hero_feature_ids
+from ai_dm.state.hero import BackgroundSpec, Companion
 from ai_dm.state.triggers import Trigger
 
 
@@ -140,3 +141,38 @@ def hero_sheet(ctx, request):
         return Invalid(code=codes[0], message="; ".join(messages))
     ctx.sheet = sheet
     return Decision(status="accepted", log=["Лист героя принят"])
+
+
+def companion_problem(hero, registry, request):
+    # Invalid, если запрос про зверя не принимается, иначе None
+    if "beast_companion" not in hero_feature_ids(hero, registry):
+        return Invalid(code="no_beast_feature", message="у героя нет умения Зверь-спутник")
+    if request.action == "join":
+        if hero.companions:
+            return Invalid(
+                code="companion_exists", message="зверь уже есть: сначала dead или gone"
+            )
+        if not request.name or not request.kind:
+            return Invalid(code="companion_fields", message="для join нужны name и kind")
+    elif not hero.companions:
+        return Invalid(code="no_companion", message="у героя нет зверя-спутника")
+    return None
+
+
+def companion_update(ctx, request):
+    hero = ctx.hero
+    problem = companion_problem(hero, ctx.registry, request)
+    if problem is not None:
+        return problem
+    if request.action == "join":
+        beast = Companion(name=request.name, kind=request.kind, notes=request.notes or "")
+        hero.companions = [beast]
+        log = f"Зверь-спутник: {request.name} ({request.kind}) с героем"
+    else:
+        word = "погиб" if request.action == "dead" else "ушёл"
+        log = f"Зверь-спутник {hero.companions[0].name} {word}"
+        hero.companions = []
+    return Decision(
+        status="accepted", result={"companions": [c.model_dump() for c in hero.companions]},
+        log=[log],
+    )

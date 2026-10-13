@@ -62,8 +62,9 @@ def hero_for(registry):
 
 
 def text_of(registry, state, last_combat=None, first=2, last=5):
-    hero = hero_for(registry)
-    return fold_text(state, hero, last_combat, registry, first, last)
+    bundle = make_bundle(registry)
+    bundle.session.last_combat = last_combat
+    return fold_text(bundle, state, registry, [rec(first), rec(last)])
 
 
 # fight_start
@@ -314,6 +315,23 @@ def test_fold_text_has_range_enemies_outcome_and_rounds(registry):
     assert "раундов: 4" in text
 
 
+def test_fold_text_exact_text_with_every_part(registry):
+    state = make_state([hero_part(), *goblins("dead")], "victory", rounds=4)
+    last = LastCombat(gear=[InventoryEntry(item_id="dagger", qty=2, cost_cp=200)])
+    bundle = make_bundle(registry)
+    bundle.heroes[0].creature.hp_current = 9
+    bundle.session.last_combat = last
+    text = fold_text(bundle, state, registry, [rec(3), rec(7)])
+    dagger = registry.get("weapon", "dagger").name
+    assert text == (
+        "Свёрнуты ходы 3–7. Бой: Воин-гоблин 1, Воин-гоблин 2 — "
+        f"{OUTCOME_WORDS['victory']}, раундов: 4; "
+        "побеждены: Воин-гоблин 1 — убит, Воин-гоблин 2 — убит; "
+        f"потери: Арн HP 9/{bundle.heroes[0].creature.hp_max}; "
+        f"трофеи: {dagger} ×2"
+    )
+
+
 @pytest.mark.parametrize("outcome", sorted(OUTCOME_WORDS))
 def test_fold_text_outcome_word_for_each_outcome(registry, outcome):
     state = make_state([hero_part(), *goblins("dead")], outcome)
@@ -374,10 +392,11 @@ def test_fold_text_unhurt_hero_has_no_hp(registry):
 
 
 def test_fold_text_hurt_hero_has_hp_of_creature(registry):
-    hero = hero_for(registry)
+    bundle = make_bundle(registry)
+    hero = hero_of(bundle)
     hero.creature.hp_current = 9
     state = make_state([hero_part(), *goblins("dead")])
-    text = fold_text(state, hero, None, registry, 2, 5)
+    text = fold_text(bundle, state, registry, [rec(2), rec(5)])
     assert "потери" in text
     assert f"HP 9/{hero.creature.hp_max}" in text
 
@@ -473,9 +492,7 @@ def test_fold_fight_record_text_is_fold_text_with_range(registry):
     bundle = bundle_with(registry, turns)
     state = finished_state()
     fold_fight(bundle, state, registry)
-    expected = fold_text(
-        state, hero_of(bundle), None, registry, turns[2].turn_seq, turns[-1].turn_seq
-    )
+    expected = fold_text(bundle, state, registry, turns[2:])
     assert bundle.memory.recent_turns[-1].narration == expected
     assert "Свёрнуты ходы 3–5" in expected
 

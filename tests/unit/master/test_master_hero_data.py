@@ -194,3 +194,23 @@ def test_hero_data_spells_prepared_are_the_class_list(registry, cfg):
 def test_hero_data_class_and_subclass_are_scalars(registry, cfg):
     data = hero_data(grey_ctx(registry, cfg))
     assert (data["class"], data["subclass"]) == ("ranger", "beast_master")
+
+
+# Ф1 (BACKLOG 44): companion_due -- у Повелителя зверей нет зверя
+
+def test_hero_data_has_companion_due_for_beast_master_without_beast(registry, cfg):
+    data = hero_data(grey_ctx(registry, cfg, companion=False))
+    assert data["companion_due"] is True
+    assert "companion" not in data
+
+
+def test_hero_data_with_companion_has_no_companion_due(registry, cfg):
+    data = hero_data(grey_ctx(registry, cfg, companion=True))
+    assert "companion_due" not in data
+    assert data["companion"]["name"] == "Акела"
+
+
+def test_hero_data_of_hunter_has_neither_companion_nor_due(registry, cfg):
+    data = hero_data(grey_ctx(registry, cfg, subclass="hunter", companion=False))
+    assert "companion_due" not in data
+    assert "companion" not in data

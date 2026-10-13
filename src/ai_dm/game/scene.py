@@ -28,16 +28,13 @@ def check_close(bundle, cfg, *, time_before_s, combat_ended=False) -> str | None
     scene = bundle.session.current_scene
     if scene.closed_reason is not None:
         return scene.closed_reason
-    hero_location = hero_of(bundle).location_id
-    if hero_location != scene.location_id:
-        return "location_changed"
-    if bundle.world.clock.now_s - time_before_s > cfg.scene.max_time_jump_s:
-        return "time_jump"
-    if combat_ended:
-        return "combat_ended"
-    if scene.player_turns > cfg.scene.max_player_turns:
-        return "turn_limit"
-    return None
+    checks = [
+        ("location_changed", hero_of(bundle).location_id != scene.location_id),
+        ("time_jump", bundle.world.clock.now_s - time_before_s > cfg.scene.max_time_jump_s),
+        ("combat_ended", combat_ended),
+        ("turn_limit", scene.player_turns > cfg.scene.max_player_turns),
+    ]
+    return next((reason for reason, hit in checks if hit), None)
 
 
 def close_scene(bundle, reason, cfg) -> None:
