@@ -106,6 +106,7 @@ def settle_ground(engine) -> None:
     state.ground_items = []
     if won:
         state.gear = trophies.enemy_gear(engine, disarm.weapon_ids)
+        trophies.mark_looted(engine)
     for p in state.participants:
         if p.ref in engine.heroes:
             continue

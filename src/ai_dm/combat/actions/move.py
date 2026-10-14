@@ -2,7 +2,6 @@ from ai_dm.combat import downed, opportunity
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.combat.zones import hazards, is_difficult
 from ai_dm.core.events import DomainEvent
-from ai_dm.rules.damage import apply_damage
 
 
 def zone_of(engine, zone_id):
@@ -21,10 +20,7 @@ def hazard_check(engine, ref) -> list[DomainEvent]:
             continue
         dice, bonus = split_dice(feature.damage)
         rolled = roll_damage(engine, ref, dice, bonus, False)
-        dealt = apply_damage(
-            engine.actor(ref), rolled.total, feature.damage_type, engine.registry,
-            now_s=engine.world.clock.now_s,
-        )
+        dealt = engine.damage(ref, rolled.total, feature.damage_type)
         engine.log_notes(dealt)
         engine.log(f"  {engine.name(ref)}: опасная зона, {engine.hp_text(ref)}")
         events += downed.after_damage(engine, ref, dealt, None)

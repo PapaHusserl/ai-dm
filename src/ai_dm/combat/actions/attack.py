@@ -3,7 +3,7 @@ from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.creatures import end_concentration
-from ai_dm.rules.damage import DamageResult, apply_damage
+from ai_dm.rules.damage import DamageResult
 from ai_dm.rules.derived import (
     ability_modifier,
     attack_bonus,
@@ -311,10 +311,7 @@ def mark_damage(engine, ref, target_ref, crit, dealt):
             engine, ref, effect.params["dice"], 0, crit, label=name,
             damage_type=effect.params["damage_type"],
         )
-        extra = apply_damage(
-            engine.actor(target_ref), rolled.total, effect.params["damage_type"], engine.registry,
-            now_s=engine.world.clock.now_s,
-        )
+        extra = engine.damage(target_ref, rolled.total, effect.params["damage_type"])
         dealt = DamageResult(
             final=dealt.final + extra.final,
             temp_absorbed=dealt.temp_absorbed + extra.temp_absorbed,
@@ -363,10 +360,7 @@ def special_damage(engine, ref, target_ref, crit, dealt, effects):
         rolled = roll_damage(
             engine, ref, effect.dice, 0, crit, label=name, damage_type=effect.damage_type
         )
-        extra = apply_damage(
-            engine.actor(target_ref), rolled.total, effect.damage_type, engine.registry,
-            now_s=engine.world.clock.now_s,
-        )
+        extra = engine.damage(target_ref, rolled.total, effect.damage_type)
         dealt = merge_damage(dealt, extra)
     return dealt
 
@@ -406,9 +400,12 @@ def weapon_rider(engine, ref, target_ref, info) -> None:
         engine.drop_concentration_effects(ref)
         return
     expires = Expiry(kind="concentration", owner=ref)
-    target.conditions.append(
-        AppliedCondition(id=params["condition"], source=ref, expires=expires)
-    )
+    condition = AppliedCondition(id=params["condition"], source=ref, expires=expires)
+    if not engine.impose(target_ref, condition):
+        engine.log(f"  {name} кончается")
+        end_concentration(caster)
+        engine.drop_concentration_effects(ref)
+        return
     target.active_effects.append(
         ActiveEffect(
             id=charge.id, source=ref, kind="ensnared",
@@ -485,10 +482,7 @@ def attack(
                 engine, ref, info.advantage_dice, 0, crit, label=f"Урон ({info.name}, доп.)",
                 damage_type=info.damage_type,
             ).total
-        dealt = apply_damage(
-            engine.actor(target_ref), total, info.damage_type, engine.registry,
-            now_s=engine.world.clock.now_s,
-        )
+        dealt = engine.damage(target_ref, total, info.damage_type)
         dealt = mark_damage(engine, ref, target_ref, crit, dealt)
         dealt = special_damage(engine, ref, target_ref, crit, dealt, effects)
         engine.log_notes(dealt)

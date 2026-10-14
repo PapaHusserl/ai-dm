@@ -20,7 +20,7 @@ from ai_dm.rules import divine
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.cast_checks import default_cast_check_registry
 from ai_dm.rules.creatures import live_effects
-from ai_dm.rules.damage import apply_damage
+from ai_dm.rules.damage import DamageResult, apply_damage
 from ai_dm.rules.derived import ability_modifier, armor_class, saving_throw_parts
 from ai_dm.rules.modifiers import default_modifier_registry
 from ai_dm.rules.names import ABILITY_SHORT
@@ -367,6 +367,30 @@ class CombatEngine:
         for note in dealt.notes:
             self.log(f"  {note}")
 
+    def damage(self, ref, amount, damage_type) -> DamageResult:
+        # единственный путь урона в бою: иммунитеты, сопротивления и уязвимости монстра из статблока
+        lists = {"resistances": [], "vulnerabilities": [], "immunities": []}
+        if self.monster_of(ref):
+            monster = self.monster(ref)
+            lists = {
+                "resistances": monster.damage_resistances,
+                "vulnerabilities": monster.damage_vulnerabilities,
+                "immunities": monster.damage_immunities,
+            }
+        return apply_damage(
+            self.actor(ref), amount, damage_type, self.registry,
+            now_s=self.world.clock.now_s, **lists,
+        )
+
+    def impose(self, ref, condition) -> bool:
+        # состояние на существо; монстр с иммунитетом к нему его не получает
+        if self.monster_of(ref) and condition.id in self.monster(ref).condition_immunities:
+            word = self.registry.get("condition", condition.id).name
+            self.log(f"  {self.name(ref)}: иммунитет к состоянию {word}")
+            return False
+        self.creature(ref).conditions.append(condition)
+        return True
+
     def burn(self, ref) -> list[DomainEvent]:
         # зажигательная стрела: в начале хода цели ещё урон огнём (эффект сам снимается далее);
         # опутанная лозами цель получает урон Опутывающего удара
@@ -382,10 +406,7 @@ class CombatEngine:
                 self, effect.source, dice, bonus, False, label=label,
                 damage_type=effect.params["damage_type"],
             )
-            dealt = apply_damage(
-                self.actor(ref), rolled.total, effect.params["damage_type"], self.registry,
-                now_s=self.world.clock.now_s,
-            )
+            dealt = self.damage(ref, rolled.total, effect.params["damage_type"])
             self.log_notes(dealt)
             self.log(f"  {self.name(ref)}: {self.hp_text(ref)}")
             events += downed.after_damage(self, ref, dealt, effect.source)

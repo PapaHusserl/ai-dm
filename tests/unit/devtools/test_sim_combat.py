@@ -14,6 +14,9 @@
 #       controller "engine", группа "goblins" (лидер goblin_1, intent = аргумент intent).
 #       variant "weak" -- вместо воина волшебник 1 ур. (id всё тот же "hero", class_id "wizard").
 #     неизвестный сценарий / вариант -> ValueError
+#   К7к: build_scenario(..., hero=None, difficulty=None): hero -- свой HeroState вместо воина/мага
+#     (id остаётся "hero", variant игнорируется, остальное прежнее); difficulty -> world.settings
+#     ["difficulty"]; без них поведение, S_WIN и golden прежние (settings пуст).
 #   simulate(scenario, max_rounds=None) -> SimResult: engine().start() + run_to_end();
 #     SimResult(outcome: str | None, rounds: int, log: list[str], events: list[DomainEvent],
 #               scenario: Scenario); rounds == state.round; log == state.log
@@ -251,3 +254,68 @@ def test_cli_runs_as_a_module():
     )
     assert done.returncode == 0
     assert done.stdout.splitlines()[-1].startswith("outcome: ")
+
+
+# К7к: свой герой и сложность (сетка sim_grid)
+
+def test_hero_argument_replaces_the_default_hero(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    hero = build_hero("ranger", 3, registry)
+    scenario = build(registry, cfg, hero=hero)
+    assert scenario.heroes == {"hero": hero}
+    assert scenario.heroes["hero"].sheet.class_id == "ranger"
+
+
+def test_hero_argument_keeps_the_participants_and_controller(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    scenario = build(registry, cfg, hero=build_hero("cleric", 1, registry))
+    assert [(p.ref, p.zone_id, p.controller) for p in scenario.state.participants][0] == (
+        "hero", "door", "auto_hero"
+    )
+    assert validate_start(scenario.state) == []
+
+
+def test_hero_argument_wins_over_the_variant(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    scenario = build(registry, cfg, variant="weak", hero=build_hero("fighter", 2, registry))
+    assert scenario.heroes["hero"].sheet.class_id == "fighter"
+    assert scenario.heroes["hero"].sheet.level == 2
+
+
+def test_hero_argument_hero_fights_in_the_simulation(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    result = simulate(build(registry, cfg, 5, hero=build_hero("fighter", 5, registry)))
+    assert result.outcome == "victory"
+
+
+def test_default_hero_is_still_the_fighter_without_the_argument(registry, cfg):
+    assert build(registry, cfg, hero=None).heroes["hero"].sheet.class_id == "fighter"
+
+
+def test_difficulty_argument_goes_to_world_settings(registry, cfg):
+    scenario = build(registry, cfg, difficulty="hard")
+    assert scenario.world.settings == {"difficulty": "hard"}
+
+
+def test_no_difficulty_leaves_world_settings_empty(registry, cfg):
+    assert build(registry, cfg).world.settings == {}
+    assert build(registry, cfg, difficulty=None).world.settings == {}
+
+
+def test_hero_and_difficulty_together(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    scenario = build(registry, cfg, hero=build_hero("rogue", 1, registry), difficulty="easy")
+    assert scenario.heroes["hero"].sheet.class_id == "rogue"
+    assert scenario.world.settings["difficulty"] == "easy"
+
+
+def test_unknown_scenario_still_raises_with_hero(registry, cfg):
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    with pytest.raises(ValueError):
+        build_scenario("nope", registry, cfg, 1, hero=build_hero("fighter", 1, registry))

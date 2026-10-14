@@ -1,6 +1,5 @@
 from ai_dm.combat import downed
 from ai_dm.core.events import DomainEvent
-from ai_dm.rules.damage import apply_damage
 from ai_dm.rules.derived import proficiency, weapon_ability_mod
 from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 
@@ -54,8 +53,8 @@ def on_hit(engine, ref, target_ref, info, damage, provoked=False) -> list[Domain
         weapon = engine.registry.get("weapon", info.weapon_id)
         dc = 8 + weapon_ability_mod(hero, weapon) + proficiency(hero, engine.registry)
         saved = engine.save(target_ref, "con", dc)
-        if saved.outcome == "fail":
-            target.conditions.append(AppliedCondition(id="prone", source=ref))
+        prone = AppliedCondition(id="prone", source=ref)
+        if saved.outcome == "fail" and engine.impose(target_ref, prone):
             engine.log(f"  {engine.name(target_ref)} сбит с ног")
     return []
 
@@ -70,10 +69,7 @@ def on_miss(engine, ref, target_ref, info) -> tuple[int, list[DomainEvent]]:
     amount = weapon_ability_mod(hero, weapon)
     if amount <= 0:
         return 0, []
-    dealt = apply_damage(
-        engine.actor(target_ref), amount, info.damage_type, engine.registry,
-        now_s=engine.world.clock.now_s,
-    )
+    dealt = engine.damage(target_ref, amount, info.damage_type)
     engine.log_notes(dealt)
     engine.log(f"  Царапина: {amount} урона, {engine.hp_text(target_ref)}")
     events = downed.after_damage(engine, target_ref, dealt, ref)

@@ -32,7 +32,7 @@ def ranger_choices(hero_id="hero") -> CharacterChoices:
 
 def new_world_from_pack(
     registry, cfg, pack, *, hero, seed, world_id=None, saved_at, conflicts=None,
-    preset_id=None,
+    preset_id=None, difficulty=None,
 ):
     # conflicts -- список, в который кладутся конфликты уникальности (не загруженное из пака);
     # отказ старта -- StartRefused
@@ -44,6 +44,8 @@ def new_world_from_pack(
     )
     if conflicts is not None:
         conflicts.extend(found)
+    if difficulty is not None:
+        bundle.world.settings["difficulty"] = difficulty
     start_scene(bundle)
     summary = pack.manifest.start.scene_summary
     if summary:

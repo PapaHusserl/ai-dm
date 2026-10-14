@@ -1,4 +1,4 @@
-from ai_dm.game import tone
+from ai_dm.game import difficulty, tone
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import (
@@ -43,6 +43,7 @@ HELP = {
     "quit": "сохранить (auto) и выйти",
     "report": "<что не так> записать репорт об ошибке",
     "tone": "настроить тон мира",
+    "difficulty": "[easy|normal|hard] сложность боёв (бюджет врагов)",
     "music": "[on|off|0–100|ambient on|off] музыка и эмбиент (только в TUI)",
     "retire": "завершить героя",
 }
@@ -216,6 +217,17 @@ def cmd_tone(app, arg):
     return app.reply([line])
 
 
+def cmd_difficulty(app, arg):
+    if not arg:
+        return app.reply([difficulty.show_line(app.bundle.world, app.settings.rules)])
+    value, error = difficulty.parse(arg)
+    if error is not None:
+        return app.reply([error])
+    line = difficulty.apply(app.bundle, value)
+    app.save_current("auto")
+    return app.reply([line])
+
+
 def cmd_inv(app, arg):
     hero = hero_of(app.bundle)
     lines = inv_lines(hero, app.registry, format_cp(hero.money_cp))
@@ -291,6 +303,7 @@ COMMANDS = {
     "quit": cmd_quit,
     "report": cmd_report,
     "tone": cmd_tone,
+    "difficulty": cmd_difficulty,
     "music": cmd_music,
     "retire": stub(9),
 }

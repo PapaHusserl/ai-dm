@@ -38,12 +38,26 @@ class Monster(ContentObject):
     tags: list[str] = []
     actions: list[MonsterAction] = []
     multiattack: list[MultiattackStep] = []
+    damage_immunities: list[str] = []
+    damage_resistances: list[str] = []
+    damage_vulnerabilities: list[str] = []
+    condition_immunities: list[str] = []
+    # что надето по SRD; КД -- число ac, по снаряжению не пересчитывается (К7х)
+    armor: str | None = None
+    shield: str | None = None
 
     @field_validator("abilities")
     @classmethod
     def check_abilities(cls, value):
         if set(value) != set(ABILITIES):
             raise ValueError("abilities: нужны все шесть характеристик")
+        return value
+
+    @field_validator("damage_immunities", "damage_resistances", "damage_vulnerabilities")
+    @classmethod
+    def check_duplicates(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError("повторы типов урона")
         return value
 
     @model_validator(mode="after")

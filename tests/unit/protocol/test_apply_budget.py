@@ -1,5 +1,7 @@
 # Ожидаемый API (П6б этапа 3, STAGE3-PLAN A9, решение G2а, ТЗ 2.3 «Бой»): start_combat и бюджет боя.
 #   Бюджет -- уровень «Moderate» SRD 5.2 на героя (ур. 1 -- 75 ПО; гоблин-воин 1/4 -- 50 ПО).
+#   К7к: без world.settings["difficulty"] бюджет по cfg.encounter.tier, как здесь; со сложностью --
+#   test_encounter_difficulty.py (rules).
 #   Сверх бюджета без оснований -> убираются враги с конца списка, лидер группы остаётся:
 #   Decision clamped, report_tag "limit-exceeded", signal_to_master, бой создаётся урезанным.
 #   Основания без урезания (accepted, CombatState.budget_override_reason):

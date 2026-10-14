@@ -4,7 +4,6 @@ from ai_dm.combat import disarm, downed
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.checks import dc_for_category, skill_check
-from ai_dm.rules.damage import apply_damage
 from ai_dm.rules.names import SKILL_NAMES
 from ai_dm.rules.results import Rejected
 from ai_dm.state.combat import ImproviseEffect
@@ -82,18 +81,15 @@ def apply_advantage(engine, ref, target, zone) -> list[DomainEvent]:
 
 
 def apply_prone(engine, ref, target, zone) -> list[DomainEvent]:
-    engine.creature(target).conditions.append(AppliedCondition(id="prone", source=ref))
-    engine.log(f"  {engine.name(target)} сбит с ног")
+    if engine.impose(target, AppliedCondition(id="prone", source=ref)):
+        engine.log(f"  {engine.name(target)} сбит с ног")
     return []
 
 
 def apply_extra_damage(engine, ref, target, zone) -> list[DomainEvent]:
     dice, bonus = split_dice(engine.cfg.combat.improvise_damage_dice)
     rolled = roll_damage(engine, ref, dice, bonus, False)
-    dealt = apply_damage(
-        engine.actor(target), rolled.total, "bludgeoning", engine.registry,
-        now_s=engine.world.clock.now_s,
-    )
+    dealt = engine.damage(target, rolled.total, "bludgeoning")
     engine.log_notes(dealt)
     engine.log(f"  {engine.name(target)}: {engine.hp_text(target)}")
     return downed.after_damage(engine, target, dealt, ref)

@@ -266,7 +266,7 @@ def test_stepwise_hero_world_replays_without_divergence(tmp_path):
     script = write_script(tmp_path / "turn.yaml", TURN_TEXT)
     argv = ["--new", "--world", "w1", "--seed", str(SEED), "--mock", str(script),
             "--saves", str(root)]
-    lines = [steps_item_number(), "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
+    lines = [steps_item_number(), "1", "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
     code, out = cli(argv, lines, env={})
     assert code == 0
     assert TURN_TEXT in out.text
@@ -295,7 +295,7 @@ def simple_stepwise_hero(tmp_path):
     argv = ["--new", "--world", "w1", "--seed", "7", "--mock", str(script), "--saves", str(root)]
     from hero_kit import wizard_picks
 
-    code, _ = cli(argv, [steps_item_number(), "1", *wizard_picks(), "1", "/quit"], env={})
+    code, _ = cli(argv, [steps_item_number(), "1", "1", *wizard_picks(), "1", "/quit"], env={})
     assert code == 0
     return load_slot(root, "w1", "auto")
 

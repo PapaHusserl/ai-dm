@@ -145,7 +145,8 @@ def start_combat(ctx, request):
     except ValidationError as error:
         return Invalid(code="bad_zone_feature", message=str(error))
     # бюджет боя (ТЗ 2.3): сверх бюджета без оснований враги убираются с конца, лидеры остаются
-    budget = encounter.party_budget([hero.sheet.level], ctx.registry, ctx.cfg)
+    tier = encounter.tier_of(ctx.bundle.world, ctx.cfg)
+    budget = encounter.party_budget([hero.sheet.level], ctx.registry, tier)
     leaders = {spec.leader for spec in request.groups}
     fitted, over = encounter.fit_to_budget(enemies, leaders, budget, ctx.registry)
     reason = None
@@ -196,7 +197,7 @@ def start_combat(ctx, request):
     log = [f"Бой: врагов {len(enemies)}, зон {len(zones)}"]
     if request.hero_hidden:
         log.append(f"{hero.name} скрыт: первая атака с преимуществом")
-    log.append(encounter.budget_text(hero.sheet.level, budget, enemies, ctx.registry, ctx.cfg))
+    log.append(encounter.budget_text(hero.sheet.level, budget, enemies, ctx.registry, tier))
     if reason is not None:
         log.append(f"Бой сверх бюджета: {encounter.REASON_WORDS[reason]}")
     budget_dropped = [e for e in request.enemies if e.ref in cut_refs and e.ref not in limit_refs]

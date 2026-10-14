@@ -8,6 +8,8 @@ speed_ft: 30
 ac: 15
 hp: 10
 hp_dice: 3d6
+armor: leather_armor
+shield: shield
 cr: 1/4
 abilities:
   str: 8

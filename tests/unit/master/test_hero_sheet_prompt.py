@@ -339,7 +339,7 @@ def test_every_builder_limit_constant_is_in_limits(registry, cfg):
 
 
 # Б2а (A2): class_data переведён на rules.hero_options -- справочник листа байт-в-байт прежний
-# (снимок снят с кода Б1 до правок Б2 на пак vale)
+# (снимок снят с кода Б1 до правок Б2 на пак vale; К7к: в таблицу цен добавлен доспех chain_shirt)
 
 def test_sheet_reference_block_is_byte_identical_to_the_b1_snapshot(registry, cfg):
     from hero_kit import sheet_task, vale_pack

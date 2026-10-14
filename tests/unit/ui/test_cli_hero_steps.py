@@ -177,12 +177,12 @@ def stepwise(tmp_path, lines, steps=None):
 
 
 def test_stepwise_hero_starts_the_world_with_code_0(tmp_path):
-    code, _, _ = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "/quit"])
+    code, _, _ = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "/quit"])
     assert code == 0
 
 
 def test_stepwise_hero_is_saved_in_auto_slot_with_the_sheet_hero(tmp_path):
-    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "/quit"])
+    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "/quit"])
     assert "auto" in list_slots(root, "w1")
     hero = load_slot(root, "w1", "auto").heroes[0]
     assert hero.name == "Борин"
@@ -193,46 +193,46 @@ def test_stepwise_hero_is_saved_in_auto_slot_with_the_sheet_hero(tmp_path):
 
 
 def test_stepwise_hero_sheet_is_written_to_meta_and_equals_the_canon(tmp_path):
-    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "/quit"])
+    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "/quit"])
     assert (root / "w1" / "meta" / "hero_sheet.json").is_file()
     assert read_hero_sheet(root, "w1") == wizard_sheet()
 
 
 def test_stepwise_hero_is_noted_as_stepwise(tmp_path):
-    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "/quit"])
+    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "/quit"])
     assert "Герой пошагово: Борин" in out.text
     assert "Герой на лету" not in out.text
 
 
 def test_stepwise_without_ai_has_no_creation_cost_line(tmp_path):
-    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "/quit"])
+    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "/quit"])
     assert "Создание героя:" not in out.text
 
 
 def test_stepwise_shows_hint_and_first_menu(tmp_path):
     from ai_dm.ui.hero_wizard import WIZARD_HINT
 
-    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", "отмена"])
+    _, out, _ = stepwise(tmp_path, [STEPS_NO, "1", "1", "отмена"])
     assert WIZARD_HINT in out.text
     assert "Человек" in out.text
 
 
 def test_stepwise_taken_name_in_other_case_is_refused(tmp_path):
-    lines = [STEPS_NO, "1", *wizard_picks(name="гракх"), "отмена"]
+    lines = [STEPS_NO, "1", "1", *wizard_picks(name="гракх"), "отмена"]
     code, out, _ = stepwise(tmp_path, lines)
     assert "уже занято" in out.text
     assert code == 1
 
 
 def test_stepwise_cancel_is_hero_not_chosen_code_1_and_no_world(tmp_path):
-    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks()[:5], "отмена"])
+    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks()[:5], "отмена"])
     assert code == 1
     assert "Герой не выбран" in out.text
     assert not (root / "w1").exists()
 
 
 def test_stepwise_end_of_input_cancels_like_cancel(tmp_path):
-    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", *wizard_picks()[:3]])
+    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *wizard_picks()[:3]])
     assert code == 1
     assert "Герой не выбран" in out.text
     assert not (root / "w1").exists()
@@ -243,7 +243,7 @@ def test_stepwise_error_then_fix_still_gives_a_hero(tmp_path):
     lines = [line for key, line in script if key != "name"]
     name_at = len(lines) - 4
     lines[name_at:name_at] = ["гракх", "Борин"]
-    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", *lines, "1", "/quit"])
+    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *lines, "1", "/quit"])
     assert code == 0
     assert "уже занято" in out.text
     assert read_hero_sheet(root, "w1").choices.name == "Борин"
@@ -251,7 +251,7 @@ def test_stepwise_error_then_fix_still_gives_a_hero(tmp_path):
 
 def test_stepwise_world_runs_a_turn_after_creation(tmp_path):
     code, out, _ = stepwise(
-        tmp_path, [STEPS_NO, "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
+        tmp_path, [STEPS_NO, "1", "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
     )
     assert code == 0
     assert "Огонь в очаге трещит." in out.text
@@ -259,7 +259,7 @@ def test_stepwise_world_runs_a_turn_after_creation(tmp_path):
 
 def test_stepwise_replay_without_hero_has_no_divergence(tmp_path):
     root = tmp_path / "saves"
-    lines = [STEPS_NO, "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
+    lines = [STEPS_NO, "1", "1", *wizard_picks(), "1", "Осматриваюсь", "/quit"]
     code, _ = cli(argv(root, script_file(tmp_path)), lines, env={})
     assert code == 0
     replay = ["--replay", "--world", "w1", "--seed", str(SEED), "--saves", str(root)]
@@ -274,7 +274,9 @@ def test_existing_describe_menu_item_four_still_describes(tmp_path):
     steps = [{"tool_calls": [sheet_call()]}, {"text": "Огонь в очаге трещит."}]
     root = tmp_path / "saves"
     code, out = cli(
-        argv(root, script_file(tmp_path, steps)), ["4", "1", "воин-сирота", "1", "/quit"], env={}
+        argv(root, script_file(tmp_path, steps)),
+        ["4", "1", "1", "воин-сирота", "1", "/quit"],
+        env={},
     )
     assert code == 0
     assert "Создание героя: $" in out.text
@@ -309,7 +311,7 @@ def spec_step():
 
 def test_words_path_makes_a_hero_and_prints_the_creation_cost(tmp_path):
     steps = [spec_step(), {"text": "Огонь в очаге трещит."}]
-    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", *words_lines(), "1", "/quit"], steps)
+    code, out, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *words_lines(), "1", "/quit"], steps)
     assert code == 0
     assert "Создание героя: $" in out.text
     assert "(1 вызовов)" in out.text
@@ -320,7 +322,7 @@ def test_words_path_makes_a_hero_and_prints_the_creation_cost(tmp_path):
 
 def test_words_path_records_hero_run_in_the_journal(tmp_path):
     steps = [spec_step(), {"text": "Огонь в очаге трещит."}]
-    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", *words_lines(), "1", "/quit"], steps)
+    _, _, root = stepwise(tmp_path, [STEPS_NO, "1", "1", *words_lines(), "1", "/quit"], steps)
     journal = (root / "w1" / "journal").rglob("*")
     text = "\n".join(p.read_text(encoding="utf-8") for p in journal if p.is_file())
     assert '"run_id": "hero-' in text

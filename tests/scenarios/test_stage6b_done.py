@@ -230,7 +230,7 @@ def simple_hero(tmp_path):
     root = tmp_path / "simple"
     argv = ["--new", "--world", "w1", "--seed", "7", "--mock", str(SHEET_SCRIPT),
             "--saves", str(root)]
-    code, _ = cli(argv, ["4", "1", DESCRIPTION, "1", "/quit"], env={})
+    code, _ = cli(argv, ["4", "1", "1", DESCRIPTION, "1", "/quit"], env={})
     assert code == 0
     return load_slot(root, "w1", "auto"), read_hero_sheet(root, "w1")
 

@@ -1,6 +1,7 @@
 from fractions import Fraction
 
 from ai_dm.rules.derived import table_value
+from ai_dm.rules.inventory import find_item
 from ai_dm.state.hero import InventoryEntry
 
 HOARD_BANDS = ["0-4", "5-10", "11-16", "17+"]
@@ -103,15 +104,23 @@ def trophy_cost(base, quality, cfg) -> int:
     return max(1, base * band.percent // 100)
 
 
+def gear_cost(registry, item_id) -> int:
+    # цена оружия, доспеха или предмета по SRD в медных; неизвестный id -- ValueError
+    found = find_item(registry, item_id)
+    if found is None:
+        raise ValueError(f"неизвестный предмет: {item_id!r}")
+    return found[1].cost_cp
+
+
 def body_gear(bodies, registry, cfg) -> list[InventoryEntry]:
-    # оружие с тел: bodies -- (monster_id, weapon_ids, boss); босс даёт исходное оружие
+    # снаряжение с тел: bodies -- (monster_id, id оружия/доспеха/щита, boss); босс -- полная цена
     result = []
     for monster_id, weapon_ids, boss in bodies:
         quality = None
         if not boss:
             quality = trophy_quality(registry.get("monster", monster_id).cr, cfg)
         for weapon_id in weapon_ids:
-            cost_cp = trophy_cost(registry.get("weapon", weapon_id).cost_cp, quality, cfg)
+            cost_cp = trophy_cost(gear_cost(registry, weapon_id), quality, cfg)
             add_stack(result, InventoryEntry(
                 item_id=weapon_id, cost_cp=cost_cp, quality=quality
             ))

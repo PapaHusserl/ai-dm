@@ -144,7 +144,7 @@ def test_unknown_hero_is_rejected(tmp_path):
 
 def test_without_hero_flag_asks_at_start(tmp_path):
     argv = ["--new", "--seed", "3"] + mock_args(tmp_path)
-    code, out = cli(argv, ["2", "1", "/sheet"], env={})
+    code, out = cli(argv, ["2", "1", "1", "/sheet"], env={})
     assert code == 0
     texts = [text for _, text in numbered_lines(out.lines)]
     assert any("Арн" in text for text in texts)
@@ -546,14 +546,14 @@ def test_hero_or_seed_with_world_without_new_is_an_error(tmp_path, flags):
 
 def test_hero_menu_has_three_items_with_grey_last(tmp_path):
     argv = ["--new", "--seed", "3"] + mock_args(tmp_path)
-    _, out = cli(argv, ["3", "1", "/sheet"], env={})
+    _, out = cli(argv, ["3", "1", "1", "/sheet"], env={})
     texts = [text for _, text in numbered_lines(out.lines)]
     assert any("Грей" in text for text in texts)
 
 
 def test_menu_item_3_is_grey(tmp_path):
     argv = ["--new", "--seed", "3"] + mock_args(tmp_path)
-    code, out = cli(argv, ["3", "1", "/sheet"], env={})
+    code, out = cli(argv, ["3", "1", "1", "/sheet"], env={})
     assert code == 0
     last_menu_line = max(i for i, line in enumerate(out.lines) if NUMBERED.match(line))
     after = "\n".join(out.lines[last_menu_line + 1:])
@@ -564,7 +564,7 @@ def test_menu_item_3_is_grey(tmp_path):
 
 def test_menu_item_6_is_asked_again(tmp_path):
     argv = ["--new", "--seed", "3"] + mock_args(tmp_path)
-    code, out = cli(argv, ["6", "3", "1", "/sheet"], env={})
+    code, out = cli(argv, ["6", "3", "1", "1", "/sheet"], env={})
     assert code == 0
     assert "Герой не выбран" not in out.text
     assert "Грей" in out.text.split("/sheet")[-1]
@@ -785,7 +785,7 @@ def test_hero_menu_last_item_is_create_on_the_fly(tmp_path):
 
 
 def test_create_on_the_fly_in_simple_mode_starts_world_with_sheet_hero(tmp_path):
-    lines = ["4", "1", DESCRIBE_LINE, "1", "/quit"]
+    lines = ["4", "1", "1", DESCRIBE_LINE, "1", "/quit"]
     code, out = cli(create_argv(tmp_path), lines, env={})
     assert code == 0
     assert "Герой на лету: Борин" in out.text
@@ -796,31 +796,31 @@ def test_create_on_the_fly_in_simple_mode_starts_world_with_sheet_hero(tmp_path)
 
 
 def test_create_on_the_fly_writes_hero_sheet_meta(tmp_path):
-    cli(create_argv(tmp_path), ["4", "1", DESCRIBE_LINE, "1", "/quit"], env={})
+    cli(create_argv(tmp_path), ["4", "1", "1", DESCRIBE_LINE, "1", "/quit"], env={})
     assert (tmp_path / "saves" / "w1" / "meta" / "hero_sheet.json").is_file()
 
 
 def test_create_shows_preview_and_review_menu(tmp_path):
-    _, out = cli(create_argv(tmp_path), ["4", "1", DESCRIBE_LINE, "1", "/quit"], env={})
+    _, out = cli(create_argv(tmp_path), ["4", "1", "1", DESCRIBE_LINE, "1", "/quit"], env={})
     assert "Мотив: Найти сестру." in out.text
     assert "Принять" in out.text
 
 
 def test_create_with_manual_edit_gives_edited_hero(tmp_path):
-    lines = ["4", "1", DESCRIBE_LINE, "3", "name = Ило", "готово", "1", "/quit"]
+    lines = ["4", "1", "1", DESCRIBE_LINE, "3", "name = Ило", "готово", "1", "/quit"]
     code, _ = cli(create_argv(tmp_path), lines, env={})
     assert code == 0
     assert load_slot(tmp_path / "saves", "w1", "auto").heroes[0].name == "Ило"
 
 
 def test_create_runs_the_first_turn_with_the_world_after_it(tmp_path):
-    lines = ["4", "1", DESCRIBE_LINE, "1", "Осматриваюсь", "/quit"]
+    lines = ["4", "1", "1", DESCRIBE_LINE, "1", "Осматриваюсь", "/quit"]
     _, out = cli(create_argv(tmp_path), lines, env={})
     assert "Огонь в очаге трещит." in out.text
 
 
 def test_create_with_preset_uses_chosen_preset_tone(tmp_path):
-    lines = ["4", "3", DESCRIBE_LINE, "1", "/quit"]
+    lines = ["4", "3", "1", DESCRIBE_LINE, "1", "/quit"]
     code, out = cli(create_argv(tmp_path), lines, env={})
     assert code == 0
     assert "пресет grim" in out.text
@@ -839,13 +839,13 @@ def test_create_cancelled_from_error_menu_removes_world_dir(tmp_path):
 
     refusal = P(tmp_path) / "refusal.yaml"
     refusal.write_text('steps:\n  - stop: refusal\n', encoding="utf-8")
-    code, _ = cli(create_argv(tmp_path, refusal), ["4", "1", DESCRIBE_LINE, "3"], env={})
+    code, _ = cli(create_argv(tmp_path, refusal), ["4", "1", "1", DESCRIBE_LINE, "3"], env={})
     assert code == 1
     assert not (tmp_path / "saves" / "w1").exists()
 
 
 def test_create_cancelled_keeps_other_worlds(tmp_path):
-    cli(create_argv(tmp_path), ["4", "1", DESCRIBE_LINE, "1", "/quit"], env={})
+    cli(create_argv(tmp_path), ["4", "1", "1", DESCRIBE_LINE, "1", "/quit"], env={})
     argv = ["--new", "--world", "w2", "--seed", "3", "--mock", str(SHEET_SCRIPT),
             "--saves", str(tmp_path / "saves")]
     cli(argv, ["4", "1"], env={})

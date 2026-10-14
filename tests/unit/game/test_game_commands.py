@@ -26,7 +26,7 @@ from ai_dm.persistence.store import load_slot
 
 ALL_COMMANDS = [
     "help", "save", "load", "model", "cost", "sheet", "inv", "shop", "spells", "abilities",
-    "map", "quit", "report", "tone", "retire", "music",
+    "map", "quit", "report", "tone", "retire", "music", "difficulty",
 ]
 
 
@@ -68,6 +68,7 @@ def test_unknown_command_points_to_help(registry, tmp_path):
 
 @pytest.mark.parametrize("line", [
     "/help", "/sheet", "/inv", "/spells", "/abilities", "/cost", "/model", "/report", "/tone",
+    "/difficulty",
     "/retire", "/dance",
     "/save alpha", "/load nope",
 ])

@@ -10,6 +10,8 @@
 #     * квестовый кастомный предмет с держателем kind "npc" -- поверженный NPC -- идёт в gear как
 #       есть; держатель band/location -- нет;
 #     * поражение, бегство героя, мёртвый герой -- gear пуст.
+#   К7к: с тела берутся также доспех и щит статблока (test_trophy_armor.py); здесь settled()
+#   возвращает gear без доспехов и щитов (ARMOR_IDS), тесты файла -- про оружие и квестовые вещи.
 #   strip_weapon(engine, source, target, weapon_id) для монстра возвращает (цена, качество) трофея
 #   по ПО тела (босс -- полная цена, None); для героя -- как раньше.
 from combat_kit import ScriptedRng, make_engine, make_fighter, make_npc, mon, part
@@ -40,9 +42,12 @@ def won(engine, statuses="dead"):
     engine.state.outcome = "victory"
 
 
+ARMOR_IDS = {"leather_armor", "chain_shirt", "shield"}
+
+
 def settled(engine):
     settle_ground(engine)
-    return engine.state.gear
+    return [e for e in engine.state.gear if e.item_id not in ARMOR_IDS]
 
 
 def as_tuples(gear):

@@ -1,0 +1,10 @@
+id: chain_shirt
+name: Кольчужная рубаха
+description: КД 13 + модификатор Ловкости (не больше +2).
+source: srd-5.2
+license: CC-BY-4.0
+category: medium
+ac: 13
+cost_cp: 5000
+dex_cap: 2
+strength_min: 0

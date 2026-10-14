@@ -233,7 +233,7 @@ def test_codename_is_not_in_narrator_requests(tmp_path):
         made.append(adapter)
         return adapter
 
-    interactive(tmp_path, ["1", "2", "Осматриваюсь", "/quit"], mock_factory=factory)
+    interactive(tmp_path, ["1", "2", "1", "Осматриваюсь", "/quit"], mock_factory=factory)
     requests = [r for adapter in made for r in adapter.requests]
     assert requests
     for request in requests:

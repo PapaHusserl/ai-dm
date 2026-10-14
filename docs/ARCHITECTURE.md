@@ -225,7 +225,7 @@ ai-dm/
                  actions/{attack,multiattack,cast,move,standard,item,improvise,parley,features}.py
                  disarm.py mastery.py area.py opportunity.py downed.py defeat.py end.py
     persistence/ layout.py store.py backup.py migrations/{__init__,m0001_v0_to_v1}.py
-    devtools/    sim_combat.py
+    devtools/    sim_combat.py sim_grid.py grid_heroes.py
     protocol/ llm/ master/ world_sim/ campaign/ game/ ui/ reports/   # этапы 2+, на этапе 1 не создаются
   content/       subclasses/<class_id>/*.yaml  feats/  monsters/
   campaigns/     # этап 3
@@ -349,7 +349,15 @@ ai-dm/
     эти), `hero_died {id, ...}` → `hero_dead:<id>`.
 22. **Сейв** — слоты, атомарная запись, бэкап, миграции, `m0001_v0_to_v1` (v0 — «досхемный» формат),
     фикстура v0, отпечаток схемы.
-23. **Devtools** — `python -m ai_dm.devtools.sim_combat --seed N --scenario goblins3`.
+23. **Devtools** — `python -m ai_dm.devtools.sim_combat --seed N --scenario goblins3`; сетка `sim_grid` («класс × уровень 1–5 ×
+    сцена», герои `grid_heroes`: пресеты и наборы `a`, `auto_level`), `make sim-grid` (не в `make test`) сравнивает с базовой
+    линией `devtools/sim_grid_baseline.yaml` (допуск 10 п.п.); таблица — docs/decisions/k7k-sim-grid.md.
+    **Монстр (К7к):** `Monster.damage_immunities/resistances/vulnerabilities` (типы из `DAMAGE_TYPE_WORDS`),
+    `condition_immunities`, `armor`/`shield` (что надето по SRD; КД — число `ac`, по снаряжению не пересчитывается, К7х).
+    Урон в бою — только `CombatEngine.damage` (списки статблока в `apply_damage`), состояния на монстра — только
+    `CombatEngine.impose` (иммунитет к состоянию; «на себя» и `unconscious` при 0 HP — мимо). Трофеи с тел: оружие, доспех,
+    щит (`trophies.body_equipment`, цена `loot.gear_cost`, качество по ПО); `Participant/NPC.equipment`: `None` — по
+    статблоку, задано — полная правда об экипировке, пусто — снято (именованный NPC после боя, `trophies.mark_looted`; «снято» = посчитано в трофеи боя, а не взято игроком — не взятое пропадает, В11). Параметр `difficulty` сетки — на будущее, для сцен с бюджетом боя (К7д): на `goblins3` не влияет.
 24. **Документация** — `docs/rules-adaptation.md`, `docs/glossary.md`.
 
 **Тестовые сценарии (кабан-доеба, TDD):**
@@ -548,7 +556,7 @@ replay — по адаптеру на роль. Потолок вызовов в
 Благосклонность −10..+10, шаг ±2, ±3 к богу за сцену; пороги ±3/±6/±9 (знамения, молитва (запрос `pray`, фраза игрока, G3б) и помеха в критический
 момент, вмешательство и долг/слуга); жрец — `CastCheck` по порогам −3/−6/−9. Бюджет боя — таблица SRD 5.2 по уровню;
 сверх — после `warn_danger`, нападения героя или триггера `kills_hero`, иначе урезание с сигналом. Клад логова и предел
-редкости — таблицы SRD. `/tone` меняет шкалы ТЗ 3 (ослабление `hard_limits` — с подтверждением), пишет хронику.
+редкости — таблицы SRD. Сложность кампании — `world.settings["difficulty"]` (easy/normal/hard ↔ tier low/moderate/high, `encounter.tier_of`; по умолчанию `cfg.encounter.tier`), `/difficulty`, меню нового мира. `/tone` меняет шкалы ТЗ 3 (ослабление `hard_limits` — с подтверждением), пишет хронику.
 Контекст нарратора: релевантные NPC (в сцене, ключевые, с активным триггером) — перенесено из этапа 4 (решение 5а).
 
 ## D7. Сейв v3

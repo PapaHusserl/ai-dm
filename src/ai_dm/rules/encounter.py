@@ -1,10 +1,16 @@
 from ai_dm.core.clock import DAY
 from ai_dm.rules.derived import table_value
 
+DIFFICULTY_TIERS = {"easy": "low", "normal": "moderate", "hard": "high"}
 
-def party_budget(levels, registry, cfg) -> int:
-    # бюджет боя в ПО: SRD 5.2, уровень сложности из конфига (moderate), по каждому герою
-    tier = cfg.encounter.tier
+
+def tier_of(world, cfg) -> str:
+    # сложность кампании из настроек мира; нет или неизвестна -- уровень из конфига
+    return DIFFICULTY_TIERS.get(world.settings.get("difficulty"), cfg.encounter.tier)
+
+
+def party_budget(levels, registry, tier) -> int:
+    # бюджет боя в ПО: SRD 5.2, уровень сложности (low/moderate/high), по каждому герою
     return sum(table_value(registry, "encounter_budget", f"{level}:{tier}") for level in levels)
 
 
@@ -101,7 +107,7 @@ def counts_text(specs, registry) -> str:
     return ", ".join(names)
 
 
-def budget_text(level, budget, enemies, registry, cfg) -> str:
+def budget_text(level, budget, enemies, registry, tier) -> str:
     # «Бюджет боя: 225 ПО (ур. 3, умеренный); враги: 150 ПО (гоблин 50 ×3)»
     counts = {}
     for spec in enemies:
@@ -112,7 +118,7 @@ def budget_text(level, budget, enemies, registry, cfg) -> str:
         cost = enemy_cost(monster_id, registry)
         total += cost * count
         parts.append(f"{registry.get('monster', monster_id).name} {cost} ×{count}")
-    tier = TIER_WORDS.get(cfg.encounter.tier, cfg.encounter.tier)
+    tier = TIER_WORDS.get(tier, tier)
     return (
         f"Бюджет боя: {budget} ПО (ур. {level}, {tier}); "
         f"враги: {total} ПО ({', '.join(parts)})"

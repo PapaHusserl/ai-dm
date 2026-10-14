@@ -405,7 +405,7 @@ def test_world_from_imported_pack_has_pack_tone_and_date(tmp_path):
 
 def test_interactive_start_on_imported_pack_goes_straight_to_describe(tmp_path):
     run(tmp_path)
-    code, out = start_world(tmp_path, lines=["1", DESCRIBE, "1", "/quit"])
+    code, out = start_world(tmp_path, lines=["1", "1", DESCRIBE, "1", "/quit"])
     assert code == 0, out.text
     assert "Выберите героя" not in out.text
     assert load_slot(tmp_path / "saves", "w1", "auto").heroes[0].name == "Борин"

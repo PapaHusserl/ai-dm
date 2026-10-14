@@ -8,6 +8,8 @@ speed_ft: 30
 ac: 16
 hp: 11
 hp_dice: 2d8+2
+armor: chain_shirt
+shield: shield
 cr: 1/8
 abilities:
   str: 13

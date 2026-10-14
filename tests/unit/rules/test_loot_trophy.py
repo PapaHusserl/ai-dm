@@ -3,7 +3,9 @@
 #       полосы [loot].trophy_quality: ПО 0-1/4 junk, 1/2-2 worn, 3-4 used, 5+ -- None (полная цена).
 #   trophy_cost(base: int, quality, cfg) -> int
 #       junk x0.1, worn x0.25, used x0.5, None -- base; округление вниз, не меньше 1 мм.
-#   body_gear(bodies, registry, cfg) -> list[InventoryEntry]
+#   gear_cost(registry, item_id) -> int -- цена оружия, доспеха, щита или предмета; неизвестный
+#       id -- ValueError (К7к)
+#   body_gear(bodies, registry, cfg) -> list[InventoryEntry]  (К7к: id -- оружие, доспех или щит)
 #       bodies -- список (monster_id, [weapon_id, ...], boss); одинаковые (id, цена, качество) --
 #       один стек; босс -- исходное оружие по полной цене (quality None); пустой список оружия --
 #       ничего.
@@ -13,7 +15,7 @@
 import pytest
 
 from ai_dm.core.rng import Rng
-from ai_dm.rules.loot import body_gear, quest_gear, trophy_cost, trophy_quality
+from ai_dm.rules.loot import body_gear, gear_cost, quest_gear, trophy_cost, trophy_quality
 from ai_dm.state.world import CustomItem, ItemHolder, WorldState
 
 # trophy_quality
@@ -177,3 +179,65 @@ def test_item_without_holder_is_not_returned():
 
 def test_no_bodies_return_no_quest_items():
     assert quest_gear(world_with(holder_of()), []) == []
+
+
+# К7к: доспех и щит с тел, gear_cost
+
+def test_gear_cost_of_a_weapon(registry):
+    assert gear_cost(registry, "scimitar") == registry.get("weapon", "scimitar").cost_cp
+
+
+def test_gear_cost_of_an_armor(registry):
+    assert gear_cost(registry, "chain_shirt") == 5000
+
+
+def test_gear_cost_of_a_shield(registry):
+    assert gear_cost(registry, "shield") == 1000
+
+
+def test_gear_cost_of_a_plain_item(registry):
+    item_id = registry.ids("item")[0]
+    assert gear_cost(registry, item_id) == registry.get("item", item_id).cost_cp
+
+
+def test_gear_cost_of_an_unknown_id_raises(registry):
+    with pytest.raises(ValueError):
+        gear_cost(registry, "no_such_thing")
+
+
+def test_body_gear_takes_armor_and_shield_ids(registry, cfg):
+    gear = body_gear(
+        [("goblin_warrior", ["scimitar", "leather_armor", "shield"], False)], registry, cfg
+    )
+    assert [(e.item_id, e.qty, e.quality) for e in gear] == [
+        ("scimitar", 1, "junk"), ("leather_armor", 1, "junk"), ("shield", 1, "junk"),
+    ]
+
+
+def test_junk_armor_costs_a_tenth(registry, cfg):
+    gear = body_gear([("goblin_warrior", ["leather_armor", "shield"], False)], registry, cfg)
+    assert [e.cost_cp for e in gear] == [100, 100]
+
+
+def test_boss_armor_is_at_full_price(registry, cfg):
+    gear = body_gear([("goblin_boss", ["chain_shirt", "shield"], True)], registry, cfg)
+    assert [(e.item_id, e.cost_cp, e.quality) for e in gear] == [
+        ("chain_shirt", 5000, None), ("shield", 1000, None),
+    ]
+
+
+def test_armor_of_a_non_boss_follows_the_cr_band(registry, cfg):
+    # ПО 1 -- worn, четверть цены
+    gear = body_gear([("goblin_boss", ["chain_shirt"], False)], registry, cfg)
+    assert (gear[0].cost_cp, gear[0].quality) == (1250, "worn")
+
+
+def test_three_bodies_make_stacks_of_armor(registry, cfg):
+    bodies = [("goblin_warrior", ["leather_armor", "shield"], False)] * 3
+    gear = body_gear(bodies, registry, cfg)
+    assert [(e.item_id, e.qty) for e in gear] == [("leather_armor", 3), ("shield", 3)]
+
+
+def test_unknown_gear_id_raises(registry, cfg):
+    with pytest.raises(ValueError):
+        body_gear([("goblin_warrior", ["no_such_thing"], False)], registry, cfg)

@@ -16,6 +16,7 @@ from ai_dm.content.models.species import Species
 from ai_dm.content.models.spells import Spell
 from ai_dm.content.models.tables import Table
 from ai_dm.content.registry import ContentRegistry
+from ai_dm.rules.roll_pipeline import DAMAGE_TYPE_WORDS
 
 SRD_DIR = Path(__file__).parent.parent / "srd" / "data"
 
@@ -72,6 +73,26 @@ def layer_files(layer_dir, kind, folder):
     if kind == "subclass":
         return sorted((layer_dir / folder).glob("*/*.yaml"))
     return sorted((layer_dir / folder).glob("*.yaml"))
+
+
+def check_monster_gear(monster, id, has, bad, items) -> None:
+    # типы урона, состояния, доспех и щит монстра
+    fields = ("damage_immunities", "damage_resistances", "damage_vulnerabilities")
+    for field in fields:
+        for damage_type in getattr(monster, field):
+            if damage_type not in DAMAGE_TYPE_WORDS:
+                bad("monster", id, field, f"неизвестный тип урона '{damage_type}'")
+    for condition in monster.condition_immunities:
+        if not has("condition", condition):
+            bad("monster", id, "condition_immunities", f"неизвестное состояние '{condition}'")
+    if monster.armor is not None and not (
+        has("armor", monster.armor) and items["armor"][monster.armor].category != "shield"
+    ):
+        bad("monster", id, "armor", f"'{monster.armor}' не доспех")
+    if monster.shield is not None and not (
+        has("armor", monster.shield) and items["armor"][monster.shield].category == "shield"
+    ):
+        bad("monster", id, "shield", f"'{monster.shield}' не щит")
 
 
 def check_refs(items, paths):
@@ -138,6 +159,7 @@ def check_refs(items, paths):
         for trait in monster.traits:
             if not has("feature", trait):
                 bad("monster", id, "traits", f"неизвестное умение '{trait}'")
+        check_monster_gear(monster, id, has, bad, items)
         for action in monster.actions:
             if action.weapon_id is not None and not has("weapon", action.weapon_id):
                 bad("monster", id, "actions", f"неизвестное оружие '{action.weapon_id}'")

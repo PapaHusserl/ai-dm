@@ -272,3 +272,62 @@ def test_rejection_carries_a_reason(registry, cfg):
     ctx = loot_ctx(registry, cfg, [junk()])
     apply(ctx, loot_req())
     assert apply(ctx, loot_req()).reason
+
+
+# К7к: доспех и щит с тел идут тем же путём
+
+def armor_gear():
+    return [
+        junk("leather_armor", 2, 100), junk("shield", 2, 100), junk("scimitar", 2, 250),
+    ]
+
+
+def test_loot_gives_armor_and_shield_to_the_inventory(registry, cfg):
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    ctx.hero.inventory = []
+    d = apply(ctx, loot_req())
+    assert d.status == "accepted"
+    assert stacks(ctx, "leather_armor") == [(100, "junk", 2)]
+    assert stacks(ctx, "shield") == [(100, "junk", 2)]
+
+
+def test_loot_result_names_armor_with_quality(registry, cfg):
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    d = apply(ctx, loot_req())
+    assert {i["item_id"]: i["name"] for i in d.result["items"]} == {
+        "leather_armor": "Ржавый кожаный доспех", "shield": "Ржавый щит",
+        "scimitar": "Ржавый скимитар",
+    }
+
+
+def test_loot_log_names_armor(registry, cfg):
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    d = apply(ctx, loot_req())
+    assert d.log == ["Добыча: Ржавый кожаный доспех x2, Ржавый щит x2, Ржавый скимитар x2"]
+
+
+def test_loot_emits_item_gained_for_armor(registry, cfg):
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    apply(ctx, loot_req())
+    gained = [e.data["item"] for e in ctx.events if e.type == "item_gained"]
+    assert gained == ["leather_armor", "shield", "scimitar"]
+
+
+def test_second_loot_of_armor_is_rejected_and_changes_nothing(registry, cfg):
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    apply(ctx, loot_req())
+    before = dump(ctx)
+    d = apply(ctx, loot_req())
+    assert d.status == "rejected"
+    assert dump(ctx) == before
+
+
+def test_armor_trophy_shows_up_in_inv_lines(registry, cfg):
+    from ai_dm.game.sheet_text import inv_lines
+
+    ctx = loot_ctx(registry, cfg, armor_gear())
+    ctx.hero.inventory = []
+    apply(ctx, loot_req())
+    text = "\n".join(inv_lines(ctx.hero, registry, "0 мм")).casefold()
+    assert "ржавый кожаный доспех" in text
+    assert "ржавый щит" in text

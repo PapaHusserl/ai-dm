@@ -11,7 +11,7 @@ MOD ?= $(shell git diff --name-only HEAD -- src/ai_dm | grep '\.py$$' | sed 's|^
 func_pattern = "$(word 1,$(subst :, ,$(1))).$(if $(findstring .,$(word 2,$(subst :, ,$(1)))),xǁ$(word 1,$(subst ., ,$(word 2,$(subst :, ,$(1)))))ǁ$(word 2,$(subst ., ,$(word 2,$(subst :, ,$(1))))),x_$(word 2,$(subst :, ,$(1))))__mutmut_*"
 MUT_ARGS = $(if $(FUNCS),$(foreach f,$(FUNCS),$(call func_pattern,$(f))),$(foreach m,$(MOD),"$(m).*"))
 
-.PHONY: quality lint smells cov dead install-check linux-check mutate mutate-results
+.PHONY: quality lint smells cov dead sim-grid install-check linux-check mutate mutate-results
 
 quality: lint smells dead cov
 
@@ -27,6 +27,10 @@ cov:
 
 dead:
 	uv run vulture
+
+# сетка sim_combat: класс x уровень x сцена, не хуже базовой линии - допуск (devtools/sim_grid_baseline.yaml)
+sim-grid:
+	uv run python -m ai_dm.devtools.sim_grid --check
 
 install-check:
 	uv run python devtools/check_install.py

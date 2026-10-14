@@ -85,10 +85,17 @@ def build_goblins3(registry, cfg, seed, variant, intent) -> Scenario:
     return Scenario(state, world, {hero.id: hero}, registry, cfg, rng)
 
 
-def build_scenario(name, registry, cfg, seed, *, variant="default", intent="kill") -> Scenario:
+def build_scenario(
+    name, registry, cfg, seed, *, variant="default", intent="kill", hero=None, difficulty=None
+) -> Scenario:
     if name not in SCENARIOS:
         raise ValueError(f"неизвестный сценарий: {name!r}")
-    return build_goblins3(registry, cfg, seed, variant, intent)
+    scenario = build_goblins3(registry, cfg, seed, variant, intent)
+    if hero is not None:
+        scenario.heroes = {hero.id: hero}
+    if difficulty is not None:
+        scenario.world.settings["difficulty"] = difficulty
+    return scenario
 
 
 def simulate(scenario, max_rounds=None) -> SimResult:

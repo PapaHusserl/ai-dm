@@ -13,7 +13,6 @@ from ai_dm.combat.area import affected_zones
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.creatures import end_concentration
-from ai_dm.rules.damage import apply_damage
 from ai_dm.rules.derived import (
     always_prepared,
     free_cast_pool,
@@ -173,11 +172,7 @@ def cast_attack(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
         engine, ref, dice, bonus, crit, label=f"Урон ({spell.name})",
         parts=[(spell.name, bonus)], damage_type=effect.damage_type,
     )
-    actor = engine.actor(target_ref)
-    dealt = apply_damage(
-        actor, rolled.total, effect.damage_type, engine.registry,
-        now_s=engine.world.clock.now_s,
-    )
+    dealt = engine.damage(target_ref, rolled.total, effect.damage_type)
     dealt = mark_damage(engine, ref, target_ref, crit, dealt)
     engine.log_notes(dealt)
     engine.log(f"  {engine.name(target_ref)}: {engine.hp_text(target_ref)}")
@@ -268,10 +263,7 @@ def cast_darts(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
             engine, ref, dice, bonus, False, label=f"Урон ({spell.name})",
             parts=[(spell.name, bonus)], damage_type=effect.damage_type,
         ).total
-    dealt = apply_damage(
-        engine.actor(target_ref), total, effect.damage_type, engine.registry,
-        now_s=engine.world.clock.now_s,
-    )
+    dealt = engine.damage(target_ref, total, effect.damage_type)
     engine.log_notes(dealt)
     engine.log(f"  {engine.name(target_ref)}: {engine.hp_text(target_ref)}")
     events = [attack_event(ref, target_ref, spell.id, "spell", "auto", dealt.final)]
@@ -304,10 +296,7 @@ def cast_area(engine, ref, spell, zone_id, circle) -> list[DomainEvent]:
         amount = rolled.total
         if saved:
             amount = rolled.total // 2 if save.mode == "half" else 0
-        dealt = apply_damage(
-            engine.actor(q.ref), amount, effect.damage_type, engine.registry,
-            now_s=engine.world.clock.now_s,
-        )
+        dealt = engine.damage(q.ref, amount, effect.damage_type)
         engine.log_notes(dealt)
         engine.log(f"  {engine.name(q.ref)}: {engine.hp_text(q.ref)}")
         events.append(attack_event(ref, q.ref, spell.id, "spell", "auto", dealt.final))

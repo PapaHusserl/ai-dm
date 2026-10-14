@@ -24,8 +24,10 @@ from ai_dm.campaign.presets import PACK_TONE, load_presets, preset_packs
 from ai_dm.config.app import ModelRole
 from ai_dm.config.user import AUDIO_FILE, AudioPrefs, config_dir, load_user_settings
 from ai_dm.content.loader import load_registry
+from ai_dm.game import difficulty
 from ai_dm.game.app import SIMPLE_REASON, GameApp, merge_pack
 from ai_dm.game.commands import calls_cost_line
+from ai_dm.game.difficulty import DIFFICULTIES
 from ai_dm.game.hero_create import (
     HeroCreateDeps,
     creation_cost_line,
@@ -53,6 +55,7 @@ from ai_dm.persistence.migrations import MigrationContext
 from ai_dm.persistence.store import load_slot, peek_campaign_id
 from ai_dm.protocol.context import ImportTask, SheetTask
 from ai_dm.reports.replay import compare, load_report
+from ai_dm.rules.encounter import TIER_WORDS
 from ai_dm.ui.format import menu_lines, note_lines
 from ai_dm.ui.hero_session import CREATE_HERO, HeroSession
 from ai_dm.ui.hero_wizard import CREATE_HERO_STEPS, HeroWizard
@@ -72,6 +75,7 @@ CAMPAIGN_ID_RE = re.compile(r"[a-z0-9_-]+")
 HERO_TITLE = "Выберите героя:"
 PRESET_TITLE = "Пресет мира:"
 PRESET_AS_PACK = "Как в паке"
+DIFFICULTY_TITLE = "Сложность боёв:"
 # выбор «создать героя на лету» (не id пресета пака)
 NEW_HERO = object()
 # выбор «создать героя пошагово»
@@ -100,6 +104,9 @@ def make_parser():
         help="описание героя словами: ИИ соберёт лист героя на лету (только с --new)",
     )
     parser.add_argument("--preset", help="id пресета мира (по умолчанию как в паке)")
+    parser.add_argument(
+        "--difficulty", choices=DIFFICULTIES, help="сложность боёв для нового мира (только с --new)"
+    )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--provider", choices=("anthropic", "gemini"), help="профиль провайдера для нового мира"
@@ -233,6 +240,17 @@ def choose_preset(stdin, stdout, notes, setup, hints=None):
     if number is None or number == 1:
         return None
     return list(presets)[number - 2]
+
+
+def choose_difficulty(stdin, stdout, notes, setup, tier="moderate"):
+    # сложность боёв меню: easy/normal/hard или None (как в конфиге; Esc и конец ввода -- тоже)
+    names = [f"Как в конфиге ({TIER_WORDS[tier]})"]
+    names += [difficulty.WORDS[v].capitalize() for v in DIFFICULTIES]
+    menu = ("сложности", DIFFICULTY_TITLE, names, False)
+    number = choose_number(stdin, stdout, notes, setup, menu)
+    if number is None or number == 1:
+        return None
+    return DIFFICULTIES[number - 2]
 
 
 def ask_choice(stdin: InputSource, stdout: OutputSink, title, names):
@@ -742,6 +760,14 @@ def preset_refusal(args, notes):
     return None
 
 
+def difficulty_refusal(args, notes):
+    # код выхода при --difficulty без нового мира или None
+    if args.difficulty is not None and not args.new:
+        say(notes, "--difficulty нужен только для нового мира (--new).")
+        return 2
+    return None
+
+
 def hero_flag_refusal(args, notes):
     # код выхода при неверном --hero-describe или None
     if args.hero_describe is None:
@@ -797,12 +823,15 @@ def prepare(args, stdin, stdout, notes, setup):
         say(
             notes,
             "Для --replay нужны --seed и --hero (или лист героя на лету из meta мира; "
-            "и --preset, если он был) как в исходном прогоне.",
+            "и --preset с --difficulty, если они были) как в исходном прогоне.",
         )
         return 2
     if args.replay:
         args.new = True
     refusal = preset_refusal(args, notes)
+    if refusal is not None:
+        return refusal
+    refusal = difficulty_refusal(args, notes)
     if refusal is not None:
         return refusal
     if not args.new and not args.world:
@@ -869,6 +898,7 @@ def prepare(args, stdin, stdout, notes, setup):
 
     model = narrator.model
     preset = args.preset
+    difficulty_value = args.difficulty
     created = None
     hints = {}
     world_model = world_role.model
@@ -896,6 +926,10 @@ def prepare(args, stdin, stdout, notes, setup):
             hero = choose_hero(stdin, stdout, notes, pack, setup)
             if hero is not None and preset is None:
                 preset = choose_preset(stdin, stdout, notes, setup, hints)
+            if hero is not None and difficulty_value is None:
+                difficulty_value = choose_difficulty(
+                    stdin, stdout, notes, setup, settings.rules.encounter.tier
+                )
         if hero is NEW_HERO or hero is STEP_HERO:
             created = HeroCreateDeps(
                 adapter=adapter, app_cfg=settings.app, registry=registry, cfg=settings.rules,
@@ -927,7 +961,7 @@ def prepare(args, stdin, stdout, notes, setup):
             bundle = new_world_from_pack(
                 registry, settings.rules, pack, hero=hero, seed=seed, world_id=world_id,
                 saved_at=datetime.now(UTC).isoformat(), conflicts=conflicts,
-                preset_id=preset,
+                preset_id=preset, difficulty=difficulty_value,
             )
         except StartRefused as error:
             say(notes, "Старт отказан:")
@@ -958,6 +992,8 @@ def prepare(args, stdin, stdout, notes, setup):
             seed_text += f", пресет {preset}"
             if preset == PACK_TONE:
                 seed_text += " (как в паке)"
+        if difficulty_value:
+            seed_text += f", сложность {difficulty.WORDS[difficulty_value]}"
         say(notes, f"Мир: {world_id}{seed_text} (продолжить: ai-dm --world {world_id})")
         for line in hint_lines(preset, hints, load_presets()):
             say(notes, line)
