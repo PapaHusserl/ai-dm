@@ -32,6 +32,12 @@ SINGLE_SHOT_MODES = (
 # инструменты, после которых рассказ уже можно считать законченным
 FREE_TOOLS = ("offer_choices",)
 
+# приписка к ответам инструментов, когда offer_choices вызван без текста рассказа
+CHOICES_NOTE = (
+    "Рассказа этого хода игрок ещё не видел — размышления ему не показываются. "
+    "Напиши сцену полностью текстом ответа; варианты уже предложены, не повторяй их."
+)
+
 # подсказка при пустом ответе по режиму (world -- по роли)
 EMPTY_NOTES = {
     "world": "Пустой ответ. Вызови нужные инструменты.",
@@ -109,6 +115,12 @@ class MasterSession:
             if combat is not None and combat.outcome == "defeat_pending":
                 required = "defeat_outcome"
         return required
+
+    def choices_unseen(self, has_invalid, done, told, accepted):
+        # варианты предложены, а рассказа игрок ещё не видел
+        if self.role != "narrator" or has_invalid or told:
+            return False
+        return done and "offer_choices" in accepted
 
     def with_note(self, req):
         if self.note is None:
@@ -309,6 +321,8 @@ class MasterSession:
                     # варианты предложены, рассказ уже есть -- завершающий вызов не нужен
                     result.texts += texts
                     return self.finish(result)
+                if self.choices_unseen(has_invalid, done, told, accepted):
+                    blocks.append(Text(text=CHOICES_NOTE))
                 if not has_invalid:
                     result.texts += texts
                 messages.append(Message(role="assistant", content=response.content))

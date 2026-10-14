@@ -531,3 +531,161 @@ def test_early_exit_with_offer_after_earlier_text_only_round_one_text_counts(
     result, _ = run(adapter, tmp_path, registry, cfg)
     assert len(adapter.requests) == 2
     assert result.texts == ["Сцена."]
+
+
+# B59 (В2): приписка CHOICES_NOTE, когда offer_choices вызван без текста рассказа
+
+def note_blocks(adapter, index):
+    return adapter.requests[index].messages[-1].content
+
+
+def note_texts(adapter, index):
+    return [b.text for b in note_blocks(adapter, index) if isinstance(b, Text)]
+
+
+def test_offer_choices_without_text_adds_choices_note(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    adapter = scripted([tools_step(offer_call()), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == [CHOICES_NOTE]
+
+
+def test_choices_note_is_after_tool_result(tmp_path, registry, cfg):
+    adapter = scripted([tools_step(offer_call()), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    blocks = note_blocks(adapter, 1)
+    assert [type(b) for b in blocks] == [ToolResult, Text]
+
+
+def test_choices_note_text_says_scene_not_seen_and_no_repeat(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    assert "размышления ему не показываются" in CHOICES_NOTE
+    assert "текстом ответа" in CHOICES_NOTE
+    assert "не повторяй" in CHOICES_NOTE
+
+
+def test_offer_choices_with_whitespace_text_adds_choices_note(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    adapter = scripted([tools_step(offer_call(), text="   "), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == [CHOICES_NOTE]
+
+
+def test_offer_choices_with_mechanics_without_text_adds_choices_note(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    adapter = scripted([tools_step(flag_call("a", "c1"), offer_call()), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == [CHOICES_NOTE]
+
+
+def test_offer_choices_after_earlier_text_round_has_no_note(tmp_path, registry, cfg):
+    # текст в раунде 1 уже был -- рассказ есть, приписка не нужна
+    steps = [
+        tools_step(flag_call("a", "c1"), text="Сцена."),
+        tools_step(offer_call(), flag_call("b", "c2")),
+        text_step("Итог."),
+    ]
+    adapter = scripted(steps)
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 2) == []
+
+
+def test_offer_choices_with_text_and_other_tool_has_no_note(tmp_path, registry, cfg):
+    steps = [tools_step(offer_call(), flag_call("met", "c1"), text="Сцена."), text_step("Итог.")]
+    adapter = scripted(steps)
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == []
+
+
+def test_only_other_tool_without_text_has_no_choices_note(tmp_path, registry, cfg):
+    adapter = scripted([tools_step(flag_call("a", "c1")), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == []
+
+
+def test_rejected_offer_choices_without_text_has_no_note(tmp_path, registry, cfg):
+    from master_kit import reject_all
+
+    adapter = scripted([tools_step(offer_call()), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg, executor=reject_all)
+    assert note_texts(adapter, 1) == []
+
+
+def test_invalid_offer_choices_without_text_has_no_choices_note(tmp_path, registry, cfg):
+    bad = {"id": "o1", "name": "offer_choices", "input": {"type": "offer_choices"}}
+    adapter = scripted([tools_step(bad), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert "размышления" not in " ".join(note_texts(adapter, 1))
+
+
+def test_invalid_call_next_to_accepted_offer_has_no_choices_note(tmp_path, registry, cfg):
+    bad = {"id": "c9", "name": "set_flag", "input": {"type": "set_flag"}}
+    adapter = scripted([tools_step(offer_call(), bad), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert "размышления" not in " ".join(note_texts(adapter, 1))
+
+
+def test_choices_note_not_added_for_summarizer_role(tmp_path, registry, cfg):
+    adapter = scripted([tools_step(offer_call()), text_step("Итог.")])
+    run(adapter, tmp_path, registry, cfg, role="summarizer")
+    assert note_texts(adapter, 1) == []
+
+
+def test_choices_note_not_added_for_world_role(tmp_path, registry, cfg):
+    adapter = scripted([tools_step(offer_call()), text_step("Итог.")])
+    run(adapter, tmp_path, registry, cfg, role="world")
+    assert note_texts(adapter, 1) == []
+
+
+def test_max_tokens_with_offer_choices_has_max_tokens_note_not_choices_note(
+    tmp_path, registry, cfg
+):
+    steps = [tools_step(offer_call(), stop="max_tokens"), text_step("Коротко.")]
+    adapter = scripted(steps)
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == ["Ответ оборван по длине, повтори короче."]
+
+
+def test_choices_note_round_still_finishes_after_text_final(tmp_path, registry, cfg):
+    adapter = scripted([tools_step(offer_call()), text_step("Сцена.")])
+    result, _ = run(adapter, tmp_path, registry, cfg)
+    assert len(adapter.requests) == 2
+    assert result.texts == ["Сцена."]
+
+
+def test_choices_note_is_sent_only_in_next_request(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    adapter = scripted([tools_step(offer_call()), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    first = adapter.requests[0].messages
+    assert all(CHOICES_NOTE not in getattr(b, "text", "") for m in first for b in m.content)
+
+
+def test_invalid_round_then_accepted_offer_without_text_adds_choices_note(tmp_path, registry, cfg):
+    from ai_dm.master.session import CHOICES_NOTE
+
+    bad = {"id": "c9", "name": "set_flag", "input": {"type": "set_flag"}}
+    adapter = scripted([tools_step(bad), tools_step(offer_call("o2")), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 2) == [CHOICES_NOTE]
+
+
+def test_offer_without_text_while_required_tool_not_done_has_no_choices_note(
+    tmp_path, registry, cfg
+):
+    from master_kit import combat_ctx
+
+    ctx = combat_ctx(registry, cfg, "combat_narrate", outcome="defeat_pending")
+    defeat = {
+        "id": "d1", "name": "defeat_outcome",
+        "input": {"type": "defeat_outcome", "consequences": ["left_to_die"]},
+    }
+    adapter = scripted([tools_step(offer_call()), tools_step(defeat), text_step("Тьма.")])
+    session, _, _, _ = make_session(adapter, tmp_path)
+    session.run(ctx, "Падаю.", apply, "combat_narrate")
+    assert note_texts(adapter, 1) == []

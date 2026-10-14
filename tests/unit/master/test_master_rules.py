@@ -254,3 +254,27 @@ def test_rules_explain_upcast_and_prepared_swap():
     assert "prepared_swap" in text
     assert "bad_circle" in text
     assert "drop" in text and "take" in text
+
+
+# B59 (В1): сцена пишется текстом ответа, offer_choices -- после текста сцены
+
+def test_rules_say_scene_is_written_in_text_not_in_thinking():
+    text = rules_text()
+    assert "Сцену пиши текстом ответа" in text
+    assert "размышлений не видит" in text
+
+
+def test_rules_say_offer_choices_goes_in_last_answer_after_scene_text():
+    text = rules_text()
+    assert "`offer_choices` вызывай в последнем ответе, после результатов механики и текста сцены" in text
+
+
+def test_rules_say_offer_choices_without_scene_is_not_end_of_turn():
+    assert "не конец хода" in rules_text()
+
+
+def test_offer_choices_tool_description_says_call_with_scene_after_text():
+    from ai_dm.protocol.schema import tool_set
+
+    tools = {d["name"]: d for d in tool_set("explore")}
+    assert "в последнем ответе, после результатов механики и текста сцены" in tools["offer_choices"]["description"]

@@ -27,6 +27,11 @@ SOFTEN_NOTE = (
     "Системная приписка: опиши эту сцену сдержанно, без натурализма; "
     "насилие и откровенность — за кадром или намёком."
 )
+TEXT_NOTE = (
+    "Системная приписка: напиши сцену текстом ответа — "
+    "игрок видит только текст, размышления ему не показываются."
+)
+RETRY_NOTES = {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE}
 
 
 class TurnResult:
@@ -87,7 +92,7 @@ class TurnRunner:
         self.summarizer_model = summarizer_model
         # адаптер вызова запасного summarizer (None -- адаптер рассказчика); нужен replay
         self.summarizer_backup = summarizer_backup
-        # приписка к запросам рассказчика на время повтора хода после отказа
+        # приписка к запросам рассказчика на время повтора хода после отказа или короткого рассказа
         self.note = None
         # роль, на которой оборвалась граница ("summarizer" или None): кого менять в меню 2.2
         self.failed_role = None
@@ -197,11 +202,12 @@ class TurnRunner:
         try:
             work, rng, narration = self.attempt(player_input, run_id, result)
         except TurnFailed as failure:
-            if failure.reason != "refusal":
+            note = RETRY_NOTES.get(failure.reason)
+            if note is None:
                 return self.failed(result, failure)
             # один автоповтор хода на той же модели с припиской, с новой копии
-            result = self.retry_result(result)
-            self.note = SOFTEN_NOTE
+            result = self.retry_result(result, failure.reason)
+            self.note = note
             try:
                 work, rng, narration = self.attempt(player_input, run_id, result)
             except TurnFailed as again:
@@ -233,11 +239,11 @@ class TurnRunner:
         expire_concentration(hero_of(work), work.world)
         return work, rng, narration
 
-    def retry_result(self, started) -> TurnResult:
+    def retry_result(self, started, reason) -> TurnResult:
         result = TurnResult(started.run_id)
         result.run_ids = started.run_ids
         result.before = started.before
-        result.report_tags = ["refusal_retry"]
+        result.report_tags = [f"{reason}_retry"]
         return result
 
     def failed(self, started, failure) -> TurnResult:
@@ -427,6 +433,7 @@ class TurnRunner:
         narration = master.narration
         state = work.session.active_combat
         if state is None:
+            self.check_told(master)
             return narration
         result.log = list(state.log)
         if combat_flow.is_finished(state):
@@ -436,6 +443,14 @@ class TurnRunner:
             )
             self.end_fight(work, result, fold=False)
         return narration
+
+    def check_told(self, master):
+        # инструменты были, а рассказа почти нет (сцену модель написала в мышлении)
+        # при повторе (note) не проверяем: failed("short") недостижим, короткий рассказ принимается
+        if self.note is not None or master.rounds == 0:
+            return
+        if len(master.narration) < self.app_cfg.master.min_narration_chars:
+            raise TurnFailed("short", "Рассказ слишком короткий.")
 
     # ход героя в бою
 

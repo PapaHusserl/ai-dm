@@ -83,6 +83,8 @@ class MasterConfig(BaseModel):
     chars_per_token: float = Field(gt=0)
     # сколько последних ходов не вытесняется до ступени 2
     recent_turns_floor: int = Field(ge=0)
+    # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
+    min_narration_chars: int = Field(default=80, ge=0)
 
     @model_validator(mode="after")
     def check_floor(self):
@@ -100,6 +102,10 @@ class LlmConfig(BaseModel):
     gemini_cache_world: bool = False
     # safety_settings Gemini: block_none/off снимают фильтры, default не передаёт
     gemini_safety: Literal["default", "block_none", "off"] = "block_none"
+    # thinking Claude по ролям (только narrator, включает создание героя); нет ключа -- не передаётся
+    thinking: dict[Literal["narrator"], Literal["adaptive"]] = {}
+    # показ мышления в ответе (журнал): summarized или omitted
+    thinking_display: Literal["summarized", "omitted"] = "summarized"
 
 
 class UiConfig(BaseModel):

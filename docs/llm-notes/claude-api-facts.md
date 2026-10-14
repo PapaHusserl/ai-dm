@@ -25,6 +25,7 @@ id использовать ровно так, без суффиксов дат.
 - **Префилл ответа ассистента → 400.** Формат — через structured outputs или инструкции.
 - **Мышление:** у Opus 5.5 всегда включено (`thinking` не передавать или `{"type": "adaptive"}`; `disabled` → 400);
   глубина — `output_config: {"effort": "low"|"medium"|"high"|"xhigh"|"max"}`, у Opus 5.5 по умолчанию `medium`.
+  В adapter `thinking` задаётся конфигом `[llm] thinking` (только роль narrator): `{"type": "adaptive", "display": thinking_display}`; `disabled` не поддерживается (Opus 5.5 → 400); claude-haiku-4* — без параметра. Приём `display` не проверен живым вызовом.
   У Sonnet 5.5 выключить мышление — только `{"type": "between_tools"}`. Haiku 4.5 — старый режим `budget_tokens`.
 - **`stop_reason`:** `end_turn`, `max_tokens`, `tool_use`, `pause_turn`, `refusal` (+ `stop_details.category`). Проверять
   `stop_reason` до чтения `content`. `refusal` = отказ модели (ТЗ 2.2 → выбор игрока + авто-репорт `refusal`).

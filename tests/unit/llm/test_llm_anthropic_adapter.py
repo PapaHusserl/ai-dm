@@ -180,8 +180,63 @@ def test_no_prefill_last_message_is_not_assistant():
     assert kwargs["messages"][-1]["role"] == "user"
 
 
-def test_thinking_is_not_sent():
-    assert "thinking" not in sent()
+def test_thinking_is_not_sent_for_other_roles():
+    for role in ("world", "summarizer", "import"):
+        assert "thinking" not in sent(make_request(role=role))
+
+
+def test_narrator_thinking_adaptive_summarized_by_default():
+    assert sent()["thinking"] == {"type": "adaptive", "display": "summarized"}
+
+
+def test_narrator_thinking_adaptive_omitted():
+    cfg = load_settings('[llm]\nthinking_display = "omitted"\n').app
+    assert sent(cfg=cfg)["thinking"] == {"type": "adaptive", "display": "omitted"}
+
+
+def test_haiku_4_narrator_gets_no_thinking():
+    req = make_request(model="claude-haiku-4-5")
+    assert "thinking" not in sent(req)
+    adapter, _, _ = make()
+    assert adapter.thinking_of(req) is None
+
+
+def test_other_models_narrator_keeps_thinking():
+    req = make_request(model="claude-sonnet-5-5")
+    assert sent(req)["thinking"] == {"type": "adaptive", "display": "summarized"}
+
+
+def test_no_narrator_key_sends_no_thinking():
+    cfg = app_cfg()
+    cfg.llm.thinking = {}
+    assert "thinking" not in sent(cfg=cfg)
+
+
+def test_thinking_goes_to_beta_path_too():
+    cfg = load_settings("[llm]\nrefusal_fallback = true\n").app
+    adapter, client, _ = make(cfg=cfg)
+    adapter.complete(make_request())
+    assert client.calls[0]["thinking"] == {"type": "adaptive", "display": "summarized"}
+    assert client.calls[0]["betas"] == ["server-side-fallback-2026-07-01"]
+
+
+def test_thinking_of_by_role():
+    adapter, _, _ = make()
+    assert adapter.thinking_of(make_request(role="narrator")) == {
+        "type": "adaptive", "display": "summarized",
+    }
+    assert adapter.thinking_of(make_request(role="world")) is None
+
+
+def test_thinking_block_with_signature_goes_back_unchanged_next_round():
+    raw = {"type": "thinking", "thinking": "", "signature": "sig=="}
+    block = Block(type="thinking", thinking="", signature="sig==")
+    adapter, client, _ = make([api_response([block, Block(type="text", text="т")])])
+    response = adapter.complete(make_request())
+    follow = make_request(messages=[user("привет"), Message(role="assistant", content=response.content)])
+    adapter.client.results.append(api_response())
+    adapter.complete(follow)
+    assert client.calls[1]["messages"][1]["content"][0] == raw
 
 
 def test_effort_goes_to_output_config():
@@ -651,3 +706,17 @@ def test_four_cache_points_with_memory():
 def test_refusal_has_no_stop_detail():
     adapter, _, _ = make([api_response([Block(type="text", text="не могу")], "refusal")])
     assert adapter.complete(make_request()).stop_detail is None
+
+
+def test_none_input_and_output_tokens_count_as_zero():
+    usage = api_usage(input_tokens=None, output_tokens=None)
+    adapter, _, _ = make([api_response(usage=usage)])
+    result = adapter.complete(make_request()).usage
+    assert (result.input, result.output) == (0, 0)
+
+
+def test_response_without_request_id_attribute_gives_none():
+    response = api_response()
+    del response._request_id
+    adapter, _, _ = make([response])
+    assert adapter.complete(make_request()).request_id is None

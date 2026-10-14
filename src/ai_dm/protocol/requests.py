@@ -575,7 +575,7 @@ class EventEnd(Request):
 
 
 class OfferChoices(Request):
-    """Предложить игроку два-три варианта ответа."""
+    """Предложить игроку два-три варианта ответа. Вызывай в последнем ответе, после результатов механики и текста сцены."""
 
     type: Literal["offer_choices"]
     choices: list[str] = Field(description="Варианты ответа, два или три.")

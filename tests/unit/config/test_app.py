@@ -2,7 +2,7 @@
 #   AppConfig(BaseModel, extra="forbid" на всех уровнях) -- настройки приложения (не правила игры):
 #     .roles.narrator / .roles.world / .roles.summarizer: ModelRole(provider: str, model: str,
 #         effort: str | None, max_tokens: int)
-#         narrator: provider "anthropic", model "claude-opus-5-5", effort "low" (C3),
+#         narrator: provider "anthropic", model "claude-opus-5-5", effort "medium" (B59, было "low" в C3),
 #         max_tokens 16000;
 #         world и summarizer: provider "anthropic", model "claude-haiku-4-5" (на этапе 2 описаны,
 #         не вызываются)
@@ -62,7 +62,7 @@ def test_anthropic_profile_narrator_is_opus():
     narrator = app().profiles["anthropic"].narrator
     assert narrator.provider == "anthropic"
     assert narrator.model == OPUS
-    assert narrator.effort == "low"
+    assert narrator.effort == "medium"
     assert narrator.max_tokens == 16000
 
 
@@ -427,12 +427,12 @@ def test_master_recent_turns_keep_can_be_overridden():
     assert settings.app.master.recent_turns == 8
 
 
-def test_narrator_effort_is_low_by_default():
-    assert app().profiles["anthropic"].narrator.effort == "low"
+def test_narrator_effort_is_medium_by_default():
+    assert app().profiles["anthropic"].narrator.effort == "medium"
 
 
-def test_narrator_alternative_effort_is_low_by_default():
-    assert app().alternatives.narrator.effort == "low"
+def test_narrator_alternative_effort_is_medium_by_default():
+    assert app().alternatives.narrator.effort == "medium"
 
 
 def test_cache_ttl_is_one_hour_by_default():

@@ -23,7 +23,7 @@ max_tokens = 32000
 [alternatives.narrator]
 provider = "anthropic"
 model = "claude-sonnet-5-5"
-effort = "low"
+effort = "medium"
 max_tokens = 16000
 
 # цены: микро-доллары за 1 млн токенов (1 $ = 1_000_000)
@@ -101,6 +101,8 @@ key_npc_consult_hp_percent = 50
 context_cap = 30000
 chars_per_token = 2.5
 recent_turns_floor = 1
+# рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
+min_narration_chars = 80
 
 [llm]
 refusal_fallback = false
@@ -111,6 +113,10 @@ cache_ttl = "1h"
 gemini_cache_world = false
 # safety_settings Gemini (только Gemini): "block_none" / "off" -- не блокировать по категориям; "default" -- не передавать (если API модели их отвергнет)
 gemini_safety = "block_none"
+# thinking Claude по ролям (только narrator): "adaptive"; нет ключа -- не передавать
+thinking = { narrator = "adaptive" }
+# показ мышления в ответе: "summarized" или "omitted"
+thinking_display = "summarized"
 
 [ui]
 width = 80
@@ -150,7 +156,7 @@ max_tokens = 32000
 [profiles.anthropic.narrator]
 provider = "anthropic"
 model = "claude-opus-5-5"
-effort = "low"
+effort = "medium"
 max_tokens = 16000
 
 [profiles.anthropic.world]

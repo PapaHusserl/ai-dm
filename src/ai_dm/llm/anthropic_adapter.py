@@ -3,6 +3,8 @@ from ai_dm.llm.errors import LlmFatal, LlmTransient, is_network_error
 from ai_dm.llm.keys import redact
 from ai_dm.llm.types import ChatResponse, Opaque, Text, ToolCall, ToolResult, Usage
 
+# модели без adaptive thinking (старый режим budget_tokens): thinking не передаём
+NO_ADAPTIVE_PREFIXES = ("claude-haiku-4",)
 STOP_REASONS = ("end_turn", "tool_use", "max_tokens", "refusal")
 
 
@@ -114,9 +116,35 @@ class AnthropicAdapter:
             return LlmTransient(text, retry_after=retry_after_of(error))
         return LlmFatal(text)
 
+    def thinking_of(self, req):
+        mode = self.cfg.llm.thinking.get(req.role)
+        if mode is None or req.model.startswith(NO_ADAPTIVE_PREFIXES):
+            return None
+        return {"type": "adaptive", "display": self.cfg.llm.thinking_display}
+
+    def usage_of(self, usage):
+        # запись кэша по TTL: 5m и 1h стоят по-разному; нет разбивки -- всё считаем как 5m
+        created = getattr(usage, "cache_creation", None)
+        if created is None:
+            write_5m = usage.cache_creation_input_tokens or 0
+            write_1h = 0
+        else:
+            write_5m = created.ephemeral_5m_input_tokens or 0
+            write_1h = created.ephemeral_1h_input_tokens or 0
+        return Usage(
+            input=usage.input_tokens or 0,
+            output=usage.output_tokens or 0,
+            cache_write=write_5m,
+            cache_write_1h=write_1h,
+            cache_read=usage.cache_read_input_tokens or 0,
+        )
+
     def complete(self, req):
         kwargs = self.build_base(req)
         kwargs["max_tokens"] = req.max_tokens
+        thinking = self.thinking_of(req)
+        if thinking is not None:
+            kwargs["thinking"] = thinking
         if req.effort is not None:
             kwargs["output_config"] = {"effort": req.effort}
         client = self.get_client()
@@ -129,26 +157,11 @@ class AnthropicAdapter:
             response = messages_api.create(**kwargs)
         except Exception as error:
             raise self.translate_error(error) from error
-        usage = response.usage
-        # запись кэша по TTL: 5m и 1h стоят по-разному; нет разбивки -- всё считаем как 5m
-        created = getattr(usage, "cache_creation", None)
-        if created is None:
-            write_5m = usage.cache_creation_input_tokens or 0
-            write_1h = 0
-        else:
-            write_5m = created.ephemeral_5m_input_tokens or 0
-            write_1h = created.ephemeral_1h_input_tokens or 0
         stop_reason = response.stop_reason if response.stop_reason in STOP_REASONS else "other"
         return ChatResponse(
             content=[block_from_api(b) for b in response.content],
             stop_reason=stop_reason,
-            usage=Usage(
-                input=usage.input_tokens or 0,
-                output=usage.output_tokens or 0,
-                cache_write=write_5m,
-                cache_write_1h=write_1h,
-                cache_read=usage.cache_read_input_tokens or 0,
-            ),
+            usage=self.usage_of(response.usage),
             request_id=getattr(response, "_request_id", None),
             model=response.model or req.model,
         )
