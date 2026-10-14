@@ -14,6 +14,11 @@
 #       без доспеха 10 + мод. ЛОВ; доспех из hero.equipped.armor: ac + мод. ЛОВ, ограниченный
 #       dex_cap (None -- без предела, 0 -- ЛОВ не прибавляется); щит hero.equipped.shield +ac;
 #       черта "defense" в sheet.feats: +1, только если надет доспех
+#   armor_dex(armor, dex) -> int                        (К7х) Лов в КД с учётом dex_cap: 0 -- Лов не
+#       прибавляется (даже отрицательный), None -- без предела, число -- не больше предела
+#   gear_ac(registry, armor_id, shield_id, dex) -> int  (К7х) без доспеха 10 + Лов, иначе ac +
+#     armor_dex;
+#       плюс ac щита; armor_class_parts героя считает Лов тем же armor_dex (сумма КД не изменилась)
 #   effect_amount(effect, hero, registry) -> int
 #       единая функция числа эффекта (КД, инициатива, лечение): effect.value (или 0) + добавка
 #       effect.add: proficiency_bonus -> бонус мастерства; spellcasting_modifier -> мод.
@@ -39,9 +44,12 @@ from ai_dm.rules.derived import (
     ability_mod,
     ability_modifier,
     armor_class,
+    armor_class_parts,
+    armor_dex,
     attack_bonus,
     damage_bonus,
     effect_amount,
+    gear_ac,
     initiative_bonus,
     passive_perception,
     proficiency,
@@ -501,3 +509,88 @@ def test_spell_slots_for_reads_registry_table_not_code_constants(tmp_path):
     )
     custom = load_registry([tmp_path])
     assert spell_slots_for(custom, "third", 2) == {1: 7}
+
+
+# К7х: armor_dex и gear_ac
+
+def test_armor_dex_without_a_cap_is_the_dexterity(registry):
+    assert armor_dex(registry.get("armor", "leather_armor"), 3) == 3
+
+
+def test_armor_dex_without_a_cap_keeps_a_negative_dexterity(registry):
+    assert armor_dex(registry.get("armor", "leather_armor"), -1) == -1
+
+
+def test_armor_dex_cap_zero_gives_zero(registry):
+    assert armor_dex(registry.get("armor", "chain_mail"), 3) == 0
+
+
+def test_armor_dex_cap_zero_cancels_a_negative_dexterity_too(registry):
+    assert armor_dex(registry.get("armor", "chain_mail"), -1) == 0
+
+
+def test_armor_dex_cap_cuts_the_dexterity(registry):
+    assert armor_dex(registry.get("armor", "chain_shirt"), 4) == 2
+
+
+def test_armor_dex_under_the_cap_is_unchanged(registry):
+    assert armor_dex(registry.get("armor", "chain_shirt"), 1) == 1
+
+
+def test_armor_dex_equal_to_the_cap_is_unchanged(registry):
+    assert armor_dex(registry.get("armor", "chain_shirt"), 2) == 2
+
+
+def test_gear_ac_without_anything_is_ten_plus_dex(registry):
+    assert gear_ac(registry, None, None, 2) == 12
+
+
+def test_gear_ac_with_leather_armor(registry):
+    assert gear_ac(registry, "leather_armor", None, 2) == 13
+
+
+def test_gear_ac_with_a_shield_only(registry):
+    assert gear_ac(registry, None, "shield", 2) == 14
+
+
+def test_gear_ac_with_leather_and_a_shield(registry):
+    assert gear_ac(registry, "leather_armor", "shield", 2) == 15
+
+
+def test_gear_ac_chain_mail_ignores_dexterity(registry):
+    assert gear_ac(registry, "chain_mail", None, 3) == 16
+
+
+def test_gear_ac_chain_shirt_is_capped(registry):
+    assert gear_ac(registry, "chain_shirt", "shield", 4) == 13 + 2 + 2
+
+
+def test_gear_ac_with_negative_dexterity(registry):
+    assert gear_ac(registry, None, None, -1) == 9
+
+
+def test_gear_ac_equals_the_hero_ac_without_extras(registry):
+    for armor in (None, "leather_armor", "chain_shirt", "chain_mail"):
+        for shield in (None, "shield"):
+            hero = make_fighter(armor=armor, shield=shield)
+            assert gear_ac(registry, armor, shield, 1) == armor_class(hero, registry)
+
+
+def test_hero_ac_parts_keep_their_sum_for_a_capped_armor(registry):
+    hero = make_fighter(armor="chain_mail", shield="shield")
+    parts = armor_class_parts(hero, registry)
+    assert [(name, value) for name, value, _ in parts] == [
+        ("Кольчуга", 16), ("Лов", 0), ("Щит", 2),
+    ]
+
+
+def test_hero_ac_parts_note_a_zero_cap_only_when_dexterity_is_lost(registry):
+    hero = make_fighter(armor="chain_mail")
+    parts = armor_class_parts(hero, registry)
+    assert parts[1][1] == 0
+    assert parts[1][2] != ""
+
+
+def test_hero_ac_parts_have_no_note_for_free_dexterity(registry):
+    parts = armor_class_parts(make_fighter(armor="leather_armor"), registry)
+    assert parts[1] == ("Лов", 1, "")

@@ -117,6 +117,27 @@ def ac_summary(hero, registry, now_s=None) -> str:
     return text
 
 
+def armor_dex(armor, dex) -> int:
+    # Лов в КД с учётом предела доспеха (dex_cap 0 -- без Лов)
+    if armor.dex_cap == 0:
+        return 0
+    if armor.dex_cap is not None and dex > armor.dex_cap:
+        return armor.dex_cap
+    return dex
+
+
+def gear_ac(registry, armor_id, shield_id, dex) -> int:
+    # КД по доспеху и щиту (id или None) и Лов: без доспеха 10 + Лов
+    if armor_id is None:
+        total = 10 + dex
+    else:
+        armor = registry.get("armor", armor_id)
+        total = armor.ac + armor_dex(armor, dex)
+    if shield_id is not None:
+        total += registry.get("armor", shield_id).ac
+    return total
+
+
 def armor_class_parts(
     hero, registry, now_s=None, pierce=False, ignore_magic=False
 ) -> list[tuple[str, int, str]]:
@@ -131,16 +152,12 @@ def armor_class_parts(
         parts.append(("Лов", dex, ""))
     else:
         armor = registry.get("armor", armor_id)
+        capped = armor_dex(armor, dex)
         note = ""
-        if armor.dex_cap == 0:
-            if dex != 0:
-                note = f"предел {DEX_CAP_WORDS[armor.category]} доспеха 0"
-            dex = 0
-        elif armor.dex_cap is not None and dex > armor.dex_cap:
+        if capped != dex:
             note = f"предел {DEX_CAP_WORDS[armor.category]} доспеха {armor.dex_cap}"
-            dex = armor.dex_cap
         parts.append((armor.name, armor.ac, ""))
-        parts.append(("Лов", dex, note))
+        parts.append(("Лов", capped, note))
     if hero.equipped.shield is not None:
         shield = registry.get("armor", hero.equipped.shield)
         parts.append((shield.name, shield.ac, ""))

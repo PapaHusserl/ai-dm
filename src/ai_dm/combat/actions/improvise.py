@@ -1,6 +1,6 @@
 from typing import get_args
 
-from ai_dm.combat import disarm, downed
+from ai_dm.combat import disarm, downed, falling
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.checks import dc_for_category, skill_check
@@ -96,10 +96,7 @@ def apply_extra_damage(engine, ref, target, zone) -> list[DomainEvent]:
 
 
 def apply_push(engine, ref, target, zone) -> list[DomainEvent]:
-    engine.record_move(target, engine.part(target).zone_id, zone)
-    engine.part(target).zone_id = zone
-    engine.log(f"  {engine.name(target)} отброшен в зону {zone}")
-    return []
+    return falling.push(engine, ref, target, zone)
 
 
 def apply_disarm(engine, ref, target, zone) -> list[DomainEvent]:

@@ -18,6 +18,8 @@ fast = 6400
 [combat]
 max_rounds = 100
 improvise_damage_dice = "1d6"
+# ступень elevation в футах
+fall_step_ft = 10
 
 [parley]
 base_dc = 15
@@ -44,6 +46,11 @@ spread_morale = false
 [disarm]
 unarmed_types = ["humanoid", "fey"]
 unarmed_proficiency = 2
+# check -- состязание DMG: бросок атаки против проверки цели;
+# save -- спасбросок цели Сил/Лов против СЛ 8 + Сил/Лов + БМ
+mode = "check"
+# шанс (%) монстра без тега disarmer получить роль обезоруживающего при старте боя, раз за бой
+enemy_chance = 0
 
 [defeat]
 robbery_gold_percent = 50

@@ -1,4 +1,4 @@
-from ai_dm.combat import disarm, downed, end, initiative, stealth
+from ai_dm.combat import disarm, downed, end, initiative, roles, shove, stealth
 from ai_dm.combat.actions import (
     attack,
     cast,
@@ -21,7 +21,7 @@ from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.cast_checks import default_cast_check_registry
 from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.damage import DamageResult, apply_damage
-from ai_dm.rules.derived import ability_modifier, armor_class, saving_throw_parts
+from ai_dm.rules.derived import ability_modifier, armor_class, gear_ac, saving_throw_parts
 from ai_dm.rules.modifiers import default_modifier_registry
 from ai_dm.rules.names import ABILITY_SHORT
 from ai_dm.rules.results import Rejected
@@ -50,6 +50,8 @@ PERFORM = {
     "parley": parley.perform,
     "disarm": disarm.perform,
     "pickup": disarm.pickup,
+    "shove": shove.perform,
+    "horde_breaker": features.horde_breaker,
     "second_wind": features.second_wind,
     "use_item": item.use,
     "transfer_mark": cast.transfer_mark,
@@ -193,14 +195,31 @@ class CombatEngine:
         now_s = self.world.clock.now_s
         if ref in self.heroes:
             return armor_class(self.heroes[ref], self.registry, now_s, pierce, ignore_magic)
+        return self.monster_armor_class(ref, pierce, ignore_magic)
+
+    def monster_armor_class(self, ref, pierce, ignore_magic) -> int:
+        # число ac статблока; equipment участника/NPC заменяет вклад доспеха и щита статблока
+        now_s = self.world.clock.now_s
         monster = self.monster(ref)
         ac = monster.ac
+        worn = self.equipment(ref)
+        dex = ability_modifier(monster.abilities["dex"])
+        if worn is not None:
+            ac += gear_ac(self.registry, worn.armor, worn.shield, dex)
+            ac -= gear_ac(self.registry, monster.armor, monster.shield, dex)
         if pierce and ac > 12:
-            ac = min(ac, 12 + max(ability_modifier(monster.abilities["dex"]), 0))
+            ac = min(ac, 12 + max(dex, 0))
         for effect in live_effects(self.creature(ref), now_s):
             if effect.kind == "ac" and not (ignore_magic and effect.params.get("magic")):
                 ac += effect.params["amount"]
         return ac
+
+    def equipment(self, ref):
+        # надето на существе: копия у участника (с начала боя), иначе у NPC; None -- по статблоку
+        worn = self.part(ref).equipment
+        if worn is None and ref in self.world.npcs:
+            worn = self.world.npcs[ref].equipment
+        return worn
 
     def tags(self, ref) -> set:
         # теги цели для доп. урона: тип существа, теги монстра и NPC (undead, mor)
@@ -313,7 +332,10 @@ class CombatEngine:
             if npc is not None and p.creature is None and npc.creature is None:
                 hit_points = self.monster(p.ref).hp
                 npc.creature = CreatureState(hp_current=hit_points, hp_max=hit_points)
+            if npc is not None and p.equipment is None and npc.equipment is not None:
+                p.equipment = npc.equipment.model_copy(deep=True)
         cast.convert_pending_marks(self)
+        roles.assign_roles(self)
         initiative.roll_initiative(self)
         self.state.round = 1
         self.state.turn_index = 0

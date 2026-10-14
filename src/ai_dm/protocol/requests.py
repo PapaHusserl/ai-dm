@@ -93,7 +93,8 @@ class ImproviseSpec(Request):
         description="Эффект при успехе, только из набора: advantage — преимущество на следующую "
         "атаку героя; prone — цель сбита с ног (нужен target); extra_damage — доп. урон цели "
         "(target); push — цель отброшена в соседнюю зону (target и zone: зона, соседняя с зоной "
-        "цели, не её собственная); disarm — выбить оружие (target); none — импровизации нет.",
+        "цели, не её собственная; в зону ниже -- урон от падения); "
+        "disarm — выбить оружие (target); none — импровизации нет.",
     )
     target: str = Field("", description="ref цели; пусто = нет.")
     zone: str = Field("", description="Идентификатор зоны, если действие про зону; пусто = нет.")
@@ -406,7 +407,12 @@ class Rest(Request):
         default_factory=PreparedSwapSpec,
         description="Смена подготовленных после длинного отдыха; без неё оба списка пусты.",
     )
-    NEUTRAL: ClassVar[dict] = {"hit_dice": 0}
+    prey_swap: str = Field(
+        "",
+        description="Смена приёма Добычи охотника после отдыха (следопыт 3+): id варианта "
+        "colossus_slayer или horde_breaker; пусто = без смены.",
+    )
+    NEUTRAL: ClassVar[dict] = {"hit_dice": 0, "prey_swap": ""}
 
     @model_validator(mode="after")
     def cut_swap(self):

@@ -11,7 +11,11 @@
 #     prone        -- цели AppliedCondition(id="prone", source=<ref>); нужна target
 #     extra_damage -- цели урон cfg.combat.improvise_damage_dice (по умолчанию "1d6"); нужна target
 #     push         -- цель перемещается в соседнюю зону zone (должна быть соседней с зоной цели);
-#                     нужны target и zone
+#                     нужны target и zone; в зону ниже (elevation меньше) -- падение (К7х,
+#                       falling.push):
+#                     1d6 дробящего за 10 фт, prone с source "fall", события after_damage; вровень
+#                       и вверх --
+#                     без урона (подробно -- test_falling.py)
 #     disarm       -- цель теряет оружие (общая логика combat/disarm.py, подробности --
 #                     test_disarm.py): у героя оружие уходит из main_hand и инвентаря, у монстра
 #                     ActiveEffect(id="disarmed", params={"weapon_id": ...}) и пропадает это
@@ -40,6 +44,7 @@ from ai_dm.combat.actions.improvise import spec_problem
 from ai_dm.combat.controllers import ScriptedController
 from ai_dm.config.settings import load_rules_config
 from ai_dm.rules.results import Rejected
+from ai_dm.state.combat import Zone
 
 
 def duel(registry, cfg, rng, goblin_zone="hall"):
@@ -351,3 +356,55 @@ def test_check_request_keeps_engine_codes(registry, cfg, effect, target, zone, r
     result = improvise(engine, effect, target=target, zone=zone)
     assert result.reason == reason
     assert turn(engine, "hero").action is True
+
+
+# К7х: push в зону ниже -- падение
+
+def roof(registry, cfg, rng):
+    zones = [
+        Zone(id="hall", name="Зал", adjacent=["balcony"]),
+        Zone(id="balcony", name="Балкон", adjacent=["hall", "yard"], elevation=1),
+        Zone(id="yard", name="Двор", adjacent=["balcony"], elevation=1),
+    ]
+    return make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "balcony")], rng=rng, zones=zones,
+        monsters=[mon("goblin_1", "goblin_warrior", "balcony")],
+    )
+
+
+def test_push_down_hurts_and_lays_the_target_prone(registry, cfg):
+    engine = roof(registry, cfg, ScriptedRng(d20=[10], d6=[4]))
+    improvise(engine, "push", target="goblin_1", zone="hall")
+    assert part(engine, "goblin_1").zone_id == "hall"
+    assert hp(engine, "goblin_1") == 6
+    found = [(c.id, c.source) for c in creature(engine, "goblin_1").conditions]
+    assert found == [("prone", "fall")]
+
+
+def test_push_down_death_ends_the_fight(registry, cfg):
+    engine = roof(registry, cfg, ScriptedRng(d20=[10], d6=[6]))
+    engine.creature("goblin_1").hp_current = 4
+    improvise(engine, "push", target="goblin_1", zone="hall")
+    assert engine.state.outcome == "victory"
+
+
+def test_push_on_the_same_level_does_not_hurt(registry, cfg):
+    engine = roof(registry, cfg, ScriptedRng(d20=[10]))
+    improvise(engine, "push", target="goblin_1", zone="yard")
+    assert part(engine, "goblin_1").zone_id == "yard"
+    assert hp(engine, "goblin_1") == 10
+    assert creature(engine, "goblin_1").conditions == []
+
+
+def test_push_down_logs_the_fall(registry, cfg):
+    engine = roof(registry, cfg, ScriptedRng(d20=[10], d6=[4]))
+    improvise(engine, "push", target="goblin_1", zone="hall")
+    assert "  Воин-гоблин падает с высоты 10 фт" in engine.state.log
+
+
+def test_push_down_death_names_the_hero_as_the_killer(registry, cfg):
+    engine = roof(registry, cfg, ScriptedRng(d20=[10], d6=[6]))
+    engine.creature("goblin_1").hp_current = 4
+    events = improvise(engine, "push", target="goblin_1", zone="hall")
+    died = [e for e in events if e.type == "monster_died"]
+    assert [(e.data["id"], e.data["by"]) for e in died] == [("goblin_1", "hero")]

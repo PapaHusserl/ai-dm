@@ -7,6 +7,9 @@ from ai_dm.rules.inventory import add_item
 from ai_dm.rules.spellcasting import expire_concentration, spell_kind
 from ai_dm.rules.time_ops import rounds_to_seconds
 
+# флаги боя, которые не переживают бой у монстров
+SETTLED_FLAGS = ("disarmed", "disarm_used", "disarmer", "shove_used")
+
 # подписи исходов боя в логе
 OUTCOME_WORDS = {
     "victory": "победа", "fled": "бегство", "hero_dead": "герой погиб",
@@ -112,7 +115,7 @@ def settle_ground(engine) -> None:
             continue
         creature = engine.creature(p.ref)
         creature.active_effects = [
-            e for e in creature.active_effects if e.id not in ("disarmed", "disarm_used")
+            e for e in creature.active_effects if e.id not in SETTLED_FLAGS
         ]
 
 

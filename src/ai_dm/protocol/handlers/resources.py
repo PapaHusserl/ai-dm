@@ -20,6 +20,7 @@ from ai_dm.rules.inventory import (
 )
 from ai_dm.rules.inventory import use_item as use_inventory_item
 from ai_dm.rules.modifiers import default_modifier_registry
+from ai_dm.rules.progression import feature_swap_problem, swap_feature_choice
 from ai_dm.rules.spellcasting import (
     add_spell_duration,
     cast_problem,
@@ -38,6 +39,7 @@ from ai_dm.state.hero import InventoryEntry
 from ai_dm.state.memory import add_entry
 from ai_dm.state.world import CustomItem
 
+PREY_FEATURE = "hunters_prey"
 USE_EFFECTS = ("heal", "ac_bonus", "resist")
 TAKE_WORDS = {"given": "Отдано", "lost": "Потеряно", "stolen": "Украдено", "spent": "Израсходовано"}
 
@@ -692,9 +694,10 @@ def swap_invalid(ctx, request):
 def rest(ctx, request):
     hero = ctx.hero
     world = ctx.bundle.world
-    invalid = swap_invalid(ctx, request)
-    if invalid is not None:
-        return invalid
+    for check in (swap_invalid, prey_invalid):
+        invalid = check(ctx, request)
+        if invalid is not None:
+            return invalid
     hit_dice = request.hit_dice or 0
     cut = False
     if request.kind == "short" and hit_dice > 0:
@@ -715,6 +718,7 @@ def rest(ctx, request):
         return Invalid(code="rest_impossible", message=str(error))
     result = {"hp": hero.creature.hp_current, "now_s": world.clock.now_s}
     apply_swap(ctx, request, log, result)
+    apply_prey(ctx, request, log, result)
     concentration_note(ctx, log, result)
     if cut:
         return clamped(
@@ -784,3 +788,24 @@ def travel(ctx, request):
     result = {"seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to}
     concentration_note(ctx, log, result)
     return Decision(status="accepted", result=result, log=log)
+
+
+def prey_invalid(ctx, request):
+    # смена Добычи охотника не годится: Invalid до отдыха
+    if request.prey_swap is None:
+        return None
+    problem = feature_swap_problem(ctx.hero, ctx.registry, PREY_FEATURE, request.prey_swap)
+    if problem is None:
+        return None
+    return Invalid(code=problem[0], message=problem[1])
+
+
+def apply_prey(ctx, request, log, result) -> None:
+    # смена Добычи охотника после отдыха (проверена в rest до отдыха)
+    if request.prey_swap is None:
+        return
+    old = ctx.hero.sheet.feature_choices[PREY_FEATURE][0]
+    swap_feature_choice(ctx.hero, ctx.registry, PREY_FEATURE, request.prey_swap)
+    names = [ctx.registry.get("feature", i).name for i in (request.prey_swap, old)]
+    log.append(f"Добыча охотника: {names[0]} (было: {names[1]})")
+    result["prey"] = request.prey_swap

@@ -1,4 +1,5 @@
 from ai_dm.combat import downed, mastery
+from ai_dm.combat.actions import features
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice
 from ai_dm.core.events import DomainEvent
@@ -134,7 +135,15 @@ def lost_weapons(engine, ref) -> tuple[bool, list[str]]:
     # старый сейв, тогда отключены все оружейные действия
     flags = [e for e in engine.creature(ref).active_effects if e.id == "disarmed"]
     all_lost = any("weapon_id" not in e.params for e in flags)
-    return all_lost, [e.params["weapon_id"] for e in flags if "weapon_id" in e.params]
+    lost = [e.params["weapon_id"] for e in flags if "weapon_id" in e.params]
+    # equipment задан -- оружия действий, которого в нём нет, у существа нет
+    worn = engine.equipment(ref) if engine.monster_of(ref) else None
+    if worn is not None:
+        for action in engine.monster(ref).actions:
+            weapon_id = action.weapon_id
+            if weapon_id is not None and weapon_id not in worn.weapons and weapon_id not in lost:
+                lost.append(weapon_id)
+    return all_lost, lost
 
 
 def monster_unarmed(engine, ref) -> list[AttackInfo]:
@@ -522,7 +531,9 @@ def perform(engine, ref, option) -> list[DomainEvent]:
     if holds_other and info.weapon_id is not None:
         # достать оружие -- часть действия Атака
         equip(engine.heroes[ref], info.id, engine.registry)
-    return attack(
+    events = attack(
         engine, ref, option.params["target"], info, option.params["nonlethal"],
         ammo=option.params.get("ammo"),
     )
+    features.horde_mark(engine, ref, info, option.params["target"])
+    return events

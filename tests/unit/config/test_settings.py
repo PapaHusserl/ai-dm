@@ -272,3 +272,54 @@ def test_rarity_cap_only_five_levels_is_rejected():
     data["loot"]["rarity_cap_by_level"] = {k: v for k, v in cap.items() if k <= 5}
     with pytest.raises(ValidationError):
         RulesConfig.model_validate(data)
+
+
+# К7х: [combat].fall_step_ft и [disarm].mode / enemy_chance
+
+def test_default_fall_step_is_ten_feet():
+    assert load_rules_config().combat.fall_step_ft == 10
+
+
+def test_fall_step_can_be_overridden():
+    assert load_rules_config(toml_text="[combat]\nfall_step_ft = 5\n").combat.fall_step_ft == 5
+
+
+def test_fall_step_override_keeps_the_other_combat_keys():
+    cfg = load_rules_config(toml_text="[combat]\nfall_step_ft = 5\n")
+    assert cfg.combat.max_rounds == 100
+
+
+def test_fall_step_must_be_an_integer():
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text='[combat]\nfall_step_ft = "ten"\n')
+
+
+def test_default_disarm_mode_and_chance():
+    cfg = load_rules_config()
+    assert (cfg.disarm.mode, cfg.disarm.enemy_chance) == ("check", 0)
+
+
+def test_disarm_mode_save_is_allowed():
+    assert load_rules_config(toml_text='[disarm]\nmode = "save"\n').disarm.mode == "save"
+
+
+def test_disarm_mode_unknown_value_is_rejected():
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text='[disarm]\nmode = "foo"\n')
+
+
+@pytest.mark.parametrize("value", [0, 1, 50, 100])
+def test_enemy_chance_in_range_is_allowed(value):
+    cfg = load_rules_config(toml_text=f"[disarm]\nenemy_chance = {value}\n")
+    assert cfg.disarm.enemy_chance == value
+
+
+@pytest.mark.parametrize("value", [-1, 101, 1000])
+def test_enemy_chance_out_of_range_is_rejected(value):
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text=f"[disarm]\nenemy_chance = {value}\n")
+
+
+def test_disarm_override_keeps_the_unarmed_types():
+    cfg = load_rules_config(toml_text="[disarm]\nenemy_chance = 10\n")
+    assert cfg.disarm.unarmed_types == ["humanoid", "fey"]

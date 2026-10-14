@@ -4,6 +4,15 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 Ability = Literal["str", "dex", "con", "int", "wis", "cha"]
 
+# типы урона -> слово для лога
+DAMAGE_TYPE_WORDS = {
+    "bludgeoning": "дробящий", "piercing": "колющий", "slashing": "рубящий",
+    "fire": "огненный", "cold": "холодный", "lightning": "электрический",
+    "thunder": "звуковой", "acid": "кислотный", "poison": "ядовитый",
+    "necrotic": "некротический", "radiant": "излучением", "psychic": "психический",
+    "force": "силовой", "falling": "падение",
+}
+
 ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
 
 DcCategory = Literal["very_easy", "easy", "medium", "hard", "very_hard", "nearly_impossible"]

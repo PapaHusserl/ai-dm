@@ -322,3 +322,20 @@ def test_surrender_of_an_already_disarmed_enemy_drops_only_the_rest(registry, cf
     drop(engine, "scimitar", owner="goblin_1")
     engine.parley("hero", skill="intimidation", outcome="surrender", target="goblin_1")
     assert sorted(g.item_id for g in engine.state.ground_items) == ["scimitar", "shortbow"]
+
+
+# --- К7х: выбитое возвращается героям вместе с ценой, качеством и числом ---
+
+def test_ground_stack_reaches_the_hero_with_price_quality_and_quantity(registry, cfg):
+    from ai_dm.combat.end import settle_ground
+
+    hero = without_weapons(registry)
+    engine = duel(registry, cfg, hero=hero)
+    engine.state.ground_items.append(
+        GroundItem(item_id="scimitar", zone_id="hall", owner_ref="hero", cost_cp=250,
+                   quality="junk", qty=2)
+    )
+    engine.state.outcome = "victory"
+    settle_ground(engine)
+    entry = [e for e in hero.inventory if e.item_id == "scimitar"][0]
+    assert (entry.qty, entry.cost_cp, entry.quality) == (2, 250, "junk")

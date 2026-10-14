@@ -15,6 +15,7 @@ from ai_dm.rules.progression import (
     asi_errors,
     choice_errors,
     choice_options,
+    feature_swap_problem,
     level_up,
     missing_choices,
     needed_choices,
@@ -22,6 +23,7 @@ from ai_dm.rules.progression import (
     required_choices,
     spell_errors,
     spells_left,
+    swap_feature_choice,
 )
 
 SCORES = {"str": 17, "dex": 13, "con": 15, "int": 8, "wis": 10, "cha": 12}
@@ -677,3 +679,69 @@ def test_level_up_hp_stays_int(registry):
     level_up(hero, registry)
     assert type(hero.creature.hp_max) is int
     assert type(hero.creature.hp_current) is int
+
+
+# К7х: смена варианта умения после отдыха (Добыча охотника)
+
+def hunter_at(registry, prey=("colossus_slayer",)):
+    hero = ranger_at(registry, 3)
+    hero.sheet.primary.subclass_id = "hunter"
+    hero.sheet.feature_choices = {"hunters_prey": list(prey)}
+    return hero
+
+
+def test_swap_problem_is_none_for_the_other_option(registry):
+    hero = hunter_at(registry)
+    assert feature_swap_problem(hero, registry, "hunters_prey", "horde_breaker") is None
+
+
+def test_swap_problem_for_the_same_option(registry):
+    hero = hunter_at(registry)
+    problem = feature_swap_problem(hero, registry, "hunters_prey", "colossus_slayer")
+    assert problem[0] == "same_option"
+    assert "colossus_slayer" in problem[1]
+
+
+def test_swap_problem_for_an_unknown_option_lists_the_allowed(registry):
+    hero = hunter_at(registry)
+    problem = feature_swap_problem(hero, registry, "hunters_prey", "foo")
+    assert problem[0] == "unknown_option"
+    assert "colossus_slayer" in problem[1]
+    assert "horde_breaker" in problem[1]
+
+
+def test_swap_problem_for_a_feature_the_hero_lacks(registry):
+    hero = ranger_at(registry, 3)
+    problem = feature_swap_problem(hero, registry, "hunters_prey", "horde_breaker")
+    assert problem[0] == "no_feature"
+
+
+def test_swap_problem_for_a_feature_without_options(registry):
+    hero = hunter_at(registry)
+    problem = feature_swap_problem(hero, registry, "favored_enemy", "x")
+    assert problem[0] == "no_feature"
+
+
+def test_swap_problem_for_a_hero_whose_current_choice_is_the_other_option(registry):
+    hero = hunter_at(registry, ("horde_breaker",))
+    assert feature_swap_problem(hero, registry, "hunters_prey", "colossus_slayer") is None
+    assert feature_swap_problem(hero, registry, "hunters_prey", "horde_breaker")[0] == "same_option"
+
+
+def test_swap_feature_choice_replaces_the_choice(registry):
+    hero = hunter_at(registry)
+    swap_feature_choice(hero, registry, "hunters_prey", "horde_breaker")
+    assert hero.sheet.feature_choices == {"hunters_prey": ["horde_breaker"]}
+
+
+def test_swap_feature_choice_keeps_other_choices(registry):
+    hero = hunter_at(registry)
+    hero.sheet.feature_choices["other"] = ["x"]
+    swap_feature_choice(hero, registry, "hunters_prey", "horde_breaker")
+    assert hero.sheet.feature_choices["other"] == ["x"]
+
+
+def test_swap_feature_choice_leaves_one_item_in_the_list(registry):
+    hero = hunter_at(registry)
+    swap_feature_choice(hero, registry, "hunters_prey", "horde_breaker")
+    assert len(hero.sheet.feature_choices["hunters_prey"]) == 1

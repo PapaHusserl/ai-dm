@@ -27,6 +27,8 @@ class CombatConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_rounds: int
     improvise_damage_dice: str
+    # ступень elevation зоны в футах (падение: 1d6 за 10 фт)
+    fall_step_ft: int = 10
 
     @field_validator("improvise_damage_dice")
     @classmethod
@@ -76,6 +78,11 @@ class DisarmConfig(BaseModel):
     unarmed_types: list[str] = ["humanoid", "fey"]
     # бонус мастерства монстра в безоружном ударе
     unarmed_proficiency: int = 2
+    # check -- состязание DMG (бросок атаки против проверки цели);
+    # save -- спасбросок цели Сил/Лов против СЛ 8 + Сил/Лов + мастерство атакующего
+    mode: Literal["check", "save"] = "check"
+    # шанс (%) монстра без тега disarmer получить роль обезоруживающего при старте боя, раз за бой
+    enemy_chance: int = Field(0, ge=0, le=100)
 
 
 class CustomItemsConfig(BaseModel):

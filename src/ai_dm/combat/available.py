@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import disarm
+from ai_dm.combat import disarm, shove
 from ai_dm.combat.actions import cast, parley
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
@@ -348,6 +348,51 @@ def disarm_options(engine, ref) -> list[ActionOption]:
     return result
 
 
+def shove_options(engine, ref) -> list[ActionOption]:
+    # толчок монстра: цель в своей зоне, по строке на каждую соседнюю зону
+    if not shove.may_shove(engine, ref):
+        return []
+    own = [z for z in engine.state.zones if z.id == engine.part(ref).zone_id][0]
+    result = []
+    for target in attack_targets(engine, ref):
+        if not engine.is_capable(target) or engine.part(target).zone_id != own.id:
+            continue
+        for zone in [z for z in engine.state.zones if z.id in own.adjacent]:
+            result.append(
+                ActionOption(
+                    id=f"shove:{target}:{zone.id}", kind="shove",
+                    label=f"Толкнуть: {engine.name(target)} → {zone.name}",
+                    params={"target": target, "zone": zone.id},
+                )
+            )
+    return result
+
+
+def horde_options(engine, ref) -> list[ActionOption]:
+    # Истребитель орд: бесплатная атака тем же оружием по другой цели в зоне первой
+    flags = [e for e in engine.creature(ref).active_effects if e.id == "horde_breaker"]
+    if not flags or flags[0].params["used"]:
+        return []
+    params = flags[0].params
+    infos = [i for i in attacks_of(engine, ref) if i.id == params["weapon"]]
+    if not infos:
+        return []
+    info = infos[0]
+    targets = [
+        t for t in attack_targets(engine, ref)
+        if t != params["target"] and engine.part(t).zone_id == params["zone"]
+        and base_advantage(engine, ref, t, info) is not None
+    ]
+    return [
+        ActionOption(
+            id=f"horde_breaker:{t}", kind="horde_breaker",
+            label=f"Истребитель орд: {info.name or info.id} → {engine.name(t)}",
+            params={"weapon": info.id, "target": t}, cost="free",
+        )
+        for t in targets
+    ]
+
+
 def pickup_options(engine, ref) -> list[ActionOption]:
     # подобрать оружие с земли в своей зоне: свободное взаимодействие, иначе действие
     turn = engine.part(ref).turn
@@ -392,7 +437,7 @@ def list_options(engine, ref) -> list[ActionOption]:
     options = []
     if p.turn.action or p.turn.attacks_left > 0:
         options += attack_options(engine, ref)
-        options += disarm_options(engine, ref)
+        options += disarm_options(engine, ref) + shove_options(engine, ref)
     if p.turn.action:
         options += multiattack_options(engine, ref)
     options += cast_options(engine, ref)
@@ -428,7 +473,7 @@ def list_options(engine, ref) -> list[ActionOption]:
         zone = [z for z in engine.state.zones if z.id == p.zone_id][0]
         if zone.exit and "restrained" not in conditions:
             options.append(ActionOption(id="flee", kind="flee", label="Бежать"))
-    options += pickup_options(engine, ref)
+    options += pickup_options(engine, ref) + horde_options(engine, ref)
     options.append(end_turn)
     if p.turn.attacks_left > 0 and not p.turn.action:
         for option in options:

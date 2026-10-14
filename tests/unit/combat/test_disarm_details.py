@@ -235,3 +235,18 @@ def test_trophy_quantity_is_kept(registry, cfg):
     )
     engine.end_combat()
     assert count_item(hero, "scimitar") == 2
+
+
+# --- К7х ревью: граница состязания (ничья -- у цели) ---
+# гоблин мельче героя: проверка с помехой [5, 5] -> 5 + 2 = 7; атака героя +5
+
+def test_attack_equal_to_the_target_check_does_not_disarm(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[5, 5, 2]))
+    run(engine)
+    assert engine.state.ground_items == []
+
+
+def test_attack_one_above_the_target_check_disarms(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[5, 5, 3]))
+    run(engine)
+    assert len(engine.state.ground_items) == 1

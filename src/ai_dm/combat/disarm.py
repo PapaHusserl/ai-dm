@@ -1,3 +1,4 @@
+from ai_dm.combat import shove
 from ai_dm.combat.actions.attack import (
     SIZES,
     attacks_of,
@@ -21,8 +22,8 @@ def may_disarm(engine, ref) -> bool:
     # героям можно всегда; монстру -- с тегом disarmer и один раз за бой (иначе только и выбивает)
     if engine.is_hero(ref):
         return True
-    tried = any(e.id == "disarm_used" for e in engine.creature(ref).active_effects)
-    return "disarmer" in engine.tags(ref) and not tried
+    flags = [e.id for e in engine.creature(ref).active_effects]
+    return ("disarmer" in engine.tags(ref) or "disarmer" in flags) and "disarm_used" not in flags
 
 
 def weapon_ids(engine, ref) -> list[str]:
@@ -171,6 +172,26 @@ def surrender_drop(engine, target) -> None:
         engine.log(f"  {engine.name(target)} бросает оружие: {names}")
 
 
+def contest(engine, ref, target, weapon_id, info) -> bool:
+    # состязание за оружие: check -- бросок атаки против проверки цели (ничья -- у цели),
+    # save -- спасбросок цели Сил/Лов против СЛ 8 + Сил/Лов + БМ атакующего
+    mode, label = target_mode(engine, ref, target, weapon_id)
+    if engine.cfg.disarm.mode == "check":
+        check = target_check(engine, target, mode, label)
+        result = roll_attack(
+            engine, ref, target, info.bonus, "normal", info.name, info.bonus_parts,
+            check.total + 1, "проверка цели",
+        )
+        return result.outcome in ("hit", "crit")
+    # отбор со спасброском: цель (Сил/Лов) против СЛ 8 + Сил/Лов + БМ; провал -- выиграно
+    dc, parts = shove.contest_dc(engine, ref, ("str", "dex"))
+    text = " + ".join(f"{name} {value}".strip() for name, value in parts)
+    note = f"; {label}" if label else ""
+    engine.log(f"  СЛ {dc} ({text}){note}")
+    ability = shove.best_save_ability(engine, target)
+    return engine.save(target, ability, dc, base_adv=mode).outcome == "fail"
+
+
 def perform(engine, ref, option) -> list[DomainEvent]:
     # бросок атаки текущим ближним оружием против проверки цели (DMG); тратит одну атаку
     target = option.params["target"]
@@ -189,14 +210,8 @@ def perform(engine, ref, option) -> list[DomainEvent]:
         f"{engine.name(ref)}: обезоруживание ({weapon_name(engine, weapon_id)}) "
         f"→ {engine.name(target)}"
     )
-    mode, label = target_mode(engine, ref, target, weapon_id)
-    check = target_check(engine, target, mode, label)
-    # ничья -- оружие остаётся у цели: попадание от итога проверки + 1
-    result = roll_attack(
-        engine, ref, target, info.bonus, "normal", info.name, info.bonus_parts, check.total + 1,
-        "проверка цели",
-    )
-    if result.outcome in ("hit", "crit"):
+    won = contest(engine, ref, target, weapon_id, info)
+    if won:
         disarm_target(engine, ref, target, weapon_id, info.id == "unarmed" and engine.is_hero(ref))
     return []
 
@@ -221,6 +236,13 @@ def pickup(engine, ref, option) -> list[DomainEvent]:
     else:
         flags = engine.creature(ref).active_effects
         lost = [e for e in flags if e.params.get("weapon_id") == item.item_id]
-        flags.remove(lost[0])
+        if lost:
+            flags.remove(lost[0])
+        else:
+            # потеряно по equipment: оружие снова у монстра
+            part = engine.part(ref)
+            if part.equipment is None and ref in engine.world.npcs:
+                part.equipment = engine.world.npcs[ref].equipment.model_copy(deep=True)
+            engine.equipment(ref).weapons.append(item.item_id)
     engine.log(f"{engine.name(ref)} подбирает {weapon_name(engine, item.item_id)}")
     return []

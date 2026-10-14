@@ -336,9 +336,23 @@ ai-dm/
     (`CombatState.ground_items: GroundItem`) или сразу в руки героя без оружия; подбор -- свободное взаимодействие
     (`TurnState.free_interaction`), иначе действие. Сдавшийся роняет оружие; цель без оружия -- СЛ переговоров −2.
     В `end.conclude`: после победы выбитое достаётся героям (своё -- владельцу), иначе теряется; метки снимаются.
-    Монстр обезоруживает героя только с тегом `disarmer` (в контенте пока нет).
+    Монстр обезоруживает героя только с тегом `disarmer` (в контенте пока нет) или с флагом-ролью `disarmer`
+    (`[disarm].enemy_chance`, %: бросок раз за бой в `engine.start()` -- `roles.assign_roles`, при 0 RNG не тратится).
+    `[disarm].mode`: `check` (по умолчанию) -- состязание выше; `save` -- спасбросок цели Сил/Лов (лучший) против
+    СЛ 8 + Сил/Лов + БМ атакующего (`disarm.contest`, `shove.contest_dc`), хват/размер -- преимущество/помеха.
+    Падение (`combat/falling.py`): `push` в зону ниже -- 1d6 дробящего за каждые 10 фт (ступень `elevation` =
+    `[combat].fall_step_ft`, потолок 20d6) через `engine.damage`, при уроне > 0 `prone` (`source="fall"`), яма
+    (отрицательная `elevation`) считается так же, выход -- обычным движением. Толчок монстров (`combat/shove.py`):
+    пункт `shove:<цель>:<зона>` у монстров из `[disarm].unarmed_types`, СЛ 8 + Сил + БМ, спас цели Сил/Лов,
+    флаг `shove_used`; героя толкает `improvise push`. `equipment` в бою: `NPC.equipment` копируется в
+    `Participant` при старте; КД монстра = `ac` минус вклад доспеха/щита статблока плюс надетого
+    (`engine.monster_armor_class`, `derived.gear_ac`); оружия нет в `equipment.weapons` -- оно потеряно
+    (`lost_weapons`), подбор возвращает его в `equipment`. Истребитель орд: флаг `horde_breaker` после первой
+    атаки оружием за ход (до конца хода) и пункт `horde_breaker:<цель>` (бесплатная атака по другой цели в зоне
+    первой). Смена Добычи: `rest.prey_swap` (короткий и длинный, проверка до отдыха).
 18. **Контроллеры и тактика** — `Controller.choose(options, ctx)`, `available_actions` со стабильными id,
-    `EngineTactics` (детерминированная), `ScriptedController`, `AutoHeroController`.
+    `EngineTactics` (детерминированная; порядок: `pick_special`, `pick_shove` -- толчок вниз раз за бой при kill/drive_off,
+    `step_to_weapon` -- шаг к своему выбитому оружию в соседней зоне), `ScriptedController`, `AutoHeroController`.
 19. **0 HP и намерения** — `combat/downed.py`: монстр погибает (`Goal`) или без сознания при `nonlethal`;
     герой — намерение группы атакующего (решает лидер), `DecisionPoint(intent_reconsider)`;
     `kill` → death saves, атаки по лежащему в зоне — автокрит; не `kill` → выбывает без спасбросков,

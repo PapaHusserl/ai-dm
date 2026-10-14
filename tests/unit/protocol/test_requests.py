@@ -274,7 +274,7 @@ OPTIONAL_FIELDS = {
     "damage": ["failed_roll_ref"],
     "gold": ["amount_cp", "cr"],
     "advance_time": ["category", "travel_to", "pace"],
-    "rest": ["hit_dice"],  # prepared_swap -- вложенный объект: см. тесты cut_swap ниже
+    "rest": ["hit_dice", "prey_swap"],  # prepared_swap -- вложенный объект: см. тесты cut_swap ниже
     "npc_create": ["named", "key", "motive", "location_id"],
     "location_create": ["parent_id", "description", "connections"],
     "npc_update": ["attitude_delta", "status", "cause", "evidence_ref", "by", "text"],
@@ -514,3 +514,37 @@ def test_cast_spell_circle_description_mentions_upcast():
     prop = tool_defs(["cast_spell"])[0]["input_schema"]["properties"]["circle"]
     assert "upcast" in prop["description"]
     assert len(prop["description"]) <= 150
+
+
+# К7х: rest.prey_swap -- строка; пустая = без смены (None)
+
+def test_rest_without_prey_swap_has_none():
+    assert parse_request({"type": "rest", "kind": "long"}).prey_swap is None
+
+
+def test_rest_with_empty_prey_swap_has_none():
+    assert parse_request({"type": "rest", "kind": "short", "prey_swap": ""}).prey_swap is None
+
+
+def test_rest_prey_swap_keeps_the_option_id():
+    data = {"type": "rest", "kind": "short", "prey_swap": "horde_breaker"}
+    assert parse_request(data).prey_swap == "horde_breaker"
+
+
+def test_rest_schema_has_a_required_string_prey_swap():
+    schema_of = tool_defs(["rest"])[0]["input_schema"]
+    assert schema_of["properties"]["prey_swap"]["type"] == "string"
+    assert "prey_swap" in schema_of["required"]
+    assert schema_of["properties"]["prey_swap"]["description"] != ""
+
+
+def test_rest_prey_swap_description_names_both_options():
+    prop = tool_defs(["rest"])[0]["input_schema"]["properties"]["prey_swap"]
+    assert "colossus_slayer" in prop["description"]
+    assert "horde_breaker" in prop["description"]
+
+
+def test_improvise_push_description_mentions_the_fall():
+    text = json.dumps(tool_defs(["player_action"])[0], ensure_ascii=False)
+    assert "в зону ниже" in text
+    assert "падени" in text

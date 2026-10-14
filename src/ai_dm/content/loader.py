@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from ai_dm.content import handlers
 from ai_dm.content.models.backgrounds import Background
 from ai_dm.content.models.classes import CharacterClass, Subclass
+from ai_dm.content.models.common import DAMAGE_TYPE_WORDS
 from ai_dm.content.models.conditions import Condition
 from ai_dm.content.models.feats import Feat
 from ai_dm.content.models.features import Feature
@@ -16,7 +17,6 @@ from ai_dm.content.models.species import Species
 from ai_dm.content.models.spells import Spell
 from ai_dm.content.models.tables import Table
 from ai_dm.content.registry import ContentRegistry
-from ai_dm.rules.roll_pipeline import DAMAGE_TYPE_WORDS
 
 SRD_DIR = Path(__file__).parent.parent / "srd" / "data"
 

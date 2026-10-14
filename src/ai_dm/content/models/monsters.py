@@ -42,7 +42,7 @@ class Monster(ContentObject):
     damage_resistances: list[str] = []
     damage_vulnerabilities: list[str] = []
     condition_immunities: list[str] = []
-    # что надето по SRD; КД -- число ac, по снаряжению не пересчитывается (К7х)
+    # что надето по SRD; equipment участника/NPC переопределяет вклад доспеха и щита
     armor: str | None = None
     shield: str | None = None
 

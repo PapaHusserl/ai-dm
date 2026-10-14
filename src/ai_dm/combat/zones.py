@@ -21,6 +21,12 @@ def distance(zones, a_id, b_id) -> int:
     return steps[b_id]
 
 
+def drop_steps(zones, from_id, to_id) -> int:
+    # на сколько ступеней elevation зона to ниже зоны from (яма -- отрицательная elevation)
+    heights = {z.id: z.elevation for z in zones}
+    return max(0, heights[from_id] - heights[to_id])
+
+
 def range_band_ft(steps: int) -> int:
     # та же зона -- 10 фт, соседняя -- 30, через одну -- 60, дальше -- 120
     if steps == 0:

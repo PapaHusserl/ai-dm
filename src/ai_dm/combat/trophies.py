@@ -23,10 +23,7 @@ def weapon_price(engine, target, weapon_id) -> tuple[int, str | None]:
 
 def body_equipment(engine, ref, weapon_ids) -> Equipment:
     # что надето на теле: equipment существа (None -- по статблоку), оружие минус выбитое
-    npc = engine.world.npcs.get(ref)
-    worn = engine.part(ref).equipment
-    if worn is None and npc is not None:
-        worn = npc.equipment
+    worn = engine.equipment(ref)
     if worn is None:
         monster = engine.monster(ref)
         weapons = weapon_ids(engine, ref)

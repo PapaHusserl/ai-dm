@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from ai_dm.combat.zones import distance
+from ai_dm.combat.zones import distance, drop_steps
 from ai_dm.state.combat import DecisionPoint
 
 
@@ -38,7 +38,7 @@ class EngineTactics:
 
     def choose_turn(self, options, ref) -> str:
         ids = [o.id for o in options]
-        chosen = self.pick_special(options, ref)
+        chosen = self.pick_early(options, ref)
         if chosen is not None:
             return chosen
         if "multiattack" in ids:
@@ -58,6 +58,14 @@ class EngineTactics:
                 return step
         return "end_turn"
 
+    def pick_early(self, options, ref):
+        # что делается раньше атаки: особое, толчок вниз, шаг к своему оружию
+        for pick in (self.pick_special, self.pick_shove, self.step_to_weapon):
+            chosen = pick(options, ref)
+            if chosen is not None:
+                return chosen
+        return None
+
     def pick_special(self, options, ref):
         # опутанный первым делом вырывается: атаковать с помехой и стоять на месте хуже;
         # обезоруженный монстр подбирает своё оружие, монстр с тегом disarmer обезоруживает
@@ -68,6 +76,43 @@ class EngineTactics:
             for option in options:
                 if option.kind == kind:
                     return option.id
+        return None
+
+    def pick_shove(self, options, ref):
+        # монстр сталкивает цель в зону ниже (большая разница высот лучше), раз за бой,
+        # если группа убивает или гонит прочь; вровень и вверх не толкает
+        group = self.engine.state.groups[self.engine.part(ref).group_id]
+        flags = self.engine.creature(ref).active_effects
+        if group.intent not in ("kill", "drive_off") or any(e.id == "shove_used" for e in flags):
+            return None
+        zones = self.engine.state.zones
+        best, best_drop = None, 0
+        for option in options:
+            if option.kind != "shove":
+                continue
+            target_zone = self.zone(option.params["target"])
+            drop = drop_steps(zones, target_zone, option.params["zone"])
+            if drop > best_drop:
+                best, best_drop = option.id, drop
+        return best
+
+    def step_to_weapon(self, options, ref):
+        # своё выбитое оружие лежит в соседней зоне, а бить в своей некого: идём к нему
+        # локальные импорты: цикл импортов
+        from ai_dm.combat import disarm
+        from ai_dm.combat.actions.attack import lost_weapons
+
+        engine = self.engine
+        if engine.is_hero(ref) or not lost_weapons(engine, ref)[1]:
+            return None
+        if [t for t in self.enemies(ref, "active") if self.zone(t) == self.zone(ref)]:
+            return None
+        moves = {o.params["zone"]: o.id for o in options if o.kind == "move"}
+        for item in engine.state.ground_items:
+            if item.owner_ref != ref or item.zone_id not in moves:
+                continue
+            if disarm.can_pick(engine, ref, item):
+                return moves[item.zone_id]
         return None
 
     def zone(self, ref):
@@ -154,7 +199,7 @@ class AutoHeroController(EngineTactics):
         if creature.hp_current <= creature.hp_max // 2 and "second_wind" in ids:
             return "second_wind"
         for option in options:
-            if option.kind == "stabilize":
+            if option.kind in ("stabilize", "horde_breaker"):
                 return option.id
         if self.engine.heroes[ref].equipped.main_hand is None:
             for option in options:

@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from ai_dm.content.models.common import DAMAGE_TYPE_WORDS
 from ai_dm.core.dice import roll_damage_dice, roll_dice
 from ai_dm.rules.creatures import D20_KINDS, creature_of, is_hero
 from ai_dm.rules.modifiers import default_modifier_registry
@@ -13,14 +14,6 @@ from ai_dm.state.hero import HeroState
 KINDS = D20_KINDS + ("damage",)
 
 REROLL_WORDS = {"luck": "удача", "heroic_inspiration": "вдохновение"}
-
-DAMAGE_TYPE_WORDS = {
-    "bludgeoning": "дробящий", "piercing": "колющий", "slashing": "рубящий",
-    "fire": "огненный", "cold": "холодный", "lightning": "электрический",
-    "thunder": "звуковой", "acid": "кислотный", "poison": "ядовитый",
-    "necrotic": "некротический", "radiant": "излучением", "psychic": "психический",
-    "force": "силовой", "falling": "падение",
-}
 
 # подписи эффектов и источников без названия в реестре (источник преимущества или помехи)
 SOURCE_WORDS = {

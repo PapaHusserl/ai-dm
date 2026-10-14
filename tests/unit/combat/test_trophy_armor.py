@@ -16,6 +16,7 @@ from test_trophy_gear import as_tuples, fight, hold, mark, won
 
 from ai_dm.combat.end import settle_ground
 from ai_dm.combat.engine import CombatEngine
+from ai_dm.state.combat import GroundItem
 from ai_dm.state.creature import Equipment
 
 
@@ -369,3 +370,31 @@ def test_mark_looted_strips_only_named_bodies(registry, cfg):
     engine = guard_fight(registry, cfg)
     mark_looted(engine)
     assert engine.world.npcs["guard_1"].equipment == Equipment()
+
+
+# --- К7х: body_equipment читает engine.equipment (копия участника, иначе NPC) ---
+
+def test_gear_comes_from_the_participant_copy_of_an_unnamed_goblin(registry, cfg):
+    engine = fight(registry, cfg, goblins=1)
+    part(engine, "goblin_1").equipment = Equipment(armor="chain_mail", shield=None, weapons=[])
+    won(engine)
+    assert {e.item_id for e in gear_of(engine)} == {"chain_mail"}
+
+
+def test_participant_copy_wins_over_the_npc_record(registry, cfg):
+    engine = fight(registry, cfg, goblins=1, named=True)
+    engine.world.npcs["goblin_1"].equipment = Equipment(armor="leather_armor")
+    part(engine, "goblin_1").equipment = Equipment(shield="shield")
+    won(engine)
+    assert {e.item_id for e in gear_of(engine)} == {"shield"}
+
+
+def test_picked_up_weapon_in_the_copy_goes_to_the_trophies(registry, cfg):
+    engine = fight(registry, cfg, goblins=1)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["shortbow"])
+    engine.state.ground_items.append(
+        GroundItem(item_id="scimitar", zone_id="hall", owner_ref="goblin_1", cost_cp=0)
+    )
+    engine.perform("goblin_1", "pickup:0")
+    won(engine)
+    assert {e.item_id for e in gear_of(engine)} == {"shortbow", "scimitar"}

@@ -4,6 +4,7 @@ from typing import Literal
 from ai_dm.content.models.common import ABILITIES, SKILLS
 from ai_dm.rules.derived import (
     always_prepared,
+    hero_feature_ids,
     prepared_limit,
     resource_maxes,
     spell_slots_for,
@@ -376,3 +377,24 @@ def apply_level_choices(hero, registry, choices):
             sheet.languages.append(language)
     sync_resources(hero, registry)
     return None
+
+
+def feature_swap_problem(hero, registry, feature_id, option):
+    # смена варианта умения после отдыха (Добыча охотника): (код, сообщение) или None
+    if feature_id not in hero_feature_ids(hero, registry):
+        return ("no_feature", f"у героя нет умения {feature_id}")
+    options = registry.get("feature", feature_id).options
+    if not options:
+        return ("no_feature", f"у умения {feature_id} нет вариантов")
+    if option not in options:
+        allowed = ", ".join(options)
+        return ("unknown_option", f"нет такого варианта: {option}; допустимые: {allowed}")
+    if not hero.sheet.feature_choices.get(feature_id):
+        return ("no_choice", f"у умения {feature_id} не выбран вариант")
+    if hero.sheet.feature_choices.get(feature_id) == [option]:
+        return ("same_option", f"вариант уже выбран: {option}")
+    return None
+
+
+def swap_feature_choice(hero, registry, feature_id, option) -> None:
+    hero.sheet.feature_choices[feature_id] = [option]

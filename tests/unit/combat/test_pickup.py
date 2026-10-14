@@ -8,13 +8,17 @@
 #     GroundItem удаляется.
 #   Монстр: поднимает только своё оружие (weapon_id == флаг disarmed) -- флаг снимается и атака
 #     возвращается; чужое оружие не берёт.
+#   К7х: оружие, которого нет в заданном equipment участника (В10), монстр тоже считает потерянным:
+#     берёт
+#     его с земли (can_pick), и оно возвращается в equipment.weapons; флага disarmed в этом случае
+#       нет.
 #   ИИ: обезоруженный монстр рядом со своим оружием подбирает его (EngineTactics); авто-герой
 #     с пустой рукой подбирает своё (AutoHeroController).
 from combat_kit import ScriptedRng, creature, make_engine, make_fighter, mon, part, turn
 
 from ai_dm.rules.inventory import count_item, remove_item
 from ai_dm.state.combat import GroundItem
-from ai_dm.state.creature import ActiveEffect
+from ai_dm.state.creature import ActiveEffect, Equipment
 
 
 def duel(registry, cfg, rng=None, hero=None):
@@ -282,3 +286,94 @@ def test_auto_hero_with_an_empty_hand_picks_up_its_weapon(registry, cfg):
     engine.step()
     assert hero.equipped.main_hand == "longsword"
     assert engine.state.ground_items == []
+
+
+# --- К7х: потеряно по equipment ---
+
+def test_goblin_picks_up_the_weapon_lost_by_equipment(registry, cfg):
+    engine = duel(registry, cfg)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["shortbow"])
+    drop(engine, "scimitar", owner="goblin_1")
+    assert len(pickups(engine, "goblin_1")) == 1
+    engine.perform("goblin_1", "pickup:0")
+    assert part(engine, "goblin_1").equipment.weapons == ["shortbow", "scimitar"]
+    assert flags(engine) == []
+
+
+def test_goblin_does_not_pick_up_a_weapon_still_in_its_equipment(registry, cfg):
+    engine = duel(registry, cfg)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["scimitar"])
+    drop(engine, "scimitar", owner="goblin_1")
+    assert pickups(engine, "goblin_1") == []
+
+
+def test_goblin_with_equipment_still_does_not_take_a_foreign_weapon(registry, cfg):
+    engine = duel(registry, cfg)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["scimitar"])
+    drop(engine, "longsword")
+    assert pickups(engine, "goblin_1") == []
+
+
+def test_pickup_by_equipment_returns_the_attack(registry, cfg):
+    engine = duel(registry, cfg)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["shortbow"])
+    drop(engine, "scimitar", owner="goblin_1")
+    assert "attack:скимитар:hero" not in attack_ids(engine, "goblin_1")
+    engine.perform("goblin_1", "pickup:0")
+    assert "attack:скимитар:hero" in attack_ids(engine, "goblin_1")
+
+
+def test_hero_pickup_keeps_the_quality_and_the_price_of_the_item(registry, cfg):
+    hero = make_fighter(registry)
+    remove_item(hero, "longsword")
+    engine = duel(registry, cfg, hero=hero)
+    engine.state.ground_items.append(
+        GroundItem(item_id="scimitar", zone_id="hall", owner_ref="goblin_1", cost_cp=250,
+                   quality="junk")
+    )
+    engine.perform("hero", "pickup:0")
+    entry = [e for e in hero.inventory if e.item_id == "scimitar"][0]
+    assert (entry.cost_cp, entry.quality) == (250, "junk")
+
+
+# --- К7х ревью: участник без equipment, у NPC он задан ---
+
+def npc_duel(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall", named=True)],
+    )
+    part(engine, "goblin_1").equipment = None
+    engine.world.npcs["goblin_1"].equipment = Equipment(weapons=["shortbow"])
+    return engine
+
+
+def test_pickup_writes_into_a_copy_for_the_participant_without_equipment(registry, cfg):
+    engine = npc_duel(registry, cfg)
+    drop(engine, "scimitar", owner="goblin_1")
+    engine.perform("goblin_1", "pickup:0")
+    assert engine.equipment("goblin_1").weapons == ["shortbow", "scimitar"]
+
+
+def test_pickup_does_not_change_the_npc_equipment(registry, cfg):
+    engine = npc_duel(registry, cfg)
+    drop(engine, "scimitar", owner="goblin_1")
+    engine.perform("goblin_1", "pickup:0")
+    assert engine.world.npcs["goblin_1"].equipment.weapons == ["shortbow"]
+
+
+def test_pickup_gives_the_participant_its_own_equipment(registry, cfg):
+    engine = npc_duel(registry, cfg)
+    drop(engine, "scimitar", owner="goblin_1")
+    engine.perform("goblin_1", "pickup:0")
+    assert part(engine, "goblin_1").equipment is not engine.world.npcs["goblin_1"].equipment
+    assert part(engine, "goblin_1").equipment.weapons == ["shortbow", "scimitar"]
+
+
+def test_pickup_keeps_the_own_equipment_of_the_participant(registry, cfg):
+    engine = npc_duel(registry, cfg)
+    part(engine, "goblin_1").equipment = Equipment(weapons=["dagger"])
+    drop(engine, "scimitar", owner="goblin_1")
+    engine.perform("goblin_1", "pickup:0")
+    assert part(engine, "goblin_1").equipment.weapons == ["dagger", "scimitar"]
+    assert engine.world.npcs["goblin_1"].equipment.weapons == ["shortbow"]
