@@ -1,0 +1,28 @@
+id: mastiff
+name: Мастиф
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 40
+ac: 12
+hp: 5
+hp_dice: 1d8+1
+cr: 1/8
+abilities:
+  str: 13
+  dex: 14
+  con: 12
+  int: 3
+  wis: 12
+  cha: 7
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 3
+  reach_ft: 5
+  damage_dice: 1d6+1
+  damage_type: piercing
+  on_hit:
+    condition: prone
+    max_size: medium

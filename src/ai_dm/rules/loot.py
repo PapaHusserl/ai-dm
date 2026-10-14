@@ -5,6 +5,8 @@ from ai_dm.rules.inventory import find_item
 from ai_dm.state.hero import InventoryEntry
 
 HOARD_BANDS = ["0-4", "5-10", "11-16", "17+"]
+# типы существ, у которых нет монет (за них individual_treasure не бросается)
+NO_COIN_TYPES = ("beast", "construct", "elemental")
 
 
 def treasure_band(cr: str) -> str:
@@ -32,10 +34,14 @@ def level_band(level: int) -> str:
 
 
 def defeated_treasure(monster_ids, rng, registry) -> int:
-    # деньги в медных за всех побеждённых врагов (по ПО каждого)
+    # деньги в медных за всех побеждённых врагов (по ПО каждого); звери, конструкты и
+    # элементали монет не носят, кубики за них не бросаются
     total = 0
     for monster_id in monster_ids:
-        total += individual_treasure(registry.get("monster", monster_id).cr, rng, registry)
+        monster = registry.get("monster", monster_id)
+        if monster.creature_type in NO_COIN_TYPES:
+            continue
+        total += individual_treasure(monster.cr, rng, registry)
     return total
 
 

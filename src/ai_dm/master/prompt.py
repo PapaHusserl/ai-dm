@@ -142,6 +142,22 @@ def trade_data(world, scene_npcs, ctx, level):
     return {"trade": merchants} if merchants else {}
 
 
+def monster_trait_notes(participants, registry):
+    # черты монстров боя для рассказчика: «Имя: Черта — текст», строка не длиннее 100
+    notes = []
+    for p in participants:
+        if p.monster_id is None or p.status == "dead":
+            continue
+        monster = registry.get("monster", p.monster_id)
+        for trait in monster.traits:
+            feature = registry.get("feature", trait)
+            text = feature.description.split(" Движок:")[0]
+            line = clip(f"{monster.name}: {feature.name} — {text}", 100)
+            if line not in notes:
+                notes.append(line)
+    return notes
+
+
 def draft_plan(c):
     # черновик плана для оценки запроса при вытеснении (budget/cap/estimate не используются)
     return ContextPlan(
@@ -347,6 +363,9 @@ class PromptBuilder:
                 if n.status == "alive" and n.follows == hero.id
             ]
             combat["companions_nearby"].sort(key=lambda n: n["id"])
+            traits = monster_trait_notes(c.participants, ctx.registry)
+            if traits:
+                combat["monster_traits"] = traits
             if ctx.mode in ("combat_classify", "combat_narrate"):
                 combat["options"] = ctx.combat_options or []
         return combat

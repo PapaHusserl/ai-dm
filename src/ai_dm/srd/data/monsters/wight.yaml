@@ -1,0 +1,52 @@
+id: wight
+name: Умертвие
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 30
+ac: 14
+hp: 82
+hp_dice: 11d8+33
+armor: studded_leather
+cr: '3'
+abilities:
+  str: 15
+  dex: 14
+  con: 16
+  int: 10
+  wis: 13
+  cha: 15
+tags:
+- disarmer
+damage_immunities:
+- poison
+damage_resistances:
+- necrotic
+condition_immunities:
+- exhaustion
+- poisoned
+traits:
+- sunlight_sensitivity
+actions:
+- name: Некротический меч
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d8+2
+  damage_type: slashing
+  extra_damage_dice: 1d8
+  extra_damage_type: necrotic
+- name: Некротический лук
+  kind: ranged
+  attack_bonus: 4
+  range_normal_ft: 150
+  range_long_ft: 600
+  damage_dice: 1d8+2
+  damage_type: piercing
+  extra_damage_dice: 1d8
+  extra_damage_type: necrotic
+multiattack:
+- action: Некротический меч
+  count: 2
+# действие без движка, только текст: Похищение жизни: Тел СЛ 13, цель в 5 фт., провал -- 1к8+2 некротического и максимум HP цели уменьшается на урон; убитый гуманоид через 24 часа встаёт Зомби под властью умертвия (не больше 12).

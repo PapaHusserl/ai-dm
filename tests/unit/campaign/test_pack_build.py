@@ -691,7 +691,7 @@ def test_known_ids_of_vale(registry):
     known = known_ids(vale_pack(registry))
     assert isinstance(known, KnownIds)
     assert known.npcs == {"innkeeper", "grakh"}
-    assert known.locations == {"vale", "lame_goose", "cellar"}
+    assert known.locations == {"vale", "lame_goose", "cellar", "old_crypt"}
     assert known.pantheon == set()
 
 

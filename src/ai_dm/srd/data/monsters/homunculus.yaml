@@ -1,0 +1,39 @@
+id: homunculus
+name: Гомункул
+source: srd-5.2
+license: CC-BY-4.0
+size: tiny
+creature_type: construct
+speed_ft: 20
+fly_ft: 40
+ac: 13
+hp: 4
+hp_dice: 1d4+2
+cr: '0'
+abilities:
+  str: 4
+  dex: 15
+  con: 14
+  int: 10
+  wis: 10
+  cha: 7
+damage_immunities:
+- poison
+condition_immunities:
+- charmed
+- poisoned
+traits:
+- telepathic_bond
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d1
+  damage_type: piercing
+  on_hit:
+    condition: poisoned
+    save: con
+    dc: 12
+    duration: source_turn
+  description: 'Провал на 5 и больше: отравлен на 1 минуту и без сознания, пока не получит урон.'

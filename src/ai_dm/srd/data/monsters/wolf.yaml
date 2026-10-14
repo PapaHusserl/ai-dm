@@ -1,0 +1,30 @@
+id: wolf
+name: Волк
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 40
+ac: 12
+hp: 11
+hp_dice: 2d8+2
+cr: 1/4
+abilities:
+  str: 14
+  dex: 15
+  con: 12
+  int: 3
+  wis: 12
+  cha: 6
+traits:
+- pack_tactics
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d6+2
+  damage_type: piercing
+  on_hit:
+    condition: prone
+    max_size: medium

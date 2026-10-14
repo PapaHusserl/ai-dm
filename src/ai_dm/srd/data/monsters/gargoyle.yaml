@@ -1,0 +1,37 @@
+id: gargoyle
+name: Горгулья
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: elemental
+speed_ft: 30
+fly_ft: 60
+ac: 15
+hp: 67
+hp_dice: 9d8+27
+cr: '2'
+abilities:
+  str: 15
+  dex: 11
+  con: 16
+  int: 6
+  wis: 11
+  cha: 7
+damage_immunities:
+- poison
+condition_immunities:
+- exhaustion
+- petrified
+- poisoned
+traits:
+- flyby
+actions:
+- name: Коготь
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 2d4+2
+  damage_type: slashing
+multiattack:
+- action: Коготь
+  count: 2

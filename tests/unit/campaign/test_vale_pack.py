@@ -3,6 +3,7 @@
 # Эталон мира этапа 2 -- tests/fixtures/packs/vale_stage2_world.json (снят с starter.new_world
 # до переезда на пак: seed 1, world_id "w"; локации, NPC, герой, стартовая сцена, rng, часы).
 # Сравнение «по подмножеству»: каждое поле эталона должно совпасть, новые поля v3 игнорируются.
+import copy
 import json
 
 from campaign_kit import SAVED_AT, VALE_DIR, ids
@@ -53,6 +54,14 @@ def contains(expected, actual, path="$"):
     return [] if expected == actual else [f"{path}: {expected!r} != {actual!r}"]
 
 
+def stage2_locations():
+    # К7д: подвал получил описание про арку и выход в старую крипту (новая локация old_crypt)
+    locations = copy.deepcopy(SNAPSHOT["arn"]["locations"])
+    del locations["cellar"]["description"]
+    locations["cellar"]["connections"].append({"distance_m": 15, "to": "old_crypt"})
+    return locations
+
+
 # пак как данные
 
 def test_vale_pack_loads(registry):
@@ -71,7 +80,7 @@ def test_vale_world_text_is_in_pack(registry):
 
 def test_vale_locations_and_npcs(registry):
     pack = vale(registry)
-    assert ids(pack.locations) == ["vale", "lame_goose", "cellar"]
+    assert ids(pack.locations) == ["vale", "lame_goose", "cellar", "old_crypt"]
     assert ids(pack.npcs) == ["innkeeper", "grakh"]
 
 
@@ -91,15 +100,15 @@ def test_vale_has_no_uniqueness_conflicts(registry, cfg):
 def test_arn_world_equals_stage2_locations_and_npcs(registry):
     world = new_world(registry, "arn").world
     expected = SNAPSHOT["arn"]
-    assert contains(expected["locations"], {k: v.model_dump(mode="json")
-                                            for k, v in world.locations.items()}) == []
+    assert contains(stage2_locations(), {k: v.model_dump(mode="json")
+                                         for k, v in world.locations.items()}) == []
     assert contains(expected["npcs"], {k: v.model_dump(mode="json")
                                        for k, v in world.npcs.items()}) == []
 
 
 def test_world_has_no_extra_entities_compared_to_stage2(registry):
     world = new_world(registry, "arn").world
-    assert sorted(world.locations) == sorted(SNAPSHOT["arn"]["locations"])
+    assert sorted(world.locations) == sorted([*SNAPSHOT["arn"]["locations"], "old_crypt"])
     assert sorted(world.npcs) == sorted(SNAPSHOT["arn"]["npcs"])
     assert world.factions == {}
     assert world.pantheon == {}
@@ -201,3 +210,40 @@ def test_studded_leather_is_light_armor_ac_12(registry):
 def test_explorers_pack_and_druidic_focus_are_srd_items(registry):
     for item_id in ("explorers_pack", "druidic_focus"):
         assert registry.get("item", item_id).source.startswith("srd")
+
+
+# К7д (Q7а): старая крипта под подвалом
+
+def location(registry, location_id):
+    return {loc.id: loc for loc in vale(registry).locations}[location_id]
+
+
+def test_old_crypt_hangs_under_the_cellar(registry):
+    crypt = location(registry, "old_crypt")
+    assert (crypt.name, crypt.parent_id) == ("Старая крипта", "cellar")
+    assert crypt.tags == ["гробница", "подвал"]
+
+
+def test_cellar_and_crypt_are_connected_both_ways(registry):
+    assert "old_crypt" in [c.to for c in location(registry, "cellar").connections]
+    assert "cellar" in [c.to for c in location(registry, "old_crypt").connections]
+
+
+def test_cellar_description_points_to_the_crypt(registry):
+    assert "крипт" in location(registry, "cellar").description
+
+
+def test_old_crypt_gets_the_tomb_picture(registry):
+    from ai_dm.art.catalog import art_for_location, load_art
+
+    assert art_for_location(location(registry, "old_crypt")) == load_art().pictures["tomb"]
+
+
+def test_world_text_mentions_the_crypt():
+    assert "крипт" in (VALE_DIR / "world.md").read_text(encoding="utf-8")
+
+
+def test_grakh_is_still_a_goblin_boss_taking_the_prisoners(registry):
+    grakh = {n.id: n for n in vale(registry).npcs}["grakh"]
+    assert (grakh.combat["monster_id"], grakh.combat["intent"]) == ("goblin_boss", "capture")
+    assert "disarmer" in registry.get("monster", "goblin_boss").tags

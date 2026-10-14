@@ -1,0 +1,5 @@
+id: sunlight_weakness
+name: Слабость к солнцу
+description: На солнечном свете помеха на проверки, спасброски и броски атаки.
+source: srd-5.2
+license: CC-BY-4.0

@@ -1,0 +1,5 @@
+id: web_walker
+name: Хождение по паутине
+description: Не стеснён паутиной и знает, кто в ней запутался.
+source: srd-5.2
+license: CC-BY-4.0

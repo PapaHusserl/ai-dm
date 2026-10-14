@@ -1,0 +1,39 @@
+id: animated_armor
+name: Оживлённые доспехи
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: construct
+speed_ft: 25
+ac: 18
+hp: 33
+hp_dice: 6d8+6
+cr: '1'
+abilities:
+  str: 14
+  dex: 11
+  con: 13
+  int: 1
+  wis: 3
+  cha: 1
+damage_immunities:
+- poison
+- psychic
+condition_immunities:
+- charmed
+- deafened
+- exhaustion
+- frightened
+- paralyzed
+- petrified
+- poisoned
+actions:
+- name: Удар
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d6+2
+  damage_type: bludgeoning
+multiattack:
+- action: Удар
+  count: 2

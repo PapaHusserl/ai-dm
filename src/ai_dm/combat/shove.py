@@ -1,5 +1,5 @@
 from ai_dm.combat import falling
-from ai_dm.combat.actions.attack import spend_attack
+from ai_dm.combat.actions.attack import SIZES, spend_attack, target_size
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.derived import (
     ability_mod,
@@ -40,6 +40,11 @@ def may_shove(engine, ref) -> bool:
     if engine.is_hero(ref) or not engine.is_capable(ref):
         return False
     return engine.monster(ref).creature_type in engine.cfg.disarm.unarmed_types
+
+
+def size_ok(engine, ref, target) -> bool:
+    # толкнуть можно цель не больше чем на одну категорию размера крупнее толкающего
+    return SIZES.index(target_size(engine, target)) <= SIZES.index(target_size(engine, ref)) + 1
 
 
 def perform(engine, ref, option) -> list[DomainEvent]:

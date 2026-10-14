@@ -1,0 +1,41 @@
+id: swarm_of_rats
+name: Рой крыс
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 30
+ac: 10
+hp: 14
+hp_dice: 4d8-4
+cr: 1/4
+abilities:
+  str: 9
+  dex: 11
+  con: 9
+  int: 2
+  wis: 10
+  cha: 3
+damage_resistances:
+- bludgeoning
+- piercing
+- slashing
+condition_immunities:
+- charmed
+- frightened
+- grappled
+- paralyzed
+- petrified
+- prone
+- restrained
+- stunned
+traits:
+- swarm
+actions:
+- name: Укусы
+  kind: melee
+  attack_bonus: 2
+  reach_ft: 5
+  damage_dice: 2d4
+  damage_type: piercing
+  description: 'Если рой ранен вполовину: 1к4 вместо 2к4.'

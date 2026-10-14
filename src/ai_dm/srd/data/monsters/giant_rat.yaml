@@ -1,0 +1,27 @@
+id: giant_rat
+name: Гигантская крыса
+source: srd-5.2
+license: CC-BY-4.0
+size: small
+creature_type: beast
+speed_ft: 30
+ac: 13
+hp: 7
+hp_dice: 2d6
+cr: 1/8
+abilities:
+  str: 7
+  dex: 16
+  con: 11
+  int: 2
+  wis: 10
+  cha: 4
+traits:
+- pack_tactics
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d4+3
+  damage_type: piercing

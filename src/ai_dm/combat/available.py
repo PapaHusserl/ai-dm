@@ -146,31 +146,40 @@ def spell_entries(engine, ref, spell, cost) -> list[ActionOption]:
     result = []
     for circle in circles:
         for target in cast.cast_targets(engine, ref, spell, circle):
-            params = {"spell": spell.id, "circle": circle, "target": target}
-            # заряд ложится на самого заклинателя: цель в подписи не нужна
-            where = f"→ {target_text(engine, target)}"
-            if cast.spell_kind(spell) == "rider":
-                where = "(заряд)"
-            name = spell.name
-            if circle > spell.level:
-                name = f"{spell.name} ({circle} круг)"
-            if circle in usable:
-                result.append(
-                    ActionOption(
-                        id=f"cast:{spell.id}:{circle}:{target}", kind="cast",
-                        label=f"{name} {where}", params=params,
-                        cost=cost,
-                    )
-                )
-            if circle == spell.level and free_pool is not None:
-                label = f"{name} {where} "
-                label += f"(без ячейки, {free_pool.current}/{free_pool.max})"
-                result.append(
-                    ActionOption(
-                        id=f"cast:{spell.id}:{circle}:{target}:free", kind="cast",
-                        label=label, params={**params, "free": True}, cost=cost,
-                    )
-                )
+            result += circle_options(engine, spell, (circle, target), (usable, free_pool), cost)
+    return result
+
+
+def circle_options(engine, spell, circle_target, slots, cost) -> list[ActionOption]:
+    # пункты заклинания на один круг и цель; slots = (usable, free_pool)
+    circle, target = circle_target
+    usable, free_pool = slots
+    result = []
+    params = {"spell": spell.id, "circle": circle, "target": target}
+    # заряд ложится на самого заклинателя: цель в подписи не нужна
+    where = f"→ {target_text(engine, target)}"
+    if cast.spell_kind(spell) == "rider":
+        where = "(заряд)"
+    name = spell.name
+    if circle > spell.level:
+        name = f"{spell.name} ({circle} круг)"
+    if circle in usable:
+        result.append(
+            ActionOption(
+                id=f"cast:{spell.id}:{circle}:{target}", kind="cast",
+                label=f"{name} {where}", params=params,
+                cost=cost,
+            )
+        )
+    if circle == spell.level and free_pool is not None:
+        label = f"{name} {where} "
+        label += f"(без ячейки, {free_pool.current}/{free_pool.max})"
+        result.append(
+            ActionOption(
+                id=f"cast:{spell.id}:{circle}:{target}:free", kind="cast",
+                label=label, params={**params, "free": True}, cost=cost,
+            )
+        )
     return result
 
 
@@ -357,6 +366,8 @@ def shove_options(engine, ref) -> list[ActionOption]:
     for target in attack_targets(engine, ref):
         if not engine.is_capable(target) or engine.part(target).zone_id != own.id:
             continue
+        if not shove.size_ok(engine, ref, target):
+            continue
         for zone in [z for z in engine.state.zones if z.id in own.adjacent]:
             result.append(
                 ActionOption(
@@ -426,6 +437,50 @@ def has_nimble_escape(engine, ref) -> bool:
     return "nimble_escape" in engine.monster(ref).traits
 
 
+def standard_actions(engine, ref, conditions) -> list[ActionOption]:
+    # пункты, которые стоят действие: рывок, отход, уклонение, помощь, стабилизация, бегство
+    p = engine.part(ref)
+    if not p.turn.action:
+        return []
+    options = []
+    options.append(ActionOption(id="dash", kind="dash", label="Рывок"))
+    options.append(ActionOption(id="disengage", kind="disengage", label="Отход"))
+    options.append(ActionOption(id="dodge", kind="dodge", label="Уклонение"))
+    if can_hide(engine, ref):
+        label = f"Спрятаться (Скрытность СЛ {HIDE_DC})"
+        options.append(ActionOption(id="hide", kind="hide", label=label))
+    options += help_options(engine, ref)
+    options += parley_options(engine, ref)
+    options += stabilize_options(engine, ref)
+    options += escape_options(engine, ref)
+    zone = [z for z in engine.state.zones if z.id == p.zone_id][0]
+    if zone.exit and "restrained" not in conditions:
+        options.append(ActionOption(id="flee", kind="flee", label="Бежать"))
+    return options
+
+
+def bonus_actions(engine, ref) -> list[ActionOption]:
+    if not engine.part(ref).turn.bonus:
+        return []
+    options = []
+    if has_second_wind(engine, ref):
+        options.append(
+            ActionOption(
+                id="second_wind", kind="second_wind", label="Второе дыхание", cost="bonus"
+            )
+        )
+    options += item_options(engine, ref)
+    options += transfer_mark_options(engine, ref)
+    if has_nimble_escape(engine, ref):
+        options.append(
+            ActionOption(
+                id="disengage_bonus", kind="disengage", label="Проворное бегство",
+                params={"bonus": True}, cost="bonus",
+            )
+        )
+    return options
+
+
 def list_options(engine, ref) -> list[ActionOption]:
     p = engine.part(ref)
     if p.status != "active":
@@ -442,37 +497,8 @@ def list_options(engine, ref) -> list[ActionOption]:
         options += multiattack_options(engine, ref)
     options += cast_options(engine, ref)
     options += move_options(engine, ref)
-    if p.turn.action:
-        options.append(ActionOption(id="dash", kind="dash", label="Рывок"))
-        options.append(ActionOption(id="disengage", kind="disengage", label="Отход"))
-        options.append(ActionOption(id="dodge", kind="dodge", label="Уклонение"))
-        if can_hide(engine, ref):
-            label = f"Спрятаться (Скрытность СЛ {HIDE_DC})"
-            options.append(ActionOption(id="hide", kind="hide", label=label))
-        options += help_options(engine, ref)
-        options += parley_options(engine, ref)
-    if p.turn.bonus:
-        if has_second_wind(engine, ref):
-            options.append(
-                ActionOption(
-                    id="second_wind", kind="second_wind", label="Второе дыхание", cost="bonus"
-                )
-            )
-        options += item_options(engine, ref)
-        options += transfer_mark_options(engine, ref)
-        if has_nimble_escape(engine, ref):
-            options.append(
-                ActionOption(
-                    id="disengage_bonus", kind="disengage", label="Проворное бегство",
-                    params={"bonus": True}, cost="bonus",
-                )
-            )
-    if p.turn.action:
-        options += stabilize_options(engine, ref)
-        options += escape_options(engine, ref)
-        zone = [z for z in engine.state.zones if z.id == p.zone_id][0]
-        if zone.exit and "restrained" not in conditions:
-            options.append(ActionOption(id="flee", kind="flee", label="Бежать"))
+    options += bonus_actions(engine, ref)
+    options += standard_actions(engine, ref, conditions)
     options += pickup_options(engine, ref) + horde_options(engine, ref)
     options.append(end_turn)
     if p.turn.attacks_left > 0 and not p.turn.action:

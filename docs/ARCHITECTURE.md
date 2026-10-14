@@ -860,3 +860,28 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
   `~/.config/ai-dm`), `config.toml` (руками) и `audio.toml` (пишет игра, поверх), `load_user_settings(env)` во всех точках входа cli (`prepare`, `--import`,
   `--replay-report`).
 - Теги паков: `vale` (долина, таверна, подвал), `drunk_dragon/deep_shaft` (шахта); остальные локации берут тему родителя.
+
+## К7д. Монстры SRD 5.2 ПО 0–5 и их черты (сейв v9 не меняется)
+
+- Данные: `srd/data/monsters` (30 монстров), `srd/data/features` (механические черты `pack_tactics`, `undead_fortitude`,
+  `death_burst` и описательные для рассказчика); происхождение — `srd/data/ATTRIBUTION.md`. Скрипт импорта вне репозитория.
+- Модель (`content/models/monsters.py`): `MonsterAction.extra_damage_dice/extra_damage_type` (доп. урон другого типа),
+  `MonsterAction.on_hit: HitRider` (состояние, необязательный спасбросок, `max_size`, `exempt`, длительность
+  `target_turn`/`source_turn`/`minute`, урон при провале), `Monster.fly_ft`, `Monster.death_burst: DeathBurst`.
+  Проверка ссылок и типов — `content/monster_checks.py` (из `loader.check_refs`).
+- `rules/damage.DamageResult.damage_types` — типы урона, из которых сложен результат (пишет `apply_damage`, складывает
+  `attack.merge_damage`).
+- `combat/monster_traits.py`: `has_trait`, `pack_ally`, `PackTacticsSource` (регистрируется в `CombatEngine.__init__`, тег
+  `pack` ставит `attack.attack_tags`), `endures` (зовёт `downed.after_damage` до `monster_damaged`), `extra_damage` и
+  `on_hit` (зовёт `attack.attack` после `special_damage`, до `after_damage`; `AttackInfo.action` несёт действие монстра).
+- `combat/death_burst.explode` — зовёт `downed.kill_monster` после события смерти; урон идёт через `engine.damage` и
+  `downed.after_damage` (цепочка взрывов возможна).
+- `combat/falling.hovers`: монстр с `fly_ft` не падает, пока дееспособен и не лежит. `rules/loot.NO_COIN_TYPES`: монет за
+  зверей, конструктов и элементалей нет.
+- Толчок: `shove.size_ok` (цель не больше чем на категорию крупнее) — `available.shove_options` и
+  `improvise.size_problem` (`Rejected("target_too_large")` до броска).
+- Рассказчик: `master/prompt.monster_trait_notes` → `combat.monster_traits` (только в бою, строки ≤ 100 символов); схема
+  запросов не менялась.
+- Сетка: `devtools/sim_cellar.py` (`CELLAR_POOL`, `fill_budget` — жадный набор по бюджету боя, `build_cellar`), сцена
+  `cellar` в `sim_combat.SCENARIOS` и `sim_grid.SCENES`; `--difficulty` меняет её состав (`tier_of` → `party_budget`).
+  Подвал Вейла: локация `old_crypt` (родитель `cellar`), тег `disarmer` у `goblin_boss` и `wight`.

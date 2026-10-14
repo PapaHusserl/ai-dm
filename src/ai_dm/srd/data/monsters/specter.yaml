@@ -1,0 +1,52 @@
+id: specter
+name: Призрак
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 30
+fly_ft: 50
+ac: 12
+hp: 22
+hp_dice: 5d8
+cr: '1'
+abilities:
+  str: 1
+  dex: 14
+  con: 11
+  int: 10
+  wis: 10
+  cha: 11
+damage_immunities:
+- necrotic
+- poison
+damage_resistances:
+- acid
+- bludgeoning
+- cold
+- fire
+- lightning
+- piercing
+- slashing
+- thunder
+condition_immunities:
+- charmed
+- exhaustion
+- grappled
+- paralyzed
+- petrified
+- poisoned
+- prone
+- restrained
+- unconscious
+traits:
+- incorporeal_movement
+- sunlight_sensitivity
+actions:
+- name: Похищение жизни
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 2d6
+  damage_type: necrotic
+  description: Максимум HP цели уменьшается на полученный урон.

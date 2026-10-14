@@ -1,0 +1,31 @@
+id: giant_spider
+name: Гигантский паук
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: beast
+speed_ft: 30
+ac: 14
+hp: 26
+hp_dice: 4d10+4
+cr: '1'
+abilities:
+  str: 14
+  dex: 16
+  con: 12
+  int: 2
+  wis: 11
+  cha: 4
+traits:
+- spider_climb
+- web_walker
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d8+3
+  damage_type: piercing
+  extra_damage_dice: 2d6
+  extra_damage_type: poison
+# действие без движка, только текст: Паутина (перезарядка 5-6): Лов СЛ 13, цель в 60 фт., провал -- опутана, пока паутина цела (КД 10, 5 HP, уязвима к огню).

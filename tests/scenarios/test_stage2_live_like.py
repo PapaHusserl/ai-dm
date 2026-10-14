@@ -21,7 +21,7 @@ from game_kit import (  # noqa: E402
 
 from ai_dm.llm.types import ChatResponse, Text, ToolCall, ToolResult, Usage  # noqa: E402
 
-SEED = 7
+SEED = 1  # К7д: с 7 Гракх не умирает (у goblin_boss тег disarmer -- другой расход бросков)
 DESCEND = "Спускаюсь в подвал"
 ALL_EXPLORE = {"advance_time", "start_combat"}
 

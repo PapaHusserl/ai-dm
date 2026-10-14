@@ -1,0 +1,43 @@
+id: steam_mephit
+name: Паровой мефит
+source: srd-5.2
+license: CC-BY-4.0
+size: small
+creature_type: elemental
+speed_ft: 30
+fly_ft: 30
+ac: 10
+hp: 17
+hp_dice: 5d6
+cr: 1/4
+abilities:
+  str: 5
+  dex: 11
+  con: 10
+  int: 11
+  wis: 10
+  cha: 12
+damage_immunities:
+- fire
+- poison
+condition_immunities:
+- exhaustion
+- poisoned
+traits:
+- blurred_form
+- death_burst
+death_burst:
+  save: dex
+  dc: 10
+  dice: 2d4
+  damage_type: fire
+actions:
+- name: Коготь
+  kind: melee
+  attack_bonus: 2
+  reach_ft: 5
+  damage_dice: 1d4
+  damage_type: slashing
+  extra_damage_dice: 1d4
+  extra_damage_type: fire
+# действие без движка, только текст: Паровое дыхание (перезарядка 6): Тел СЛ 10, конус 15 фт., 2к4 огня (успех -- половина), скорость -10 фт. до конца следующего хода мефита.

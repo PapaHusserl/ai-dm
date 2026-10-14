@@ -16,6 +16,7 @@ from ai_dm.content.models.monsters import Monster
 from ai_dm.content.models.species import Species
 from ai_dm.content.models.spells import Spell
 from ai_dm.content.models.tables import Table
+from ai_dm.content.monster_checks import check_monster_actions
 from ai_dm.content.registry import ContentRegistry
 
 SRD_DIR = Path(__file__).parent.parent / "srd" / "data"
@@ -160,9 +161,7 @@ def check_refs(items, paths):
             if not has("feature", trait):
                 bad("monster", id, "traits", f"неизвестное умение '{trait}'")
         check_monster_gear(monster, id, has, bad, items)
-        for action in monster.actions:
-            if action.weapon_id is not None and not has("weapon", action.weapon_id):
-                bad("monster", id, "actions", f"неизвестное оружие '{action.weapon_id}'")
+        check_monster_actions(monster, id, has, bad)
     return errors
 
 

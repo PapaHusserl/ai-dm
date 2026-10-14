@@ -1,0 +1,27 @@
+id: panther
+name: Пантера
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 50
+ac: 13
+hp: 13
+hp_dice: 3d8
+cr: 1/4
+abilities:
+  str: 14
+  dex: 16
+  con: 10
+  int: 3
+  wis: 14
+  cha: 7
+traits:
+- nimble_escape
+actions:
+- name: Разрыв
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d6+3
+  damage_type: slashing

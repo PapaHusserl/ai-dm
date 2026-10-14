@@ -1,0 +1,30 @@
+id: dire_wolf
+name: Лютый волк
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: beast
+speed_ft: 50
+ac: 14
+hp: 22
+hp_dice: 3d10+6
+cr: '1'
+abilities:
+  str: 17
+  dex: 15
+  con: 15
+  int: 3
+  wis: 12
+  cha: 7
+traits:
+- pack_tactics
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d10+3
+  damage_type: piercing
+  on_hit:
+    condition: prone
+    max_size: large

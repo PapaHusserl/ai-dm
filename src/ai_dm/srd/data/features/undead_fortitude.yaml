@@ -1,0 +1,5 @@
+id: undead_fortitude
+name: Стойкость нежити
+description: 'На 0 HP спасбросок Тел СЛ 5 + урон (кроме излучения и крита): успех — 1 HP. Движок: проверяется в downed.after_damage.'
+source: srd-5.2
+license: CC-BY-4.0

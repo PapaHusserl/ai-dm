@@ -1,3 +1,4 @@
+from ai_dm.combat import death_burst, monster_traits
 from ai_dm.combat.actions import parley
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules import death_saves
@@ -29,6 +30,11 @@ def intervention_event(hero) -> DomainEvent:
     return DomainEvent(type="divine_intervention", data=data)
 
 
+def death_cause(by) -> str:
+    # причина смерти: от чужого удара (goal) или от опасности без автора (hazard)
+    return "hazard" if by is None else "goal"
+
+
 def add_unconscious(creature) -> None:
     if not any(c.id == "unconscious" and c.source == "0_hp" for c in creature.conditions):
         creature.conditions.append(AppliedCondition(id="unconscious", source="0_hp"))
@@ -40,6 +46,8 @@ def after_damage(
     # вызывается после apply_damage: 0 HP, смерть, концентрация
     if target_ref in engine.heroes:
         return hero_damaged(engine, target_ref, dealt, attacker_ref, crit)
+    if monster_traits.endures(engine, target_ref, dealt, crit):
+        return []
     return monster_damaged(engine, target_ref, dealt, attacker_ref, nonlethal)
 
 
@@ -67,17 +75,15 @@ def kill_monster(engine, ref, attacker_ref) -> list[DomainEvent]:
     p.status = "dead"
     end_concentration(engine.creature(ref))
     engine.log(f"  {engine.name(ref)} убит")
-    cause = "goal"
-    if attacker_ref is None:
-        cause = "hazard"
+    cause = death_cause(attacker_ref)
     if ref in engine.world.npcs:
         # именованный NPC: смерть только через страж причин
         events = remove_creature(engine.world, ref, "dead", cause, by=attacker_ref)
         if isinstance(events, Rejected):
             raise ValueError(f"смерть NPC {ref!r} отклонена: {events.reason}")
-        return events
+        return events + death_burst.explode(engine, ref)
     data = {"id": ref, "monster_id": engine.part(ref).monster_id, "by": attacker_ref}
-    return [DomainEvent(type="monster_died", data=data)]
+    return [DomainEvent(type="monster_died", data=data)] + death_burst.explode(engine, ref)
 
 
 # герои
@@ -91,9 +97,7 @@ def hero_damaged(engine, ref, dealt, attacker_ref, crit) -> list[DomainEvent]:
     held = engine.concentration_targets(ref)
     if attacker_ref is not None:
         p.last_hit_by = attacker_ref
-    cause = "goal"
-    if attacker_ref is None:
-        cause = "hazard"
+    cause = death_cause(attacker_ref)
     now_s = engine.world.clock.now_s
     events = []
     if dealt.dropped:
@@ -214,9 +218,7 @@ def death_save(engine, ref) -> list[DomainEvent]:
     if not death_saves.is_dying(hero.creature):
         return []
     by = p.last_hit_by
-    cause = "goal"
-    if by is None:
-        cause = "hazard"
+    cause = death_cause(by)
     result = death_saves.roll_death_save(
         hero, engine.registry, engine.rng, now_s=engine.world.clock.now_s, cause=cause, by=by,
         intervene=engine.intervene,

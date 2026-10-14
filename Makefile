@@ -1,7 +1,7 @@
 # Проверки качества (локально). Пороги: см. pyproject.toml и SMELLS_MAX ниже.
 QLTY ?= $(HOME)/.qlty/bin/qlty
 # ratchet: число запахов Qlty (сложность/параметры/дубли) на базовой линии; только вниз
-SMELLS_MAX ?= 206
+SMELLS_MAX ?= 200
 # мутации: MOD=ai_dm.rules.money (по умолчанию — модули, изменённые относительно HEAD)
 MOD ?= $(shell git diff --name-only HEAD -- src/ai_dm | grep '\.py$$' | sed 's|^src/||; s|\.py$$||; s|/|.|g')
 

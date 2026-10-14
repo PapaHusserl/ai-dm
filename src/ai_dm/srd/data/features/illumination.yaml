@@ -1,0 +1,5 @@
+id: illumination
+name: Освещение
+description: Излучает яркий и тусклый свет.
+source: srd-5.2
+license: CC-BY-4.0

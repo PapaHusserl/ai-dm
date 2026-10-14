@@ -69,6 +69,33 @@ def roll_death_save(
     return check_three(hero, cause, by, now_s, intervene) or outcome
 
 
+def fatal(hero, death) -> str:
+    # окончательная смерть: божественное вмешательство или mark_dead;
+    # death = (cause, by, now_s, intervene)
+    cause, by, now_s, intervene = death
+    if divine_save(hero, intervene):
+        return "saved"
+    mark_dead(hero, cause, by, now_s)
+    return "dead"
+
+
+def hit_while_down(hero, result, crit, death) -> str:
+    creature = hero.creature
+    if result.final == 0:
+        return "none"
+    if result.hp_lost + result.overkill == 0:
+        # временные HP съели весь урон
+        return "none"
+    if result.final >= creature.hp_max:
+        return fatal(hero, death)
+    # урон на 0 HP снимает стабильность и даёт провал (крит -- два), успехи сохраняются
+    creature.death_saves.stable = False
+    creature.death_saves.failures += 2 if crit else 1
+    if creature.death_saves.failures >= 3:
+        return fatal(hero, death)
+    return "failure"
+
+
 def after_damage(
     hero, result, *, crit: bool = False, cause: str, by: str | None = None, now_s: int = 0,
     intervene=None,
@@ -76,37 +103,17 @@ def after_damage(
     if hero.status == "dead":
         return "dead"
     creature = hero.creature
+    death = (cause, by, now_s, intervene)
     if result.was_down:
-        if result.final == 0:
-            return "none"
-        if result.hp_lost + result.overkill == 0:
-            # временные HP съели весь урон
-            return "none"
-        if result.final >= creature.hp_max:
-            if divine_save(hero, intervene):
-                return "saved"
-            mark_dead(hero, cause, by, now_s)
-            return "dead"
-        # урон на 0 HP снимает стабильность и даёт провал (крит -- два), успехи сохраняются
-        creature.death_saves.stable = False
-        creature.death_saves.failures += 2 if crit else 1
-        if creature.death_saves.failures >= 3:
-            if divine_save(hero, intervene):
-                return "saved"
-            mark_dead(hero, cause, by, now_s)
-            return "dead"
-        return "failure"
-    if result.dropped:
-        if result.overkill >= creature.hp_max:
-            if divine_save(hero, intervene):
-                return "saved"
-            mark_dead(hero, cause, by, now_s)
-            return "dead"
-        end_concentration(creature)
-        creature.death_saves = DeathSaves()
-        creature.conditions.append(AppliedCondition(id="unconscious", source="0_hp"))
-        return "down"
-    return "none"
+        return hit_while_down(hero, result, crit, death)
+    if not result.dropped:
+        return "none"
+    if result.overkill >= creature.hp_max:
+        return fatal(hero, death)
+    end_concentration(creature)
+    creature.death_saves = DeathSaves()
+    creature.conditions.append(AppliedCondition(id="unconscious", source="0_hp"))
+    return "down"
 
 
 def resolve_out_of_combat(

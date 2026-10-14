@@ -25,6 +25,8 @@ class DamageResult(BaseModel):
     raw: int = 0
     # строки лога: «Сопротивление (Каменная Кожа): 3 → 1 рубящий», «Временные HP поглотили 2»
     notes: list[str] = []
+    # типы урона, из которых сложен результат (Стойкости нежити нужно излучение)
+    damage_types: list[str] = []
 
 
 def source_name(registry, kind, source_id) -> str:
@@ -105,6 +107,7 @@ def apply_damage(
         overkill=rest - hp_lost,
         raw=amount,
         notes=notes,
+        damage_types=[damage_type],
     )
 
 

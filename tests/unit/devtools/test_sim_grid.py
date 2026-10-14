@@ -1,7 +1,7 @@
 # Партия К7к, п. 4.3: сетка sim_grid -- класс x уровень x сцена (docs/K7K-PLAN.md, В1а, В8а,
 # Q2а, Q3а).
-#   SCENES = {"goblins3": "goblins3"}; LEVELS = range(1, 6); не входит в `make test` (цель
-#   `make sim-grid` = `python -m ai_dm.devtools.sim_grid --check`).
+#   SCENES = {"goblins3": "goblins3", "cellar": "cellar"} (К7д); LEVELS = range(1, 6); не входит
+#   в `make test` (цель `make sim-grid` = `python -m ai_dm.devtools.sim_grid --check`).
 #   Cell(wins, deaths, other, mean_rounds): total, share (доля побед в %); исход "victory" --
 #     победа, "hero_dead" -- смерть, остальное -- other;
 #   run_cell((class_id, level, scene), (registry, cfg), seeds, difficulty=None) -> Cell: герой
@@ -57,7 +57,7 @@ def run_main(argv, capsys):
 # константы
 
 def test_scenes_and_levels():
-    assert SCENES == {"goblins3": "goblins3"}
+    assert SCENES == {"goblins3": "goblins3", "cellar": "cellar"}
     assert list(LEVELS) == [1, 2, 3, 4, 5]
 
 
@@ -203,7 +203,7 @@ def test_run_grid_full_grid_has_25_rows(registry, cfg, monkeypatch):
         return Cell(1, 0, 0, 1.0)
 
     monkeypatch.setattr(sim_grid, "run_cell", fake)
-    rows = run_grid((registry, cfg), (CLASSES, LEVELS, SCENES), range(2))
+    rows = run_grid((registry, cfg), (CLASSES, LEVELS, ["goblins3"]), range(2))
     assert len(rows) == 25
     assert {(r.class_id, r.level) for r in rows} == {(c, n) for c in CLASSES for n in LEVELS}
     assert calls[0] == ("fighter", 1, "goblins3", [0, 1], None)
@@ -340,8 +340,8 @@ def test_baseline_data_roundtrips_into_compare():
 # main
 
 def small(tmp_path, *extra):
-    return ["--seeds", "3", "--classes", "fighter", "--levels", "1", "--baseline",
-            str(tmp_path / "base.yaml"), *extra]
+    return ["--seeds", "3", "--classes", "fighter", "--levels", "1", "--scene", "goblins3",
+            "--baseline", str(tmp_path / "base.yaml"), *extra]
 
 
 def write_baseline(tmp_path, value, tolerance, level=1):
@@ -358,17 +358,18 @@ def test_main_prints_the_table_and_returns_zero(tmp_path, capsys):
 
 def test_main_runs_the_classes_and_levels_asked(tmp_path, capsys):
     argv = ["--seeds", "2", "--classes", "fighter", "wizard", "--levels", "1", "2"]
+    argv += ["--scene", "goblins3"]
     code, out = run_main(argv, capsys)
     assert code == 0
     cells = [line for line in out.splitlines() if " ур.:" in line]
     assert len(cells) == 4
 
 
-def test_main_default_grid_is_25_cells(capsys, monkeypatch):
+def test_main_default_grid_is_two_scenes_of_25_cells(capsys, monkeypatch):
     monkeypatch.setattr(sim_grid, "run_cell", lambda *args, **kwargs: Cell(1, 0, 0, 1.0))
     code, out = run_main(["--seeds", "1"], capsys)
     assert code == 0
-    assert len([line for line in out.splitlines() if " ур.:" in line]) == 25
+    assert len([line for line in out.splitlines() if " ур.:" in line]) == 50
 
 
 def test_main_passes_seeds_and_difficulty(capsys, monkeypatch):
@@ -385,7 +386,7 @@ def test_main_passes_seeds_and_difficulty(capsys, monkeypatch):
     assert list(seen["seeds"]) == list(range(7))
     assert seen["classes"] == ["rogue"]
     assert seen["levels"] == [2, 3]
-    assert seen["scenes"] == ["goblins3"]
+    assert seen["scenes"] == ["goblins3", "cellar"]
     assert seen["difficulty"] == "hard"
 
 

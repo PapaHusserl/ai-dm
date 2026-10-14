@@ -1,0 +1,26 @@
+id: hawk
+name: Ястреб
+source: srd-5.2
+license: CC-BY-4.0
+size: tiny
+creature_type: beast
+speed_ft: 10
+fly_ft: 60
+ac: 13
+hp: 1
+hp_dice: 1d4-1
+cr: '0'
+abilities:
+  str: 5
+  dex: 16
+  con: 8
+  int: 2
+  wis: 14
+  cha: 6
+actions:
+- name: Когти
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d1
+  damage_type: slashing

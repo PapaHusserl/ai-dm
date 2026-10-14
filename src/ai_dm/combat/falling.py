@@ -2,6 +2,7 @@ from ai_dm.combat import downed
 from ai_dm.combat.actions.attack import roll_damage
 from ai_dm.combat.zones import drop_steps
 from ai_dm.core.events import DomainEvent
+from ai_dm.rules.modifiers.conditions import with_implied
 from ai_dm.state.creature import AppliedCondition
 
 # SRD 5.2: 1d6 дробящего за каждые 10 фт (кость FALL_DIE), не больше 20d6
@@ -16,10 +17,21 @@ def fall_dice(steps, cfg) -> str | None:
     return f"{count}{FALL_DIE}"
 
 
+def hovers(engine, ref) -> bool:
+    # летающий монстр, пока не лежит и дееспособен, парит и не падает
+    if not engine.monster_of(ref) or engine.monster(ref).fly_ft <= 0:
+        return False
+    conditions = {c.id for c in with_implied(engine.creature(ref))}
+    return engine.is_capable(ref) and not conditions & {"prone", "incapacitated"}
+
+
 def fall(engine, target, from_zone_id, by_ref) -> list[DomainEvent]:
     steps = drop_steps(engine.state.zones, from_zone_id, engine.part(target).zone_id)
     dice = fall_dice(steps, engine.cfg)
     if dice is None:
+        return []
+    if hovers(engine, target):
+        engine.log(f"  {engine.name(target)} парит")
         return []
     feet = steps * engine.cfg.combat.fall_step_ft
     engine.log(f"  {engine.name(target)} падает с высоты {feet} фт")

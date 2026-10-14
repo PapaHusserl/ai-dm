@@ -13,6 +13,7 @@ from ai_dm.combat.actions import (
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.combat.available import ActionOption, list_options
 from ai_dm.combat.controllers import AutoHeroController, EngineTactics
+from ai_dm.combat.monster_traits import PackTacticsSource
 from ai_dm.combat.setup import CombatSetupError, validate_start
 from ai_dm.combat.zones import CoverSource, ElevationSource
 from ai_dm.core.events import DomainEvent
@@ -123,6 +124,7 @@ class CombatEngine:
         self.modifiers = default_modifier_registry()
         self.modifiers.register(CoverSource())
         self.modifiers.register(ElevationSource())
+        self.modifiers.register(PackTacticsSource())
         self.cast_checks = default_cast_check_registry()
         self.controllers = dict(controllers or {})
         # id главы для «раз за главу» у божественного вмешательства; ставит слой game

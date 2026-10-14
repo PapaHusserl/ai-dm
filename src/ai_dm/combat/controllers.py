@@ -46,6 +46,10 @@ class EngineTactics:
         attack = self.pick_attack(options, ref)
         if attack is not None:
             return attack
+        return self.approach(options, ref)
+
+    def approach(self, options, ref) -> str:
+        ids = [o.id for o in options]
         target = self.nearest_enemy(ref)
         if target is None:
             return "end_turn"

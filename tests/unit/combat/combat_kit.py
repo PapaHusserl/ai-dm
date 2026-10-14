@@ -312,3 +312,26 @@ def option_ids(engine, ref):
 
 def turn(engine, ref):
     return part(engine, ref).turn
+
+
+def custom_registry(registry, base_id="goblin_warrior", **monsters):
+    # реестр с монстрами-копиями base_id: monsters = {новый_id: {поле: значение}}
+    from ai_dm.content.models.monsters import Monster
+
+    items = []
+    for new_id, fields in monsters.items():
+        data = registry.get("monster", base_id).model_dump()
+        data.update(fields)
+        data["id"] = new_id
+        items.append(Monster.model_validate(data))
+    return registry.with_items({"monster": items})
+
+
+def bite(**fields):
+    # действие-укус для custom_registry: +5 к атаке, 1d6 колющего
+    action = {
+        "name": "Bite", "kind": "melee", "attack_bonus": 5, "damage_dice": "1d6",
+        "damage_type": "piercing", "reach_ft": 5,
+    }
+    action.update(fields)
+    return action

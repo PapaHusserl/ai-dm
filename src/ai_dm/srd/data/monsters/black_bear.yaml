@@ -1,0 +1,28 @@
+id: black_bear
+name: Чёрный медведь
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 30
+ac: 11
+hp: 19
+hp_dice: 3d8+6
+cr: 1/2
+abilities:
+  str: 15
+  dex: 12
+  con: 14
+  int: 2
+  wis: 12
+  cha: 7
+actions:
+- name: Разрыв
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d6+2
+  damage_type: slashing
+multiattack:
+- action: Разрыв
+  count: 2

@@ -1,6 +1,6 @@
 from typing import get_args
 
-from ai_dm.combat import disarm, downed, falling
+from ai_dm.combat import disarm, downed, falling, shove
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.checks import dc_for_category, skill_check
@@ -39,6 +39,13 @@ def spec_problem(state, effect, target, zone) -> str | None:
     return None
 
 
+def size_problem(engine, ref, effect, target) -> str | None:
+    # толчок только цели не больше чем на одну категорию размера крупнее
+    if effect == "push" and not shove.size_ok(engine, ref, target):
+        return "target_too_large"
+    return None
+
+
 def check_request(engine, ref, effect, target, zone):
     # возвращает Rejected или None; ничего не бросает и не тратит
     p = engine.part(ref)
@@ -46,7 +53,9 @@ def check_request(engine, ref, effect, target, zone):
         return rejected("not_a_hero")
     if p.status != "active" or not p.turn.action:
         return rejected("not_available")
-    problem = spec_problem(engine.state, effect, target, zone)
+    problem = spec_problem(engine.state, effect, target, zone) or size_problem(
+        engine, ref, effect, target
+    )
     return None if problem is None else rejected(problem)
 
 

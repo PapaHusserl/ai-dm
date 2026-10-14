@@ -1,0 +1,5 @@
+id: spider_climb
+name: Паучье лазание
+description: Лазает по сложным поверхностям, в том числе по потолку, без проверок.
+source: srd-5.2
+license: CC-BY-4.0

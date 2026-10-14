@@ -1,0 +1,5 @@
+id: blurred_form
+name: Размытая форма
+description: Броски атаки по нему с помехой, пока он дееспособен.
+source: srd-5.2
+license: CC-BY-4.0

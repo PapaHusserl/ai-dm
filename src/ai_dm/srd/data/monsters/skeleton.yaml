@@ -1,0 +1,41 @@
+id: skeleton
+name: Скелет
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 30
+ac: 14
+hp: 13
+hp_dice: 2d8+4
+cr: 1/4
+abilities:
+  str: 10
+  dex: 16
+  con: 15
+  int: 6
+  wis: 8
+  cha: 5
+damage_immunities:
+- poison
+damage_vulnerabilities:
+- bludgeoning
+condition_immunities:
+- exhaustion
+- poisoned
+actions:
+- name: Короткий меч
+  kind: melee
+  weapon_id: shortsword
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d6+3
+  damage_type: piercing
+- name: Короткий лук
+  kind: ranged
+  weapon_id: shortbow
+  attack_bonus: 5
+  range_normal_ft: 80
+  range_long_ft: 320
+  damage_dice: 1d6+3
+  damage_type: piercing

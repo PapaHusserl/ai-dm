@@ -1,0 +1,5 @@
+id: flyby
+name: Пролёт
+description: Не провоцирует атаку, вылетая из зоны досягаемости врага.
+source: srd-5.2
+license: CC-BY-4.0

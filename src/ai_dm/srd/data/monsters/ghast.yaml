@@ -1,0 +1,51 @@
+id: ghast
+name: Вурдалак
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 30
+ac: 13
+hp: 36
+hp_dice: 8d8
+cr: '2'
+abilities:
+  str: 16
+  dex: 17
+  con: 10
+  int: 11
+  wis: 10
+  cha: 8
+damage_immunities:
+- poison
+damage_resistances:
+- necrotic
+condition_immunities:
+- charmed
+- exhaustion
+- poisoned
+traits:
+- stench
+# порядок действий намеренный: Коготь (паралич) первым, иначе ИИ его не использует
+actions:
+- name: Коготь
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 2d6+3
+  damage_type: slashing
+  on_hit:
+    condition: paralyzed
+    save: con
+    dc: 10
+    duration: target_turn
+    exempt:
+    - undead
+- name: Укус
+  kind: melee
+  attack_bonus: 5
+  reach_ft: 5
+  damage_dice: 1d8+3
+  damage_type: piercing
+  extra_damage_dice: 2d8
+  extra_damage_type: necrotic

@@ -1,0 +1,32 @@
+id: zombie
+name: Зомби
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 20
+ac: 8
+hp: 15
+hp_dice: 2d8+6
+cr: 1/4
+abilities:
+  str: 13
+  dex: 6
+  con: 16
+  int: 3
+  wis: 6
+  cha: 5
+damage_immunities:
+- poison
+condition_immunities:
+- exhaustion
+- poisoned
+traits:
+- undead_fortitude
+actions:
+- name: Удар
+  kind: melee
+  attack_bonus: 3
+  reach_ft: 5
+  damage_dice: 1d8+1
+  damage_type: bludgeoning

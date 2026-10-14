@@ -18,6 +18,8 @@ abilities:
   int: 10
   wis: 8
   cha: 10
+tags:
+- disarmer
 traits:
 - nimble_escape
 - redirect_attack

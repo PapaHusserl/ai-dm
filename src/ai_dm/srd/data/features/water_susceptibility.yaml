@@ -1,0 +1,5 @@
+id: water_susceptibility
+name: Уязвимость к воде
+description: Получает урон холодом за каждые 5 фт. движения по воде или галлон воды.
+source: srd-5.2
+license: CC-BY-4.0

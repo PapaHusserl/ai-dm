@@ -1,0 +1,50 @@
+id: fire_elemental
+name: Огненный элементаль
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: elemental
+speed_ft: 50
+ac: 13
+hp: 93
+hp_dice: 11d10+33
+cr: '5'
+abilities:
+  str: 10
+  dex: 17
+  con: 16
+  int: 6
+  wis: 10
+  cha: 7
+damage_immunities:
+- fire
+- poison
+damage_resistances:
+- bludgeoning
+- piercing
+- slashing
+condition_immunities:
+- exhaustion
+- grappled
+- paralyzed
+- petrified
+- poisoned
+- prone
+- restrained
+- unconscious
+traits:
+- fire_aura
+- fire_form
+- illumination
+- water_susceptibility
+actions:
+- name: Ожог
+  kind: melee
+  attack_bonus: 6
+  reach_ft: 5
+  damage_dice: 2d6+3
+  damage_type: fire
+  description: Цель или горючий предмет загорается.
+multiattack:
+- action: Ожог
+  count: 2

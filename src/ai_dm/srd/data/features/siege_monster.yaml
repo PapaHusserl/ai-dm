@@ -1,0 +1,5 @@
+id: siege_monster
+name: Монстр осад
+description: Наносит двойной урон предметам и строениям.
+source: srd-5.2
+license: CC-BY-4.0

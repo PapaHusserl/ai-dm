@@ -7,13 +7,14 @@ from ai_dm.combat.engine import CombatEngine
 from ai_dm.config.settings import load_rules_config
 from ai_dm.content.loader import load_registry
 from ai_dm.core.rng import Rng
+from ai_dm.devtools.sim_cellar import build_cellar
 from ai_dm.game.starter import fighter_choices, wizard_choices
 from ai_dm.rules.builder import build_character
 from ai_dm.state.combat import CombatState, Group, Outcome, Participant, Zone, ZoneFeature
 from ai_dm.state.creature import CreatureState
 from ai_dm.state.world import WorldState
 
-SCENARIOS = ("goblins3",)
+SCENARIOS = ("goblins3", "cellar")
 VARIANTS = ("default", "weak")
 OUTCOMES = typing.get_args(Outcome)
 INTENTS = ("kill", "capture", "rob", "drive_off", "spare")
@@ -90,6 +91,8 @@ def build_scenario(
 ) -> Scenario:
     if name not in SCENARIOS:
         raise ValueError(f"неизвестный сценарий: {name!r}")
+    if name == "cellar":
+        return build_cellar(registry, cfg, seed, hero, difficulty)
     scenario = build_goblins3(registry, cfg, seed, variant, intent)
     if hero is not None:
         scenario.heroes = {hero.id: hero}

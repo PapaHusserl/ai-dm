@@ -188,8 +188,15 @@ def test_choose_turn_attacks_with_a_gentle_intent(registry, cfg):
     assert choose(roof(registry, cfg, intent="capture")).startswith("attack:")
 
 
+def plain_boss(registry):
+    # К7д: у goblin_boss тег disarmer (обезоруживает раньше multiattack); здесь -- босс без тега
+    data = registry.get("monster", "goblin_boss").model_dump()
+    data.update(id="plain_boss", tags=[])
+    return registry.with_items({"monster": [Monster.model_validate(data)]})
+
+
 def test_shove_comes_before_multiattack(registry, cfg):
-    engine = roof(registry, cfg, monster="goblin_boss")
+    engine = roof(registry, cfg, monster="plain_boss", reg=plain_boss(registry))
     assert "multiattack" in option_ids(engine, "goblin_1")
     assert choose(engine) == "shove:hero:hall"
 
@@ -303,5 +310,5 @@ def test_beast_does_not_shove_by_tactics(registry, cfg):
 
 
 def test_boss_attacks_with_multiattack_when_there_is_nothing_to_shove(registry, cfg):
-    engine = roof(registry, cfg, monster="goblin_boss", spot="hall")
+    engine = roof(registry, cfg, monster="plain_boss", spot="hall", reg=plain_boss(registry))
     assert choose(engine) == "multiattack"

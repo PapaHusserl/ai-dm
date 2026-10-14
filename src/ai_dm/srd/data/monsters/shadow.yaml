@@ -1,0 +1,51 @@
+id: shadow
+name: Тень
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 40
+ac: 12
+hp: 27
+hp_dice: 5d8+5
+cr: 1/2
+abilities:
+  str: 6
+  dex: 14
+  con: 13
+  int: 6
+  wis: 10
+  cha: 8
+damage_immunities:
+- necrotic
+- poison
+damage_resistances:
+- acid
+- cold
+- fire
+- lightning
+- thunder
+damage_vulnerabilities:
+- radiant
+condition_immunities:
+- exhaustion
+- frightened
+- grappled
+- paralyzed
+- petrified
+- poisoned
+- prone
+- restrained
+- unconscious
+traits:
+- amorphous
+- sunlight_weakness
+actions:
+- name: Иссушающий взмах
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d6+2
+  damage_type: necrotic
+  description: Сила цели уменьшается на 1к4 (0 — смерть); убитый гуманоид через 1к4 часа становится Тенью.
+# действие без движка, только текст: Бонусное действие: в тусклом свете или темноте Тень совершает Засаду.

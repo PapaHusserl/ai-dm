@@ -1,0 +1,32 @@
+id: ogre_zombie
+name: Зомби-огр
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: undead
+speed_ft: 30
+ac: 8
+hp: 85
+hp_dice: 9d10+36
+cr: '2'
+abilities:
+  str: 19
+  dex: 6
+  con: 18
+  int: 3
+  wis: 6
+  cha: 5
+damage_immunities:
+- poison
+condition_immunities:
+- exhaustion
+- poisoned
+traits:
+- undead_fortitude
+actions:
+- name: Удар
+  kind: melee
+  attack_bonus: 6
+  reach_ft: 5
+  damage_dice: 2d8+4
+  damage_type: bludgeoning

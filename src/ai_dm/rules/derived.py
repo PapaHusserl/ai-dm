@@ -138,13 +138,7 @@ def gear_ac(registry, armor_id, shield_id, dex) -> int:
     return total
 
 
-def armor_class_parts(
-    hero, registry, now_s=None, pierce=False, ignore_magic=False
-) -> list[tuple[str, int, str]]:
-    # слагаемые КД: (подпись, значение, пояснение); сумма = КД.
-    # pierce: бронебойная стрела -- без щита, доспех не выше 12 (если КД больше 12)
-    # ignore_magic: Клинок Северного Ветра -- без магических бонусов КД цели
-    dex = ability_mod(hero, "dex")
+def base_armor_parts(hero, registry, dex) -> list[tuple[str, int, str]]:
     armor_id = hero.equipped.armor
     parts = []
     if armor_id is None:
@@ -161,6 +155,11 @@ def armor_class_parts(
     if hero.equipped.shield is not None:
         shield = registry.get("armor", hero.equipped.shield)
         parts.append((shield.name, shield.ac, ""))
+    return parts
+
+
+def feat_ac_parts(hero, registry) -> list[tuple[str, int, str]]:
+    parts = []
     for feat_id in hero.sheet.feats:
         if not registry.has("feat", feat_id):
             continue
@@ -168,9 +167,14 @@ def armor_class_parts(
         for effect in feat.effects:
             if effect.type != "modifier" or effect.target != "ac":
                 continue
-            if effect.when == "wearing_armor" and armor_id is None:
+            if effect.when == "wearing_armor" and hero.equipped.armor is None:
                 continue
             parts.append((feat.name, effect_amount(effect, hero, registry), ""))
+    return parts
+
+
+def effect_ac_parts(hero, now_s, ignore_magic) -> list[tuple[str, int, str]]:
+    parts = []
     for effect in live_effects(hero.creature, now_s):
         if effect.kind != "ac":
             continue
@@ -180,9 +184,30 @@ def armor_class_parts(
         if effect.expires is not None and effect.expires.kind == "seconds":
             note = f"до {clock_text(effect.expires.value)}"
         parts.append((effect.params["label"], effect.params["amount"], note))
-    if pierce and sum(value for _, value, _ in parts) > 12:
+    return parts
+
+
+def pierce_parts(hero, registry, parts) -> list[tuple[str, int, str]]:
+    # бронебойная стрела: без щита, доспех не выше 12 (если КД больше 12)
+    if sum(value for _, value, _ in parts) > 12:
+        if hero.equipped.shield is not None:
+            shield = registry.get("armor", hero.equipped.shield)
         parts = [p for p in parts if hero.equipped.shield is None or p[0] != shield.name]
         parts[0] = (parts[0][0], min(parts[0][1], 12), parts[0][2])
+    return parts
+
+
+def armor_class_parts(
+    hero, registry, now_s=None, pierce=False, ignore_magic=False
+) -> list[tuple[str, int, str]]:
+    # слагаемые КД: (подпись, значение, пояснение); сумма = КД.
+    # pierce: бронебойная стрела -- без щита, доспех не выше 12 (если КД больше 12)
+    # ignore_magic: Клинок Северного Ветра -- без магических бонусов КД цели
+    parts = base_armor_parts(hero, registry, ability_mod(hero, "dex"))
+    parts += feat_ac_parts(hero, registry)
+    parts += effect_ac_parts(hero, now_s, ignore_magic)
+    if pierce:
+        parts = pierce_parts(hero, registry, parts)
     return parts
 
 

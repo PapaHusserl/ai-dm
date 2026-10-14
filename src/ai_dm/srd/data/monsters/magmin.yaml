@@ -1,0 +1,36 @@
+id: magmin
+name: Магмин
+source: srd-5.2
+license: CC-BY-4.0
+size: small
+creature_type: elemental
+speed_ft: 30
+ac: 14
+hp: 13
+hp_dice: 3d6+3
+cr: 1/2
+abilities:
+  str: 7
+  dex: 15
+  con: 12
+  int: 8
+  wis: 11
+  cha: 10
+damage_immunities:
+- fire
+traits:
+- death_burst
+death_burst:
+  save: dex
+  dc: 11
+  dice: 2d6
+  damage_type: fire
+actions:
+- name: Касание
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 2d4+2
+  damage_type: fire
+  description: Цель или горючий предмет загорается.
+# действие без движка, только текст: Бонусное действие: магмин загорается (яркий свет 10 фт., тусклый ещё 10) или гаснет.

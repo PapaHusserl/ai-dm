@@ -1,0 +1,5 @@
+id: bloodied_fury
+name: Ярость раненого
+description: Пока ранен (меньше половины HP), атакует с преимуществом.
+source: srd-5.2
+license: CC-BY-4.0

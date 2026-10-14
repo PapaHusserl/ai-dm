@@ -9,12 +9,21 @@
 from combat_kit import ScriptedRng, hp, make_engine, make_fighter, mon, option_ids, turn
 
 from ai_dm.combat.controllers import ScriptedController
+from ai_dm.content.models.monsters import Monster
 
 
-def boss_fight(registry, cfg, rng, controllers=None, **kwargs):
+def plain_boss(registry):
+    # К7д: у goblin_boss тег disarmer (ИИ обезоруживает раньше multiattack) -- босс без тега
+    data = registry.get("monster", "goblin_boss").model_dump()
+    data.update(id="plain_boss", tags=[])
+    return registry.with_items({"monster": [Monster.model_validate(data)]})
+
+
+def boss_fight(registry, cfg, rng, controllers=None, boss="goblin_boss", **kwargs):
+    reg = plain_boss(registry) if boss == "plain_boss" else registry
     return make_engine(
-        registry, cfg, heroes=[make_fighter(registry)], rng=rng, controllers=controllers,
-        monsters=[mon("boss", "goblin_boss", "hall")], **kwargs,
+        reg, cfg, heroes=[make_fighter(registry)], rng=rng, controllers=controllers,
+        monsters=[mon("boss", boss, "hall")], **kwargs,
     )
 
 
@@ -65,7 +74,9 @@ def test_multiattack_misses_are_reported_too(registry, cfg):
 
 def test_boss_turn_under_engine_tactics_makes_two_attacks(registry, cfg):
     controllers = {"hero": ScriptedController([])}
-    engine = boss_fight(registry, cfg, ScriptedRng(d20=[15, 15], d6=[1, 1]), controllers)
+    engine = boss_fight(
+        registry, cfg, ScriptedRng(d20=[15, 15], d6=[1, 1]), controllers, boss="plain_boss"
+    )
     engine.step()
     events = engine.step()
     assert [a["attacker"] for a in attacks(events)] == ["boss", "boss"]
@@ -74,10 +85,21 @@ def test_boss_turn_under_engine_tactics_makes_two_attacks(registry, cfg):
 def test_multiattack_is_deterministic(registry, cfg):
     def play():
         controllers = {"hero": ScriptedController([])}
-        engine = boss_fight(registry, cfg, ScriptedRng(d20=[15, 3], d6=[5]), controllers)
+        engine = boss_fight(
+            registry, cfg, ScriptedRng(d20=[15, 3], d6=[5]), controllers, boss="plain_boss"
+        )
         engine.step()
         engine.step()
         return engine.state.model_dump_json(), engine.heroes["hero"].model_dump_json()
 
     assert play() == play()
 
+
+
+def test_disarmer_boss_disarms_before_multiattack(registry, cfg):
+    # К7д, Q6а: у goblin_boss тег disarmer -- тактика берёт disarm раньше multiattack
+    from ai_dm.combat.controllers import EngineTactics
+
+    engine = boss_fight(registry, cfg, ScriptedRng())
+    options = engine.available_actions("boss")
+    assert EngineTactics(engine).choose_turn(options, "boss").startswith("disarm:hero:")

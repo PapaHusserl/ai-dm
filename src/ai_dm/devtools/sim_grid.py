@@ -11,8 +11,8 @@ from ai_dm.devtools.grid_heroes import CLASSES, build_hero
 from ai_dm.devtools.sim_combat import build_scenario, simulate
 from ai_dm.game.difficulty import DIFFICULTIES
 
-# сцены сетки: имя сценария sim_combat; сцены паков добавятся вместе с монстрами (К7д)
-SCENES = {"goblins3": "goblins3"}
+# сцены сетки: имя сценария sim_combat; cellar -- подвал Вейла, состав по бюджету боя
+SCENES = {"goblins3": "goblins3", "cellar": "cellar"}
 LEVELS = range(1, 6)
 BASELINE_PATH = Path(__file__).resolve().parents[3] / "devtools" / "sim_grid_baseline.yaml"
 DEFAULT_SEEDS = 200
@@ -126,7 +126,7 @@ def main(argv=None) -> int:
     parser.add_argument("--scene", nargs="+", choices=list(SCENES), default=list(SCENES))
     parser.add_argument(
         "--difficulty", choices=DIFFICULTIES,
-        help="сложность в settings мира; на будущее, для сцен с бюджетом боя (К7д)",
+        help="сложность в settings мира; меняет состав сцены cellar, goblins3 не меняет",
     )
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write-baseline", action="store_true")

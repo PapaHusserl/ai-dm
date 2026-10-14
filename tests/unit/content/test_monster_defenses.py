@@ -70,8 +70,8 @@ def test_condition_immunities_are_a_plain_list():
     ]
 
 
-def test_srd_monsters_have_no_protections_yet(registry):
-    for one in registry.all("monster"):
+def test_first_three_srd_monsters_have_no_protections(registry):
+    for one in [registry.get("monster", i) for i in ("goblin_warrior", "goblin_boss", "guard")]:
         assert one.damage_immunities == [] and one.damage_resistances == []
         assert one.damage_vulnerabilities == [] and one.condition_immunities == []
 

@@ -24,6 +24,36 @@
 | Goblin Warrior | Воин-гоблин | `goblin_warrior` | в 2014 — «гоблин» |
 | Goblin Boss | Босс гоблинов | `goblin_boss` | |
 | Guard | Стражник | `guard` | |
+| Skeleton | Скелет | `skeleton` | К7д |
+| Zombie | Зомби | `zombie` | К7д |
+| Shadow | Тень | `shadow` | К7д |
+| Ghoul | Упырь | `ghoul` | К7д |
+| Specter | Призрак | `specter` | К7д, рабочий (Ghost — «привидение») |
+| Ghast | Вурдалак | `ghast` | К7д, рабочий |
+| Ogre Zombie | Зомби-огр | `ogre_zombie` | К7д |
+| Wight | Умертвие | `wight` | К7д |
+| Steam Mephit | Паровой мефит | `steam_mephit` | К7д |
+| Dust Mephit | Пылевой мефит | `dust_mephit` | К7д |
+| Magmin | Магмин | `magmin` | К7д |
+| Gargoyle | Горгулья | `gargoyle` | К7д |
+| Fire Elemental | Огненный элементаль | `fire_elemental` | К7д |
+| Earth Elemental | Земляной элементаль | `earth_elemental` | К7д |
+| Homunculus | Гомункул | `homunculus` | К7д |
+| Animated Flying Sword | Летающий меч | `animated_flying_sword` | К7д |
+| Animated Armor | Оживлённые доспехи | `animated_armor` | К7д |
+| Hawk | Ястреб | `hawk` | К7д |
+| Giant Rat | Гигантская крыса | `giant_rat` | К7д |
+| Mastiff | Мастиф | `mastiff` | К7д |
+| Wolf | Волк | `wolf` | К7д |
+| Swarm of Rats | Рой крыс | `swarm_of_rats` | К7д |
+| Boar | Кабан | `boar` | К7д |
+| Panther | Пантера | `panther` | К7д |
+| Black Bear | Чёрный медведь | `black_bear` | К7д |
+| Dire Wolf | Лютый волк | `dire_wolf` | К7д |
+| Giant Spider | Гигантский паук | `giant_spider` | К7д |
+| Pack Tactics | Тактика стаи | `pack_tactics` | умение монстров, движок |
+| Undead Fortitude | Стойкость нежити | `undead_fortitude` | умение монстров, движок |
+| Death Burst | Предсмертный взрыв | `death_burst` | умение монстров, движок |
 | Resourceful | Находчивость | `resourceful` | умение вида человека, рабочий |
 | Skillful | Умелость | `skillful` | умение вида человека: один навык на выбор, рабочий |
 | Versatile | Универсальность | `versatile` | умение вида человека: черта происхождения на выбор, рабочий |

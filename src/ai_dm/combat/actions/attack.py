@@ -1,4 +1,4 @@
-from ai_dm.combat import downed, mastery
+from ai_dm.combat import downed, mastery, monster_traits
 from ai_dm.combat.actions import features
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice
@@ -26,7 +26,7 @@ class AttackInfo:
     def __init__(
         self, id, kind, bonus, dice, damage_bonus, damage_type, weapon_id=None,
         advantage_dice=None, range_normal_ft=None, range_long_ft=None, name="",
-        bonus_parts=None, damage_parts=None,
+        bonus_parts=None, damage_parts=None, action=None,
     ):
         self.id = id
         self.kind = kind
@@ -44,6 +44,8 @@ class AttackInfo:
         self.name = name
         self.bonus_parts = bonus_parts or []
         self.damage_parts = damage_parts or []
+        # только у монстра: действие из статблока (доп. урон, эффект при попадании)
+        self.action = action
 
 
 def split_dice(expr: str) -> tuple[str, int]:
@@ -121,7 +123,7 @@ def attacks_of(engine, ref) -> list[AttackInfo]:
                 action.damage_type or "bludgeoning", advantage_dice=action.advantage_damage_dice,
                 range_normal_ft=action.range_normal_ft, range_long_ft=action.range_long_ft,
                 name=action.name.lower(), bonus_parts=[("бонус атаки", action.attack_bonus)],
-                damage_parts=[("", bonus)],
+                damage_parts=[("", bonus)], action=action,
             )
         )
     # бить нечем (оружие отобрано, естественных атак нет): кулак
@@ -218,14 +220,16 @@ def attack_tags(engine, ref, target_ref) -> dict:
     # «вплотную» = та же зона; укрытие цели работает только из другой зоны
     own = engine.part(ref).zone_id
     other = engine.part(target_ref).zone_id
-    if own == other:
-        return {"melee": True}
-    zone = [z for z in engine.state.zones if z.id == other][0]
-    own_zone = [z for z in engine.state.zones if z.id == own][0]
-    tags = {"melee": False, "cover": cover_dc_bonus(zone)}
-    height = own_zone.elevation - zone.elevation
-    if height != 0:
-        tags["height"] = height
+    tags = {"melee": True}
+    if own != other:
+        zone = [z for z in engine.state.zones if z.id == other][0]
+        own_zone = [z for z in engine.state.zones if z.id == own][0]
+        tags = {"melee": False, "cover": cover_dc_bonus(zone)}
+        height = own_zone.elevation - zone.elevation
+        if height != 0:
+            tags["height"] = height
+    if monster_traits.pack_ally(engine, ref, target_ref) is not None:
+        tags["pack"] = True
     return tags
 
 
@@ -321,16 +325,7 @@ def mark_damage(engine, ref, target_ref, crit, dealt):
             damage_type=effect.params["damage_type"],
         )
         extra = engine.damage(target_ref, rolled.total, effect.params["damage_type"])
-        dealt = DamageResult(
-            final=dealt.final + extra.final,
-            temp_absorbed=dealt.temp_absorbed + extra.temp_absorbed,
-            hp_lost=dealt.hp_lost + extra.hp_lost,
-            was_down=dealt.was_down,
-            dropped=dealt.dropped or extra.dropped,
-            overkill=dealt.overkill + extra.overkill,
-            raw=dealt.raw + extra.raw,
-            notes=dealt.notes + extra.notes,
-        )
+        dealt = merge_damage(dealt, extra)
     return dealt
 
 
@@ -344,6 +339,7 @@ def merge_damage(dealt, extra) -> DamageResult:
         overkill=dealt.overkill + extra.overkill,
         raw=dealt.raw + extra.raw,
         notes=dealt.notes + extra.notes,
+        damage_types=dealt.damage_types + extra.damage_types,
     )
 
 
@@ -494,6 +490,8 @@ def attack(
         dealt = engine.damage(target_ref, total, info.damage_type)
         dealt = mark_damage(engine, ref, target_ref, crit, dealt)
         dealt = special_damage(engine, ref, target_ref, crit, dealt, effects)
+        dealt = monster_traits.extra_damage(engine, (ref, target_ref), crit, dealt, info)
+        dealt = monster_traits.on_hit(engine, (ref, target_ref), info, dealt, provoked)
         engine.log_notes(dealt)
         engine.log(f"  {engine.name(target_ref)}: {engine.hp_text(target_ref)}")
         events.append(

@@ -1,0 +1,28 @@
+id: boar
+name: Кабан
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: beast
+speed_ft: 40
+ac: 11
+hp: 13
+hp_dice: 2d8+4
+cr: 1/4
+abilities:
+  str: 13
+  dex: 11
+  con: 14
+  int: 2
+  wis: 9
+  cha: 5
+traits:
+- bloodied_fury
+actions:
+- name: Бодание
+  kind: melee
+  attack_bonus: 3
+  reach_ft: 5
+  damage_dice: 1d6+1
+  damage_type: piercing
+  description: 'Если цель средняя или меньше и кабан пробежал 20+ фт прямо к ней: +1к6 колющего и лежит.'

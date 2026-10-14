@@ -1,0 +1,5 @@
+id: earth_glide
+name: Скольжение в земле
+description: Роет ход в необработанной земле и камне, не потревожив их.
+source: srd-5.2
+license: CC-BY-4.0

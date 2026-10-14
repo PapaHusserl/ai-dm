@@ -1,0 +1,5 @@
+id: sunlight_sensitivity
+name: Чувствительность к солнцу
+description: На солнечном свете помеха на проверки и броски атаки.
+source: srd-5.2
+license: CC-BY-4.0

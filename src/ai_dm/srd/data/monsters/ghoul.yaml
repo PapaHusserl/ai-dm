@@ -1,0 +1,50 @@
+id: ghoul
+name: Упырь
+source: srd-5.2
+license: CC-BY-4.0
+size: medium
+creature_type: undead
+speed_ft: 30
+ac: 12
+hp: 22
+hp_dice: 5d8
+cr: '1'
+abilities:
+  str: 13
+  dex: 15
+  con: 10
+  int: 7
+  wis: 10
+  cha: 6
+damage_immunities:
+- poison
+condition_immunities:
+- charmed
+- exhaustion
+- poisoned
+actions:
+- name: Укус
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d6+2
+  damage_type: piercing
+  extra_damage_dice: 1d6
+  extra_damage_type: necrotic
+- name: Коготь
+  kind: melee
+  attack_bonus: 4
+  reach_ft: 5
+  damage_dice: 1d4+2
+  damage_type: slashing
+  on_hit:
+    condition: paralyzed
+    save: con
+    dc: 10
+    duration: target_turn
+    exempt:
+    - undead
+    - elf
+multiattack:
+- action: Укус
+  count: 2
