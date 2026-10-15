@@ -625,8 +625,22 @@ ui ──> game ──> master ──> llm
 ## E3. Граница сцены с summarizer
 
 Закрытие → автосейв → на копии: **выжимка сцены** → тик → триггеры → `world` → глава (**выжимка главы + свёртка
-`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer `refusal`/`invalid` — повтор на модели рассказчика → запасная выжимка (`fallback`/`concat`, тег `refusal_fallback`); `network`/`fatal` — меню 2.2, новая сцена не стартует (Д2);
+`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer `refusal`/`invalid`/`network` (`SOFT_REASONS`) — повтор на модели рассказчика → запасная выжимка (`fallback`/`concat`, тег `refusal_fallback`); `fatal` — меню 2.2, новая сцена не стартует (Д2);
 незавершённая граница достраивается при загрузке. Журнал `role: summarizer`, `run_id` границы; replay по роли.
+
+## E3а. Сеть и цепочка (Т60)
+
+Gemini ходит по IPv4 (`[llm] gemini_ipv4`, `httpx.HTTPTransport(local_address="0.0.0.0")` в `GeminiAdapter.get_client`; при
+`false` — как раньше, `SSL_CERT_FILE` учитывается) с таймаутом `[retry] gemini_timeout_s = 90` на фазу (у Anthropic остаётся `timeout_s = 180`).
+`[llm] narrator_chain` — порядок моделей рассказчика (ключи `провайдер:модель`) только для меню ошибки: `game/models.py`
+`model_options(app_cfg, current)` ставит первой следующую после текущей (`next_in_chain`), остальные ключи — как раньше, без повторов;
+авто-переключения нет, рассказчик повторяет по полным `retry.delays`. Primary summarizer при наличии backup идёт по `retry.chain_delays`
+(`[]` — без повторов, сразу запасной; `TurnRunner.new_summarizer_session` → `SummarizerSession(policy=)` → `MasterSession.policy`),
+сетевой сбой summarizer — мягкий (запасная выжимка), в меню не попадает. Сетевой сбой хода (`failed_reason == "network"`) — в меню
+«Сменить модель» меняются обе роли (`switch_role = "both"`: `set_narrator` + `set_summarizer`). `Journal.note_start` пишет
+`saves/<world>/journal/attempts.log` (`ts, run_id, turn_seq, role, model, attempt` через табуляцию) перед каждой попыткой
+(`call_with_retries(on_start=)`); висящая попытка — последняя строка без парной записи в `calls-*.jsonl`; файл не читают `segments()`,
+replay и репорты. `game/models.py` — также `check_model`, `read_models`, `write_models` (`game/app.py` реэкспортирует `model_options`, `check_model`).
 
 ## E4. Бюджет и вытеснение
 

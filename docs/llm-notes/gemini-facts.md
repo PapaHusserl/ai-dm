@@ -133,3 +133,14 @@ SDK -- интроспекция установленного пакета, се�
   (микро-доллары за 1M токенов в час): 500000 и 1000000; пересмотреть 3.8 Flash с 2027-01-01.
 - Учёт в адаптере: `Usage.cache_write` = токены созданного кэша (цена `cache_write` = `input`), `Usage.cache_storage_min` = токены × минуты
   TTL (цена `cache_storage_hour` // 60), начисляются в ответе, следующем за созданием (если создание было, а запрос упал -- в следующем успешном).
+
+## Сеть и модели (Т60; docs/decisions/gemini-503-research.md, docs/T60-PLAN.md)
+- IPv4-транспорт: `genai.Client(http_options=HttpOptions(client_args={"transport": httpx.HTTPTransport(local_address="0.0.0.0")}))` --
+  сокет только по IPv4. Включается `[llm] gemini_ipv4` (по умолчанию true). Свой транспорт отключает прокси/`SSL_CERT_FILE` из окружения
+  httpx -- при `false` поведение прежнее. Async-клиент не используется, `async_client_args` не задаём.
+- Таймаут: `HttpOptions(timeout=<мс>)` -- httpx-таймаут на каждую фазу (connect, write, read, pool), а не на весь запрос; `[retry] gemini_timeout_s = 90`.
+  Отдельного connect-таймаута нет.
+- `gemini-4-argon`: явного кэша нет (`cache_storage_hour = 0`), `caches.create` отвечает 4xx -- адаптер идёт без кэша (`caches[key] = None`).
+  Цена 4.0/20.0 за 1M, чтение кэша 0.2.
+- `gemini-3-flash-preview`: 0.5/3.0, чтение кэша 0.05, хранение 1.0; окна моделей цепочки -- 1000000 (консервативно, сверить).
+- 5xx при `create_cache` не обрабатываем отдельно (как и прочие сбои создания -- запрос без кэша).
