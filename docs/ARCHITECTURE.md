@@ -463,7 +463,7 @@ ui ──> game ──> master ──> llm
 - Инструменты вызываются через tool use, `strict: true` на инструменте. Форсированный `tool_choice` не используется
   (Anthropic отвечает 400), только `auto` плюс инструкция в промпте. Форму ответа дополнительно проверяет Pydantic.
 - Набор инструментов зависит от режима: `explore` (мир: проверки, бой, предметы, время, варианты), `combat_classify`
-  (`player_action`, `unsupported_action`), `combat_narrate` (`offer_choices`, `unsupported_action`, `end_combat`,
+  (`player_action`, `unsupported_action`), `combat_narrate` (`offer_choices`, `end_combat`,
   `defeat_outcome`), `npc_choice` (`npc_action`). Недоступный в режиме запрос — `invalid`.
 - Лимиты strict у Anthropic (20 strict-инструментов, 24 необязательных параметра, 16 union-типов на запрос;
   `docs/llm-notes/claude-api-facts.md`) проверяет линтер схем; редкие инструменты `explore` (`end_chapter`,
@@ -472,7 +472,7 @@ ui ──> game ──> master ──> llm
   один автоповтор хода с припиской (тег `refusal_retry`), затем откат хода и подсказка про тон и модель. Ответ `max_tokens` с вызовами — невалидный.
   Короткий рассказ вне боя (`[master] min_narration_chars`, по умолчанию 80; 0 = выкл.) после раунда инструментов — один автоповтор с припиской «напиши сцену текстом» (тег `short_retry`); если и повтор короткий — ход принимается как есть. В бою не проверяется.
   Приписка `CHOICES_NOTE`: если рассказчик вызвал `offer_choices` без текста рассказа (все провайдеры), к ответам инструментов добавляется Text «сцену полностью текстом ответа, варианты уже предложены» (механизм как у `max_tokens`; лог «Варианты ответа предложены» не меняется). Правила и docstring `OfferChoices`: `offer_choices` — в последнем ответе, после результатов механики и текста сцены; приписка только когда обязательные инструменты режима уже вызваны (`done`) и работает и при отклонённом вызове в том же раунде. Текст раунда с отклонённым вызовом сохраняется (не теряется, `short_retry` по нему не нужен); текст раунда с `max_tokens` по-прежнему отбрасывается.
-  Приписка `CHOICES_ASK` (T5): рассказ explore вне боя кончился вопросом или списком вариантов (`ends_with_choice`), а `offer_choices` в ходу не принят — один служебный вызов в том же цикле (тег `choices_retry`), исполняется только `offer_choices` из ответа; тексты ответа, `rounds` и `invalid_count` не меняются; сбой вызова (сеть, отказ) ход не откатывает; `offer_choices` из ответа, оборванного по `max_tokens`, тоже исполняется (обрезанный JSON отсеет `parse_request`). `effort` рассказчика Claude (`[alternatives.narrator]`, `[profiles.anthropic.narrator]`) — `medium`.
+  Приписка `CHOICES_ASK` (T5): рассказ explore вне боя **или `combat_narrate` на ходу, которым бой закончился (`victory`/`fled`/`ended_by_master`, `COMBAT_OVER`)** кончился вопросом или списком вариантов (`ends_with_choice`), а `offer_choices` в ходу не принят — один служебный вызов в том же цикле (тег `choices_retry`), исполняется только `offer_choices` из ответа; тексты ответа, `rounds` и `invalid_count` не меняются; сбой вызова (сеть, отказ) ход не откатывает; `offer_choices` из ответа, оборванного по `max_tokens`, тоже исполняется (обрезанный JSON отсеет `parse_request`). `effort` рассказчика Claude (`[alternatives.narrator]`, `[profiles.anthropic.narrator]`) — `medium`.
   Thinking рассказчика Claude — `[llm] thinking = { narrator = "adaptive" }`, показ — `thinking_display` (`summarized`/`omitted`); другие роли и Gemini — без параметра.
 
 ## C3. Атомарный ход
@@ -574,7 +574,7 @@ replay — по адаптеру на роль. Потолок вызовов в
 Благосклонность −10..+10, шаг ±2, ±3 к богу за сцену; пороги ±3/±6/±9 (знамения, молитва (запрос `pray`, фраза игрока, G3б) и помеха в критический
 момент, вмешательство и долг/слуга); жрец — `CastCheck` по порогам −3/−6/−9. Бюджет боя — таблица SRD 5.2 по уровню;
 сверх — после `warn_danger`, нападения героя или триггера `kills_hero`, иначе урезание с сигналом. Клад логова и предел
-редкости — таблицы SRD. Сложность кампании — `world.settings["difficulty"]` (easy/normal/hard ↔ tier low/moderate/high, `encounter.tier_of`; по умолчанию `cfg.encounter.tier`), `/difficulty`, меню нового мира. `/tone` меняет шкалы ТЗ 3 (ослабление `hard_limits` — с подтверждением), пишет хронику.
+редкости — таблицы SRD. Сложность кампании — `world.settings["difficulty"]` (easy/normal/hard ↔ tier low/moderate/high, `encounter.tier_of`; по умолчанию `cfg.encounter.tier`), `/difficulty`, меню нового мира. `/fight <монстр xN, …>` (отладка, 19ф; `game/fight_debug.py`) — бой с заданным составом без модели: `start_combat` на двух зонах (`initiated_by=hero`, без урезания по бюджету) + `combat_flow.start_fight`, без автосейва. Тег `combat_announced` (19ф): рассказ explore объявил бой («начинается бой»), а `start_combat` не принят — только авто-репорт для измерения частоты. `/tone` меняет шкалы ТЗ 3 (ослабление `hard_limits` — с подтверждением), пишет хронику.
 Контекст нарратора: релевантные NPC (в сцене, ключевые, с активным триггером) — перенесено из этапа 4 (решение 5а).
 
 ## D7. Сейв v3
@@ -635,7 +635,7 @@ Gemini ходит по IPv4 (`[llm] gemini_ipv4`, `httpx.HTTPTransport(local_add
 `false` — как раньше, `SSL_CERT_FILE` учитывается) с таймаутом `[retry] gemini_timeout_s = 90` на фазу (у Anthropic остаётся `timeout_s = 180`).
 `[llm] narrator_chain` — порядок моделей рассказчика (ключи `провайдер:модель`) только для меню ошибки: `game/models.py`
 `model_options(app_cfg, current)` ставит первой следующую после текущей (`next_in_chain`), остальные ключи — как раньше, без повторов;
-авто-переключения нет, рассказчик повторяет по полным `retry.delays`. Primary summarizer при наличии backup идёт по `retry.chain_delays`
+авто-переключения нет, рассказчик повторяет по полным `retry.delays`, кроме «медленных» сбоев (19ф: таймаут или 504 → `LlmTransient.timeout`, `retry.give_up`): при `[retry] retry_timeouts = false` (по умолчанию) первый такой сбой сразу уходит в меню ошибки (≈ `gemini_timeout_s` вместо 3 × 90 с), 503/429/5xx повторяются по `delays`; `true` возвращает старое поведение; журнал пишет `error.timeout`, старые журналы без ключа реплеятся как раньше. Primary summarizer при наличии backup идёт по `retry.chain_delays`
 (`[]` — без повторов, сразу запасной; `TurnRunner.new_summarizer_session` → `SummarizerSession(policy=)` → `MasterSession.policy`),
 сетевой сбой summarizer — мягкий (запасная выжимка), в меню не попадает. Сетевой сбой хода (`failed_reason == "network"`) — в меню
 «Сменить модель» меняются обе роли (`switch_role = "both"`: `set_narrator` + `set_summarizer`). `Journal.note_start` пишет

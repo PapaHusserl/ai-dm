@@ -118,6 +118,7 @@ class Journal:
             error_dump = {
                 "kind": kind, "message": str(error),
                 "retry_after": getattr(error, "retry_after", None),
+                "timeout": getattr(error, "timeout", False),
             }
         record = {
             "call_id": call_id,

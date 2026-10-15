@@ -29,6 +29,9 @@ class ReplayAdapter:
         error = record["error"]
         if error is not None:
             if error["kind"] == "transient":
-                raise LlmTransient(error["message"], retry_after=error["retry_after"])
+                raise LlmTransient(
+                    error["message"], retry_after=error["retry_after"],
+                    timeout=error.get("timeout", False),
+                )
             raise LlmFatal(error["message"])
         return ChatResponse.model_validate(record["response"])

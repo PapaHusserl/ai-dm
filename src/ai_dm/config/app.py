@@ -60,6 +60,8 @@ class RetryConfig(BaseModel):
     gemini_timeout_s: int = Field(default=90, gt=0)
     # паузы повторов primary summarizer при запасном (модель рассказчика); [] -- сразу запасной
     chain_delays: list[int] = []
+    # повторять ли после таймаута/504; False -- первый такой сбой сразу в меню ошибки
+    retry_timeouts: bool = False
 
 
 class JournalConfig(BaseModel):

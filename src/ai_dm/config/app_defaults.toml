@@ -105,6 +105,8 @@ timeout_s = 180
 gemini_timeout_s = 90
 # паузы повторов primary summarizer при наличии запасного: [] -- без повторов, сразу запасной
 chain_delays = []
+# повторять ли после таймаута/504: false -- первый такой сбой сразу в меню ошибки; 503/429/5xx -- по delays
+retry_timeouts = false
 
 [journal]
 max_mb = 50

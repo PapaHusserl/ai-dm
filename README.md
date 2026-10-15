@@ -78,6 +78,7 @@ Ctrl+C (или Ctrl+Q) вне хода выходит с автосохране�
 | `/sheet`, `/inv` | лист героя, инвентарь |
 | `/quit` | сохранить (auto) и выйти; EOF (Ctrl-D) тоже сохраняет |
 | `/report <что не так>` | записать репорт об ошибке в `saves/<мир>/issues/` (каталог с `report.md` и `meta.json`); репорт пишется и сам, если ход получил метку (`missing-mechanic`, `limit-exceeded`, `invalid-death`, `refusal`, `invalid-defeat`, `context_overflow`); в `--mock` и `--replay` авто-репорты не пишутся |
+| `/fight <монстр xN, …>` | отладка: бой с заданным составом, например `/fight goblin_warrior x3` |
 | `/tone`, `/retire` | заглушки (этапы 3, 9) |
 
 ## Для разработки: без сети и ключей

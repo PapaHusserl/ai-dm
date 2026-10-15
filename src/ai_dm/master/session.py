@@ -83,6 +83,25 @@ def ends_with_choice(narration) -> bool:
     return all(len(line) <= 120 and line[-1] not in '.!…»"' for line in block)
 
 
+# бой начинается по тексту рассказа
+COMBAT_ANNOUNCED = re.compile(
+    r"\b(?:начинается|начался|начн[её]тся|завязывается)\s+бой\b"
+    r"|\bбой\s+(?:начинается|начался|начн[её]тся)\b|\bк бою!|\bв бой!",
+    re.I,
+)
+
+# режимы, где проверяется offer_choices
+CHOICE_MODES = ("explore", "combat_narrate")
+# исходы, после которых герой жив и сцена идёт дальше
+COMBAT_OVER = ("victory", "fled", "ended_by_master")
+
+
+def announces_combat(narration) -> bool:
+    # последний абзац рассказа объявляет начало боя
+    paragraphs = [p for p in narration.split("\n\n") if p.strip()]
+    return bool(paragraphs) and COMBAT_ANNOUNCED.search(paragraphs[-1]) is not None
+
+
 def plain_text(text) -> str:
     # модель иногда заворачивает рассказ в блок ``` -- рамку рисует игра, ограды выбрасываются
     return "\n".join(line for line in text.split("\n") if not FENCE.match(line)).strip()
@@ -287,12 +306,27 @@ class MasterSession:
         return result
 
     def choices_missing(self, ctx, result, mode):
-        # рассказ кончился вопросом или списком, а offer_choices в ходу не принят (не в бою)
+        # рассказ кончился вопросом или списком, а offer_choices в ходу не принят
+        # (не в бою или на ходу, которым бой закончился)
+        if self.role != "narrator" or mode not in CHOICE_MODES:
+            return False
+        if "offer_choices" in result.accepted:
+            return False
+        combat = ctx.bundle.session.active_combat
+        if mode == "explore":
+            over = combat is None
+        else:
+            over = combat is not None and combat.outcome in COMBAT_OVER
+        return over and ends_with_choice(result.narration)
+
+    def tag_missing_combat(self, ctx, result, mode):
+        # рассказ объявил бой, а start_combat в ходу не принят: только тег для репорта
         if self.role != "narrator" or mode != "explore":
-            return False
-        if ctx.bundle.session.active_combat is not None or "offer_choices" in result.accepted:
-            return False
-        return ends_with_choice(result.narration)
+            return
+        if ctx.bundle.session.active_combat is not None or "start_combat" in result.accepted:
+            return
+        if announces_combat(result.narration):
+            result.report_tags.append("combat_announced")
 
     def ask_choices(self, ctx, req, response, run_id, plan, executor, mode, result):
         # один служебный вызов: рассказ уже принят, нужен только offer_choices
@@ -409,6 +443,7 @@ class MasterSession:
                 result = self.finish(result)
                 if self.choices_missing(ctx, result, mode):
                     self.ask_choices(ctx, req, response, run_id, plan, executor, mode, result)
+                self.tag_missing_combat(ctx, result, mode)
                 return result
             self.count_invalid(result, "Модель не смогла дать корректный ответ.")
             if response.content:

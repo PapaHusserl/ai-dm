@@ -140,6 +140,7 @@ SDK -- интроспекция установленного пакета, се�
   httpx -- при `false` поведение прежнее. Async-клиент не используется, `async_client_args` не задаём.
 - Таймаут: `HttpOptions(timeout=<мс>)` -- httpx-таймаут на каждую фазу (connect, write, read, pool), а не на весь запрос; `[retry] gemini_timeout_s = 90`.
   Отдельного connect-таймаута нет.
+- 504 DEADLINE_EXCEEDED -- «медленный» сбой (как и таймаут чтения): ответ ждали ~90 с; адаптер ставит `LlmTransient.timeout`, при `retry_timeouts = false` повтора нет, сразу меню ошибки (19ф).
 - `gemini-4-argon`: явного кэша нет (`cache_storage_hour = 0`), `caches.create` отвечает 4xx -- адаптер идёт без кэша (`caches[key] = None`).
   Цена 4.0/20.0 за 1M, чтение кэша 0.2.
 - `gemini-3-flash-preview`: 0.5/3.0, чтение кэша 0.05, хранение 1.0; окна моделей цепочки -- 1000000 (консервативно, сверить).

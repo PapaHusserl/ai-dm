@@ -1,5 +1,6 @@
 from ai_dm.game import difficulty, tone
 from ai_dm.game.battle_map import battle_map_lines
+from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import (
     ABILITY_HINT,
@@ -44,6 +45,7 @@ HELP = {
     "report": "<что не так> записать репорт об ошибке",
     "tone": "настроить тон мира",
     "difficulty": "[easy|normal|hard] сложность боёв (бюджет врагов)",
+    "fight": HELP_TEXT,
     "music": "[on|off|0–100|ambient on|off] музыка и эмбиент (только в TUI)",
     "retire": "завершить героя",
 }
@@ -304,6 +306,7 @@ COMMANDS = {
     "report": cmd_report,
     "tone": cmd_tone,
     "difficulty": cmd_difficulty,
+    "fight": cmd_fight,
     "music": cmd_music,
     "retire": stub(9),
 }

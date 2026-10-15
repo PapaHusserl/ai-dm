@@ -124,7 +124,9 @@ def test_transient_error_record(tmp_path):
         error=LlmTransient("сеть", retry_after=4),
     )
     rec = journal.read_records()[0]
-    assert rec["error"] == {"kind": "transient", "message": "сеть", "retry_after": 4}
+    assert rec["error"] == {
+        "kind": "transient", "message": "сеть", "retry_after": 4, "timeout": False,
+    }
     assert (rec["response"], rec["stop_reason"], rec["request_id"]) == (None, None, None)
     assert rec["usage"] == {
         "input": 0, "output": 0, "cache_write": 0, "cache_write_1h": 0, "cache_read": 0,
@@ -141,6 +143,7 @@ def test_fatal_error_record(tmp_path):
     )
     err = journal.read_records()[0]["error"]
     assert (err["kind"], err["message"], err["retry_after"]) == ("fatal", "400", None)
+    assert err["timeout"] is False
 
 
 def test_refusal_response_is_logged_as_response_not_error(tmp_path):

@@ -16,6 +16,9 @@ from ai_dm.ui.screen import (
     status_block,
 )
 
+# команды, после которых экран (карта, меню боя) перерисовывается
+SCREEN_COMMANDS = ("/load", "/fight")
+
 
 @dataclass
 class Step:
@@ -156,7 +159,7 @@ class PlaySession:
             narration = last_narration_block(app)
             if narration is not None:
                 step.blocks.append(narration)
-        if not line.startswith("/") or line.startswith("/load"):
+        if not line.startswith("/") or line.startswith(SCREEN_COMMANDS):
             step.blocks.extend(screen_blocks(app))
         step.blocks.append(status_block(app))
         if reply.turn is None or app.pending is not None:

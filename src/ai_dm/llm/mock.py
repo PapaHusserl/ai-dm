@@ -6,7 +6,9 @@ from ai_dm.llm.adapter import AdapterInfo
 from ai_dm.llm.errors import LlmFatal, LlmTransient
 from ai_dm.llm.types import ChatResponse, Text, ToolCall, ToolResult, Usage
 
-STEP_KEYS = {"text", "tool_calls", "error", "stop", "usage", "message", "retry_after", "when"}
+STEP_KEYS = {
+    "text", "tool_calls", "error", "stop", "usage", "message", "retry_after", "timeout", "when",
+}
 CONTENT_KEYS = {"text", "tool_calls", "error", "stop"}
 WHEN_KEYS = {"role", "last_message_contains"}
 CALL_KEYS = {"id", "name", "input"}
@@ -95,7 +97,10 @@ class ScriptedAdapter:
         if "error" in step:
             message = step.get("message", "ошибка из сценария")
             if step["error"] == "transient":
-                raise LlmTransient(message, retry_after=step.get("retry_after"))
+                raise LlmTransient(
+                    message, retry_after=step.get("retry_after"),
+                    timeout=bool(step.get("timeout", False)),
+                )
             raise LlmFatal(message)
         content = []
         if "text" in step:

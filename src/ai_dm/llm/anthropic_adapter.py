@@ -1,5 +1,5 @@
 from ai_dm.llm.adapter import AdapterInfo
-from ai_dm.llm.errors import LlmFatal, LlmTransient, is_network_error
+from ai_dm.llm.errors import LlmFatal, LlmTransient, is_network_error, is_timeout_error
 from ai_dm.llm.keys import redact
 from ai_dm.llm.types import ChatResponse, Opaque, Text, ToolCall, ToolResult, Usage
 
@@ -110,10 +110,10 @@ class AnthropicAdapter:
         code = getattr(error, "status_code", None)
         if code is None:
             if is_network_error(error):
-                return LlmTransient(text)
+                return LlmTransient(text, timeout=is_timeout_error(error))
             return LlmFatal(text)
         if code in (408, 429) or code >= 500:
-            return LlmTransient(text, retry_after=retry_after_of(error))
+            return LlmTransient(text, retry_after=retry_after_of(error), timeout=(code == 504))
         return LlmFatal(text)
 
     def thinking_of(self, req):

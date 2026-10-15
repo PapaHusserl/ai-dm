@@ -26,7 +26,7 @@ from ai_dm.persistence.store import load_slot
 
 ALL_COMMANDS = [
     "help", "save", "load", "model", "cost", "sheet", "inv", "shop", "spells", "abilities",
-    "map", "quit", "report", "tone", "retire", "music", "difficulty",
+    "map", "quit", "report", "tone", "retire", "music", "difficulty", "fight",
 ]
 
 
