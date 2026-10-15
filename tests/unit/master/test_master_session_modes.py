@@ -345,11 +345,22 @@ def test_empty_final_after_tool_without_narration_still_retries(tmp_path, regist
     assert result.narration == "Рассказ."
 
 
-def test_narration_with_rejected_round_does_not_excuse_empty_final(tmp_path, registry, cfg):
-    # раунд с Invalid-вызовом не принимает свой текст -- пустой финал повторяется
+def test_narration_with_invalid_round_excuses_empty_final(tmp_path, registry, cfg):
+    # Т3: текст раунда с Invalid-вызовом принят -- пустой финал не повторяется
     ctx = make_ctx(registry, cfg)
     bad = {"id": "b1", "name": "set_flag", "input": {"type": "wrong"}}
-    steps = [tools_step(bad, text="Не принятый рассказ."), EMPTY, text_step("Рассказ.")]
+    steps = [tools_step(bad, text="Принятый рассказ."), EMPTY, text_step("лишний")]
+    adapter, go = run(steps, tmp_path, ctx, apply, "explore")
+    result = go()
+    assert result.invalid_count == 1
+    assert len(adapter.requests) == 2
+    assert result.narration == "Принятый рассказ."
+
+
+def test_invalid_round_without_text_does_not_excuse_empty_final(tmp_path, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    bad = {"id": "b1", "name": "set_flag", "input": {"type": "wrong"}}
+    steps = [tools_step(bad), EMPTY, text_step("Рассказ.")]
     _, go = run(steps, tmp_path, ctx, apply, "explore")
     result = go()
     assert result.invalid_count == 2

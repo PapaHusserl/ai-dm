@@ -320,3 +320,75 @@ def test_retry_tag_is_reason_plus_retry(registry, cfg, tmp_path, reason):
     rig, _ = rig_of(registry, cfg, tmp_path, [text_step("x")])
     started = rig.runner.play("a")
     assert rig.runner.retry_result(started, reason).report_tags == [f"{reason}_retry"]
+
+
+# Т3 (мини-партия #18): сцена + отклонённый вызов + принятый offer_choices -- без short_retry
+
+BAD_FLAG = {"id": "bf", "name": "set_flag", "input": {"type": "set_flag"}}
+OFFER = {
+    "id": "of", "name": "offer_choices",
+    "input": {"type": "offer_choices", "choices": ["Бежать", "Драться"]},
+}
+
+
+def t436_steps():
+    from game_kit import skill_check_call
+
+    return [
+        tools_step(skill_check_call(), BAD_FLAG, OFFER, text=LONG),
+        tools_step(flag_call("a")),
+        text_step("Письмо у тебя."),
+    ]
+
+
+def test_t436_pattern_has_one_pass_without_tags(registry, cfg, tmp_path):
+    rig, adapter = rig_of(registry, cfg, tmp_path, t436_steps() + [text_step("лишний")])
+    result = rig.runner.play("Иду")
+    assert result.committed is True
+    assert result.report_tags == []
+    assert result.failure is None
+    assert len(adapter.requests) == 3
+    assert notes_of(adapter.requests[2]) == []
+
+
+def test_t436_pattern_narration_has_scene_and_final(registry, cfg, tmp_path):
+    rig, _ = rig_of(registry, cfg, tmp_path, t436_steps())
+    result = rig.runner.play("Иду")
+    assert result.narration == LONG + "\n\nПисьмо у тебя."
+
+
+def test_t436_pattern_rolls_once(registry, cfg, tmp_path):
+    rig, _ = rig_of(registry, cfg, tmp_path, t436_steps())
+    result = rig.runner.play("Иду")
+    assert len(result.rolls) == 1
+    assert result.requests == ["skill_check", "offer_choices", "set_flag"]
+
+
+def test_t436_pattern_state_equals_single_pass(registry, cfg, tmp_path):
+    from game_kit import skill_check_call
+
+    noisy, _ = rig_of(registry, cfg, tmp_path / "a", t436_steps())
+    clean_steps = [
+        tools_step(skill_check_call(), OFFER, flag_call("a"), text=LONG),
+        text_step("Письмо у тебя."),
+    ]
+    clean, _ = rig_of(registry, cfg, tmp_path / "b", clean_steps)
+    noisy.runner.play("Иду")
+    clean.runner.play("Иду")
+    assert core_dump(noisy.runner.bundle) == core_dump(clean.runner.bundle)
+
+
+def test_t436_pattern_is_one_run_with_three_journal_calls(registry, cfg, tmp_path):
+    rig, _ = rig_of(registry, cfg, tmp_path, t436_steps())
+    result = rig.runner.play("Иду")
+    records = run_records(rig.journal, result.run_id)
+    assert len(records) == 3
+    assert {r["turn_status"] for r in records} == {"committed"}
+
+
+def test_t436_pattern_writes_no_auto_report(registry, tmp_path):
+    app = make_app(registry, tmp_path, scripted(t436_steps()), auto_reports=True)
+    app.runner.app_cfg.master.min_narration_chars = 80
+    reply = app.handle("Иду")
+    assert reply.turn.committed is True
+    assert issues(tmp_path) == []

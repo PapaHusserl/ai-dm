@@ -456,13 +456,13 @@ def test_rejected_offer_choices_with_text_asks_model_again(tmp_path, registry, c
     assert result.texts == ["Сцена.", "Итог."]
 
 
-def test_invalid_offer_choices_with_text_counts_invalid_as_before(tmp_path, registry, cfg):
+def test_invalid_offer_choices_with_text_counts_invalid_and_keeps_text(tmp_path, registry, cfg):
     bad = {"id": "o1", "name": "offer_choices", "input": {"type": "offer_choices"}}
     adapter = scripted([tools_step(bad, text="Сцена."), text_step("Итог.")])
     result, _ = run(adapter, tmp_path, registry, cfg)
     assert len(adapter.requests) == 2
     assert result.invalid_count == 1
-    assert result.texts == ["Итог."]
+    assert result.texts == ["Сцена.", "Итог."]
 
 
 def test_offer_choices_with_text_but_required_not_done_asks_model_again(tmp_path, registry, cfg):
@@ -622,11 +622,24 @@ def test_invalid_offer_choices_without_text_has_no_choices_note(tmp_path, regist
     assert "размышления" not in " ".join(note_texts(adapter, 1))
 
 
-def test_invalid_call_next_to_accepted_offer_has_no_choices_note(tmp_path, registry, cfg):
+def test_invalid_call_next_to_accepted_offer_without_text_adds_choices_note(
+    tmp_path, registry, cfg
+):
+    from ai_dm.master.session import CHOICES_NOTE
+
     bad = {"id": "c9", "name": "set_flag", "input": {"type": "set_flag"}}
     adapter = scripted([tools_step(offer_call(), bad), text_step("Сцена.")])
     run(adapter, tmp_path, registry, cfg)
-    assert "размышления" not in " ".join(note_texts(adapter, 1))
+    assert note_texts(adapter, 1) == [CHOICES_NOTE]
+
+
+def test_choices_note_next_to_invalid_goes_after_the_error_tool_result(tmp_path, registry, cfg):
+    bad = {"id": "c9", "name": "set_flag", "input": {"type": "set_flag"}}
+    adapter = scripted([tools_step(offer_call(), bad), text_step("Сцена.")])
+    run(adapter, tmp_path, registry, cfg)
+    blocks = note_blocks(adapter, 1)
+    assert [type(b) for b in blocks] == [ToolResult, ToolResult, Text]
+    assert [b.is_error for b in blocks[:2]] == [False, True]
 
 
 def test_choices_note_not_added_for_summarizer_role(tmp_path, registry, cfg):
@@ -689,3 +702,210 @@ def test_offer_without_text_while_required_tool_not_done_has_no_choices_note(
     session, _, _, _ = make_session(adapter, tmp_path)
     session.run(ctx, "Падаю.", apply, "combat_narrate")
     assert note_texts(adapter, 1) == []
+
+
+# Т3 (мини-партия #18): текст раунда с отклонённым вызовом сохраняется
+
+BAD_FLAG = {"id": "c9", "name": "set_flag", "input": {"type": "set_flag"}}
+
+
+def test_text_of_round_with_invalid_call_is_kept(tmp_path, registry, cfg):
+    steps = [
+        tools_step(BAD_FLAG, text="Сцена."), tools_step(flag_call("a", "c1")), text_step("Финал."),
+    ]
+    adapter = scripted(steps)
+    result, _ = run(adapter, tmp_path, registry, cfg)
+    assert result.texts == ["Сцена.", "Финал."]
+    assert "Сцена." in result.narration
+    assert "Финал." in result.narration
+    assert result.invalid_count == 1
+    assert len(adapter.requests) == 3
+
+
+def test_narration_of_invalid_round_text_comes_first(tmp_path, registry, cfg):
+    steps = [tools_step(BAD_FLAG, text="Сцена."), text_step("Финал.")]
+    result, _ = run(scripted(steps), tmp_path, registry, cfg)
+    assert result.narration == "Сцена.\n\nФинал."
+
+
+def test_invalid_round_with_text_then_final_text_keeps_both(tmp_path, registry, cfg):
+    result, _ = run(
+        scripted([tools_step(BAD_FLAG, text="Сцена."), text_step("Финал.")]),
+        tmp_path, registry, cfg,
+    )
+    assert result.texts == ["Сцена.", "Финал."]
+    assert result.invalid_count == 1
+
+
+def test_invalid_round_without_text_keeps_only_final_text(tmp_path, registry, cfg):
+    result, _ = run(
+        scripted([tools_step(BAD_FLAG), text_step("Финал.")]), tmp_path, registry, cfg
+    )
+    assert result.texts == ["Финал."]
+
+
+def test_max_tokens_round_with_calls_still_drops_text(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1"), text="Оборвано.", stop="max_tokens"),
+             text_step("Коротко.")]
+    result, _ = run(scripted(steps), tmp_path, registry, cfg)
+    assert result.texts == ["Коротко."]
+
+
+def test_t436_scene_invalid_and_accepted_offer_has_no_choices_note(tmp_path, registry, cfg):
+    steps = [
+        tools_step(BAD_FLAG, offer_call(), text="Сцена."),
+        tools_step(flag_call("a", "c1")),
+        text_step("Финал."),
+    ]
+    adapter = scripted(steps)
+    result, _ = run(adapter, tmp_path, registry, cfg)
+    assert note_texts(adapter, 1) == []
+    assert note_texts(adapter, 2) == []
+    assert len(adapter.requests) == 3
+    assert result.narration == "Сцена.\n\nФинал."
+    assert result.invalid_count == 1
+
+
+def test_t436_round_two_without_text_does_not_end_the_turn(tmp_path, registry, cfg):
+    # исправленный вызов не из FREE_TOOLS: нужен финальный ответ модели
+    steps = [
+        tools_step(BAD_FLAG, offer_call(), text="Сцена."),
+        tools_step(flag_call("a", "c1")),
+        text_step("Финал."),
+    ]
+    adapter = scripted(steps)
+    run(adapter, tmp_path, registry, cfg)
+    assert len(adapter.requests) == 3
+
+
+# result.accepted
+
+def by_type(statuses):
+    from master_kit import accept_all
+
+    def executor(ctx, request):
+        status = statuses.get(request.type)
+        if status is None:
+            return accept_all(ctx, request)
+        return Decision(status=status, reason="x", signal_to_master="x")
+
+    return executor
+
+
+def test_result_accepted_is_empty_without_calls(tmp_path, registry, cfg):
+    result, _ = run(scripted([text_step()]), tmp_path, registry, cfg)
+    assert result.accepted == set()
+
+
+def test_result_accepted_has_accepted_and_clamped_names(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1"), offer_call()), text_step("Итог.")]
+    result, _ = run(
+        scripted(steps), tmp_path, registry, cfg,
+        executor=by_type({"set_flag": "clamped"}),
+    )
+    assert result.accepted == {"set_flag", "offer_choices"}
+
+
+def test_result_accepted_has_no_rejected(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1"), offer_call()), text_step("Итог.")]
+    result, _ = run(
+        scripted(steps), tmp_path, registry, cfg,
+        executor=by_type({"set_flag": "rejected"}),
+    )
+    assert result.accepted == {"offer_choices"}
+
+
+def test_result_accepted_has_no_invalid_call(tmp_path, registry, cfg):
+    steps = [tools_step(BAD_FLAG, offer_call()), text_step("Итог.")]
+    result, _ = run(scripted(steps), tmp_path, registry, cfg)
+    assert result.accepted == {"offer_choices"}
+
+
+def test_result_accepted_accumulates_over_rounds(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1")), tools_step(offer_call()), text_step("Итог.")]
+    result, _ = run(scripted(steps), tmp_path, registry, cfg)
+    assert result.accepted == {"set_flag", "offer_choices"}
+
+
+# мутанты ТВ (партия #18): run_call / run_round / run
+
+def call_of(tool, **fields):
+    return ToolCall(id="t1", name=tool, input=dict(fields))
+
+
+def test_run_call_default_mode_is_explore(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    outcome = session.run_call(
+        make_ctx(registry, cfg), flag_tool_call(), accept_all, MasterResult()
+    )
+    assert isinstance(outcome, Decision)
+
+
+def flag_tool_call():
+    return call_of("set_flag", type="set_flag", name="a", value="true")
+
+
+def test_run_call_not_in_mode_lists_allowed_with_comma(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    outcome = session.run_call(
+        make_ctx(registry, cfg), call_of("player_action"), accept_all, MasterResult(), "explore"
+    )
+    assert outcome.code == "not_available_in_mode"
+    assert "Доступны: " in outcome.message
+    assert ", " in outcome.message.split("Доступны: ")[1]
+
+
+def test_run_call_missing_type_is_filled_from_name(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    result = MasterResult()
+    call = call_of("set_flag", name="a", value="true")
+    outcome = session.run_call(make_ctx(registry, cfg), call, accept_all, result)
+    assert isinstance(outcome, Decision)
+    assert [r.type for r in result.requests] == ["set_flag"]
+
+
+def test_run_call_type_mismatch_is_invalid_with_both_names(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    result = MasterResult()
+    call = call_of("set_flag", type="skill_check", name="a", value="true")
+    outcome = session.run_call(make_ctx(registry, cfg), call, accept_all, result)
+    assert outcome.code == "invalid_request"
+    assert "'skill_check'" in outcome.message
+    assert "set_flag" in outcome.message
+    assert result.requests == []
+
+
+def test_run_call_bad_fields_is_invalid_request_with_validation_text(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    call = call_of("set_flag", type="set_flag")
+    outcome = session.run_call(make_ctx(registry, cfg), call, accept_all, MasterResult())
+    assert outcome.code == "invalid_request"
+    assert outcome.message != "None"
+    assert "name" in outcome.message
+
+
+def test_run_call_report_tag_of_invalid_from_executor_goes_to_result(tmp_path, registry, cfg):
+    from ai_dm.protocol.decision import Invalid
+
+    def executor(ctx, request):
+        return Invalid(code="bad", message="плохо", report_tag="my_tag")
+
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    result = MasterResult()
+    session.run_call(make_ctx(registry, cfg), flag_tool_call(), executor, result)
+    assert result.report_tags == ["my_tag"]
+
+
+def test_run_round_without_invalid_returns_false_flag(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    _, has_invalid, accepted = session.run_round(
+        make_ctx(registry, cfg), [flag_tool_call()], accept_all, MasterResult(), "explore"
+    )
+    assert has_invalid is False
+    assert accepted == {"set_flag"}
+
+
+def test_run_without_world_text_has_empty_world_text_in_system(tmp_path, registry, cfg):
+    adapter = scripted([text_step("Ветер.")])
+    run(adapter, tmp_path, registry, cfg)
+    assert "XX" not in adapter.requests[0].system[1].text

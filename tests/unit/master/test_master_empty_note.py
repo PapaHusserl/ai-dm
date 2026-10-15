@@ -183,3 +183,23 @@ def test_texts_of_several_rounds_are_all_in_narration(tmp_path, registry, cfg):
     result = session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
     assert result.texts == ["Первый кусок.", "Второй кусок.", "Третий кусок."]
     assert result.narration == "Первый кусок.\n\nВторой кусок.\n\nТретий кусок."
+
+
+# мутанты ТВ (партия #18): неполный раунд свёртки и тексты раундов выжимки
+
+def test_chapter_incomplete_round_counts_as_invalid(tmp_path, registry, cfg):
+    adapter = scripted([
+        tools_step(chapter_call(call_id="cs-1")),
+        tools_step(chapter_call(call_id="cs-2"), game_call(call_id="gs-2")),
+    ])
+    result, _, _ = summarize(adapter, tmp_path, registry, cfg, "summarize_chapter")
+    assert result.invalid_count == 1
+
+
+def test_single_shot_texts_of_earlier_rounds_are_kept(tmp_path, registry, cfg):
+    adapter = scripted([
+        tools_step(scene_call(""), text="Первый."),
+        tools_step(scene_call(), text="Второй."),
+    ])
+    result, _, _ = summarize(adapter, tmp_path, registry, cfg, "summarize_scene")
+    assert result.texts == ["Первый.", "Второй."]

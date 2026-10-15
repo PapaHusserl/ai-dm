@@ -397,3 +397,24 @@ def test_refusal_message_names_prohibited_content(tmp_path, registry, cfg):
 def test_refusal_message_without_detail_is_plain(tmp_path, registry, cfg):
     _, _, _, _, go = run([{"stop": "refusal"}], tmp_path, registry, cfg)
     assert str(failure_of(go)) == "Модель отказалась отвечать."
+
+
+# Т3 (мини-партия #18): текст раунда с invalid сохраняется, бюджет invalid прежний
+
+def test_third_invalid_after_saved_text_still_fails_with_invalid(tmp_path, registry, cfg):
+    steps = [
+        tools_step(BAD_CHECK, text="Сцена."), tools_step(GHOST_ITEM), tools_step(BAD_CHECK),
+        text_step(),
+    ]
+    adapter, _, _, _, go = run(steps, tmp_path, registry, cfg)
+    error = failure_of(go)
+    assert error.reason == "invalid"
+    assert len(adapter.requests) == 3
+
+
+def test_text_with_invalid_call_does_not_spend_extra_budget(tmp_path, registry, cfg):
+    steps = [tools_step(BAD_CHECK, text="Сцена."), tools_step(GHOST_ITEM), text_step("Итог.")]
+    _, _, _, _, go = run(steps, tmp_path, registry, cfg)
+    result = go()
+    assert result.invalid_count == 2
+    assert result.texts == ["Сцена.", "Итог."]

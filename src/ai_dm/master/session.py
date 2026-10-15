@@ -38,6 +38,16 @@ CHOICES_NOTE = (
     "Напиши сцену полностью текстом ответа; варианты уже предложены, не повторяй их."
 )
 
+# приписка, когда рассказ кончился вопросом или списком вариантов, а offer_choices не вызван
+CHOICES_ASK = (
+    "Ход кончился вопросом к игроку или списком вариантов, а `offer_choices` не вызван. "
+    "Вызови `offer_choices` с этими вариантами (два или три коротких, по смыслу разных); "
+    "текст сцены не повторяй."
+)
+
+# строка списка с маркером: -, —, •, *, 1. / 1)
+MARKED_LINE = re.compile(r"^\s*(?:[-—•*]|\d+[.)])\s")
+
 # подсказка при пустом ответе по режиму (world -- по роли)
 EMPTY_NOTES = {
     "world": "Пустой ответ. Вызови нужные инструменты.",
@@ -50,6 +60,27 @@ EMPTY_NOTES = {
 }
 
 FENCE = re.compile(r"^\s*```[\w-]*\s*$")
+
+
+def ends_with_choice(narration) -> bool:
+    # рассказ кончается вопросом к игроку или списком вариантов
+    lines = [line.strip() for line in narration.split("\n") if line.strip()]
+    if not lines:
+        return False
+    if lines[-1].endswith("?") or "|" in lines[-1]:
+        return True
+    block = []
+    for line in reversed(narration.split("\n")):
+        if not line.strip():
+            if block:
+                break
+            continue
+        block.append(line.strip())
+    if len(block) < 2:
+        return False
+    if all(MARKED_LINE.match(line) for line in block):
+        return True
+    return all(len(line) <= 120 and line[-1] not in '.!…»"' for line in block)
 
 
 def plain_text(text) -> str:
@@ -74,6 +105,7 @@ class MasterResult:
         self.stop_reason = None
         self.rounds = 0
         self.invalid_count = 0
+        self.accepted = set()
 
 
 class MasterSession:
@@ -117,9 +149,9 @@ class MasterSession:
                 required = "defeat_outcome"
         return required
 
-    def choices_unseen(self, has_invalid, done, told, accepted):
+    def choices_unseen(self, done, told, accepted):
         # варианты предложены, а рассказа игрок ещё не видел
-        if self.role != "narrator" or has_invalid or told:
+        if self.role != "narrator" or told:
             return False
         return done and "offer_choices" in accepted
 
@@ -190,7 +222,8 @@ class MasterSession:
         except LlmFatal as error:
             raise TurnFailed("fatal", str(error)) from error
 
-    def run_call(self, ctx, call, executor, allowed, result, mode="explore"):
+    def run_call(self, ctx, call, executor, result, mode="explore"):
+        allowed = {d["name"] for d in tool_set(mode)}
         if call.name not in allowed:
             return Invalid(
                 code="not_available_in_mode",
@@ -223,13 +256,14 @@ class MasterSession:
         has_invalid = False
         accepted_names = set()
         for call in calls:
-            outcome = self.run_call(ctx, call, executor, allowed, result, mode)
+            outcome = self.run_call(ctx, call, executor, result, mode)
             if isinstance(outcome, Invalid):
                 has_invalid = True
             else:
                 result.decisions.append(outcome)
                 if outcome.status in ("accepted", "clamped"):
                     accepted_names.add(call.name)
+                    result.accepted.add(call.name)
                 if outcome.report_tag is not None:
                     result.report_tags.append(outcome.report_tag)
             rendered = render_tool_result(outcome)
@@ -251,6 +285,33 @@ class MasterSession:
         # в том же ответе, где вызывает инструмент, а финальный ответ — короткий
         result.narration = plain_text("\n\n".join(t.strip() for t in result.texts if t.strip()))
         return result
+
+    def choices_missing(self, ctx, result, mode):
+        # рассказ кончился вопросом или списком, а offer_choices в ходу не принят (не в бою)
+        if self.role != "narrator" or mode != "explore":
+            return False
+        if ctx.bundle.session.active_combat is not None or "offer_choices" in result.accepted:
+            return False
+        return ends_with_choice(result.narration)
+
+    def ask_choices(self, ctx, req, response, run_id, plan, executor, mode, result):
+        # один служебный вызов: рассказ уже принят, нужен только offer_choices
+        messages = list(req.messages)
+        messages.append(Message(role="assistant", content=response.content))
+        messages.append(Message(role="user", content=[Text(text=CHOICES_ASK)]))
+        req = req.model_copy(update={"messages": messages})
+        result.report_tags.append("choices_retry")
+        try:
+            answer = self.call(ctx, req, run_id, plan)
+        except TurnFailed:
+            return
+        result.stop_reason = answer.stop_reason
+        if answer.stop_reason == "refusal":
+            return
+        for call in answer.content:
+            if isinstance(call, ToolCall) and call.name == "offer_choices":
+                self.run_round(ctx, [call], executor, result, mode)
+                return
 
     def count_invalid(self, result, message):
         result.invalid_count += 1
@@ -330,10 +391,9 @@ class MasterSession:
                     # варианты предложены, рассказ уже есть -- завершающий вызов не нужен
                     result.texts += texts
                     return self.finish(result)
-                if self.choices_unseen(has_invalid, done, told, accepted):
+                if self.choices_unseen(done, told, accepted):
                     blocks.append(Text(text=CHOICES_NOTE))
-                if not has_invalid:
-                    result.texts += texts
+                result.texts += texts
                 messages.append(Message(role="assistant", content=response.content))
                 messages.append(Message(role="user", content=blocks))
                 if has_invalid:
@@ -346,7 +406,10 @@ class MasterSession:
                 note = f"Нужно вызвать инструмент {required}. Вызови его."
             if note is None:
                 result.texts += texts
-                return self.finish(result)
+                result = self.finish(result)
+                if self.choices_missing(ctx, result, mode):
+                    self.ask_choices(ctx, req, response, run_id, plan, executor, mode, result)
+                return result
             self.count_invalid(result, "Модель не смогла дать корректный ответ.")
             if response.content:
                 messages.append(Message(role="assistant", content=response.content))

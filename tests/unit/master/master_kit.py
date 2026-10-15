@@ -56,7 +56,9 @@
 #       решений по порядку), .stop_reason (последнего ответа), .rounds: int (число раундов
 #       инструментов), .invalid_count: int; .narration: str -- текст финального принятого ответа
 #       (то, что показывает игра). .texts -- только из ПРИНЯТЫХ ответов (отбракованные по
-#       пустоте / без обязательного / max_tokens сюда не попадают).
+#       пустоте / без обязательного / max_tokens сюда не попадают; текст раунда с отклонённым
+#       вызовом -- принят). .accepted: set[str] -- имена принятых (accepted/clamped) инструментов
+#       за весь ход. Приписка choices_retry (ask_choices): не в .texts, не в .rounds/.invalid_count.
 #     MasterSession(adapter, app_cfg, *, journal=None, ledger=None, run_id="run-1",
 #                   sleeper=time.sleep, now=None, builder=None, role="narrator")
 #       run_id нужен и в .run(..., run_id=None): None -> из конструктора. call_id журнала =
