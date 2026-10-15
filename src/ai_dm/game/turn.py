@@ -344,10 +344,15 @@ class TurnRunner:
                 ledger=self.ledger, sleeper=self.sleeper, now=self.now, model=self.model,
                 call_numbers=self.call_numbers,
             )
+        policy = None
+        if backup is not None:
+            # есть запасной: primary без долгих повторов, к запасному сразу
+            retry = self.app_cfg.retry
+            policy = retry.model_copy(update={"delays": retry.chain_delays})
         return SummarizerSession(
             adapter, self.app_cfg, journal=self.journal, ledger=self.ledger,
             sleeper=self.sleeper, now=self.now, model=model, call_numbers=self.call_numbers,
-            backup=backup,
+            backup=backup, policy=policy,
         )
 
     def take_boundary(self, done, result):

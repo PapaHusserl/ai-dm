@@ -56,6 +56,10 @@ class RetryConfig(BaseModel):
     invalid_retries: int
     max_tool_rounds: int
     timeout_s: int
+    # таймаут запроса Gemini (на фазу httpx), с; общий timeout_s остаётся Anthropic
+    gemini_timeout_s: int = Field(default=90, gt=0)
+    # паузы повторов primary summarizer при запасном (модель рассказчика); [] -- сразу запасной
+    chain_delays: list[int] = []
 
 
 class JournalConfig(BaseModel):
@@ -106,6 +110,10 @@ class LlmConfig(BaseModel):
     thinking: dict[Literal["narrator"], Literal["adaptive"]] = {}
     # показ мышления в ответе (журнал): summarized или omitted
     thinking_display: Literal["summarized", "omitted"] = "summarized"
+    # Gemini только по IPv4 (local_address 0.0.0.0): обход зависаний IPv6
+    gemini_ipv4: bool = True
+    # порядок моделей в меню ошибки: ключи "провайдер:модель", первой -- следующая за текущей
+    narrator_chain: list[str] = []
 
 
 class UiConfig(BaseModel):
@@ -187,13 +195,17 @@ class AppConfig(BaseModel):
         roles.append(self.alternatives.narrator)
         for profile in self.profiles.values():
             roles += [profile.narrator, profile.world, profile.summarizer, profile.import_]
-        for role in roles:
-            if role is None:
-                continue
-            if role.model not in self.prices:
-                raise ValueError(f"нет цены для модели {role.model}")
-            if role.model not in self.context_windows:
-                raise ValueError(f"нет окна контекста для модели {role.model}")
+        models = [role.model for role in roles if role is not None]
+        for key in self.llm.narrator_chain:
+            provider, _, model = key.partition(":")
+            if not provider or not model:
+                raise ValueError(f"llm.narrator_chain: ключ {key!r} не вида провайдер:модель")
+            models.append(model)
+        for model in models:
+            if model not in self.prices:
+                raise ValueError(f"нет цены для модели {model}")
+            if model not in self.context_windows:
+                raise ValueError(f"нет окна контекста для модели {model}")
         return self
 
 

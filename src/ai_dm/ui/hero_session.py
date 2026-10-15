@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from ai_dm.game.app import check_model, model_options
 from ai_dm.game.hero_create import (
     edit_sheet,
     preview_lines,
     propose_hero_sheet,
     sheet_fields_lines,
 )
+from ai_dm.game.models import check_model, model_options
 from ai_dm.game.turn import REFUSAL_HINT
 from ai_dm.master.session import TurnFailed
 from ai_dm.protocol.handlers.hero import request_from_sheet

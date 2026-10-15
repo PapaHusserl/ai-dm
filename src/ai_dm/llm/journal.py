@@ -154,6 +154,14 @@ class Journal:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
         self.drop_old_segments()
 
+    def note_start(self, *fields):
+        # fields: ts, run_id, turn_seq, role, model, attempt (через табуляцию);
+        # висящая попытка -- последняя строка без парной записи в calls-*
+        self.dir.mkdir(parents=True, exist_ok=True)
+        line = "\t".join(str(f) for f in fields)
+        with (self.dir / "attempts.log").open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+
     def mark_turn(self, run_id, status):
         if status not in ("committed", "aborted"):
             raise ValueError(f"неизвестный статус хода: {status}")

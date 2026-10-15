@@ -90,7 +90,7 @@ class MasterSession:
     def __init__(
         self, adapter, app_cfg, *, journal=None, ledger=None, run_id="run-1",
         sleeper=time.sleep, now=None, builder=None, role="narrator", call_numbers=None,
-        note=None,
+        note=None, policy=None,
     ):
         self.adapter = adapter
         self.app_cfg = app_cfg
@@ -105,6 +105,7 @@ class MasterSession:
         self.call_numbers = {} if call_numbers is None else call_numbers
         # приписка к запросу (повтор после отказа): отдельный блок после JSON состояния
         self.note = note
+        self.policy = policy or app_cfg.retry
 
     def required_tool(self, ctx, mode):
         required = REQUIRED_BY_MODE.get(mode)
@@ -129,6 +130,13 @@ class MasterSession:
         content = list(first.content) + [Text(text=self.note)]
         messages = [first.model_copy(update={"content": content})] + list(req.messages[1:])
         return req.model_copy(update={"messages": messages})
+
+    def note_start(self, ctx, run_id, info, attempt):
+        # строка в journal/attempts.log перед попыткой (если есть журнал)
+        if self.journal is not None:
+            self.journal.note_start(
+                self.now().isoformat(), run_id, ctx.turn_seq, self.role, info.model, attempt
+            )
 
     def call(self, ctx, req, run_id, plan=None):
         info = self.adapter.info()
@@ -174,7 +182,8 @@ class MasterSession:
 
         try:
             return call_with_retries(
-                self.adapter, req, self.app_cfg.retry, self.sleeper, on_attempt
+                self.adapter, req, self.policy, self.sleeper, on_attempt,
+                lambda attempt: self.note_start(ctx, run_id, info, attempt),
             )
         except RetriesExhausted as error:
             raise TurnFailed("network", str(error)) from error

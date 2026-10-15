@@ -59,7 +59,13 @@ class GeminiAdapter:
         if self.client is None:
             from google import genai
 
-            options = self.get_sdk().HttpOptions(timeout=self.cfg.retry.timeout_s * 1000)
+            fields = {"timeout": self.cfg.retry.gemini_timeout_s * 1000}
+            # async-клиент genai в игре не используется, потому async_client_args не задаём
+            if self.cfg.llm.gemini_ipv4:
+                import httpx
+
+                fields["client_args"] = {"transport": httpx.HTTPTransport(local_address="0.0.0.0")}
+            options = self.get_sdk().HttpOptions(**fields)
             self.client = genai.Client(api_key=self.api_key, http_options=options)
         return self.client
 

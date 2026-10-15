@@ -9,7 +9,7 @@ from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.schema import tool_set
 
-SOFT_REASONS = ("refusal", "invalid")
+SOFT_REASONS = ("refusal", "invalid", "network")
 
 
 def scene_turns(bundle, scene):
@@ -142,7 +142,7 @@ class SummarizerSession:
 
     def __init__(
         self, adapter, app_cfg, *, journal=None, ledger=None, sleeper=time.sleep, now=None,
-        model=None, call_numbers=None, backup=None,
+        model=None, call_numbers=None, backup=None, policy=None,
     ):
         self.adapter = adapter
         self.app_cfg = app_cfg
@@ -154,6 +154,8 @@ class SummarizerSession:
         self.call_numbers = call_numbers
         # запасной SummarizerSession на модели рассказчика или None
         self.backup = backup
+        # политика повторов вызовов (None -- app_cfg.retry)
+        self.policy = policy
 
     def chain(self, call, ok):
         # (ctx, был ли сбой): мягкий сбой или негодная выжимка -- к запасному, затем (None, True)
@@ -192,7 +194,7 @@ class SummarizerSession:
         session = MasterSession(
             self.adapter, self.app_cfg, journal=self.journal, ledger=self.ledger, run_id=run_id,
             sleeper=self.sleeper, now=self.now, role="summarizer", call_numbers=self.call_numbers,
-            builder=SummarizerPromptBuilder(self.app_cfg, model=self.model),
+            builder=SummarizerPromptBuilder(self.app_cfg, model=self.model), policy=self.policy,
         )
         session.run(ctx, "", apply, "summarize_scene", run_id=run_id)
         return ctx
@@ -205,7 +207,7 @@ class SummarizerSession:
         session = MasterSession(
             self.adapter, self.app_cfg, journal=self.journal, ledger=self.ledger, run_id=run_id,
             sleeper=self.sleeper, now=self.now, role="summarizer", call_numbers=self.call_numbers,
-            builder=SummarizerPromptBuilder(self.app_cfg, model=self.model),
+            builder=SummarizerPromptBuilder(self.app_cfg, model=self.model), policy=self.policy,
         )
         session.run(ctx, "", apply, "summarize_chapter", run_id=run_id)
         return ctx

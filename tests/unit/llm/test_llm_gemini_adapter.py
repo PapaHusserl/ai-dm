@@ -663,7 +663,7 @@ def test_client_gets_http_timeout_in_milliseconds(monkeypatch):
     GeminiAdapter(MODEL, cfg, api_key="k").get_client()
     options = created[0]["http_options"]
     assert isinstance(options, types.HttpOptions)
-    assert options.timeout == cfg.retry.timeout_s * 1000
+    assert options.timeout == cfg.retry.gemini_timeout_s * 1000
     assert created[0]["api_key"] == "k"
 
 

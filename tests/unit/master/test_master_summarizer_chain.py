@@ -1,5 +1,5 @@
 # Р2 (R2-PLAN, В10а-В12а): цепочка SummarizerSession -- сам, затем запасной на модели рассказчика,
-# затем (None, True). Мягкие сбои: refusal и invalid; остальное поднимается наверх.
+# затем (None, True). Мягкие сбои: refusal, invalid и network (Т60); остальное поднимается наверх.
 from types import SimpleNamespace
 
 import pytest
@@ -61,12 +61,12 @@ def make_chain(app, primary_steps, backup_steps, with_backup=True):
 
 # soft_failure
 
-@pytest.mark.parametrize("reason", ["refusal", "invalid"])
-def test_soft_failure_true_for_refusal_and_invalid(reason):
+@pytest.mark.parametrize("reason", ["refusal", "invalid", "network"])
+def test_soft_failure_true_for_refusal_invalid_and_network(reason):
     assert soft_failure(TurnFailed(reason, "x")) is True
 
 
-@pytest.mark.parametrize("reason", ["network", "fatal", "rounds"])
+@pytest.mark.parametrize("reason", ["fatal", "rounds"])
 def test_soft_failure_false_for_other_turn_failures(reason):
     assert soft_failure(TurnFailed(reason, "x")) is False
 
@@ -154,7 +154,7 @@ def test_chain_without_backup_and_bad_ctx_gives_none_and_fall():
 
 
 HARD = [
-    TurnFailed("network", "x"), TurnFailed("fatal", "x"), TurnFailed("rounds", "x"), LlmFatal("x"),
+    TurnFailed("fatal", "x"), TurnFailed("rounds", "x"), LlmFatal("x"),
 ]
 
 
@@ -212,13 +212,24 @@ def test_try_scene_without_backup_and_refusal_gives_none(registry, cfg, app_cfg)
     assert primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1") == (None, True)
 
 
-def test_try_scene_network_raises_and_backup_is_not_called(registry, cfg, app_cfg):
+def test_try_scene_network_goes_to_backup(registry, cfg, app_cfg):
     network = [{"error": "transient", "message": "сеть"}] * 4
-    primary, _, second = make_chain(app_cfg, network, scene_steps())
-    with pytest.raises(TurnFailed) as info:
-        primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1")
-    assert info.value.reason == "network"
-    assert second.requests == []
+    primary, _, second = make_chain(app_cfg, network, scene_steps("Бэкап."))
+    ctx, fell = primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert (ctx.summary_text, fell) == ("Бэкап.", True)
+    assert len(second.requests) == 1
+
+
+def test_try_scene_network_of_both_gives_none(registry, cfg, app_cfg):
+    network = [{"error": "transient", "message": "сеть"}] * 4
+    primary, _, _ = make_chain(app_cfg, network, network)
+    assert primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1") == (None, True)
+
+
+def test_try_scene_network_without_backup_gives_none(registry, cfg, app_cfg):
+    network = [{"error": "transient", "message": "сеть"}] * 4
+    primary, _, _ = make_chain(app_cfg, network, [], with_backup=False)
+    assert primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1") == (None, True)
 
 
 def test_try_scene_backup_fatal_raises(registry, cfg, app_cfg):

@@ -456,14 +456,17 @@ def test_fatal_summarizer_still_gives_menu_and_backup_is_not_called(registry, cf
     assert "refusal_fallback" not in result.report_tags
 
 
-def test_network_summarizer_still_gives_menu_and_backup_is_not_called(registry, cfg, tmp_path):
+def test_network_summarizer_goes_to_backup_without_menu(registry, cfg, tmp_path):
+    # Т60: сеть у summarizer -- мягкий сбой, как отказ: запасной на модели рассказчика
     network = [{"error": "transient", "message": "сеть"}] * 4
     narrator = end_narrator("Подсказка.") + summ_steps("От рассказчика.")
     rig = make_summ_rig(registry, cfg, tmp_path, narrator, network)
     result = rig.runner.play("ход")
-    assert result.boundary_failed is True
-    assert rig.runner.failed_role == "summarizer"
-    assert rig.narrator_view().summarizer_requests() == []
+    assert result.boundary_failed is False
+    assert rig.runner.failed_role is None
+    assert len(rig.narrator_view().summarizer_requests()) == 1
+    assert rig.runner.bundle.memory.scenes[0].summary == "От рассказчика."
+    assert "refusal_fallback" in result.report_tags
 
 
 def test_backup_fatal_gives_error_menu(registry, cfg, tmp_path):

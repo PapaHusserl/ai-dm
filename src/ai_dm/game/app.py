@@ -1,5 +1,3 @@
-import json
-import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +9,7 @@ from ai_dm.core.rng import Rng
 from ai_dm.game import tone
 from ai_dm.game.boundary import boundary_lines
 from ai_dm.game.commands import COMMANDS
+from ai_dm.game.models import check_model, model_options, read_models, write_models
 from ai_dm.game.scene import ensure_chapter, hero_of, start_scene
 from ai_dm.game.turn import ERROR_MENU, TurnResult, TurnRunner
 from ai_dm.llm.cost import CostLedger
@@ -65,28 +64,6 @@ def merge_pack(bundle, registry, campaigns_dir) -> list[str]:
         lines.append("Не загружено из пака (конфликты):")
         lines += [conflict.line() for conflict in report.conflicts]
     return lines
-
-
-def model_options(app_cfg):
-    # модели рассказчика для меню выбора: roles, alternatives и профили, без повторов
-    roles = [app_cfg.roles.narrator, app_cfg.alternatives.narrator]
-    roles += [profile.narrator for profile in app_cfg.profiles.values()]
-    options = []
-    for role in roles:
-        key = f"{role.provider}:{role.model}"
-        if key not in options:
-            options.append(key)
-    return options
-
-
-def check_model(app_cfg, adapter_factory, provider, model):
-    # (адаптер, None) для годной модели или (None, текст ошибки): цена, окно и фабрика
-    if model not in app_cfg.prices or model not in app_cfg.context_windows:
-        return None, f"Для модели {model!r} нет цены или окна контекста в конфиге."
-    try:
-        return adapter_factory(provider, model), None
-    except (MissingKey, ValueError) as error:
-        return None, str(error)
 
 
 class Reply:
@@ -147,8 +124,10 @@ class GameApp:
         self.pending = None
         if hero_of(bundle).pending_level is not None:
             self.pending = "level_up"
-        # роль, чью модель меняет меню 2.2 ("narrator" или "summarizer")
+        # роль, чью модель меняет меню 2.2 ("narrator", "summarizer" или "both")
         self.switch_role = "narrator"
+        # причина сбоя последнего хода ("network", "refusal", ...) или None
+        self.failed_reason = None
         # (шкала, значение) изменения тона, ждущего подтверждения (pending tone_confirm)
         self.tone_change = None
         # звук: cli подменяет на настоящий контроллер только в TUI
@@ -173,21 +152,27 @@ class GameApp:
             if hero_of(self.bundle).pending_level is not None:
                 return step_options(hero_of(self.bundle), self.registry)
             return list(LEVEL_MENU)
-        if pending == "error_menu":
-            return list(ERROR_MENU)
-        if pending == "hero_dead":
-            return list(DEAD_MENU)
         if pending == "model_choice":
             return self.model_options()
-        if pending == "tone_confirm":
-            return ["да", "нет"]
-        return None
+        fixed = {
+            "error_menu": list(ERROR_MENU), "hero_dead": list(DEAD_MENU),
+            "tone_confirm": ["да", "нет"],
+        }
+        return fixed.get(pending)
 
     def reply(self, lines=None, **fields):
         return Reply(lines, pending=self.pending, menu=self.menu_for(self.pending), **fields)
 
     def model_options(self):
-        return model_options(self.settings.app)
+        return model_options(self.settings.app, self.current_key())
+
+    def current_key(self):
+        # ключ модели меняемой роли (для порядка меню по цепочке)
+        adapter = self.adapter
+        if self.switch_role == "summarizer" and self.runner.summarizer_adapter is not None:
+            adapter = self.runner.summarizer_adapter
+        info = adapter.info()
+        return f"{info.provider}:{info.model}"
 
     # ввод игрока
 
@@ -209,6 +194,7 @@ class GameApp:
 
     def after_turn(self, turn) -> Reply:
         lines = self.auto_report(turn)
+        self.failed_reason = None if turn.failure is None else turn.failure.reason
         if not turn.committed or turn.boundary_failed:
             self.pending = "error_menu"
             return self.reply(lines, turn=turn, narration=turn.narration, hint=turn.hint)
@@ -359,6 +345,9 @@ class GameApp:
             self.switch_role = "narrator"
             if self.runner.failed_role == "summarizer":
                 self.switch_role = "summarizer"
+            elif self.failed_reason == "network":
+                # сеть: упасть могла любая из ролей -- выбранная модель ставится обеим
+                self.switch_role = "both"
             return self.reply(["Выберите модель."])
         self.save_current("auto")
         return self.reply(["Сохранено."], quit=True)
@@ -367,12 +356,19 @@ class GameApp:
         if self.switch_role == "summarizer":
             error = self.set_summarizer(key)
             title = "Модель summarizer"
+        elif self.switch_role == "both":
+            error = self.set_narrator(key) or self.set_summarizer(key)
+            if error is None:
+                # одна модель у обеих ролей: общий адаптер, запасной summarizer на ней не нужен
+                self.runner.summarizer_adapter = self.runner.adapter
+            title = "Модели рассказчика и summarizer"
         else:
             error = self.set_narrator(key)
             title = "Модель рассказчика"
         if error is not None:
             return self.reply([error])
         self.pending = "error_menu"
+        self.switch_role = "narrator"
         return self.reply([f"{title}: {key}."])
 
     def choose_tone(self, key) -> Reply:
@@ -415,6 +411,7 @@ class GameApp:
         ensure_chapter(bundle)
         self.runner.deferred_input = None
         self.runner.last_capture = None
+        self.failed_reason = None
         scene = bundle.session.current_scene
         pending_boundary = bundle.session.boundary_pending and hero_of(bundle).status != "dead"
         if not pending_boundary and (scene is None or scene.closed_reason is not None):
@@ -442,19 +439,10 @@ class GameApp:
             lines.append("Герой погиб. Можно загрузить другое сохранение.")
         return lines
 
-    def models_path(self):
-        return self.saves_root / self.world_id / "meta" / "models.json"
-
-    def read_models(self):
-        path = self.models_path()
-        if not path.is_file():
-            return {}
-        return json.loads(path.read_text(encoding="utf-8"))
-
     def restore_model(self) -> str | None:
         # сохранённая модель рассказчика; при успехе адаптер в checked_adapter, иначе текст ошибки
         try:
-            stored = self.read_models().get("narrator")
+            stored = read_models(self.saves_root, self.world_id).get("narrator")
             if stored is None:
                 return None
             provider = stored["provider"]
@@ -514,15 +502,5 @@ class GameApp:
                 return str(error)
             runner.summarizer_model = summarizer_model
         runner.set_adapter(narrator_adapter)
-        try:
-            stored = self.read_models()
-        except (ValueError, OSError):
-            # битый models.json: пишем заново
-            stored = {}
-        stored["narrator"] = {"provider": provider, "model": model}
-        path = self.models_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(json.dumps(stored, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
+        write_models(self.saves_root, self.world_id, provider, model)
         return None
