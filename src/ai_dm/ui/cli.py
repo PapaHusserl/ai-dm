@@ -1004,7 +1004,7 @@ def prepare(args, stdin, stdout, notes, setup):
         model=model,
         use_stored_model=not (args.mock or args.replay), campaigns_dir=campaigns_dir,
         auto_reports=not (args.mock or args.replay), secrets=setup.secrets,
-        world_adapter=world_adapter,
+        refusal_chain=not (args.mock or args.replay), world_adapter=world_adapter,
         world_model=None if world_adapter is None else world_model,
         summarizer_adapter=summarizer_adapter,
         summarizer_model=None if summarizer_adapter is None else summarizer_model,

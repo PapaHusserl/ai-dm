@@ -8,6 +8,7 @@ from ai_dm.llm.types import ChatResponse, Text, ToolCall, ToolResult, Usage
 
 STEP_KEYS = {
     "text", "tool_calls", "error", "stop", "usage", "message", "retry_after", "timeout", "when",
+    "stop_detail",
 }
 CONTENT_KEYS = {"text", "tool_calls", "error", "stop"}
 WHEN_KEYS = {"role", "last_message_contains"}
@@ -38,6 +39,8 @@ def check_step(step):
         raise ValueError(f"error должен быть transient или fatal: {step['error']!r}")
     if "stop" in step and step["stop"] not in ("refusal", "max_tokens"):
         raise ValueError(f"stop должен быть refusal или max_tokens: {step['stop']!r}")
+    if "stop_detail" in step and "stop" not in step:
+        raise ValueError(f"stop_detail только вместе со stop: {step!r}")
     unknown_when = set(step.get("when", {})) - WHEN_KEYS
     if unknown_when:
         raise ValueError(f"неизвестные ключи when: {sorted(unknown_when)}")
@@ -117,4 +120,5 @@ class ScriptedAdapter:
         return ChatResponse(
             content=content, stop_reason=stop_reason,
             usage=Usage(**step.get("usage", {})), request_id=f"mock-{number}", model=req.model,
+            stop_detail=step.get("stop_detail"),
         )

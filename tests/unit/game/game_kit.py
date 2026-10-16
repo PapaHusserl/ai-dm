@@ -153,7 +153,9 @@
 #   ai_dm.game.app
 #     GameApp(settings, registry, bundle, adapter, *, saves_root, adapter_factory=None,
 #             world_text="", sleeper=time.sleep, now=None, model=None, run_tag=None,
-#             use_stored_model=True)
+#             use_stored_model=True, refusal_chain=True)
+#       refusal_chain (#21 ТО): жёсткий отказ (turn.hard_refusal) -> chain_turn переключает рассказчика
+#       по narrator_chain и повторяет ход; make_app() ниже его не задаёт (по умолчанию True).
 #       settings -- config.app.Settings (rules + app); adapter_factory(provider, model) ->
 #       адаптер (llm.factory.make_adapter-совместимая; MissingKey/ValueError -- ошибка выбора);
 #       .runner (TurnRunner), .bundle (= runner.bundle), .adapter, .journal (Journal(saves_root,

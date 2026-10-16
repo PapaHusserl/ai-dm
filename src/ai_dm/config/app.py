@@ -141,6 +141,8 @@ class ReportsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # сколько последних ходов (вместе с самим ходом) попадает в report.md
     recent_turns: int = Field(default=5, ge=1)
+    # потолок объёма issues/ мира в МБ: старые авто-репорты удаляются; 0 -- без лимита
+    max_mb: int = Field(default=200, ge=0)
 
 
 class PersistenceConfig(BaseModel):

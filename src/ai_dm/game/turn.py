@@ -32,6 +32,11 @@ TEXT_NOTE = (
     "игрок видит только текст, размышления ему не показываются."
 )
 RETRY_NOTES = {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE}
+HARD_REFUSALS = ("PROHIBITED_CONTENT", "BLOCKLIST", "SPII")
+
+
+def hard_refusal(failure):
+    return failure.reason == "refusal" and failure.detail in HARD_REFUSALS
 
 
 class TurnResult:
@@ -204,7 +209,7 @@ class TurnRunner:
         try:
             work, rng, narration = self.attempt(player_input, run_id, result)
         except TurnFailed as failure:
-            note = RETRY_NOTES.get(failure.reason)
+            note = None if hard_refusal(failure) else RETRY_NOTES.get(failure.reason)
             if note is None:
                 return self.failed(result, failure)
             # один автоповтор хода на той же модели с припиской, с новой копии

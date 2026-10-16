@@ -8,6 +8,7 @@ from ai_dm.persistence.store import write_slot
 from ai_dm.reports.markdown import render
 
 REPORT_FORMAT = 1
+MB = 1_000_000
 
 
 def meta_of(world_id, capture, text, calls, complete=True) -> dict:
@@ -85,3 +86,34 @@ def write_report(saves_root, world_id, capture, text, now, journal=None, recent_
         shutil.rmtree(tmp, ignore_errors=True)
         raise
     return final
+
+
+def dir_size(path) -> int:
+    return sum(f.stat().st_size for f in Path(path).rglob("*") if f.is_file())
+
+
+def is_manual(path) -> bool:
+    try:
+        return bool(json.loads((path / "meta.json").read_text(encoding="utf-8")).get("manual"))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def trim_issues(saves_root, world_id, max_mb) -> list[Path]:
+    # удаляет самые старые авто-репорты, пока issues/ больше max_mb; самый новый и manual целы
+    issues = Path(saves_root) / world_id / "issues"
+    if max_mb == 0 or not issues.is_dir():
+        return []
+    folders = sorted(p for p in issues.iterdir() if p.is_dir() and not p.name.startswith("tmp-"))
+    sizes = {p: dir_size(p) for p in folders}
+    total = sum(sizes.values())
+    removed = []
+    for path in folders[:-1]:
+        if total <= max_mb * MB:
+            break
+        if is_manual(path):
+            continue
+        shutil.rmtree(path)
+        total -= sizes[path]
+        removed.append(path)
+    return removed

@@ -1,3 +1,4 @@
+import contextlib
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,9 +10,15 @@ from ai_dm.core.rng import Rng
 from ai_dm.game import tone
 from ai_dm.game.boundary import boundary_lines
 from ai_dm.game.commands import COMMANDS
-from ai_dm.game.models import check_model, model_options, read_models, write_models
+from ai_dm.game.models import (
+    check_model,
+    model_options,
+    next_in_chain,
+    read_models,
+    write_models,
+)
 from ai_dm.game.scene import ensure_chapter, hero_of, start_scene
-from ai_dm.game.turn import ERROR_MENU, TurnResult, TurnRunner
+from ai_dm.game.turn import ERROR_MENU, TurnResult, TurnRunner, hard_refusal
 from ai_dm.llm.cost import CostLedger
 from ai_dm.llm.errors import MissingKey
 from ai_dm.llm.factory import make_adapter
@@ -19,7 +26,7 @@ from ai_dm.llm.journal import Journal
 from ai_dm.llm.keys import redact
 from ai_dm.persistence.migrations import MigrationContext, SaveTooNew
 from ai_dm.persistence.store import load_slot, save_auto, save_slot
-from ai_dm.reports.writer import write_report
+from ai_dm.reports.writer import trim_issues, write_report
 from ai_dm.rules.derived import companion_due
 from ai_dm.rules.level_up import (
     begin_level_up,
@@ -88,10 +95,13 @@ class GameApp:
         world_text="", sleeper=time.sleep, now=None, model=None,
         use_stored_model=True, run_tag=None, campaigns_dir=CAMPAIGNS_DIR, world_adapter=None,
         world_model=None, summarizer_adapter=None, summarizer_model=None, auto_reports=True,
-        secrets=(), summarizer_backup=None,
+        secrets=(), summarizer_backup=None, refusal_chain=True,
     ):
         self.settings = settings
         self.auto_reports = auto_reports
+        self.refusal_chain = refusal_chain
+        # ключ последнего записанного репорта оборванной попытки хода (T9)
+        self.reported = None
         self.secrets = secrets
         self.base_registry = registry
         self.saves_root = Path(saves_root)
@@ -193,7 +203,8 @@ class GameApp:
         return self.after_turn(self.runner.play(line))
 
     def after_turn(self, turn) -> Reply:
-        lines = self.auto_report(turn)
+        turn, lines = self.chain_turn(turn)
+        lines += self.auto_report(turn)
         self.failed_reason = None if turn.failure is None else turn.failure.reason
         if not turn.committed or turn.boundary_failed:
             self.pending = "error_menu"
@@ -211,11 +222,42 @@ class GameApp:
                 lines.append("Опыта хватает на новый уровень: выберите, как прибавить HP.")
         return self.reply(lines, narration=turn.narration, turn=turn)
 
+    def chain_turn(self, turn):
+        # жёсткий отказ модели: переход к следующей по цепочке и повтор хода; (ход, строки игроку)
+        lines = []
+        while self.refusal_chain and turn.failure is not None and hard_refusal(turn.failure):
+            following = next_in_chain(self.settings.app, self.current_key())
+            if following is None:
+                break
+            lines += self.auto_report(turn)
+            old = self.current_key().partition(":")[2]
+            error = self.set_narrator(following)
+            if error is not None:
+                lines.append(error)
+                break
+            detail = turn.failure.detail
+            new = following.partition(":")[2]
+            lines.append(f"Модель {old} отказала ({detail}) — переключаюсь на {new}.")
+            turn = self.runner.retry()
+        return turn, lines
+
     # репорты
+
+    def already_reported(self, capture) -> bool:
+        # оборванная попытка с теми же ходом, тегами, причиной и моделью уже записана
+        if capture.status != "aborted":
+            return False
+        key = (capture.turn_seq, tuple(capture.tags), capture.failure_reason, capture.model)
+        if key == self.reported:
+            return True
+        self.reported = key
+        return False
 
     def auto_report(self, turn) -> list[str]:
         capture = self.runner.last_capture
         if not self.auto_reports or not turn.report_tags or capture is None:
+            return []
+        if self.already_reported(capture):
             return []
         return self.write_report_lines(capture, "")
 
@@ -233,6 +275,8 @@ class GameApp:
             )
         except OSError as error:
             return [redact(f"Репорт не записан: {error}", self.secrets)]
+        with contextlib.suppress(OSError):
+            trim_issues(self.saves_root, self.world_id, self.settings.app.reports.max_mb)
         return [f"Записан репорт: {path}"]
 
     # ответ на меню
@@ -411,6 +455,7 @@ class GameApp:
         ensure_chapter(bundle)
         self.runner.deferred_input = None
         self.runner.last_capture = None
+        self.reported = None
         self.failed_reason = None
         scene = bundle.session.current_scene
         pending_boundary = bundle.session.boundary_pending and hero_of(bundle).status != "dead"
@@ -476,31 +521,28 @@ class GameApp:
             return error
         narrator_adapter = self.checked_adapter
         runner = self.runner
-        world = runner.world_adapter
-        profiles = self.settings.app.profiles
-        # world следует за провайдером рассказчика: профиль нового провайдера
-        if (
-            world is not None and world.info().provider in profiles
-            and world.info().provider != provider and provider in profiles
-        ):
-            world_model = profiles[provider].world.model
-            try:
-                runner.world_adapter = self.adapter_factory(provider, world_model)
-            except (MissingKey, ValueError) as error:
-                return str(error)
-            runner.world_model = world_model
-        # summarizer следует за провайдером рассказчика так же, как world
-        summarizer = runner.summarizer_adapter
-        if (
-            summarizer is not None and summarizer.info().provider in profiles
-            and summarizer.info().provider != provider and provider in profiles
-        ):
-            summarizer_model = profiles[provider].summarizer.model
-            try:
-                runner.summarizer_adapter = self.adapter_factory(provider, summarizer_model)
-            except (MissingKey, ValueError) as error:
-                return str(error)
-            runner.summarizer_model = summarizer_model
+        for role in ("world", "summarizer"):
+            error = self.follow_provider(role, provider)
+            if error is not None:
+                return error
         runner.set_adapter(narrator_adapter)
         write_models(self.saves_root, self.world_id, provider, model)
+        return None
+
+    def follow_provider(self, role, provider) -> str | None:
+        # роль world/summarizer следует за провайдером рассказчика: профиль нового провайдера
+        runner = self.runner
+        profiles = self.settings.app.profiles
+        adapter = getattr(runner, f"{role}_adapter")
+        if (
+            adapter is None or adapter.info().provider not in profiles
+            or adapter.info().provider == provider or provider not in profiles
+        ):
+            return None
+        model = getattr(profiles[provider], role).model
+        try:
+            setattr(runner, f"{role}_adapter", self.adapter_factory(provider, model))
+        except (MissingKey, ValueError) as error:
+            return str(error)
+        setattr(runner, f"{role}_model", model)
         return None

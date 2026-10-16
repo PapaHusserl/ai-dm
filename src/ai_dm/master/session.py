@@ -108,10 +108,11 @@ def plain_text(text) -> str:
 
 
 class TurnFailed(Exception):
-    def __init__(self, reason, message, report_tags=None):
+    def __init__(self, reason, message, report_tags=None, detail=None):
         super().__init__(message)
         self.reason = reason
         self.report_tags = report_tags or []
+        self.detail = detail
 
 
 class MasterResult:
@@ -387,7 +388,8 @@ class MasterSession:
             result.stop_reason = response.stop_reason
             if response.stop_reason == "refusal":
                 detail = f" ({response.stop_detail})" if response.stop_detail else ""
-                raise TurnFailed("refusal", f"Модель отказалась отвечать{detail}.", ["refusal"])
+                message = f"Модель отказалась отвечать{detail}."
+                raise TurnFailed("refusal", message, ["refusal"], detail=response.stop_detail)
             # пустые и пробельные текстовые блоки не считаются ответом
             texts = [b.text for b in response.content if isinstance(b, Text) and b.text.strip()]
             calls = [b for b in response.content if isinstance(b, ToolCall)]
