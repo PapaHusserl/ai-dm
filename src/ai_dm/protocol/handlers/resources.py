@@ -1,3 +1,4 @@
+from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.loot_gear import gold_loot
@@ -570,18 +571,34 @@ def take_item(ctx, request):
     return Decision(status="accepted", result=result, log=log)
 
 
-def gold(ctx, request):
+def gold_repeated(ctx, amount_cp):
+    # turn_seq хода из последних gold_repeat_turns с той же суммой начисления или None
+    window = ctx.cfg.limits.gold_repeat_turns
+    if window == 0:
+        return None
+    for turn in ctx.bundle.memory.recent_turns[-window:]:
+        if turn.money_delta_cp == amount_cp:
+            return turn.turn_seq
+    return None
+
+
+def gold_explicit(ctx, request):
     hero = ctx.hero
-    if request.kind == "loot_individual":
-        return gold_loot(ctx, request)
-    if request.kind == "hoard":
-        return gold_hoard(ctx, request)
     if request.amount_cp is None or request.amount_cp < 1:
         return Invalid(code="bad_amount", message="для explicit нужна amount_cp не меньше 1")
     amount = request.amount_cp
     if request.direction == "gain":
         cap = ctx.cfg.limits.gold_explicit_max_cp_by_level[hero.sheet.level]
         amount = min(amount, cap)
+        seq = gold_repeated(ctx, amount)
+        if seq is not None:
+            return rejected(
+                "повтор начисления",
+                f"Сумма {money.format_cp(amount)} уже начислена на ходу {seq}; кошель героя "
+                f"{money.format_cp(hero.money_cp)}. Повторно не начисляй и не описывай эту "
+                "находку снова.",
+                report_tag="gold_repeat",
+            )
         money.add_money(hero, amount)
         log = [f"Золото: +{money.format_cp(amount)}"]
     else:
@@ -596,6 +613,14 @@ def gold(ctx, request):
             result, log,
         )
     return Decision(status="accepted", result=result, log=log)
+
+
+def gold(ctx, request):
+    if request.kind == "loot_individual":
+        return gold_loot(ctx, request)
+    if request.kind == "hoard":
+        return gold_hoard(ctx, request)
+    return gold_explicit(ctx, request)
 
 
 def lair_here(ctx):
@@ -691,10 +716,29 @@ def swap_invalid(ctx, request):
     return Invalid(code=problem[0], message=problem[1])
 
 
+def rest_redundant(ctx, request):
+    # длинный отдых раньше кулдауна от конца предыдущего: rejected до отдыха;
+    # при 0 HP отдых по-прежнему отклоняет long_rest (Invalid)
+    hero = ctx.hero
+    end_s = hero.long_rest_end_s
+    if request.kind != "long" or end_s is None or hero.creature.hp_current == 0:
+        return None
+    now_s = ctx.bundle.world.clock.now_s
+    next_s = end_s + Duration.parse(ctx.cfg.limits.long_rest_cooldown).seconds
+    if now_s >= next_s:
+        return None
+    return rejected(
+        "отдых уже был",
+        f"Длинный отдых кончился в {clock_text(end_s)}; следующий — не раньше "
+        f"{clock_text(next_s)}. Отдых не повторяй; сон или ожидание дай через advance_time.",
+        report_tag="rest_repeat",
+    )
+
+
 def rest(ctx, request):
     hero = ctx.hero
     world = ctx.bundle.world
-    for check in (swap_invalid, prey_invalid):
+    for check in (rest_redundant, swap_invalid, prey_invalid):
         invalid = check(ctx, request)
         if invalid is not None:
             return invalid

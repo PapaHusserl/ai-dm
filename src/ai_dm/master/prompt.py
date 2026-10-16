@@ -48,6 +48,14 @@ def identity_data(who):
     return data
 
 
+def turn_data(turn):
+    # прошлый ход для рассказчика: без requests, rolls и scene_id (их модель копировала)
+    return {
+        "turn_seq": turn.turn_seq, "at_s": turn.at_s, "player_input": turn.player_input,
+        "narration": turn.narration, "outcomes": list(turn.outcomes),
+    }
+
+
 def inventory_data(hero, registry):
     # стек с названием и ценой одной вещи; качество только если оно есть (экономия токенов);
     # у сюжетных предметов мира ещё описание и признак квестового
@@ -443,7 +451,7 @@ class PromptBuilder:
             "divine": self.divine_data(world, hero),
             "nudge": self.nudge_signal(world),
             "combat": combat,
-            "recent_turns": [t.model_dump(mode="json") for t in context_plan.turns],
+            "recent_turns": [turn_data(t) for t in context_plan.turns],
             "offered_choices": session.offered_choices,
             "player_input": user_input,
         }

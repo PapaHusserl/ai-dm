@@ -69,7 +69,7 @@ def test_rules_mention_only_known_tools():
         "can_pray", "god_id", "hero_hidden", "spell_id", "game_summary", "improvised_thrown",
         "lost_items", "gear_looted", "purse_cp", "sell_factor", "min_cp", "max_cp", "total_cp",
         "cost_cp", "price_cp", "item_id", "trade_kind", "holder_npc_id", "haggle_percent",
-            "bad_circle", "prepared_swap",
+            "bad_circle", "prepared_swap", "recent_turns",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []
@@ -278,3 +278,12 @@ def test_offer_choices_tool_description_says_call_with_scene_after_text():
 
     tools = {d["name"]: d for d in tool_set("explore")}
     assert "в последнем ответе, после результатов механики и текста сцены" in tools["offer_choices"]["description"]
+
+
+# ТМ (#20): recent_turns -- прошлое, вызовы не повторять
+
+def test_rules_say_recent_turns_are_past_and_calls_not_repeated():
+    text = rules_text()
+    at = text.index("`recent_turns`")
+    assert "outcomes" in text[at:at + 400]
+    assert "не повторяй" in text[at:at + 400]

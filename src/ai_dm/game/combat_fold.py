@@ -93,7 +93,8 @@ def fold_fight(bundle, state, registry) -> bool:
     text = fold_text(bundle, state, registry, folded)
     record = TurnRecord(
         turn_seq=last.turn_seq, at_s=last.at_s, scene_id=last.scene_id,
-        player_input="", narration=text, requests=[], rolls=[],
+        player_input="", narration=text, requests=[], rolls=[], outcomes=[],
+        money_delta_cp=sum(t.money_delta_cp for t in folded),
     )
     bundle.memory.recent_turns = turns[:tail] + [record]
     return True

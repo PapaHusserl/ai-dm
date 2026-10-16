@@ -160,6 +160,16 @@ class LimitsConfig(BaseModel):
     max_enemies: int
     consumables_per_scene: int
     gold_explicit_max_cp_by_level: dict[int, int]
+    # окно последних ходов, где повтор той же суммы explicit gain отклоняется; 0 -- выкл.
+    gold_repeat_turns: int = Field(default=3, ge=0)
+    # кулдаун повторного длинного отдыха от конца предыдущего (строка Duration)
+    long_rest_cooldown: str = "12h"
+
+    @field_validator("long_rest_cooldown")
+    @classmethod
+    def check_cooldown(cls, value: str) -> str:
+        Duration.parse(value)
+        return value
 
     @field_validator("gold_explicit_max_cp_by_level")
     @classmethod

@@ -204,6 +204,8 @@ class HeroState(BaseModel):
     companions: list[Companion] = Field(default_factory=list)
     attuned: list[str] = Field(default_factory=list)
     pending_level: PendingLevel | None = None
+    # игровое время (с) конца последнего длинного отдыха: кулдаун повторного отдыха
+    long_rest_end_s: int | None = None
 
     @field_validator("favor")
     @classmethod

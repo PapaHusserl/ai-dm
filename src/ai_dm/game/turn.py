@@ -46,6 +46,8 @@ class TurnResult:
         self.lines = []
         self.log = []
         self.requests = []
+        # итог инструментов хода для памяти рассказчика (в lines и UI не попадает)
+        self.outcomes = []
         self.rolls = []
         self.report_tags = []
         self.failure = None
@@ -265,11 +267,13 @@ class TurnRunner:
     def commit(self, work, rng, player_input, narration, result):
         work.world.rng = rng.state
         work.session.turn_seq += 1
+        money_delta = hero_of(work).money_cp - hero_of(self.bundle).money_cp
         work.memory.recent_turns.append(
             TurnRecord(
                 turn_seq=work.session.turn_seq, at_s=work.world.clock.now_s,
                 player_input=player_input, narration=narration, requests=list(result.requests),
                 rolls=list(result.rolls), scene_id=work.session.current_scene.id,
+                outcomes=list(result.outcomes), money_delta_cp=money_delta,
             )
         )
         keep = self.app_cfg.master.recent_turns_keep
@@ -407,6 +411,9 @@ class TurnRunner:
                 result.lines += outcome.log
                 if outcome.status in ("accepted", "clamped"):
                     result.requests.append(request.type)
+                    result.outcomes += outcome.log
+                else:
+                    result.outcomes.append(f"{request.type}: отклонено ({outcome.reason})")
                 if "roll_ref" in outcome.result:
                     result.rolls.append(outcome.log[0])
                 if outcome.report_tag is not None:

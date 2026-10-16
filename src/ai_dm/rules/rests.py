@@ -77,3 +77,4 @@ def long_rest(hero, registry, clock, cfg) -> None:
         if effect.type == "resource" and is_inspiration:
             hero.heroic_inspiration = True
     clock.advance(long_rest_seconds(cfg))
+    hero.long_rest_end_s = clock.now_s

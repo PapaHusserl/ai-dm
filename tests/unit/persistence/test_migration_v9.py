@@ -3,7 +3,8 @@
 # Ожидаемый API: ai_dm.persistence.migrations.m0009_v8_to_v9
 #   migrate_v8_to_v9(data, context) -> dict (чистое dict -> dict, вход не мутирует),
 #   хелперы migrate_sheet(sheet), migrate_creature(creature, context), migrate_hero(hero, context);
-#   MIGRATIONS[8] is migrate_v8_to_v9; CURRENT_SCHEMA_VERSION == 9; контекст обязателен;
+#   MIGRATIONS[8] is migrate_v8_to_v9; CURRENT_SCHEMA_VERSION >= 9 (с партии ТМ -- 10, цепочки идут
+#   дальше до CURRENT; шаг v8 -> v9 проверяется с current_version=9); контекст обязателен;
 #   MigrationContext.class_hit_die / spell_level заполняются в from_registry.
 #   Фикстура: tests/fixtures/saves/v8 -- слот auto мира old_world (сгенерирован движком v8 из v7).
 #   Нейтральность: golden-снимки tests/golden/k0_* (сняты на main до партии) совпадают.
@@ -121,11 +122,12 @@ def hero_of(data):
 
 def test_registry_has_step_from_v8():
     assert MIGRATIONS[8] is migrate_v8_to_v9
-    assert CURRENT_SCHEMA_VERSION == 9
+    assert CURRENT_SCHEMA_VERSION >= 9
 
 
 def test_framework_sets_schema_version_nine():
-    assert migrate(raw_v8(), context=context())["manifest"]["schema_version"] == 9
+    result = migrate(raw_v8(), context=context(), current_version=9)
+    assert result["manifest"]["schema_version"] == 9
 
 
 def test_chain_v8_to_v9_needs_context():
@@ -140,7 +142,7 @@ def test_v8_to_v8_is_not_touched():
 def test_already_v9_dict_is_not_migrated_again():
     data = raw_v8()
     data["manifest"]["schema_version"] = 9
-    assert migrate(data) == data
+    assert migrate(data, current_version=9) == data
 
 
 def test_engine_v8_refuses_a_v9_dict():
@@ -558,7 +560,8 @@ def test_session_without_active_combat_key_is_fine():
 
 def test_dict_without_world_session_heroes_is_fine():
     data = {"manifest": {"schema_version": 8, "world_id": "w"}}
-    assert migrate(data, context=context())["manifest"]["schema_version"] == 9
+    result = migrate(data, context=context(), current_version=9)
+    assert result["manifest"]["schema_version"] == 9
 
 
 def test_other_world_and_session_fields_stay():
@@ -610,12 +613,12 @@ def test_load_v8_makes_byte_exact_backup(saves):
     assert tree(backup) == tree(FIXTURE_V8)
 
 
-def test_load_v8_rewrites_slot_as_v9(saves):
+def test_load_v8_rewrites_slot_as_current(saves):
     folder = install(saves, FIXTURE_V8)
     load_slot(saves, "old_world", "auto", backup_ts=BACKUP_TS)
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
     hero = json.loads((folder / "heroes" / "01_арн" / "hero.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 9
+    assert manifest["schema_version"] == CURRENT_SCHEMA_VERSION
     assert hero["sheet"]["classes"] == [{"class_id": "fighter", "level": 1, "subclass_id": None}]
     assert "class_id" not in hero["sheet"]
     assert "companion" not in hero
@@ -647,7 +650,7 @@ def test_reading_prepared_of_does_not_change_serialization(saves):
     assert tree(folder) == migrated
 
 
-def test_v9_slot_is_too_new_for_engine_v8(saves):
+def test_migrated_slot_is_too_new_for_engine_v8(saves):
     install(saves, FIXTURE_V8)
     load_slot(saves, "old_world", "auto", backup_ts=BACKUP_TS)
     with pytest.raises(SaveTooNew):
@@ -665,17 +668,17 @@ def test_load_without_context_of_v8_slot_is_refused(saves):
 @pytest.mark.parametrize(
     "name", ["v0", "v1", "v2", "v3", "v4", "v5", "v5_combat", "v6", "v7", "v8"],
 )
-def test_old_fixture_chain_reaches_v9(saves, name):
+def test_old_fixture_chain_reaches_current(saves, name):
     install(saves, FIXTURES / name)
     bundle = load_slot(saves, "old_world", "auto", backup_ts=BACKUP_TS)
-    assert bundle.manifest.schema_version == 9
+    assert bundle.manifest.schema_version == CURRENT_SCHEMA_VERSION
 
 
-def test_v4_dragon_chain_reaches_v9_with_ranger_classes(saves):
+def test_v4_dragon_chain_reaches_current_with_ranger_classes(saves):
     install(saves, FIXTURES / "v4_dragon", world_id="dd")
     bundle = load_slot(saves, "dd", "auto", backup_ts=BACKUP_TS)
     sheet = bundle.heroes[0].sheet
-    assert bundle.manifest.schema_version == 9
+    assert bundle.manifest.schema_version == CURRENT_SCHEMA_VERSION
     assert [(c.class_id, c.level, c.subclass_id) for c in sheet.classes] == [
         ("ranger", 3, "beast_master")
     ]

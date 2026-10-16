@@ -19,6 +19,15 @@
 #       выкидывается самый старый ход; оставшиеся -- хвост исходного списка. Строго больше:
 #       estimate == limit не обрезает. Вход не меняется.
 #
+#   ai_dm.master.prompt.turn_data(turn: TurnRecord) -> dict   (ТМ #20, docs/TM-PLAN.md п.4)
+#     прошлый ход для рассказчика: ровно {"turn_seq", "at_s", "player_input", "narration",
+#     "outcomes"}; без requests, rolls, scene_id, money_delta_cp (модель копировала requests и
+#     повторяла вызовы); outcomes -- копия списка (итог инструментов хода: log принятых и
+#     «<type>: отклонено (<причина>)» отклонённых).
+#     TurnRecord (state.scene): turn_seq, at_s, player_input, narration, requests: list[str],
+#       rolls: list[str], scene_id: str = "", outcomes: list[str] = [], money_delta_cp: int = 0
+#       (изменение денег героя за ход, медь; читает защита золота gold_repeated).
+#
 #   ai_dm.master.prompt.PromptBuilder(app_cfg, *, role="narrator", model=None)
 #     model=None -> app_cfg.roles.<role>.model. Бюджет контекста (P3): master.context.plan по
 #       длине запроса (без вызовов адаптера); итог -- builder.last_plan.
@@ -42,9 +51,10 @@
 #                  location_id == локации героя, по id
 #         "combat": None | {"id", "round", "outcome", "participants": [{"ref", "side", "zone_id",
 #                  "status"}]} -- сводка session.active_combat
-#         "recent_turns": [TurnRecord.model_dump(mode="json")] -- trim_turns(recent_window(
+#         "recent_turns": [turn_data(t)] -- trim_turns(recent_window(
 #                  memory, app_cfg.master.recent_turns)), limit = context_limit(app_cfg, model),
-#                  estimate = count_tokens от запроса с этими ходами
+#                  estimate = count_tokens от запроса с этими ходами; ключи записи -- только
+#                  turn_seq, at_s, player_input, narration, outcomes (с ТМ #20, не model_dump)
 #         "offered_choices": session.offered_choices;  "player_input": user_input
 #
 #   ai_dm.master.session

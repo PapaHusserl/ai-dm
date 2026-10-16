@@ -88,6 +88,10 @@ give_item_max_qty = 20
 max_enemies = 6
 # лечебных предметов (расходников), которые можно выдать за сцену
 consumables_per_scene = 3
+# окно ходов: та же сумма explicit gain повторно отклоняется (0 -- выкл.)
+gold_repeat_turns = 3
+# кулдаун повторного длинного отдыха от конца предыдущего
+long_rest_cooldown = "12h"
 
 # сюжетные предметы мастера (give_custom_item)
 [custom_items]

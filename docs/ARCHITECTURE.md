@@ -482,6 +482,14 @@ ui ──> game ──> master ──> llm
 Сбой (`TurnFailed` или любое исключение): копия выбрасывается, бандл и RNG прежние, журнал помечает ход `aborted`;
 игрок видит меню «повторить / сменить модель / сохранить и выйти». Повтор идёт с новым `run_id` и теми же бросками.
 В бою граница хода — решение героя: номер действия выполняется без вызова модели, текст разбирает `combat_classify`.
+Запись хода `TurnRecord` (ТМ, v10): кроме `requests`/`rolls` — `outcomes` (лог accepted/clamped вызовов и строки
+«`<type>`: отклонено (`<reason>`)» для rejected; Invalid не пишутся) и `money_delta_cp` (разница кошелька героя за ход;
+свёрнутая запись боя — сумма свёрнутых). Рассказчику в `recent_turns` идёт `master/prompt.turn_data`: `turn_seq`, `at_s`,
+`player_input`, `narration`, `outcomes` — без `requests`/`rolls`/`scene_id` (summarizer видит запись целиком).
+Защиты от копирования прошлых ходов (rejected с тегом в авто-репорт): `gold` explicit gain — отказ `gold_repeat`, если
+та же сумма (после капа) была дельтой хода за последние `[limits] gold_repeat_turns` (3); `rest long` — отказ
+`rest_repeat`, пока не прошло `[limits] long_rest_cooldown` (12h) от `HeroState.long_rest_end_s` (герой с 0 HP —
+прежний Invalid `rest_impossible`).
 
 ## C4. Журнал и Replay
 
@@ -686,6 +694,13 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `hoard` — полосы 0-4/5-10/11-16/17+ (`source: custom`), `loot.level_band(level)` и `hoard_band` по старшей полосе
 побеждённых. Предел редкости по полосам уровней: uncommon / rare / very_rare / legendary. В данных классов — строки
 `ability_score_improvement` на 4/8/12/16/19 (воин +6/14, плут +10; 19 — заглушка до К14) и `prepared_by_level` 1–20.
+
+## E10. Сейв v10 (ТМ)
+
+`CURRENT_SCHEMA_VERSION = 10`, миграция `m0010_v9_to_v10` (чистая `dict -> dict`, контекст не нужен): `setdefault`
+`outcomes = []` и `money_delta_cp = 0` в записях `memory.recent_turns`, `long_rest_end_s = None` у героев. Отпечаток —
+`tests/schema/save_v10.schema.json`, фикстура `tests/fixtures/saves/v9`. Смысл полей — C3. Старые записи защиту золота
+не питают, первый длинный отдых после миграции всегда принят.
 
 # ЧАСТЬ F. Этап 5: TUI (Textual), модель экрана
 

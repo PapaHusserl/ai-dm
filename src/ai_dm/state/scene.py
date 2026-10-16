@@ -43,3 +43,7 @@ class TurnRecord(BaseModel):
     rolls: list[str] = Field(default_factory=list)
     # сцена хода: вход summarizer -- ходы закрытой сцены
     scene_id: str = ""
+    # итог инструментов хода: что движок исполнил или отклонил
+    outcomes: list[str] = Field(default_factory=list)
+    # изменение денег героя за ход (медь)
+    money_delta_cp: int = 0

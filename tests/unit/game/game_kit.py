@@ -54,9 +54,13 @@
 #         make_app) передают фиксированный run_tag="t" -- run_id детерминирован.
 #         Успех (commit): world.rng = rng.state; session.turn_seq += 1; в memory.recent_turns
 #         TurnRecord(turn_seq=<новое значение>, at_s, player_input, narration,
-#         requests=[type принятых запросов по порядку], rolls=[строки бросков хода]); в
-#         memory.recent_turns остаются последние app_cfg.master.recent_turns_keep (50) записей
-#         (окно промпта -- recent_turns, 4, отдельно);
+#         requests=[type принятых запросов по порядку], rolls=[строки бросков хода],
+#         outcomes=[итог инструментов хода: log принятых/урезанных запросов по порядку и
+#         "<type>: отклонено (<причина>)" для rejected; Invalid -- нет; в lines и UI не идут],
+#         money_delta_cp=<деньги героя после хода минус до хода, медь; ловит gold, trade, hoard>);
+#         в memory.recent_turns остаются последние app_cfg.master.recent_turns_keep (50) записей
+#         (окно промпта -- recent_turns, 4, отдельно); свёртка боя (combat_fold.fold_fight) --
+#         запись с requests=[], rolls=[], outcomes=[], money_delta_cp = сумма свёрнутых ходов;
 #         scene.player_turns += 1; journal.mark_turn(run_id, "committed"); затем закрытие
 #         сцены (game.scene) и автосейв.
 #         TurnFailed -> abort: бандл и RNG прежние, journal.mark_turn(run_id, "aborted"),
@@ -71,8 +75,11 @@
 #       .lines: list[str] -- log принятых Decision хода по порядку (строки бросков ТЗ 6);
 #       .log: list[str] -- строки лога боя, появившиеся за ход (ход героя + ходы NPC до его
 #       следующего решения; в ходе со start_combat -- от «Бой начался» до решения героя), вне
-#       боя []; .requests: list[str] (type принятых запросов); .report_tags: list[str] (метки
-#       решений; при refusal ["refusal"]); .failure: TurnFailed | None; .menu: list[str] | None
+#       боя []; .requests: list[str] (type принятых запросов); .outcomes: list[str] (итог
+#       инструментов хода для памяти рассказчика, см. TurnRecord.outcomes; [] у хода без
+#       инструментов); .report_tags: list[str] (метки
+#       решений; при refusal ["refusal"]; отказы защит ТМ -- "gold_repeat", "rest_repeat");
+#       .failure: TurnFailed | None; .menu: list[str] | None
 #       -- при abort ровно ["retry", "switch_model", "save_and_quit"] (при любой причине, в т.ч.
 #       fatal); .hint: str | None -- при refusal текст со словами «tone» и «модел»; при прочих
 #       причинах без «tone»; .combat_outcome: str | None -- итог боя, закончившегося в этом ходу;

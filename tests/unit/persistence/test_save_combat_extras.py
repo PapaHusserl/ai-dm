@@ -1,5 +1,5 @@
-# Партия «Боевые дополнения» (docs/COMBAT-EXTRAS-PLAN.md, «Миграции сейва»): схема не меняется,
-# CURRENT_SCHEMA_VERSION == 6. Заряд/опутывание лежат в свободных полях ActiveEffect.kind/params
+# Партия «Боевые дополнения» (docs/COMBAT-EXTRAS-PLAN.md, «Миграции сейва»): схема не меняется.
+# Заряд/опутывание лежат в свободных полях ActiveEffect.kind/params
 # и AppliedCondition.expires, поэтому сейв v5 без них грузится как раньше, а с ними -- без потерь.
 import shutil
 from pathlib import Path
@@ -15,8 +15,8 @@ SAVED_AT = "2026-01-01T12:00:00Z"
 HELD = Expiry(kind="concentration", owner="h1")
 
 
-def test_schema_version_is_current_nine():
-    assert CURRENT_SCHEMA_VERSION == 9
+def test_schema_version_is_current_ten():
+    assert CURRENT_SCHEMA_VERSION == 10
 
 
 def test_v5_save_without_a_charge_loads_with_clean_hero_effects(saves):
