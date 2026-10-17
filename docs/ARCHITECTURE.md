@@ -612,7 +612,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, master.context_cap=30000)` (Д1); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)`, порог `STATIC_MAX` в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 17,7k), порог `STATIC_MAX` (18700) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |
@@ -658,9 +658,14 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 
 ## E4. Бюджет и вытеснение
 
-Никогда не выкидываются: правила, мир/истины, tools, герой и сцена, NPC сцены, спутники, NPC с активным триггером,
-выжимки глав и `game_summary`. По порядку: сырые ходы (до 1 последнего) → выжимки сцен текущей главы → неактивные NPC
-(упомянутые → ключевые → соседние) и соседние локации. Не влезло — запрос уходит, авто-репорт `context_overflow`.
+Никогда не выкидываются: правила, мир/истины, tools, герой и сцена, NPC сцены (с памятью, целями и заметками, E11),
+спутники, NPC с активным триггером, `game_summary` и выжимки глав, ещё не свёрнутые в него (`fixed_chapters`).
+По порядку (`STAGES`): сырые ходы (до 1 последнего) → выжимки сцен текущей главы → неактивные NPC
+(упомянутые → ключевые → соседние) → соседние локации → выжимки глав с `number ≤ game_summary_chapter` (пятая ступень,
+Ж0, BACKLOG 15; самые ранние первыми; `Candidates.chapters`, `ContextPlan.chapters`). Не влезло — запрос уходит,
+авто-репорт `context_overflow`. Потолок: `static + context_cap` (16000, динамика без кэшируемой статики), не больше 80%
+окна; сторож в тестах — `STATIC_MAX + context_cap ≤ window80` для моделей рассказчика (модель с окном < ≈ 25k после
+Ж0 непригодна: одна статика больше 8000 и динамика вытесняется целиком).
 Бюджет пересчитывается на каждый ход от текущей модели (`/model`). Оценка — локальная, одинаковая в live/replay/моке.
 
 ## E5. Сейв v5
@@ -706,6 +711,62 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `outcomes = []` и `money_delta_cp = 0` в записях `memory.recent_turns`, `long_rest_end_s = None` у героев. Отпечаток —
 `tests/schema/save_v10.schema.json`, фикстура `tests/fixtures/saves/v9`. Смысл полей — C3. Старые записи защиту золота
 не питают, первый длинный отдых после миграции всегда принят.
+
+## E11. Сейв v11 (Ж0)
+
+`CURRENT_SCHEMA_VERSION = 11`, миграция `m0011_v10_to_v11` (чистая `dict -> dict`, `deepcopy`, `setdefault`, контекст не
+нужен). Отпечаток — `tests/schema/save_v11.schema.json`, фикстура `tests/fixtures/saves/v10`, золотой ход
+`tests/golden/zh0_turn.json` (тот же ход на мигрированной фикстуре даёт тот же снимок). Принцип (решение 0): поля под
+Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 занята М0).
+
+| Где | Поле | Смысл |
+|---|---|---|
+| `NPC` | `memory: list[NpcSceneMemory]` | память о герое: сцены (`scene_id`, `at_s`, `weight ≥ 0`, `events` ≥ 1) |
+| `NPC` | `goals: list[NpcGoal]` | долгие цели: `kind`, `target`, `text`, `since_s`, `status` (`active`/`done`/`dropped`); код записи — позже |
+| `NPC` | `known_name: str \| None` | имя, под которым NPC известен герою; код — Ж1 |
+| `NPC` | `family: list[FamilyLink]` | `kind` (`parent`/`spouse`/`child`), `ref`, `ref_kind` (`npc`/`hero`) |
+| `NPC` | `notes: str` | свободные заметки рассказчику; бывший `relations_text` |
+| `NPC` | `services: list[str]` | id услуг; код — У0 |
+| `HeroState` | `family`, `knowledge: list[KnowledgeEntry]` | связи героя; журнал знаний (`kind`, `ref`, `text`, `source`, `from_ref`, `at_s`), наполнение — Ж3 |
+| `SceneState` | `scene_mood: str` | тема сцены для музыки (не `Tone.mood`); логика — Ж3 |
+| `WorldSim` | `pending_acts: list[str]` | действия мира, отложенные до границы (46) |
+
+Миграция: `NPC.relations_text` убирается (`pop`), текст переезжает в `notes` целиком, если `notes` пуст (в v10 `notes`
+нет; пак `drunk_dragon`, `import_dragon.py` и фикстура `vale_stage2` переведены на `notes`); остальные поля —
+`setdefault` пустыми, `scene_mood` — только у текущей сцены. Модели — `state/relations.py` (`NpcEvent`, `NpcSceneMemory`,
+`NpcGoal`, `FamilyLink`, `NPC_EVENT_TEXT_MAX = 120`) и `state/knowledge.py`. Открытые перечни — `str` в моделях
+(`MEMORY_KINDS`, `GOAL_KINDS`, `KNOWLEDGE_KINDS`, `KNOWLEDGE_SOURCES` — константы: расширение перечня не меняет схему и
+не требует новой версии), закрытые — `Literal`; все модели `extra="forbid"`. `scripts/migrate_dusk_18plus.py` принимает
+сейвы v9–v11.
+
+### Память NPC (`rules/npc_memory.py`, BACKLOG 79)
+
+Лимиты — `[npc_memory]` (`NpcMemoryConfig` в `RulesConfig`): `max_scenes = 20`, `max_events_per_scene = 5`. Чистые
+функции над `NPC` и `SceneState`:
+
+- `remember(npc, scene, event, cfg)` — событие в запись сцены; новой записи нет — создаётся (`at_s` = начало сцены, вес =
+  `scene.attitude_spent[npc.id]`), при полной памяти до этого `evict`; новая сцена входит всегда. Лимит событий в
+  записи — `None`.
+- `evict` — убрать запись с наименьшим `(weight, at_s)`; `events_full` — в записи сцены уже максимум событий.
+- `refresh_weight(npc, scene)` — `weight = scene.attitude_spent[npc.id]`: вес — модуль изменения отношений за сцену
+  (улучшение и ухудшение равноценны). Зовут `change_attitude` и `combat_flow.settle_parley`.
+- `memory_data`, `memory_last`, `goals_data` (только активные) — данные для промпта.
+
+Запись — только рассказчиком, через `npc_update` (`NpcUpdate.memory_kind` из `MEMORY_KINDS` или `none`, `memory_text`;
+`WorldNpcUpdate` полей памяти не имеет). `update_problem` → `memory_problem` до любых изменений: `memory_text` без вида —
+`Invalid memory_text_without_kind`; нет сцены — `Invalid no_scene`; в сцене уже 5 событий — `rejected`
+(`limit-exceeded`), запрос не применяется целиком, в том числе `attitude_delta`. Далее `change_attitude`, затем
+`change_memory` (вес новой записи берёт потраченное отношение). Текст длиннее 120 знаков не отклоняется: обрезка по
+последнему пробелу с «…» (итог ≤ 120), статус `clamped`, метка `text-shortened`, запись в `decision.log`, рассказчику —
+пометка «текст укорочен до 120».
+
+Показ рассказчику — `PromptBuilder.state_data`/`npc_memory_data`: у `scene_npcs` — `notes`, полная `memory` и активные
+`goals` (ключи только если непусты); у `known_npcs` — `notes`, `goals` и `memory_last` (последнее событие). Правило
+записи значимых поступков — в `narrator_rules.md` («Формат входа», «Память»). Цена: память 20 сцен ≈ 1–1,5k токенов на
+NPC сцены. Мок на 50 сцен — `MemoryMock(npc_memory=True)`, `tests/scenarios/test_zh0_npc_memory.py` (ровно 20 записей =
+20 старших по `(weight, at_s)`, детерминизм, сейв на сцене 30).
+
+Решение 12 (перебежчик остаётся в `world.npcs`) — код в Ж1; в Ж0 только поля.
 
 # ЧАСТЬ F. Этап 5: TUI (Textual), модель экрана
 
