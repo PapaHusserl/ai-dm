@@ -13,3 +13,5 @@ mutants/
 .coverage
 .pyproject.mutmut.bak
 campaigns/*/.import/
+/.dashboard.json
+campaigns/test/

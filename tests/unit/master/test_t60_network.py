@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1.4, 1.6, 1.8, раздел 10):
+# Т60 «Сеть» (docs/plan-t60.md п.1.4, 1.6, 1.8, раздел 10):
 #   MasterSession(..., policy=None): None -> app_cfg.retry; свой policy -- свои паузы/число попыток;
 #   SummarizerSession(..., policy=None) пробрасывает policy в run_scene / run_chapter;
 #   сеть у summarizer -- мягкий сбой (к запасному); journal.note_start на каждую попытку.

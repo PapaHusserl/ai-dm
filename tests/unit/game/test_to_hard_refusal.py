@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.2, Q2б): HARD_REFUSALS и hard_refusal(failure); жёсткий отказ
+# ТО (docs/plan-to.md §1 п.2, Q2б): HARD_REFUSALS и hard_refusal(failure); жёсткий отказ
 # (PROHIBITED_CONTENT, BLOCKLIST, SPII) -- без SOFTEN-повтора: 1 вызов, теги ["refusal"], меню,
 # бандл откатан. SAFETY/RECITATION/отказ без detail -- один повтор с припиской, как раньше (Р2).
 import pytest

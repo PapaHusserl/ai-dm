@@ -1,4 +1,4 @@
-# 19ф Ф4 (docs/19F-PLAN.md п.1 Ф4): отладочная команда /fight <монстр>[ xN][, <монстр>[ xN]] --
+# 19ф Ф4 (docs/plan-19f.md п.1 Ф4): отладочная команда /fight <монстр>[ xN][, <монстр>[ xN]] --
 # бой с заданным составом без вызова модели. game/fight_debug.py: parse_fight, fight_request,
 # run_fight; cmd_fight в реестре команд.
 import pytest

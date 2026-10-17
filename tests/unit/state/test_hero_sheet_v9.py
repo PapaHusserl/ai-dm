@@ -1,4 +1,4 @@
-# К0а (docs/K0-PLAN.md, A1): схема v9 -- CharacterSheet.classes / level_history, адаптер чтения
+# К0а (docs/plan-k0.md, A1): схема v9 -- CharacterSheet.classes / level_history, адаптер чтения
 # (class_id, level, subclass_id, primary, class_level, prepared_of, known_of), Concentration,
 # TempForm, Equipment, GrantedSpell, PendingLevel, HeroState.companions / attuned / pending_level.
 import pytest

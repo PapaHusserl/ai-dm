@@ -1,4 +1,4 @@
-# После переговоров в бою (docs/COMBAT-PARLEY-PLAN.md, п. 6): combat_flow.settle_parley(bundle, cfg)
+# После переговоров в бою (docs/plan-combat-parley.md, п. 6): combat_flow.settle_parley(bundle, cfg)
 # зовётся до finish_combat(bundle, registry).
 #   именованный NPC: сдался -- attitude +10, перешёл (метка parley_defected) -- +20, оскорблён
 #   (parley_offended) -- -10; всё в пределах [attitude] per_scene (scene.attitude_spent);

@@ -1,4 +1,4 @@
-# Партия К7к, п. 2.1-2.2: доспех и щит монстра (docs/K7K-PLAN.md, В6 а+в).
+# Партия К7к, п. 2.1-2.2: доспех и щит монстра (docs/plan-k7k.md, В6 а+в).
 #   Monster.armor / Monster.shield: str | None = None -- что надето по SRD (трофеи с тел);
 #   КД монстра -- число ac, по снаряжению не пересчитывается (пересчёт -- К7х).
 #   Загрузчик: armor -- id из armor с category != "shield"; shield -- id из armor с category ==

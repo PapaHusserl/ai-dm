@@ -1,4 +1,4 @@
-# К1 «Концентрация по часам» (docs/K1-PLAN.md, п. 2.1; В2а, В3а):
+# К1 «Концентрация по часам» (docs/plan-k1.md, п. 2.1; В2а, В3а):
 #   start_concentration(hero, world, spell, circle, now_s=None) -- until_s = now_s +
 #     spell.duration_s, если заданы оба, иначе None (вызовы без now_s, заклинания без длительности);
 #   expire_concentration(hero, world) -> spell_id | None -- концентрация с until_s <=

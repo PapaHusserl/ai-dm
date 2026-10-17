@@ -1,4 +1,4 @@
-# К7х «Смена Добычи охотника» в протоколе (docs/K7X-PLAN.md, п. 7, В8; образец --
+# К7х «Смена Добычи охотника» в протоколе (docs/plan-k7x.md, п. 7, В8; образец --
 # test_apply_rest_swap.py):
 #   rest{kind: short | long, prey_swap: <id варианта>} -- смена Добычи (hunters_prey) после отдыха:
 #     отдых применён, sheet.feature_choices["hunters_prey"] == [новый вариант], log «Добыча

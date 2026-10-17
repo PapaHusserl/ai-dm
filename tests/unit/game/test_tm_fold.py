@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.3): запись свёртки боя (fold_fight) -- outcomes пустые,
+# ТМ (docs/plan-tm.md, §1 п.3): запись свёртки боя (fold_fight) -- outcomes пустые,
 # money_delta_cp --
 # сумма money_delta_cp свёрнутых ходов (чтобы защита золота видела добычу, взятую в бою).
 from test_combat_fold import bundle_with, fight, finished_state

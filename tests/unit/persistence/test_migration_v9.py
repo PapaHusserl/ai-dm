@@ -1,4 +1,4 @@
-# К0а (docs/K0-PLAN.md, A2, A7): миграция v8 -> v9 (классы списком, концентрация объектом,
+# К0а (docs/plan-k0.md, A2, A7): миграция v8 -> v9 (классы списком, концентрация объектом,
 # спутники списком, pending_level, equipment, кости хитов hit_dice:dN).
 # Ожидаемый API: ai_dm.persistence.migrations.m0009_v8_to_v9
 #   migrate_v8_to_v9(data, context) -> dict (чистое dict -> dict, вход не мутирует),

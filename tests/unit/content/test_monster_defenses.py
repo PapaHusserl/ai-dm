@@ -1,4 +1,4 @@
-# Партия К7к, п. 1.1: защиты монстра (docs/K7K-PLAN.md, В2а, В5а).
+# Партия К7к, п. 1.1: защиты монстра (docs/plan-k7k.md, В2а, В5а).
 #   Monster.damage_immunities / damage_resistances / damage_vulnerabilities: list[str] = [] --
 #   типы урона из DAMAGE_TYPE_WORDS; неизвестный тип ("frost") -- ContentError загрузчика,
 #   повтор в списке -- ValidationError;

@@ -197,7 +197,7 @@ def test_converter_does_not_touch_fixture(tmp_path):
     assert files_of(FIXTURE) == before
 
 
-# Грей 3 ур. из черновиков (docs/decisions/ranger-2-5-plan.md, п. 12, решения 1-4)
+# Грей 3 ур. из черновиков (docs/plan-ranger-2-5.md, п. 12, решения 1-4)
 
 def test_hero_grey_is_level_3_from_drafts(tmp_path):
     convert(tmp_path)

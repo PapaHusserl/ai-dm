@@ -1,4 +1,4 @@
-# Живой прогон Дракона (docs/decisions/stage3-live-mark-option.md, B2/B3, раздел T):
+# Живой прогон Дракона (docs/plan-stage3.md, B2/B3, раздел T):
 # в combat_narrate нет unsupported_action; «метка на X и атака зажигательной» -- два шага
 # одного player_action без unsupported (мок-модель отвечает двумя шагами по списку вариантов).
 import sys

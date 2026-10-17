@@ -1,4 +1,4 @@
-# 19ф Ф2а (docs/19F-PLAN.md п.1 Ф2а): announces_combat и тег combat_announced -- рассказ объявил
+# 19ф Ф2а (docs/plan-19f.md п.1 Ф2а): announces_combat и тег combat_announced -- рассказ объявил
 # бой («начинается бой!»), а start_combat не вызван. Только тег для репорта: служебного вызова
 # и повтора хода нет.
 import pytest

@@ -1,4 +1,4 @@
-# К1 «Концентрация по часам» вне боя (docs/K1-PLAN.md, п. 2.4-2.5; В2а, В4а):
+# К1 «Концентрация по часам» вне боя (docs/plan-k1.md, п. 2.4-2.5; В2а, В4а):
 #   cast_spell Метки охотника вне боя: Concentration.until_s = now + 3600, в результате `until`,
 #     эффект героя kind=spell с Expiry seconds = now + 3600, mark_pending с Expiry concentration;
 #   после каждого сдвига часов (rest, advance_time по категории, travel) концентрация с

@@ -1,4 +1,4 @@
-# ТС #22 (docs/TS-PLAN.md §1 п.2, п.5, §4): run_scene / run_chapter берут summary_trim_after из
+# ТС #22 (docs/plan-ts.md §1 п.2, п.5, §4): run_scene / run_chapter берут summary_trim_after из
 # app_cfg.memory; TurnContext по умолчанию не режет; soft_failure живёт в master.session и
 # по-прежнему доступен из master.summarizer.
 from types import SimpleNamespace

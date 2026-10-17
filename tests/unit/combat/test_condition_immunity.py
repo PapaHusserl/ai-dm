@@ -1,4 +1,4 @@
-# Партия К7к, п. 1.3: иммунитет монстра к состояниям (docs/K7K-PLAN.md, В5а, Q4а).
+# Партия К7к, п. 1.3: иммунитет монстра к состояниям (docs/plan-k7k.md, В5а, Q4а).
 #   Monster.condition_immunities -- id состояний (loader: должны быть в реестре condition);
 #   CombatEngine.impose(ref, condition) -> bool: монстр с condition.id в списке состояния не
 #   получает -- в лог «  <имя>: иммунитет к состоянию <название>», False; иначе состояние

@@ -1,4 +1,4 @@
-# Партия «Отбор оружия» (docs/COMBAT-DISARM-PLAN.md, «Миграции сейва»): версия схемы остаётся 5.
+# Партия «Отбор оружия» (docs/plan-combat-disarm.md, «Миграции сейва»): версия схемы остаётся 5.
 # Новые поля с умолчаниями: CombatState.ground_items = [], TurnState.free_interaction = True;
 # флаг "disarmed" лежит в свободном ActiveEffect.params. Бой, сохранённый без новых полей,
 # грузится как раньше; с ними -- без потерь.

@@ -1,4 +1,4 @@
-# Партия К7х, п. 8 (BACKLOG 51, docs/K7X-PLAN.md): слой content не зависит от rules.
+# Партия К7х, п. 8 (BACKLOG 51, docs/plan-k7x.md): слой content не зависит от rules.
 #   DAMAGE_TYPE_WORDS живёт в content/models/common.py; rules.roll_pipeline импортирует его оттуда
 #     под тем
 #   же именем (один и тот же объект); content/loader.py берёт его из content.models.common.

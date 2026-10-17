@@ -1,4 +1,4 @@
-# 19ф Ф2а/Ф2б (docs/19F-PLAN.md п.1) на уровне TurnRunner/GameApp:
+# 19ф Ф2а/Ф2б (docs/plan-19f.md п.1) на уровне TurnRunner/GameApp:
 #   Ф2б -- ход, которым бой закончился, кончается вопросом: приписка CHOICES_ASK, offer_choices,
 #   тег choices_retry, меню после end_fight; промежуточные ходы боя без приписки;
 #   Ф2а -- рассказ объявил бой без start_combat: тег combat_announced и авто-репорт.

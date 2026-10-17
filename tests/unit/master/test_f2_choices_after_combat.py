@@ -1,4 +1,4 @@
-# 19ф Ф2б (docs/19F-PLAN.md п.1 Ф2б): MasterSession.choices_missing -- приписка CHOICES_ASK на ходу,
+# 19ф Ф2б (docs/plan-19f.md п.1 Ф2б): MasterSession.choices_missing -- приписка CHOICES_ASK на ходу,
 # которым бой закончился (victory / fled / ended_by_master) в режиме combat_narrate.
 from types import SimpleNamespace
 

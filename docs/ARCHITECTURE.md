@@ -1,6 +1,6 @@
 # Архитектура AI-DM и план этапа 1
 
-Автор: папа-кабан (архитектор). Основа: `docs/TZ.md` v3. Статус: принят («окей, кабаним»). Уточнения по ходу: `docs/decisions/`.
+Автор: папа-кабан (архитектор). Основа: `docs/TZ.md` v3. Статус: принят («окей, кабаним»). Уточнения по ходу — в docs/plan-*.md.
 
 # ЧАСТЬ A. Архитектура проекта
 
@@ -204,7 +204,7 @@ Id латиницей snake_case, `name`/описания по-русски; `do
 ```
 ai-dm/
   pyproject.toml  uv.lock  LICENSE  README.md  .gitignore(.env, saves/, issues/, journal)
-  docs/ TZ.md  ARCHITECTURE.md  BACKLOG.md  glossary.md  rules-adaptation.md  decisions/
+  docs/ TZ.md  ARCHITECTURE.md  BACKLOG.md  glossary.md  rules-adaptation.md  plan-*.md
   src/ai_dm/
     core/        rng.py dice.py clock.py duration.py events.py
     config/      settings.py defaults.toml
@@ -365,7 +365,7 @@ ai-dm/
     фикстура v0, отпечаток схемы.
 23. **Devtools** — `python -m ai_dm.devtools.sim_combat --seed N --scenario goblins3`; сетка `sim_grid` («класс × уровень 1–5 ×
     сцена», герои `grid_heroes`: пресеты и наборы `a`, `auto_level`), `make sim-grid` (не в `make test`) сравнивает с базовой
-    линией `devtools/sim_grid_baseline.yaml` (допуск 10 п.п.); таблица — docs/decisions/k7k-sim-grid.md.
+    линией `devtools/sim_grid_baseline.yaml` (допуск 10 п.п.); таблица — docs/plan-k7k.md.
     **Монстр (К7к):** `Monster.damage_immunities/resistances/vulnerabilities` (типы из `DAMAGE_TYPE_WORDS`),
     `condition_immunities`, `armor`/`shield` (что надето по SRD; КД — число `ac`, по снаряжению не пересчитывается, К7х).
     Урон в бою — только `CombatEngine.damage` (списки статблока в `apply_damage`), состояния на монстра — только
@@ -431,12 +431,12 @@ ai-dm/
 - [x] Шаги 1–24 плана: каркас, RNG, кубики, время, конфиг, контент, состояние, персонаж, конвейер бросков, проверки,
   урон и жизнь, страж 4.1, инвентарь, триггеры, бой на зонах, поражение, сейв и миграции, devtools, документы.
 - [x] Документы синхронизированы с кодом: `README.md`, `docs/ARCHITECTURE.md` (A2, A6, контракт событий),
-  `docs/rules-adaptation.md`, `docs/glossary.md`, `docs/decisions/README.md`.
+  `docs/rules-adaptation.md`, `docs/glossary.md`.
 - [ ] Приёмка этапа 1 (критерии 1–4 из «Тестовых сценариев», `uv run pytest -q`, `uv run ruff check src tests`).
 
 # ЧАСТЬ C. Этап 2: ИИ-мастер и простой интерфейс
 
-План и состав — `docs/STAGE2-PLAN.md`; решения по ревью партий — `docs/decisions/stage2-*.md`.
+План и состав — `docs/plan-stage2.md`; решения по ревью партий — разделы ревью в `docs/plan-stage2.md`.
 
 ## C1. Слои и направление зависимостей
 
@@ -515,13 +515,13 @@ gzip, `turn_status committed|aborted`, без ключей). `ReplayAdapter` о�
 
 ## C7. Решения этапа 2
 
-`docs/decisions/stage2-plan.md`, `stage2-batch1-review.md`, `stage2-batch2.md`, `stage2-batch2-review.md`,
-`stage2-batch3-review.md`, `stage2-batch4-review.md`, `stage2-batch5-review.md`, `stage2-batch6-review.md`,
-`stage2-audit.md`.
+`docs/plan-stage2.md`, `docs/plan-stage2.md`, `docs/plan-stage2.md`, `docs/plan-stage2.md`,
+`docs/plan-stage2.md`, `docs/plan-stage2.md`, `docs/plan-stage2.md`, `docs/plan-stage2.md`,
+`docs/plan-stage2.md`.
 
 # ЧАСТЬ D. Этап 3: паки, ход мира, сцены и главы, боги
 
-План и состав — `docs/STAGE3-PLAN.md` (статус: на аппруве); решения — `docs/decisions/stage3-*.md`.
+План и состав — `docs/plan-stage3.md` (статус: на аппруве); решения — разделы ревью в `docs/plan-stage3.md`.
 
 ## D1. Слои и направление зависимостей
 
@@ -567,7 +567,7 @@ ui ──> game ──> master ──> llm
 `actor`-NPC, `warn_danger`). Смерть за кадром — только `goal|hazard` с броском этого вызова. Журнал общий, `role: world`;
 replay — по адаптеру на роль. Потолок вызовов в день — конфиг, по умолчанию выключен. Закадровые версии запросов
 (`actor`, `location_id`, `then_ref`) — отдельные модели режима `world`; `favor_change`, `event_*`, `warn_danger` входят в набор
-вместе с обработчиками (П5, П6). Детали — `decisions/stage3-p4-notes.md`.
+вместе с обработчиками (П5, П6). Детали — `docs/plan-stage3.md`.
 
 ## D5. Мир по дням
 
@@ -575,7 +575,7 @@ replay — по адаптеру на роль. Потолок вызовов в
 беду» самым благосклонным богом. Старость: таблица продолжительности жизни по виду, проверка раз в год после порога,
 минусы героя −1 СИЛ/ЛОВ/ТЕЛ за шаг. Природные события — бросок на смене сезона календаря пака. Войны и чума — только
 `event_start` с `cause` = сработавший триггер и непустым `regions`. Скачок времени больше `world.max_tick_days` (400):
-прокручиваются подробно последние `max_tick_days` дней, остальное — запись в хронике; годовой бросок за пропуск — этап 9. Детали П5 — `decisions/stage3-p5-notes.md`.
+прокручиваются подробно последние `max_tick_days` дней, остальное — запись в хронике; годовой бросок за пропуск — этап 9. Детали П5 — `docs/plan-stage3.md`.
 
 ## D6. Боги, бюджет боя, tone
 
@@ -594,7 +594,7 @@ replay — по адаптеру на роль. Потолок вызовов в
 
 # ЧАСТЬ E. Этап 4: память (иерархические выжимки, бюджет контекста)
 
-План и состав — `docs/STAGE4-PLAN.md` (статус: на аппруве); решения — `docs/decisions/stage4-*.md`.
+План и состав — `docs/plan-stage4.md` (статус: на аппруве); решения — разделы ревью в `docs/plan-stage4.md`.
 
 ## E1. Слои и направление зависимостей
 

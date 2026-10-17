@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.6): [limits] gold_repeat_turns (int >= 0, по умолчанию 3; 0 -- выкл.)
+# ТМ (docs/plan-tm.md, §1 п.6): [limits] gold_repeat_turns (int >= 0, по умолчанию 3; 0 -- выкл.)
 # и long_rest_cooldown (строка Duration, по умолчанию "12h"; мусор -- ошибка валидации).
 import pytest
 from pydantic import ValidationError

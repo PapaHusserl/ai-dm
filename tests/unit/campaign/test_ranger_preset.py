@@ -1,4 +1,4 @@
-# Пресет следопыта 3 ур. в паке: выборы уровней и спутник (docs/decisions/ranger-2-5-plan.md,
+# Пресет следопыта 3 ур. в паке: выборы уровней и спутник (docs/plan-ranger-2-5.md,
 # разд. 4 п. 4, разд. 5 п. 8, решения 1-4). Ожидаемый API:
 #   HeroPreset.level_choices: list[LevelChoices] (YAML: список словарей с полем level и выборами)
 #   HeroPreset.companion: {name, kind, notes} -> HeroState.companion после сборки

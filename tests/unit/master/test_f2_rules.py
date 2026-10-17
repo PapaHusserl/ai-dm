@@ -1,4 +1,4 @@
-# 19ф Ф2 (docs/19F-PLAN.md п.1): правила рассказчика -- start_combat в том же ходу (раздел «Бой»),
+# 19ф Ф2 (docs/plan-19f.md п.1): правила рассказчика -- start_combat в том же ходу (раздел «Бой»),
 # offer_choices на ходу, которым бой закончился (combat_narrate, «Выбор игроку»).
 from importlib import resources
 

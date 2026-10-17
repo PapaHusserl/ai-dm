@@ -1,4 +1,4 @@
-# Партия К7х, п. 3.1-3.2: режим отбора оружия [disarm].mode = "save" (docs/K7X-PLAN.md, В3, Q2 (а)).
+# Партия К7х, п. 3.1-3.2: режим отбора оружия [disarm].mode = "save" (docs/plan-k7x.md, В3, Q2 (а)).
 #   cfg.disarm.mode: Literal["check", "save"] = "check" (по умолчанию состязание DMG --
 #     test_disarm.py,
 #   логи и броски прежние); "foo" -> ValidationError. cfg.disarm.enemy_chance: 0..100, иначе

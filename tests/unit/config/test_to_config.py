@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.5, Q3а): [reports] max_mb = 200; 0 -- без лимита; ge=0.
+# ТО (docs/plan-to.md §1 п.5, Q3а): [reports] max_mb = 200; 0 -- без лимита; ge=0.
 import pytest
 from pydantic import ValidationError
 

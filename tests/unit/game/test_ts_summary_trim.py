@@ -1,4 +1,4 @@
-# ТС #22 (docs/TS-PLAN.md §1 п.2, §4): граница сцены с мягким пределом выжимки. Три длинных ответа
+# ТС #22 (docs/plan-ts.md §1 п.2, §4): граница сцены с мягким пределом выжимки. Три длинных ответа
 # summarizer подряд -- третий режется движком, запасной вызов не нужен, тег summary_trimmed;
 # summary_trim_after = 0 возвращает прежнее поведение (запасной -> тег summarizer_backup).
 from game_kit import end_scene_call, text_step, tools_step

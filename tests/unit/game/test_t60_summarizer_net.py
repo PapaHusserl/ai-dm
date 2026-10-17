@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1.4, 1.6, раздел 10): summarizer на границе при сетевых сбоях.
+# Т60 «Сеть» (docs/plan-t60.md п.1.4, 1.6, раздел 10): summarizer на границе при сетевых сбоях.
 #   network -- мягкий сбой: primary -> backup (модель рассказчика) -> fallback-выжимка (тег
 #   summarizer_backup), без меню; fatal по-прежнему меню. Primary с backup идёт на
 #   retry.chain_delays ([] -- одна попытка), backup и primary без backup -- на полных delays.

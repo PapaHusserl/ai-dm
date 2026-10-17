@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1.3, раздел 10): ai_dm.game.models.
+# Т60 «Сеть» (docs/plan-t60.md п.1.3, раздел 10): ai_dm.game.models.
 #   next_in_chain(app_cfg, current_key) -- ключ "провайдер:модель", следующий в llm.narrator_chain;
 #   нет в цепочке / последняя / пустая цепочка -> None. (В плане была сигнатура
 #   (app_cfg, provider, model); kaban реализовал ключом -- тесты следуют коду, см. отчёт.)

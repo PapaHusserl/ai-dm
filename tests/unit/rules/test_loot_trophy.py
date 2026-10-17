@@ -1,4 +1,4 @@
-# Трофеи с тел (docs/CUSTOM-ITEMS-PLAN.md, разд. 7, партия В; В14, В17, В18).
+# Трофеи с тел (docs/plan-custom-items.md, разд. 7, партия В; В14, В17, В18).
 #   trophy_quality(cr: str, cfg) -> "junk" | "worn" | "used" | None
 #       полосы [loot].trophy_quality: ПО 0-1/4 junk, 1/2-2 worn, 3-4 used, 5+ -- None (полная цена).
 #   trophy_cost(base: int, quality, cfg) -> int

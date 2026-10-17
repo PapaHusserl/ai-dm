@@ -1,4 +1,4 @@
-# Контент следопыта 2-5 ур. (docs/decisions/ranger-2-5-plan.md, разд. 2-5).
+# Контент следопыта 2-5 ур. (docs/plan-ranger-2-5.md, разд. 2-5).
 # Ожидаемые данные:
 #   class ranger: features -- favored_enemy (1), deft_explorer (2), fighting_style (2),
 #       ability_score_improvement (4), extra_attack (5);

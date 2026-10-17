@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.1): защита gold explicit gain от повтора.
+# ТМ (docs/plan-tm.md, §1 п.1): защита gold explicit gain от повтора.
 #   gold_repeated(ctx, amount_cp) -> int | None (ai_dm.protocol.handlers.resources):
 #   смотрит последние
 #     cfg.limits.gold_repeat_turns записей bundle.memory.recent_turns; возвращает turn_seq записи с

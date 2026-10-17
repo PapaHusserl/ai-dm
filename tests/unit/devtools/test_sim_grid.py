@@ -1,4 +1,4 @@
-# Партия К7к, п. 4.3: сетка sim_grid -- класс x уровень x сцена (docs/K7K-PLAN.md, В1а, В8а,
+# Партия К7к, п. 4.3: сетка sim_grid -- класс x уровень x сцена (docs/plan-k7k.md, В1а, В8а,
 # Q2а, Q3а).
 #   SCENES = {"goblins3": "goblins3", "cellar": "cellar"} (К7д); LEVELS = range(1, 6); не входит
 #   в `make test` (цель `make sim-grid` = `python -m ai_dm.devtools.sim_grid --check`).

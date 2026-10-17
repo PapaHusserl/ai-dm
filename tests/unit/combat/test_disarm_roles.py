@@ -1,5 +1,5 @@
 # Партия К7х, п. 3.3: [disarm].enemy_chance -- роль обезоруживающего при старте боя
-# (docs/K7X-PLAN.md, В4).
+# (docs/plan-k7x.md, В4).
 #   disarm.assign_roles(engine), вызывается из CombatEngine.start() после
 #     cast.convert_pending_marks и до
 #   инициативы: при enemy_chance == 0 -- ни одного обращения к RNG (golden и сетка не сдвигаются);

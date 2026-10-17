@@ -1,4 +1,4 @@
-# Опутывающий удар (docs/COMBAT-EXTRAS-PLAN.md, разд. 3, ответы проектировщика 3 и уточнение
+# Опутывающий удар (docs/plan-combat-extras.md, разд. 3, ответы проектировщика 3 и уточнение
 # оркестратора по SRD 5.2). Ожидаемый API:
 #   spell_kind(ensnaring_strike) == "rider" (hunters_mark остаётся "mark")
 #   cast:ensnaring_strike:1:<герой> -- бонусное действие, цель -- сам заклинатель, ячейка 1 круга,
@@ -455,7 +455,7 @@ def test_held_concentration_save_keeps_the_target_restrained(registry, cfg):
     assert creature(engine, "hero").concentration.spell_id == "ensnaring_strike"
 
 
-# решения кабана (docs/decisions/combat-extras-review.md, п. 5-7)
+# решения кабана (docs/plan-combat-extras.md, п. 5-7)
 
 def test_charge_is_kept_when_the_hit_drops_the_target(registry, cfg):
     second = mon("goblin_2", "goblin_warrior", "hall")

@@ -1,4 +1,4 @@
-# «Получено» по ключу стека (docs/CUSTOM-ITEMS-PLAN.md, разд. 8, партия 0).
+# «Получено» по ключу стека (docs/plan-custom-items.md, разд. 8, партия 0).
 #   loot_snapshot(app) -> (xp, items, money) -- items теперь по ключу (item_id, cost_cp, quality);
 #   gains_lines(app, snapshot) -- строка на каждый выросший стек, а не на id: два стека одного
 #   id не склеиваются и не теряют прирост (раньше словарь item_id -> qty ломался на них).

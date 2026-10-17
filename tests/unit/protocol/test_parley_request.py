@@ -1,4 +1,4 @@
-# player_action.parley (docs/COMBAT-PARLEY-PLAN.md, п. 3): ParleySpec{skill, outcome, target};
+# player_action.parley (docs/plan-combat-parley.md, п. 3): ParleySpec{skill, outcome, target};
 #   skill: intimidation|persuasion|deception|none; outcome: surrender|flee|defect|waver|none;
 #   target: ref врага, пусто = нет. Все три пусты -> parley None; частично -> ValidationError;
 #   parley вместе с improvise -> ValidationError. Категорию СЛ мастер не передаёт

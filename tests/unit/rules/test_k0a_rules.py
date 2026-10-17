@@ -1,4 +1,4 @@
-# К0а (docs/K0-PLAN.md, A3): правила на списке классов -- hp_gain / apply_level, apply_level_choices
+# К0а (docs/plan-k0.md, A3): правила на списке классов -- hp_gain / apply_level, apply_level_choices
 # по primary и feature_choices, кости хитов по граням (hit_dice:dN), always_prepared с
 # spells_always_prepared, start/drop_concentration с кругом.
 import pytest

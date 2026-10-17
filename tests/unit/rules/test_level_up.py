@@ -1,4 +1,4 @@
-# К0а (docs/K0-PLAN.md, A4): меню уровня через HeroState.pending_level. Ожидаемый API
+# К0а (docs/plan-k0.md, A4): меню уровня через HeroState.pending_level. Ожидаемый API
 # ai_dm.rules.level_up (плоские функции):
 #   begin_level_up(hero, registry, *, hp_method="average", rng=None) -> PendingLevel -- ставит
 #       hero.pending_level (class_id, hp_gain, draft=LevelChoices(level=уровень+1)); уровень, HP и

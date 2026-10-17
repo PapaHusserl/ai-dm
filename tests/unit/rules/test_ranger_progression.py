@@ -1,4 +1,4 @@
-# Следопыт 1-5 ур.: числа прогрессии, производные, выборы уровня (docs/decisions/ranger-2-5-plan.md,
+# Следопыт 1-5 ур.: числа прогрессии, производные, выборы уровня (docs/plan-ranger-2-5.md,
 # разд. 4-7). Ожидаемый API:
 #   rules.progression.LevelChoices(level, fighting_style=None, expertise=[] (список навыков),
 #       subclass_id=None, feature_options={}, asi=None, feat=None, spells_add=[], languages=[])

@@ -66,7 +66,7 @@
 #     Без ключа, --mock и --replay: сообщение с «ANTHROPIC_API_KEY» и «.env», код != 0.
 #     pyproject: [project.scripts] ai-dm = "ai_dm.ui.cli:main".
 #
-# ДОПОЛНЕНИЯ по ревью партии 6 (docs/decisions/stage2-batch6-review.md, B1-B6, D1-D8):
+# ДОПОЛНЕНИЯ по ревью партии 6 (docs/plan-stage2.md, B1-B6, D1-D8):
 #   run(app, source, sink, replay=False, secrets=()) -> int: 0 или 1 (ошибка хода в replay).
 #     Строки turn.lines, уже есть в turn.log, не дублируются; «[бросок] » -- только у строк из
 #     turn.rolls; служебные строки («Действие игрока: ...», «Варианты ответа предложены») не

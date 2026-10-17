@@ -24,7 +24,7 @@
 # версия одна (v3, Т-18): схема меняется осознанно, отпечаток перегенерируется той же командой
 # с save_v3 вместо save_v2. save_v1 / save_v2 -- история, не перегенерируются.
 #
-# Этап 4 (следопыт 2-5, docs/decisions/ranger-2-5-plan.md): CURRENT_SCHEMA_VERSION = 4, отпечаток
+# Этап 4 (следопыт 2-5, docs/plan-ranger-2-5.md): CURRENT_SCHEMA_VERSION = 4, отпечаток
 # tests/schema/save_v4.schema.json (CharacterSheet.skill_expertise / languages / feature_options,
 # HeroState.companion). save_v3 -- история. Перегенерация -- командой выше с save_v4.
 # Ожидаемый API: ai_dm.persistence.migrations.CURRENT_SCHEMA_VERSION, ai_dm.state.save.SaveBundle

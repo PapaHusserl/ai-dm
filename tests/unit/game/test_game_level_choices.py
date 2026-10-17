@@ -1,4 +1,4 @@
-# Меню выборов при повышении уровня в живой игре (docs/decisions/ranger-2-5-plan.md, разд. 5 п. 9,
+# Меню выборов при повышении уровня в живой игре (docs/plan-ranger-2-5.md, разд. 5 п. 9,
 # решение 5). Ожидаемое поведение GameApp (контракт меню -- в game_kit.py):
 #   после choose("average" | "roll") с HP -- если на новом уровне есть обязательные выборы
 #   (rules.progression.required_choices), pending остаётся "level_up", а reply.menu -- id вариантов

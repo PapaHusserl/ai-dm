@@ -1,4 +1,4 @@
-# Партия «Отбор оружия» (docs/COMBAT-DISARM-PLAN.md, п. 2): MonsterAction.weapon_id -- id оружия из
+# Партия «Отбор оружия» (docs/plan-combat-disarm.md, п. 2): MonsterAction.weapon_id -- id оружия из
 # srd/data/weapons (контент, не сейв); None -- естественная атака (Укус, Когти), её не отобрать.
 # Размечены: guard «Копьё» -> spear; goblin_warrior и goblin_boss «Скимитар» -> scimitar,
 # «Короткий лук» -> shortbow. Валидатор реестра: weapon_id обязан существовать среди weapon.

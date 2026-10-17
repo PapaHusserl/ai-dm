@@ -1,4 +1,4 @@
-# К0а (docs/K0-PLAN.md, A6): старые мутанты migrate / load_slot (BACKLOG 16) -- тексты ошибок,
+# К0а (docs/plan-k0.md, A6): старые мутанты migrate / load_slot (BACKLOG 16) -- тексты ошибок,
 # deepcopy входа, версия переписанного слота, проверка сейва и чужого мира.
 import copy
 import json

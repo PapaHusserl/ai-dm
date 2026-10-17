@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1.1-1.2): GeminiAdapter.get_client -- таймаут gemini_timeout_s
+# Т60 «Сеть» (docs/plan-t60.md п.1.1-1.2): GeminiAdapter.get_client -- таймаут gemini_timeout_s
 # (не общий timeout_s) и IPv4-транспорт httpx.HTTPTransport(local_address="0.0.0.0").
 # Сеть не трогаем: genai.Client и httpx.HTTPTransport подменены фейками.
 import ast

@@ -134,7 +134,7 @@ SDK -- интроспекция установленного пакета, се�
 - Учёт в адаптере: `Usage.cache_write` = токены созданного кэша (цена `cache_write` = `input`), `Usage.cache_storage_min` = токены × минуты
   TTL (цена `cache_storage_hour` // 60), начисляются в ответе, следующем за созданием (если создание было, а запрос упал -- в следующем успешном).
 
-## Сеть и модели (Т60; docs/decisions/gemini-503-research.md, docs/T60-PLAN.md)
+## Сеть и модели (Т60; docs/research/gemini-503-research.md, docs/plan-t60.md)
 - IPv4-транспорт: `genai.Client(http_options=HttpOptions(client_args={"transport": httpx.HTTPTransport(local_address="0.0.0.0")}))` --
   сокет только по IPv4. Включается `[llm] gemini_ipv4` (по умолчанию true). Свой транспорт отключает прокси/`SSL_CERT_FILE` из окружения
   httpx -- при `false` поведение прежнее. Async-клиент не используется, `async_client_args` не задаём.

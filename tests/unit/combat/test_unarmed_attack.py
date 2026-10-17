@@ -1,4 +1,4 @@
-# Безоружный удар (docs/COMBAT-EXTRAS-PLAN.md, разд. 1; BACKLOG 7). Ожидаемый API:
+# Безоружный удар (docs/plan-combat-extras.md, разд. 1; BACKLOG 7). Ожидаемый API:
 #   attacks_of(engine, герой) -- в конце всегда AttackInfo(id="unarmed", kind="melee",
 #       weapon_id=None, bonus = СИЛ + БМ, урон фиксированный 1 + СИЛ дробящий, без кубиков);
 #       у героя без оружия -- единственная атака

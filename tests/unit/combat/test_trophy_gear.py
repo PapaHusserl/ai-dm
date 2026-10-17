@@ -1,4 +1,4 @@
-# Трофеи с тел врагов в бою (docs/CUSTOM-ITEMS-PLAN.md, разд. 7, партия В).
+# Трофеи с тел врагов в бою (docs/plan-custom-items.md, разд. 7, партия В).
 #   settle_ground (конец боя) при победе героя (victory / ended_by_master, герой жив) считает
 #   state.gear -- оружие и квестовые вещи с тел:
 #     * тело -- враг-монстр (side enemies) со статусом dead или down; fled, surrendered, active и

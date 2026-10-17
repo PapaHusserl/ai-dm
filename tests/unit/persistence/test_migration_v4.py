@@ -1,5 +1,5 @@
 # Ожидаемый API: ai_dm.persistence.migrations.m0004_v3_to_v4 (следопыт 2-5,
-# docs/decisions/ranger-2-5-plan.md, разд. 4 п. 6)
+# docs/plan-ranger-2-5.md, разд. 4 п. 6)
 #   migrate_v3_to_v4(data: dict) -> dict  -- чистое dict -> dict, вход не мутирует; schema_version
 #       ставит фреймворк migrate(); MIGRATIONS[3] is migrate_v3_to_v4; CURRENT_SCHEMA_VERSION == 4.
 #       Миграция заморожена в v4: не импортирует модели ai_dm.state.* (литералы заморожены).

@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.3): cli передаёт GameApp refusal_chain=False при --mock/--replay
+# ТО (docs/plan-to.md §1 п.3): cli передаёт GameApp refusal_chain=False при --mock/--replay
 # (как auto_reports). Живой режим (True) без сети не запустить -- проверяется в ЖП.
 from pathlib import Path
 

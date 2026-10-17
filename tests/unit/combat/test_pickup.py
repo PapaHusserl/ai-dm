@@ -1,4 +1,4 @@
-# Подбор оружия с земли (docs/COMBAT-DISARM-PLAN.md, п. 4; В5).
+# Подбор оружия с земли (docs/plan-combat-disarm.md, п. 4; В5).
 #   state.ground_items: list[GroundItem(item_id, zone_id, owner_ref=None, qty=1)];
 #   TurnState.free_interaction: bool = True -- одно бесплатное взаимодействие с предметом за ход.
 #   Опция: kind "pickup" (id "pickup:<индекс в ground_items>"), предмет в зоне участника.

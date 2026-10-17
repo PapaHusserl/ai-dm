@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.7, Q6а): пак dusk_academy после правки текста 18+ грузится без ошибок;
+# ТО (docs/plan-to.md §1 п.7, Q6а): пак dusk_academy после правки текста 18+ грузится без ошибок;
 # world.md и tone.notes говорят про совершеннолетних; «юных представителей» больше нет.
 from campaign_kit import ROOT
 

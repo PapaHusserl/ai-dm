@@ -1,4 +1,4 @@
-# 19ф Ф4 (docs/19F-PLAN.md п.1 Ф4.4): после /fight экран перерисовывается сразу -- карта боя,
+# 19ф Ф4 (docs/plan-19f.md п.1 Ф4.4): после /fight экран перерисовывается сразу -- карта боя,
 # меню действий и подсказка; SCREEN_COMMANDS = ("/load", "/fight"); /help по-прежнему без экрана.
 from ui_kit import text_app, text_step
 

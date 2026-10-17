@@ -1,4 +1,4 @@
-# К0-фикс, 38 а (docs/K0-FIX-PLAN.md, шаг 1): player_action.improvise.effect -- перечисление
+# К0-фикс, 38 а (docs/plan-k0-fix.md, шаг 1): player_action.improvise.effect -- перечисление
 #   advantage|prone|extra_damage|push|disarm (+ "none" = нет); проза в effect -> ValidationError;
 #   skill+category заданы, а effect none/не указан -> ValidationError «effect обязателен».
 #   Схема инструмента несёт enum; обработчик в бою проверяет target/zone по состоянию боя и

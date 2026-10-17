@@ -1,4 +1,4 @@
-# Б0-П0 (docs/B0-PLAN.md, A1): миграция v7 -> v8, шкала Tone.romance расширена до четырёх значений.
+# Б0-П0 (docs/plan-b0.md, A1): миграция v7 -> v8, шкала Tone.romance расширена до четырёх значений.
 # Ожидаемый API: ai_dm.persistence.migrations.m0008_v7_to_v8
 #   migrate_v7_to_v8(data: dict, context=None) -> dict -- чистое dict -> dict, вход не мутирует;
 #       schema_version ставит фреймворк; MIGRATIONS[7] is migrate_v7_to_v8;

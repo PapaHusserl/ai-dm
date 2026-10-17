@@ -1,4 +1,4 @@
-# ТС #22 (docs/TS-PLAN.md §1 п.2): [memory] summary_trim_after = 2; 0 -- движок не режет; ge=0.
+# ТС #22 (docs/plan-ts.md §1 п.2): [memory] summary_trim_after = 2; 0 -- движок не режет; ge=0.
 import pytest
 from pydantic import ValidationError
 

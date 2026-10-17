@@ -1,4 +1,4 @@
-# Цена экземпляра в бою (docs/CUSTOM-ITEMS-PLAN.md, разд. 8, партия 0).
+# Цена экземпляра в бою (docs/plan-custom-items.md, разд. 8, партия 0).
 #   GroundItem(item_id, zone_id, owner_ref=None, qty=1, cost_cp: int, quality=None) -- выбитое
 #       оружие несёт цену экземпляра (у героя -- со снятого стека, у монстра -- цена трофея).
 #   settle_ground (победа): оружие -> герою с cost_cp и quality записи на земле;

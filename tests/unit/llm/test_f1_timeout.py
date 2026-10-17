@@ -1,4 +1,4 @@
-# 19ф Ф1 (docs/19F-PLAN.md п.1 Ф1): «медленная» ошибка -- таймаут или 504 -- не повторяется
+# 19ф Ф1 (docs/plan-19f.md п.1 Ф1): «медленная» ошибка -- таймаут или 504 -- не повторяется
 # (retry_timeouts = false), первый такой сбой сразу уходит наружу; 503/429/5xx -- по delays.
 #   LlmTransient.timeout, RetriesExhausted(timeout от last), is_timeout_error, translate_error
 #   адаптеров, give_up, journal/replay/mock со своим ключом timeout.

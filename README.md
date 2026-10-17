@@ -198,18 +198,19 @@ src/ai_dm/devtools/     sim_combat
 devtools/               live_smoke.py (ручной живой вызов), check_install.py, linux_check.sh (make linux-check)
 content/  campaigns/  saves/   контент репозитория, паки (этап 3), сейвы
 tests/                  unit/, scenarios/, golden/, schema/
-docs/                   документация
+docs/                   документация: ROADMAP, BACKLOG, handoff, plan-<шаг>.md, done/, research/
 ```
 
 ## Документы
 
 - `docs/TZ.md` — техническое задание.
 - `docs/ARCHITECTURE.md` — архитектура; часть C — этап 2.
-- `docs/STAGE2-PLAN.md` — план этапа 2 и чек-лист ручной живой сцены.
+- `docs/plan-<шаг>.md` — документ каждого шага: план, решения, правки по ревью, итог (`docs/plan-stage2.md` — этап 2 и чек-лист ручной живой сцены).
+- `docs/research/` — ресёрчи (локальные модели, музыка, OpenAI, Gemini 503, пресеты 18+).
 - `docs/rules-adaptation.md` — где движок отходит от SRD 5.2.
 - `docs/glossary.md` — термины и русские названия.
-- `docs/decisions/` — решения по ревью и аудитам (индекс в `docs/decisions/README.md`).
-- `docs/BACKLOG.md` — отложенное.
+- `docs/ROADMAP.md` — карта очереди, `docs/BACKLOG.md` — отложенное, `docs/done/` — закрытые пункты, `docs/handoff.md` — закладка для новой сессии.
+- `AGENTS.md`, `docs/RULES.md` — как работаем и правила docs/.
 
 ## Лицензия
 

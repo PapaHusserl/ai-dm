@@ -1,10 +1,10 @@
-# Тактика и правки ревью партии «Отбор оружия» (docs/decisions/combat-disarm-review.md):
+# Тактика и правки ревью партии «Отбор оружия» (docs/plan-combat-disarm.md):
 #   EngineTactics.pick_special: escape > pickup > disarm; герою (в том числе авто-герою через
 #   EngineTactics) pickup и disarm не выбираются; монстру без таких опций -- None.
 #   AutoHeroController берёт pickup только при пустой main_hand.
 #   Монстр с тегом disarmer пробует обезоружить героя один раз, дальше атакует.
 #   Трофей при победе выдаётся один раз. Герой на стороне врагов не ломает меню (переговоры).
-# К7х, п. 4 (docs/K7X-PLAN.md, В5): EngineTactics.step_to_weapon(options, ref) -- порядок в
+# К7х, п. 4 (docs/plan-k7x.md, В5): EngineTactics.step_to_weapon(options, ref) -- порядок в
 # choose_turn:
 #   pick_special (escape > pickup > disarm), pick_shove, step_to_weapon, мультиатака, атака.
 #   Монстр с выбитым СВОИМ оружием (ground_items.owner_ref == он, can_pick), у которого в своей

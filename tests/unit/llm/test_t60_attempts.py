@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1.8, Q5): лог старта попытки.
+# Т60 «Сеть» (docs/plan-t60.md п.1.8, Q5): лог старта попытки.
 #   call_with_retries(..., on_start=None): on_start(attempt) перед КАЖДЫМ adapter.complete;
 #   Journal.note_start(ts, run_id, turn_seq, role, model, attempt) -- строка
 #   "ts\trun_id\tturn_seq\trole\tmodel\tattempt" в journal/attempts.log (не calls-*).

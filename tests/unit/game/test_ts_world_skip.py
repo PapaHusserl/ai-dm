@@ -1,4 +1,4 @@
-# ТС #22 (BACKLOG 46, docs/TS-PLAN.md §1 п.5): мягкий сбой world (refusal, invalid, network) --
+# ТС #22 (BACKLOG 46, docs/plan-ts.md §1 п.5): мягкий сбой world (refusal, invalid, network) --
 # пропуск вызова: тег world_skipped, граница идёт
 # дальше без вердиктов; fatal и rounds -- как раньше (граница падает, меню 2.2).
 from types import SimpleNamespace

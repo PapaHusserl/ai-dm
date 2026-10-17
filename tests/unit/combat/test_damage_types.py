@@ -1,4 +1,4 @@
-# Партия К7к, п. 1: иммунитеты, сопротивления и уязвимости монстра в бою (docs/K7K-PLAN.md).
+# Партия К7к, п. 1: иммунитеты, сопротивления и уязвимости монстра в бою (docs/plan-k7k.md).
 #   Monster.damage_immunities / damage_resistances / damage_vulnerabilities -- списки типов урона;
 #   CombatEngine.damage(ref, amount, damage_type) -> DamageResult -- единственный путь урона в бою:
 #     * для монстра берёт три списка статблока и передаёт в rules.damage.apply_damage;

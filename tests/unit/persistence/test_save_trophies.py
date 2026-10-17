@@ -1,4 +1,4 @@
-# Трофеи в сейве (docs/CUSTOM-ITEMS-PLAN.md, разд. 6-7): LastCombat.gear / gear_looted и
+# Трофеи в сейве (docs/plan-custom-items.md, разд. 6-7): LastCombat.gear / gear_looted и
 # CombatState.gear переживают сериализацию бандла без потерь (цена и качество записей).
 from protocol_kit import make_bundle
 

@@ -1,4 +1,4 @@
-# Партия К7х, п. 2: толчок монстров (docs/K7X-PLAN.md, В2, Q3 (а), Q4 (а)).
+# Партия К7х, п. 2: толчок монстров (docs/plan-k7x.md, В2, Q3 (а), Q4 (а)).
 #   combat/shove.py:
 #     contest_dc(engine, ref, abilities) -> (СЛ, слагаемые)   СЛ = 8 + лучший мод. из abilities +
 #       БМ атакующего

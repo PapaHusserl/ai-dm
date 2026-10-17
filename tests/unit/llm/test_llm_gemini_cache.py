@@ -1,4 +1,4 @@
-# Явный кэш Gemini (docs/decisions/stage2-live-1.md, X1/X2/X4). Ожидаемый API (выбран здесь --
+# Явный кэш Gemini (docs/plan-stage2.md, X1/X2/X4). Ожидаемый API (выбран здесь --
 # ТРЕБОВАНИЕ к реализации, сверить с кабаном):
 #   client.caches.create(model=<модель>, config=sdk.CreateCachedContentConfig(system_instruction=,
 #     tools=, ttl="3600s" для cache_ttl 1h / "300s" для 5m)) -> объект с .name и

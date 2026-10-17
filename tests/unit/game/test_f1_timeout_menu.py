@@ -1,4 +1,4 @@
-# 19ф Ф1 (docs/19F-PLAN.md п.1 Ф1) на уровне GameApp: таймаут -- меню ошибки после одного вызова,
+# 19ф Ф1 (docs/plan-19f.md п.1 Ф1) на уровне GameApp: таймаут -- меню ошибки после одного вызова,
 # в подсказке «таймаут», сеть как и раньше -- обе роли при смене модели (регресс Т60).
 from game_kit import FactorySpy, make_app, text_step
 from test_t60_menu import ARGON, gemini

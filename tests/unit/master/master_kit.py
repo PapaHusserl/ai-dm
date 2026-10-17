@@ -19,7 +19,7 @@
 #       выкидывается самый старый ход; оставшиеся -- хвост исходного списка. Строго больше:
 #       estimate == limit не обрезает. Вход не меняется.
 #
-#   ai_dm.master.prompt.turn_data(turn: TurnRecord) -> dict   (ТМ #20, docs/TM-PLAN.md п.4)
+#   ai_dm.master.prompt.turn_data(turn: TurnRecord) -> dict   (ТМ #20, docs/plan-tm.md п.4)
 #     прошлый ход для рассказчика: ровно {"turn_seq", "at_s", "player_input", "narration",
 #     "outcomes"}; без requests, rolls, scene_id, money_delta_cp (модель копировала requests и
 #     повторяла вызовы); outcomes -- копия списка (итог инструментов хода: log принятых и

@@ -1,4 +1,4 @@
-# ТС #22 (docs/TS-PLAN.md §1 п.2, §4): мягкий предел выжимки. trim_text режет по границе
+# ТС #22 (docs/plan-ts.md §1 п.2, §4): мягкий предел выжимки. trim_text режет по границе
 # предложения, fit_text считает переполнения по ключам (scene/chapter/game) и после
 # summary_trim_after отклонений отдаёт обрезанный текст; хендлеры scene_summary / chapter_summary /
 # game_summary принимают его с логом и меткой summary_trimmed.

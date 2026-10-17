@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md Q4б): scripts/migrate_dusk_18plus.py <каталог слота> -- одноразовая правка
+# ТО (docs/plan-to.md Q4б): scripts/migrate_dusk_18plus.py <каталог слота> -- одноразовая правка
 # world.lore.world_text и world.tone.notes сейва dusk_academy (текст 18+). stdlib, бэкап до записи,
 # идемпотентность («уже применено»), отказ без записи на не-v10 сейве и чужом мире.
 # Тесты на синтетической копии сейва во tmp_path; запуск отдельным процессом.

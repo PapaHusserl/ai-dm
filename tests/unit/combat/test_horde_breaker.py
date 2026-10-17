@@ -1,4 +1,4 @@
-# Партия К7х, п. 6: Истребитель орд (docs/K7X-PLAN.md, В7).
+# Партия К7х, п. 6: Истребитель орд (docs/plan-k7x.md, В7).
 #   Охотник (следопыт 3 ур., feature_choices {"hunters_prey": ["horde_breaker"]}):
 #   * features.horde_mark (из attack.perform): первая атака оружием за ход (попал или промахнулся)
 #     ставит

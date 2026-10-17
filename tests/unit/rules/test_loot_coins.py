@@ -1,4 +1,4 @@
-# Партия К7д, п. 6 (Q2а): монеты за побеждённых (docs/K7D-PLAN.md).
+# Партия К7д, п. 6 (Q2а): монеты за побеждённых (docs/plan-k7d.md).
 #   loot.defeated_treasure не даёт монет за существ типа beast, construct и elemental
 #   (NO_COIN_TYPES): они не бросают кости клада, RNG не тронут. Остальные (humanoid, fey, undead...)
 #   дают как раньше. hoard_treasure не меняется.

@@ -1,5 +1,5 @@
 # Регрессия: воин и плут растут как раньше после изменений повышения уровня и выборов
-# (docs/decisions/ranger-2-5-plan.md, разд. 7). Работает на существующем API, кроме
+# (docs/plan-ranger-2-5.md, разд. 7). Работает на существующем API, кроме
 # required_choices (импорт внутри теста): воин и плут на 2, 3, 5 ур. выборов не требуют.
 import pytest
 from ranger_kit import make_class_hero

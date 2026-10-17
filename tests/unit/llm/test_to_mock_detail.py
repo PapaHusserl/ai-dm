@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.6): ключ шага мока stop_detail -> ChatResponse.stop_detail;
+# ТО (docs/plan-to.md §1 п.6): ключ шага мока stop_detail -> ChatResponse.stop_detail;
 # только вместе со stop; ReplayAdapter отдаёт stop_detail из журнала.
 import pytest
 from llm_kit import make_request, make_response

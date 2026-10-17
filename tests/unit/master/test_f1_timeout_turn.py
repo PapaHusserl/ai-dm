@@ -1,4 +1,4 @@
-# 19ф Ф1 (docs/19F-PLAN.md п.1 Ф1) на уровне MasterSession: таймаут/504 -- первый сбой сразу
+# 19ф Ф1 (docs/plan-19f.md п.1 Ф1) на уровне MasterSession: таймаут/504 -- первый сбой сразу
 # TurnFailed("network") без повторов; 503 -- полные delays; retry_timeouts=true возвращает повторы.
 import pytest
 from master_kit import app_cfg, make_ctx, make_session, scripted, text_step

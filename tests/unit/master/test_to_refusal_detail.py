@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.1): TurnFailed.detail несёт повод отказа (stop_detail ответа).
+# ТО (docs/plan-to.md §1 п.1): TurnFailed.detail несёт повод отказа (stop_detail ответа).
 # Только refusal кладёт detail; network/fatal/invalid/rounds -- None.
 import pytest
 from master_kit import (

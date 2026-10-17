@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.2): защита длинного отдыха от повтора (кулдаун).
+# ТМ (docs/plan-tm.md, §1 п.2): защита длинного отдыха от повтора (кулдаун).
 #   rests.long_rest после clock.advance пишет hero.long_rest_end_s = clock.now_s (короткий отдых и
 #     неудавшийся длинный -- нет).
 #   rest_redundant(ctx, request) (ai_dm.protocol.handlers.resources): kind long,

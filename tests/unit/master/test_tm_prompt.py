@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.4-5): recent_turns в промпте рассказчика.
+# ТМ (docs/plan-tm.md, §1 п.4-5): recent_turns в промпте рассказчика.
 #   master.prompt.turn_data(turn) -> dict:
 #   ровно {turn_seq, at_s, player_input, narration, outcomes};
 #     без requests, rolls, scene_id, money_delta_cp (модель копировала requests и повторяла вызовы).

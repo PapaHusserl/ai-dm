@@ -1,4 +1,4 @@
-# Отбор оружия: что остаётся у обезоруженного (docs/COMBAT-DISARM-PLAN.md, п. 2, 3, 5).
+# Отбор оружия: что остаётся у обезоруженного (docs/plan-combat-disarm.md, п. 2, 3, 5).
 #   Флаг ActiveEffect(id="disarmed", params={"weapon_id": X}) отключает только действия монстра с
 #   этим MonsterAction.weapon_id; естественные атаки (без weapon_id) остаются.
 #   Остались без оружейных действий и тип существа в [disarm].unarmed_types (humanoid) --

@@ -1,4 +1,4 @@
-# 19ф Ф1 (docs/19F-PLAN.md п.1.3): [retry] retry_timeouts -- повторять ли после таймаута/504.
+# 19ф Ф1 (docs/plan-19f.md п.1.3): [retry] retry_timeouts -- повторять ли после таймаута/504.
 import pytest
 from pydantic import ValidationError
 

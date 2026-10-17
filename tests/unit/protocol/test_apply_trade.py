@@ -1,4 +1,4 @@
-# Торговля, партия Т2 (docs/TRADE-PLAN.md, разд. 3, 4 и «Т1: заметки для Т2»): инструмент trade.
+# Торговля, партия Т2 (docs/plan-trade.md, разд. 3, 4 и «Т1: заметки для Т2»): инструмент trade.
 #   trade{npc_id, direction: buy|sell, item_id, qty, quality: junk|worn|used|new|any} -- цену
 #       движок считает сам (rules/trade.py), мастер её не передаёт.
 #   Проверки по порядку: бой -> Invalid in_combat; нет NPC -> unknown_npc; не alive или не в

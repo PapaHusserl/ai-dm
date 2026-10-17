@@ -1,4 +1,4 @@
-# Торговля, чистые функции (docs/TRADE-PLAN.md, разд. 2, партия Т1).
+# Торговля, чистые функции (docs/plan-trade.md, разд. 2, партия Т1).
 #   Т5 (торг): day_of, active_haggle, can_haggle, haggle_dc, haggle_mode, haggle_percent_for,
 #       buy_factor_total, buy_quote(..., haggle=0), merchant_buy_quote, apply_haggle.
 #   item_category(kind, model) -- weapon/armor; item: ammo_for -> ammo,

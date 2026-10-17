@@ -1,4 +1,4 @@
-# К0-фикс, 38 ж (docs/K0-FIX-PLAN.md, шаг 5): safety_settings Gemini и stop_detail.
+# К0-фикс, 38 ж (docs/plan-k0-fix.md, шаг 5): safety_settings Gemini и stop_detail.
 #   [llm] gemini_safety = block_none (по умолчанию) | off | default; в GenerateContentConfig
 #   (обе ветки: с кэшем и без) -- 4 текстовые категории SAFETY_CATEGORIES с порогом
 #   BLOCK_NONE / OFF; default -- safety_settings не передаётся (None); в CreateCachedContentConfig

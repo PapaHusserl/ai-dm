@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.5, Q3а, Q5а): reports.writer.dir_size(path) -> int и
+# ТО (docs/plan-to.md §1 п.5, Q3а, Q5а): reports.writer.dir_size(path) -> int и
 # trim_issues(saves_root, world_id, max_mb) -> list[Path] -- удалённые каталоги. MB = 1_000_000.
 # Хронология -- по имени каталога; самый новый не удаляется; manual и tmp-* не трогаются.
 import json

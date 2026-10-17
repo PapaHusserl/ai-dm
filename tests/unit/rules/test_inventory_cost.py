@@ -1,4 +1,4 @@
-# Цена у каждого экземпляра (docs/CUSTOM-ITEMS-PLAN.md, разд. 8, партия 0; В19, В22).
+# Цена у каждого экземпляра (docs/plan-custom-items.md, разд. 8, партия 0; В19, В22).
 #   InventoryEntry(item_id, qty, cost_cp: int, quality: "junk" | "worn" | "used" | None = None)
 #   Стек = одинаковые (item_id, cost_cp, quality); разная цена или качество -- отдельные строки.
 #   add_item(hero, item_id, qty=1, *, cost_cp, quality=None) -- cost_cp обязательный keyword

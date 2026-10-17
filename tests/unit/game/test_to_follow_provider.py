@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.9): GameApp.set_narrator -- world и summarizer следуют за провайдером
+# ТО (docs/plan-to.md §1 п.9): GameApp.set_narrator -- world и summarizer следуют за провайдером
 # рассказчика (профиль нового); ошибка фабрики роли -- её текст, рассказчик не сменён.
 import pytest
 from game_kit import FactorySpy, ReactiveAdapter, make_app

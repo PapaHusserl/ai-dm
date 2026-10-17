@@ -1,4 +1,4 @@
-# Переговоры в бою (партия «parley», docs/COMBAT-PARLEY-PLAN.md + ответы проектировщика):
+# Переговоры в бою (партия «parley», docs/plan-combat-parley.md + ответы проектировщика):
 #   CombatEngine.parley(ref, *, skill, outcome, target) -> list[DomainEvent] | Rejected
 #   combat.actions.parley.parley_dc(engine, ref, target, skill, outcome) -> (dc, mode, parts)
 #     mode -- "disadvantage" (безымянный монстр, NPC с отношением <= -30) или "normal"

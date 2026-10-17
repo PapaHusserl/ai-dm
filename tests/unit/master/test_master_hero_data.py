@@ -1,5 +1,5 @@
 # state_data.hero: класс, подкласс, умения, заклинания, ячейки и спутник героя
-# (docs/decisions/ranger-2-5-plan.md, разд. 5 п. 11). Ожидаемые ключи hero:
+# (docs/plan-ranger-2-5.md, разд. 5 п. 11). Ожидаемые ключи hero:
 #   class -- id класса; subclass -- id подкласса или None; features -- список {id, name,
 #   description} текстовых и выбранных умений; spells_prepared -- sheet.spells_prepared;
 #   spell_slots -- {"<круг>": {"current": int, "max": int}}; favored_enemy -- {"current", "max"}
@@ -166,7 +166,7 @@ def test_hero_data_of_srd_background_preset_is_built(registry, cfg):
     assert data.get("background_description", "") in allowed
 
 
-# К0а: спутников несколько -- в промпт идёт первый, форма ключа прежняя (docs/K0-PLAN.md, Q4)
+# К0а: спутников несколько -- в промпт идёт первый, форма ключа прежняя (docs/plan-k0.md, Q4)
 
 def test_hero_data_companion_is_the_first_of_two(registry, cfg):
     from ai_dm.state.hero import Companion

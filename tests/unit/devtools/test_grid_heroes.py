@@ -1,4 +1,4 @@
-# Партия К7к, п. 4.2: герои сетки sim_grid (docs/K7K-PLAN.md, В8а, Q5а).
+# Партия К7к, п. 4.2: герои сетки sim_grid (docs/plan-k7k.md, В8а, Q5а).
 #   CLASSES = ("fighter", "rogue", "cleric", "wizard", "ranger");
 #   level1_choices(class_id) -> CharacterChoices (hero_id "hero"): воин / волшебник / следопыт --
 #     из game.starter; жрец и плут -- свои наборы (человек, стандартный массив, class_kit "a");

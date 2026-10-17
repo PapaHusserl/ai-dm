@@ -1,4 +1,4 @@
-# Партия К7х, п. 1: падение при толчке (docs/K7X-PLAN.md, В1, В2, В13, В14).
+# Партия К7х, п. 1: падение при толчке (docs/plan-k7x.md, В1, В2, В13, В14).
 #   combat/falling.py:
 #     drop_steps(zones, from_id, to_id) -> int      max(0, elevation(from) - elevation(to)); яма --
 #       отрицательная

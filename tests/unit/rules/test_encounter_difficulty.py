@@ -1,4 +1,4 @@
-# Партия К7к, п. 3.1: сложность кампании задаёт уровень бюджета боя (docs/K7K-PLAN.md, В3а).
+# Партия К7к, п. 3.1: сложность кампании задаёт уровень бюджета боя (docs/plan-k7k.md, В3а).
 #   DIFFICULTY_TIERS = {"easy": "low", "normal": "moderate", "hard": "high"};
 #   tier_of(world, cfg) -> str: world.settings["difficulty"] через словарь; нет или неизвестно
 #   (в том числе не строка) -> cfg.encounter.tier;

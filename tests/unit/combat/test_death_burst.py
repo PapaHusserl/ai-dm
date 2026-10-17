@@ -1,4 +1,4 @@
-# Партия К7д, Q5 (ответ проектировщика): Предсмертный взрыв мефитов и магмина (docs/K7D-PLAN.md).
+# Партия К7д, Q5 (ответ проектировщика): Предсмертный взрыв мефитов и магмина (docs/plan-k7d.md).
 #   Monster.death_burst: DeathBurst | None; DeathBurst(save: Ability = "dex", dc: int, dice: str,
 #     damage_type: str) -- обязательны dc, dice, damage_type.
 #   combat/death_burst.explode(engine, ref) -> события: вызывается из downed.kill_monster (после

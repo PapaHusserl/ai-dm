@@ -1,4 +1,4 @@
-# Партия К7к, п. 3.2-3.3: сложность боёв, команда /difficulty (docs/K7K-PLAN.md, В3а, Q1).
+# Партия К7к, п. 3.2-3.3: сложность боёв, команда /difficulty (docs/plan-k7k.md, В3а, Q1).
 #   ai_dm.game.difficulty: DIFFICULTIES = ("easy", "normal", "hard"); WORDS = лёгкая / обычная /
 #     тяжёлая;
 #     current(world, cfg) -> значение (из settings или обратное отображение cfg.encounter.tier);

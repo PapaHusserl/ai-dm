@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.8): метки gold_repeat и rest_repeat идут Decision.report_tag ->
+# ТМ (docs/plan-tm.md, §1 п.8): метки gold_repeat и rest_repeat идут Decision.report_tag ->
 # TurnResult.report_tags -> авто-репорт GameApp (saves/<world>/issues/<имя>/, meta.json["tags"]).
 import json
 

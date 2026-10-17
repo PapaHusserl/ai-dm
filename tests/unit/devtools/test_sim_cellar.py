@@ -1,4 +1,4 @@
-# Партия К7д, п. 7: сцена сетки «подвал Вейла» (devtools/sim_cellar.py, docs/K7D-PLAN.md, В6, В7).
+# Партия К7д, п. 7: сцена сетки «подвал Вейла» (devtools/sim_cellar.py, docs/plan-k7d.md, В6, В7).
 #   CELLAR_POOL -- кортеж id монстров от дорогих к дешёвым: wight, ghast, ghoul, shadow, skeleton,
 #     zombie, giant_rat; CELLAR_CAP = 6.
 #   fill_budget(budget, pool, registry, cap=CELLAR_CAP) -> list[str]: детерминированный жадный

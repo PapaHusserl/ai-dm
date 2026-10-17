@@ -1,4 +1,4 @@
-# Партия К7х, п. 2.4-2.5: политика ИИ для толчка (docs/K7X-PLAN.md, Q1 (а)).
+# Партия К7х, п. 2.4-2.5: политика ИИ для толчка (docs/plan-k7x.md, Q1 (а)).
 #   EngineTactics.pick_shove(options, ref) -> id | None:
 #     среди пунктов kind "shove" берёт с наибольшей разницей высот (elevation зоны цели минус
 #       elevation зоны

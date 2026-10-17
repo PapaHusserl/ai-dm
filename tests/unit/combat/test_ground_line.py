@@ -1,4 +1,4 @@
-# Карта боя: строка «На земле: скимитар (Центр зала)» -- выбитое оружие (docs/COMBAT-DISARM-PLAN.md,
+# Карта боя: строка «На земле: скимитар (Центр зала)» -- выбитое оружие (docs/plan-combat-disarm.md,
 # п. 4). ground_line(state, registry, width) -> list[str]; battle_map_lines(..., registry=None)
 # добавляет её в конец; без registry или без предметов строки нет.
 from combat_kit import make_engine, make_fighter, mon

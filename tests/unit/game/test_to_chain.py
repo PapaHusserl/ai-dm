@@ -1,4 +1,4 @@
-# ТО (docs/TO-PLAN.md §1 п.3, Q1а): GameApp.chain_turn -- жёсткий отказ (PROHIBITED_CONTENT/
+# ТО (docs/plan-to.md §1 п.3, Q1а): GameApp.chain_turn -- жёсткий отказ (PROHIBITED_CONTENT/
 # BLOCKLIST/SPII) переключает рассказчика на следующую модель по narrator_chain (постоянно,
 # models.json) и повторяет ход; цепочка кончилась / вне цепочки / refusal_chain=False -- меню.
 import pytest

@@ -1,4 +1,4 @@
-# Переговоры в бою через TurnRunner (docs/COMBAT-PARLEY-PLAN.md, п. 3): фраза (player_action.parley)
+# Переговоры в бою через TurnRunner (docs/plan-combat-parley.md, п. 3): фраза (player_action.parley)
 # и пункт меню «Переговоры» (id parley:<цель>:<навык>:<исход>) идут в engine.parley. Исход и СЛ --
 # решение движка, в логе «переговоры с ...»; отказ движка --
 # строка «переговоры невозможны (<причина>)».

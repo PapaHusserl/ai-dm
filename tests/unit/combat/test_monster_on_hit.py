@@ -1,4 +1,4 @@
-# Партия К7д, п. 2.2, 2.7: эффект при попадании у действия монстра (docs/K7D-PLAN.md, В3в).
+# Партия К7д, п. 2.2, 2.7: эффект при попадании у действия монстра (docs/plan-k7d.md, В3в).
 #   MonsterAction.on_hit: HitRider | None; HitRider(condition, save: Ability | None, dc: int | None,
 #     max_size, duration: target_turn | source_turn | minute | None, dice, damage_type): save и dc
 #     только вместе, dice и damage_type только вместе (иначе ValidationError).

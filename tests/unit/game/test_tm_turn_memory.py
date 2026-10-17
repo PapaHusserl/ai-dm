@@ -1,4 +1,4 @@
-# ТМ (docs/TM-PLAN.md, §1 п.3): итог инструментов в памяти хода.
+# ТМ (docs/plan-tm.md, §1 п.3): итог инструментов в памяти хода.
 #   TurnResult.outcomes: accepted / clamped -> Decision.log запроса; rejected -> строка
 #     "<type>: отклонено (<reason>)" (в result.lines и UI не попадает); Invalid -- ничего.
 #   TurnRunner.commit пишет в TurnRecord outcomes=list(result.outcomes) и

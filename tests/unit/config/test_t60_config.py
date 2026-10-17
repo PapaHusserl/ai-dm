@@ -1,4 +1,4 @@
-# Т60 «Сеть» (docs/T60-PLAN.md п.1, раздел 10): настройки сети и цепочки рассказчика.
+# Т60 «Сеть» (docs/plan-t60.md п.1, раздел 10): настройки сети и цепочки рассказчика.
 #   [llm] gemini_ipv4 = true, narrator_chain = 4 ключа "провайдер:модель";
 #   [retry] gemini_timeout_s = 90 (> 0), chain_delays = [] (паузы primary summarizer с запасным);
 #   AppConfig.check_models_known: модели цепочки обязаны иметь цену и окно, ключ -- вида a:b.
