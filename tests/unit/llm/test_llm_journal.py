@@ -338,6 +338,60 @@ def test_mark_turn_does_not_override_already_set_status(tmp_path):
     assert journal.read_records()[0]["turn_status"] == "aborted"
 
 
+def test_mark_turn_without_matching_records_does_not_rewrite_segment(tmp_path, monkeypatch):
+    journal = make_journal(tmp_path)
+    record(journal, 1, turn_seq=7, run_id="run-a")
+    path = journal.dir / "calls-001.jsonl"
+    before = path.read_bytes()
+
+    def no_replace(*args, **kwargs):
+        raise AssertionError("сегмент без изменений переписан")
+
+    monkeypatch.setattr(os, "replace", no_replace)
+    journal.mark_turn("run-zzz", "committed")
+    assert path.read_bytes() == before
+
+
+def test_mark_turn_of_other_role_does_not_rewrite_segment(tmp_path, monkeypatch):
+    journal = make_journal(tmp_path)
+    record(journal, 1, turn_seq=7, run_id="run-a")
+
+    def no_replace(*args, **kwargs):
+        raise AssertionError("сегмент без изменений переписан")
+
+    monkeypatch.setattr(os, "replace", no_replace)
+    journal.mark_turn("run-a", "committed", role="world")
+    assert journal.read_records()[0]["turn_status"] is None
+
+
+def two_segments_with_run_in_both(tmp_path):
+    # seg1: c1 (run-a); seg2: c2 (run-b), c3 (run-a) -- прогон run-a начинается в seg2 не с начала
+    one_per_segment = JournalConfig(max_mb=50, segment_mb=0)
+    small = make_journal(tmp_path, one_per_segment)
+    record(small, 1, turn_seq=1, run_id="run-a")
+    record(small, 2, turn_seq=2, run_id="run-b")
+    journal = make_journal(tmp_path)
+    record(journal, 3, turn_seq=1, run_id="run-a")
+    return journal
+
+
+def test_mark_turn_stops_at_segment_where_the_run_began(tmp_path):
+    journal = two_segments_with_run_in_both(tmp_path)
+    assert len(journal.segments()) == 2
+    journal.mark_turn("run-a", "committed")
+    statuses = {r["call_id"]: r["turn_status"] for r in journal.read_records()}
+    assert statuses == {"c1": None, "c2": None, "c3": "committed"}
+
+
+def test_mark_turn_goes_on_to_older_segment_when_run_starts_at_segment_head(tmp_path):
+    one_per_segment = JournalConfig(max_mb=50, segment_mb=0)
+    journal = make_journal(tmp_path, one_per_segment)
+    record(journal, 1, turn_seq=1, run_id="run-a")
+    record(journal, 2, turn_seq=1, run_id="run-a", attempt=2)
+    journal.mark_turn("run-a", "aborted")
+    assert [r["turn_status"] for r in journal.read_records()] == ["aborted", "aborted"]
+
+
 def test_mark_turn_rejects_unknown_status(tmp_path):
     journal = make_journal(tmp_path)
     record(journal, 1, turn_seq=4)

@@ -427,8 +427,10 @@ def test_model_with_small_window_gives_smaller_budget_and_drops(registry, tmp_pa
     records = [r for r in app.journal.read_records() if r["role"] == "narrator"]
     context = records[0]["meta"]["context"]
     assert records[0]["requested_model"] == SONNET
+    # окно 10 000 меньше статики: потолок динамики 0, бюджет поднят до 80 % окна
     assert context["budget"] == 8_000
-    assert context["cap"] == 8_000
+    assert context["cap"] == 0
+    assert context["static"] > 8_000
     assert context["dropped"]
 
 
@@ -437,7 +439,7 @@ def test_model_keeps_big_window_budget_before_switch(registry, tmp_path):
     app.settings.app.context_windows[SONNET] = 10_000
     app.handle("Иду")
     records = [r for r in app.journal.read_records() if r["role"] == "narrator"]
-    assert records[0]["meta"]["context"]["cap"] == 30_000
+    assert records[0]["meta"]["context"]["cap"] == 16_000
     assert records[0]["meta"]["context"]["dropped"] == []
 
 

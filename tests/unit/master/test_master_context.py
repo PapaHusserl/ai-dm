@@ -21,7 +21,7 @@ from ai_dm.master.context import (
     request_tokens,
     window_budget,
 )
-from ai_dm.state.memory import Memory, SceneSummary
+from ai_dm.state.memory import ChapterSummary, Memory, SceneSummary
 
 OPUS = "claude-opus-5-5"
 HAIKU = "claude-haiku-4-5"
@@ -74,34 +74,38 @@ def test_window_budget_is_80_percent_of_window():
 
 
 def test_budget_of_1m_window_is_capped_by_context_cap():
-    assert budget(app_cfg(), OPUS) == 30_000
+    assert budget(app_cfg(), OPUS, 0) == 16_000
 
 
 def test_budget_of_small_window_is_80_percent():
     app = app_cfg().model_copy(deep=True)
     app.context_windows[OPUS] = 20_000
-    assert budget(app, OPUS) == 16_000
+    assert budget(app, OPUS, 0) == 16_000
 
 
 def test_budget_takes_cap_when_it_is_below_window_80():
     app = app_cfg().model_copy(deep=True)
     app.master.context_cap = 10_000
     app.context_windows[HAIKU] = 200_000
-    assert budget(app, HAIKU) == 10_000
+    assert budget(app, HAIKU, 0) == 10_000
 
 
 def test_budget_equal_cap_and_window_80():
     app = app_cfg().model_copy(deep=True)
     app.context_windows[OPUS] = 12_500
     app.master.context_cap = 10_000
-    assert budget(app, OPUS) == 10_000
+    assert budget(app, OPUS, 0) == 10_000
+
+
+def test_budget_adds_static_to_context_cap():
+    assert budget(app_cfg(), OPUS, 20_000) == 36_000
 
 
 def test_budget_depends_on_model():
     app = app_cfg().model_copy(deep=True)
     app.context_windows[HAIKU] = 5_000
-    assert budget(app, HAIKU) == 4_000
-    assert budget(app, OPUS) == 30_000
+    assert budget(app, HAIKU, 0) == 4_000
+    assert budget(app, OPUS, 0) == 16_000
 
 
 # оценка токенов
@@ -174,6 +178,7 @@ SCENE_CHARS = 70
 NPC_CHARS = 40
 LOC_CHARS = 30
 BASE_CHARS = 200
+CHAPTER_CHARS = 60
 
 
 def make_render(calls=None):
@@ -185,6 +190,7 @@ def make_render(calls=None):
         text += "S" * (SCENE_CHARS * len(c.scenes))
         text += "N" * (NPC_CHARS * len(c.npcs))
         text += "L" * (LOC_CHARS * len(c.locations))
+        text += "C" * (CHAPTER_CHARS * (len(c.chapters) + len(c.fixed_chapters)))
         return make_req(text)
 
     return render
@@ -208,20 +214,32 @@ def size(c, cpt=CPT):
     return request_tokens(make_render()(c), cpt)
 
 
-def run_plan(c, cap, window80=BIG, cpt=CPT, calls=None):
-    return plan(c, make_render(calls), cap=cap, window80=window80, cpt=cpt)
+def chapter(n):
+    return ChapterSummary(id=f"ch{n}", number=n, title=f"Г{n}", summary=f"Итог {n}")
 
 
-def trimmed(c, turns=None, scenes=None, npcs=None, locations=None):
+def with_chapters(c, folded=3, fixed=1):
+    # folded -- уже в game_summary (number <= game_summary_chapter), fixed -- ещё нет
+    c.chapters = [chapter(n) for n in range(1, folded + 1)]
+    c.fixed_chapters = [chapter(n) for n in range(folded + 1, folded + fixed + 1)]
+    return c
+
+
+def run_plan(c, cap, window80=BIG, cpt=CPT, calls=None, static=0):
+    return plan(c, make_render(calls), cap=cap, window80=window80, cpt=cpt, static=static)
+
+
+def trimmed(c, turns=None, scenes=None, npcs=None, locations=None, chapters=None):
     # те же кандидаты без первых N элементов по ступеням
     return Candidates(
         turns=c.turns[turns or 0:], floor=c.floor, scenes=c.scenes[scenes or 0:],
         npcs=c.npcs[npcs or 0:], locations=c.locations[locations or 0:],
+        chapters=c.chapters[chapters or 0:], fixed_chapters=c.fixed_chapters,
     )
 
 
 def test_stages_order():
-    assert STAGES == ("turns", "scenes", "npcs", "locations")
+    assert STAGES == ("turns", "scenes", "npcs", "locations", "chapters")
 
 
 # ничего не вытесняется
@@ -566,7 +584,7 @@ def test_meta_has_all_fields():
     c = cands()
     result = run_plan(c, cap=size(trimmed(c, turns=2)), window80=BIG)
     assert result.meta() == {
-        "budget": result.cap, "cap": result.cap, "estimate": result.estimate,
+        "budget": result.cap, "cap": result.cap, "static": 0, "estimate": result.estimate,
         "dropped": [["turns", "1"], ["turns", "2"]], "raised": False, "overflow": False,
     }
 
@@ -593,3 +611,174 @@ def test_context_plan_is_frozen():
     assert isinstance(result, ContextPlan)
     with pytest.raises(ValidationError):
         result.raised = True
+
+
+# Ж0 п.0: статика запроса не входит в потолок динамики
+
+def test_plan_reports_static():
+    assert run_plan(cands(), cap=BIG, static=1234).static == 1234
+
+
+def test_plan_static_defaults_to_zero():
+    result = plan(cands(), make_render(), cap=BIG, window80=BIG, cpt=CPT)
+    assert result.static == 0
+    assert result.cap == BIG
+
+
+def test_plan_cap_is_total_cap_minus_static():
+    result = run_plan(cands(), cap=5000, static=1200)
+    assert result.cap == 3800
+
+
+def test_plan_cap_is_never_negative():
+    assert run_plan(cands(), cap=100, static=300).cap == 0
+
+
+def test_plan_cap_equal_to_static_is_zero():
+    assert run_plan(cands(), cap=300, static=300).cap == 0
+
+
+def test_plan_budget_is_total_cap_not_dynamic_cap():
+    result = run_plan(cands(), cap=BIG, static=1000, window80=BIG * 2)
+    assert result.budget == BIG
+
+
+def test_static_does_not_change_estimate():
+    c = cands()
+    assert run_plan(c, cap=BIG, static=777).estimate == size(c)
+
+
+def test_static_does_not_change_what_is_dropped():
+    c = cands()
+    cap = size(trimmed(c, turns=3))
+    assert run_plan(c, cap=cap, static=50).dropped == run_plan(c, cap=cap).dropped
+
+
+def test_raised_compares_estimate_with_total_cap_including_static():
+    c = cands(floor=1)
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    result = run_plan(c, cap=bare, static=bare // 2)
+    assert result.raised is False
+    assert result.budget == bare
+
+
+def test_raised_one_below_unavoidable_with_static():
+    c = cands(floor=1)
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    result = run_plan(c, cap=bare - 1, static=bare // 2, window80=BIG)
+    assert result.raised is True
+    assert result.overflow is True
+    assert result.budget == BIG
+
+
+def test_raised_with_cap_below_static_lifts_budget_to_window_80():
+    c = cands()
+    result = run_plan(c, cap=10, static=500, window80=BIG)
+    assert result.cap == 0
+    assert result.raised is True
+    assert result.budget == BIG
+
+
+def test_meta_reports_static():
+    result = run_plan(cands(), cap=BIG, static=4321)
+    assert result.meta()["static"] == 4321
+
+
+def test_meta_cap_is_dynamic_cap():
+    result = run_plan(cands(), cap=5000, static=1200)
+    assert result.meta()["cap"] == 3800
+    assert result.meta()["budget"] == 5000
+
+
+# Ж0 п.0, BACKLOG 15: пятая ступень -- выжимки глав, уже свёрнутые в game_summary
+
+def test_chapters_default_to_empty_in_plan():
+    assert run_plan(cands(), cap=BIG).chapters == []
+
+
+def test_nothing_dropped_keeps_all_chapters_folded_first_then_fixed():
+    c = with_chapters(cands(), folded=3, fixed=1)
+    result = run_plan(c, cap=BIG)
+    assert [x.id for x in result.chapters] == ["ch1", "ch2", "ch3", "ch4"]
+    assert result.dropped == []
+
+
+def test_estimate_counts_chapters():
+    c = with_chapters(cands(), folded=3, fixed=1)
+    assert run_plan(c, cap=BIG).estimate == size(cands()) + 4 * CHAPTER_CHARS
+
+
+def test_chapters_are_not_touched_while_locations_remain():
+    c = with_chapters(cands())
+    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=2)))
+    assert [s for s, _ in result.dropped if s == "chapters"] == []
+    assert [x.id for x in result.chapters] == ["ch1", "ch2", "ch3", "ch4"]
+
+
+def test_oldest_chapters_are_dropped_first_after_locations():
+    c = with_chapters(cands())
+    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3, chapters=2)))
+    assert result.dropped[-2:] == [("chapters", "ch1"), ("chapters", "ch2")]
+    assert [x.id for x in result.chapters] == ["ch3", "ch4"]
+    assert result.location_ids == []
+    assert result.raised is False
+
+
+def test_chapter_drop_is_minimal():
+    c = with_chapters(cands())
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3, chapters=2))
+    result = run_plan(c, cap=bare + CHAPTER_CHARS - 1)
+    assert [i for s, i in result.dropped if s == "chapters"] == ["ch1", "ch2"]
+
+
+def test_chapter_id_is_chapter_id_not_number():
+    c = cands()
+    c.chapters = [ChapterSummary(id="kappa", number=7, title="К", summary="и")]
+    result = run_plan(c, cap=1)
+    assert ("chapters", "kappa") in result.dropped
+
+
+def test_fixed_chapters_never_leave():
+    c = with_chapters(cands(), folded=2, fixed=2)
+    result = run_plan(c, cap=1)
+    assert [x.id for x in result.chapters] == ["ch3", "ch4"]
+    assert [i for s, i in result.dropped if s == "chapters"] == ["ch1", "ch2"]
+    assert result.raised is True
+
+
+def test_fixed_chapters_alone_are_not_dropped_even_when_over_cap():
+    c = cands(turns=0, scenes=0, npcs=0, locations=0)
+    c.fixed_chapters = [chapter(1), chapter(2)]
+    result = run_plan(c, cap=1)
+    assert result.dropped == []
+    assert [x.id for x in result.chapters] == ["ch1", "ch2"]
+    assert result.raised is True
+
+
+def test_full_drop_order_ends_with_chapters():
+    c = with_chapters(cands(), folded=3, fixed=0)
+    result = run_plan(c, cap=1)
+    assert result.dropped == (
+        [("turns", str(n)) for n in range(1, 8)]
+        + [("scenes", f"sc{n}") for n in range(1, 5)]
+        + [("npcs", f"npc{n}") for n in range(1, 4)]
+        + [("locations", f"loc{n}") for n in range(1, 4)]
+        + [("chapters", f"ch{n}") for n in range(1, 4)]
+    )
+
+
+def test_chapters_stage_comes_only_when_everything_before_it_is_gone():
+    c = with_chapters(cands())
+    for cap in range(size(c), 0, -31):
+        result = run_plan(c, cap=cap)
+        if any(s == "chapters" for s, _ in result.dropped):
+            assert result.location_ids == []
+            assert result.npc_ids == []
+            assert result.scene_summaries == []
+
+
+def test_plan_does_not_change_chapter_candidates():
+    c = with_chapters(cands())
+    before = c.model_dump_json()
+    run_plan(c, cap=1)
+    assert c.model_dump_json() == before

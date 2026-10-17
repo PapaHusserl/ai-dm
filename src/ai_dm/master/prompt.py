@@ -9,6 +9,7 @@ from ai_dm.master.context import (
     estimate_tokens,
     plan,
     recent_window,
+    request_tokens,
     window_budget,
 )
 from ai_dm.master.relevance import nearby_locations, npc_reasons, rank_npcs
@@ -172,7 +173,7 @@ def draft_plan(c):
     return ContextPlan(
         budget=0, cap=0, estimate=0, turns=c.turns, scene_summaries=c.scenes,
         npc_ids=c.fixed_npcs + c.npcs, location_ids=c.fixed_locations + c.locations,
-        dropped=[], raised=False, overflow=False,
+        dropped=[], raised=False, overflow=False, chapters=c.chapters + c.fixed_chapters,
     )
 
 
@@ -205,27 +206,44 @@ class PromptBuilder:
         def render(c):
             return self.request(ctx, user_input, tools, world_text, draft_plan(c))
 
+        cpt = self.app_cfg.master.cpt_for(self.role_cfg.provider)
+        static = self.static_estimate(ctx, tools, world_text, cpt)
         result = plan(
             self.candidates(ctx), render,
-            cap=budget(self.app_cfg, self.model),
+            cap=budget(self.app_cfg, self.model, static),
             window80=window_budget(self.app_cfg, self.model),
-            cpt=self.app_cfg.master.cpt_for(self.role_cfg.provider),
+            cpt=cpt, static=static,
         )
         self.last_plan = result
         return self.request(ctx, user_input, tools, world_text, result)
+
+    def static_estimate(self, ctx, tools, world_text, cpt):
+        # кэшируемая статика запроса: правила, блок мира и схемы инструментов, без сообщений
+        req = ChatRequest(
+            role=self.role, model=self.model, system=self.static_system(ctx, world_text),
+            tools=tools, messages=[], max_tokens=self.role_cfg.max_tokens,
+        )
+        return request_tokens(req, cpt)
+
+    def static_system(self, ctx, world_text):
+        # кэшируемые блоки system, общие для запроса и оценки статики
+        return [
+            SystemBlock(text=self.rules, cache=True),
+            SystemBlock(text=self.world_block(ctx, world_text), cache=True),
+        ]
 
     def static_tokens(self, mode):
         # статика запроса: правила и схемы инструментов режима (общий chars_per_token, без пака)
         cpt = self.app_cfg.master.chars_per_token
         tools = [ToolSpec.model_validate(d) for d in tool_set(mode)]
         rules = estimate_tokens(self.rules, cpt)
-        tools = estimate_tokens(json.dumps([t.model_dump(mode="json") for t in tools]), cpt)
+        schemas = [t.model_dump(mode="json") for t in tools]
+        tools = estimate_tokens(json.dumps(schemas, ensure_ascii=False), cpt)
         return {"rules": rules, "tools": tools, "total": rules + tools}
 
     def request(self, ctx, user_input, tools, world_text, context_plan):
         system = [
-            SystemBlock(text=self.rules, cache=True),
-            SystemBlock(text=self.world_block(ctx, world_text), cache=True),
+            *self.static_system(ctx, world_text),
             SystemBlock(text=self.memory_block(ctx, context_plan), cache=True, stable=False),
         ]
         text = dump(self.state_data(ctx, user_input, context_plan))
@@ -242,6 +260,9 @@ class PromptBuilder:
         chapter = bundle.session.current_chapter
         chapter_id = "" if chapter is None else chapter.id
         cfg = self.app_cfg.master
+        memory = bundle.memory
+        folded = [c for c in memory.chapters if c.number <= memory.game_summary_chapter]
+        fixed_chapters = [c for c in memory.chapters if c.number > memory.game_summary_chapter]
         fixed_locations = []
         locations = []
         nearby = []
@@ -255,11 +276,12 @@ class PromptBuilder:
         reasons = npc_reasons(bundle, {x["id"] for x in nearby})
         fixed_npcs, npcs = rank_npcs(reasons)
         return Candidates(
-            turns=recent_window(bundle.memory, cfg.recent_turns),
+            turns=recent_window(memory, cfg.recent_turns),
             floor=cfg.recent_turns_floor,
-            scenes=[s for s in bundle.memory.scenes if s.chapter_id == chapter_id],
-            npcs=npcs, locations=locations,
+            scenes=[s for s in memory.scenes if s.chapter_id == chapter_id],
+            npcs=npcs, locations=locations, chapters=folded,
             fixed_npcs=fixed_npcs, fixed_locations=fixed_locations,
+            fixed_chapters=fixed_chapters,
         )
 
     def world_block(self, ctx, world_text):
@@ -281,7 +303,7 @@ class PromptBuilder:
             "game_summary": memory.game_summary,
             "chapters": [
                 {"number": c.number, "title": c.title, "summary": c.summary}
-                for c in memory.chapters
+                for c in context_plan.chapters
             ],
             "scenes": [
                 {"title": s.title, "summary": s.summary} for s in context_plan.scene_summaries

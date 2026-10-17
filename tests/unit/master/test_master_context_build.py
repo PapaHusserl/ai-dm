@@ -7,9 +7,11 @@ import json
 import pytest
 from master_kit import app_cfg, make_bundle, make_ctx, turn_record
 
-from ai_dm.master.context import ContextPlan, request_tokens
-from ai_dm.master.prompt import PromptBuilder
-from ai_dm.state.memory import SceneSummary
+from ai_dm.llm.types import ChatRequest, SystemBlock, ToolSpec
+from ai_dm.master.context import Candidates, ContextPlan, request_tokens, window_budget
+from ai_dm.master.prompt import PromptBuilder, draft_plan
+from ai_dm.protocol.schema import tool_set
+from ai_dm.state.memory import ChapterSummary, SceneSummary
 from ai_dm.state.triggers import Trigger
 from ai_dm.state.world import NPC, Connection, Location
 
@@ -94,8 +96,9 @@ def memory_of(request):
 
 
 def total(registry, cfg):
+    # динамика полного запроса: context_cap не включает кэшируемую статику (Ж0 п.0)
     request, builder = build(make_scenario(registry, cfg))
-    return builder.last_plan.estimate
+    return builder.last_plan.estimate - builder.last_plan.static
 
 
 # last_plan и форма плана
@@ -115,7 +118,8 @@ def test_roomy_budget_drops_nothing(registry, cfg):
     assert plan.dropped == []
     assert plan.raised is False
     assert plan.overflow is False
-    assert plan.cap == 800_000
+    assert plan.static > 0
+    assert plan.cap == 800_000 - plan.static
     assert len(data_of(request)["recent_turns"]) == 8
 
 
@@ -134,7 +138,9 @@ def test_cap_comes_from_context_cap_and_model_window(registry, cfg):
     app = app_with(cap=BIG)
     app.context_windows[OPUS] = 10_000
     _, builder = build(make_scenario(registry, cfg), app=app)
-    assert builder.last_plan.cap == 8_000
+    # окно 10 000 меньше статики: потолок динамики 0, бюджет поднят до 80 % окна
+    assert builder.last_plan.cap == 0
+    assert builder.last_plan.budget == 8_000
 
 
 def test_estimate_uses_chars_per_token_of_config(registry, cfg):
@@ -246,7 +252,7 @@ def test_dropped_is_prefix_of_full_order_and_fits(registry, cfg, share):
     plan = builder.last_plan
     assert plan.dropped == FULL_ORDER[: len(plan.dropped)]
     if not plan.raised:
-        assert plan.estimate <= cap
+        assert plan.estimate <= cap + plan.static
     assert plan.estimate == request_tokens(request, app.master.chars_per_token)
 
 
@@ -459,7 +465,8 @@ def test_chapters_and_game_summary_stay_even_when_raised(registry, cfg):
 def test_not_raised_when_unavoidable_fits_cap(registry, cfg):
     request, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
     bare = builder.last_plan.estimate
-    _, again = build(make_scenario(registry, cfg), app=app_with(cap=bare))
+    dynamic = bare - builder.last_plan.static
+    _, again = build(make_scenario(registry, cfg), app=app_with(cap=dynamic))
     assert again.last_plan.raised is False
     assert again.last_plan.budget == bare
     assert again.last_plan.dropped == FULL_ORDER
@@ -550,3 +557,316 @@ def test_budget_is_applied_in_every_mode(registry, cfg, mode):
     request, builder = build(ctx, app=app_with(cap=1), mode=mode)
     assert builder.last_plan.dropped == FULL_ORDER
     assert request.messages
+
+
+# Ж0 п.0: статика запроса (правила, мир, схемы инструментов) вне context_cap
+
+def explore_tools():
+    return [ToolSpec.model_validate(d) for d in tool_set("explore")]
+
+
+def static_of(builder, ctx, cpt=2.5, tools=None, world_text=""):
+    tools = explore_tools() if tools is None else tools
+    return builder.static_estimate(ctx, tools, world_text, cpt)
+
+
+def test_static_estimate_is_estimate_of_rules_world_and_tools_without_messages(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    builder = PromptBuilder(app_with())
+    tools = explore_tools()
+    request = ChatRequest(
+        role="narrator", model=OPUS, tools=tools, messages=[],
+        system=[
+            SystemBlock(text=builder.rules, cache=True),
+            SystemBlock(text=builder.world_block(ctx, ""), cache=True),
+        ],
+        max_tokens=builder.role_cfg.max_tokens,
+    )
+    assert static_of(builder, ctx, 2.5, tools) == request_tokens(request, 2.5)
+
+
+def test_static_estimate_does_not_depend_on_history_and_memory(registry, cfg):
+    builder = PromptBuilder(app_with())
+    full = static_of(builder, make_scenario(registry, cfg))
+    ctx = make_scenario(registry, cfg)
+    ctx.bundle.memory.recent_turns = []
+    ctx.bundle.memory.scenes = []
+    ctx.bundle.memory.game_summary = "другая память"
+    assert static_of(builder, ctx) == full
+
+
+def test_static_estimate_grows_with_world_text(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    builder = PromptBuilder(app_with())
+    plain = static_of(builder, ctx)
+    assert static_of(builder, ctx, world_text="мир " * 500) - plain >= 700
+
+
+def test_static_estimate_counts_tool_schemas(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    builder = PromptBuilder(app_with())
+    assert static_of(builder, ctx) > static_of(builder, ctx, tools=[]) + 5000
+
+
+def test_static_estimate_depends_on_chars_per_token(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    builder = PromptBuilder(app_with())
+    fine = static_of(builder, ctx, 2.0)
+    coarse = static_of(builder, ctx, 4.0)
+    assert 2 * coarse - 1 <= fine <= 2 * coarse
+
+
+def test_plan_static_is_static_estimate_of_the_request(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    _, builder = build(ctx)
+    assert builder.last_plan.static == static_of(builder, ctx)
+
+
+def test_plan_static_is_the_same_for_any_cap(registry, cfg):
+    _, roomy = build(make_scenario(registry, cfg))
+    _, tight = build(make_scenario(registry, cfg), app=app_with(cap=1))
+    assert roomy.last_plan.static == tight.last_plan.static
+
+
+def test_plan_static_follows_world_text(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    builder = PromptBuilder(app_with())
+    builder.build(ctx, "а", "explore")
+    plain = builder.last_plan.static
+    builder.build(ctx, "а", "explore", world_text="мир " * 500)
+    assert builder.last_plan.static - plain >= 700
+
+
+def test_plan_static_follows_mode_tools(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    _, explore = build(ctx, mode="explore")
+    _, classify = build(ctx, mode="combat_classify")
+    assert explore.last_plan.static != classify.last_plan.static
+
+
+def test_plan_static_of_anthropic_role_uses_its_cpt(registry, cfg):
+    app = app_for({"anthropic": 2.2})
+    ctx = make_scenario(registry, cfg)
+    _, builder = build(ctx, app=app)
+    assert builder.last_plan.static == static_of(builder, ctx, 2.2)
+
+
+def test_plan_static_of_gemini_role_uses_common_cpt(registry, cfg):
+    app = app_for({"anthropic": 2.2}, provider="gemini")
+    ctx = make_scenario(registry, cfg)
+    _, builder = build(ctx, app=app)
+    assert builder.last_plan.static == static_of(builder, ctx, 2.5)
+
+
+def test_estimate_counts_world_text_in_every_render(registry, cfg):
+    app = app_with()
+    request, builder = build_with_world(make_scenario(registry, cfg), app, "мир " * 500)
+    assert builder.last_plan.estimate == request_tokens(request, app.master.chars_per_token)
+
+
+def build_with_world(ctx, app, world_text):
+    builder = PromptBuilder(app)
+    return builder.build(ctx, "Осматриваюсь.", "explore", world_text=world_text), builder
+
+
+def test_world_block_has_exact_keys_and_values(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    data = json.loads(PromptBuilder(app_with()).world_block(ctx, "Текст мира."))
+    world = ctx.bundle.world
+    assert set(data) == {"world_id", "tone", "settings", "world_text", "monster_ids", "item_ids"}
+    assert data["world_id"] == world.world_id
+    assert data["tone"] == world.tone.model_dump(mode="json")
+    assert data["settings"] == world.settings
+    assert data["world_text"] == "Текст мира."
+
+
+def test_memory_block_scene_items_have_title_and_summary(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    scene = SceneSummary(id="s", chapter_id="", title="Сцена", summary="Выжимка.")
+    block = PromptBuilder(app_with()).memory_block(ctx, draft_plan(Candidates(scenes=[scene])))
+    assert json.loads(block)["scenes"] == [{"title": "Сцена", "summary": "Выжимка."}]
+
+
+def test_meta_static_is_plan_static(registry, cfg):
+    _, builder = build(make_scenario(registry, cfg))
+    assert builder.last_plan.static > 0
+    assert builder.last_plan.meta()["static"] == builder.last_plan.static
+
+
+def test_budget_is_static_plus_context_cap(registry, cfg):
+    _, builder = build(make_scenario(registry, cfg), app=app_with(cap=12_345))
+    plan = builder.last_plan
+    assert plan.raised is False
+    assert plan.budget == plan.static + 12_345
+    assert plan.cap == 12_345
+
+
+def test_dynamic_part_fits_context_cap_without_static(registry, cfg):
+    cap = total(registry, cfg) // 2
+    _, builder = build(make_scenario(registry, cfg), app=app_with(cap=cap))
+    plan = builder.last_plan
+    assert plan.dropped
+    assert plan.estimate - plan.static <= cap
+
+
+def test_dynamic_cap_is_boundary_of_eviction(registry, cfg):
+    full = total(registry, cfg)
+    _, fits = build(make_scenario(registry, cfg), app=app_with(cap=full))
+    _, over = build(make_scenario(registry, cfg), app=app_with(cap=full - 1))
+    assert fits.last_plan.dropped == []
+    assert over.last_plan.dropped == [("turns", "1")]
+
+
+def test_window_below_static_plus_cap_limits_budget_to_window_80(registry, cfg):
+    _, probe = build(make_scenario(registry, cfg))
+    static = probe.last_plan.static
+    app = app_with(cap=BIG)
+    app.context_windows[OPUS] = (static + 6_000) * 5 // 4
+    window80 = window_budget(app, OPUS)
+    _, builder = build(make_scenario(registry, cfg), app=app)
+    plan = builder.last_plan
+    assert static < window80 < static + 6_001
+    assert plan.budget == window80
+    assert plan.cap == window80 - static
+    assert plan.raised is False
+
+
+def test_window_below_static_makes_cap_zero_and_raises_budget(registry, cfg):
+    app = app_with(cap=BIG)
+    app.context_windows[OPUS] = 10_000
+    _, builder = build(make_scenario(registry, cfg), app=app)
+    plan = builder.last_plan
+    assert plan.static > 8_000
+    assert plan.cap == 0
+    assert plan.raised is True
+    assert plan.budget == 8_000
+
+
+def test_raised_when_dynamic_part_does_not_fit_cap_even_with_static(registry, cfg):
+    _, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
+    plan = builder.last_plan
+    assert plan.raised is True
+    assert plan.estimate > plan.static + plan.cap
+
+
+# Ж0 п.0, BACKLOG 15: пятая ступень -- главы, свёрнутые в game_summary
+
+CHAPTER_TAIL = [("chapters", "ch1"), ("chapters", "ch2")]
+
+
+def chapters_scenario(registry, cfg, folded=2):
+    ctx = make_scenario(registry, cfg)
+    memory = ctx.bundle.memory
+    memory.chapters = [
+        ChapterSummary(id=f"ch{n}", number=n, title=f"Глава {n}", summary=f"{LONG}{n}")
+        for n in range(1, 5)
+    ]
+    memory.game_summary = "Свёртка игры."
+    memory.game_summary_chapter = folded
+    return ctx
+
+
+def chapter_numbers(request):
+    return [c["number"] for c in memory_of(request)["chapters"]]
+
+
+def test_candidates_split_chapters_by_game_summary_chapter(registry, cfg):
+    ctx = chapters_scenario(registry, cfg, folded=2)
+    c = PromptBuilder(app_with()).candidates(ctx)
+    assert [x.number for x in c.chapters] == [1, 2]
+    assert [x.number for x in c.fixed_chapters] == [3, 4]
+
+
+def test_candidates_chapter_equal_to_game_summary_chapter_is_folded(registry, cfg):
+    ctx = chapters_scenario(registry, cfg, folded=4)
+    c = PromptBuilder(app_with()).candidates(ctx)
+    assert [x.number for x in c.chapters] == [1, 2, 3, 4]
+    assert c.fixed_chapters == []
+
+
+def test_candidates_without_folded_chapters_are_all_fixed(registry, cfg):
+    ctx = chapters_scenario(registry, cfg, folded=0)
+    c = PromptBuilder(app_with()).candidates(ctx)
+    assert c.chapters == []
+    assert [x.number for x in c.fixed_chapters] == [1, 2, 3, 4]
+
+
+def test_candidates_without_chapters_have_none(registry, cfg):
+    c = PromptBuilder(app_with()).candidates(make_scenario(registry, cfg))
+    assert c.chapters == []
+    assert c.fixed_chapters == []
+
+
+def test_draft_plan_carries_folded_then_fixed_chapters():
+    one = ChapterSummary(id="a", number=1)
+    two = ChapterSummary(id="b", number=2)
+    assert draft_plan(Candidates(chapters=[one], fixed_chapters=[two])).chapters == [one, two]
+
+
+def test_draft_plan_without_chapters_has_none():
+    assert draft_plan(Candidates()).chapters == []
+
+
+def test_memory_block_takes_chapters_from_plan_not_from_memory(registry, cfg):
+    ctx = chapters_scenario(registry, cfg)
+    only = ChapterSummary(id="x", number=9, title="Девятая", summary="Только она.")
+    chapter_plan = draft_plan(Candidates(fixed_chapters=[only]))
+    block = PromptBuilder(app_with()).memory_block(ctx, chapter_plan)
+    assert json.loads(block)["chapters"] == [
+        {"number": 9, "title": "Девятая", "summary": "Только она."}
+    ]
+
+
+def test_memory_block_game_summary_comes_from_memory(registry, cfg):
+    ctx = chapters_scenario(registry, cfg)
+    block = PromptBuilder(app_with()).memory_block(ctx, draft_plan(Candidates()))
+    assert json.loads(block)["game_summary"] == "Свёртка игры."
+    assert json.loads(block)["chapters"] == []
+
+
+def test_roomy_request_has_all_chapters_in_order(registry, cfg):
+    request, builder = build(chapters_scenario(registry, cfg))
+    assert chapter_numbers(request) == [1, 2, 3, 4]
+    assert [c.id for c in builder.last_plan.chapters] == ["ch1", "ch2", "ch3", "ch4"]
+
+
+def test_chapters_are_dropped_last_after_locations(registry, cfg):
+    _, builder = build(chapters_scenario(registry, cfg), app=app_with(cap=1))
+    assert builder.last_plan.dropped == FULL_ORDER + CHAPTER_TAIL
+
+
+def test_only_folded_chapters_leave_the_request(registry, cfg):
+    request, builder = build(chapters_scenario(registry, cfg, folded=2), app=app_with(cap=1))
+    assert chapter_numbers(request) == [3, 4]
+    assert [c.id for c in builder.last_plan.chapters] == ["ch3", "ch4"]
+
+
+def test_all_chapters_stay_when_none_is_folded(registry, cfg):
+    request, builder = build(chapters_scenario(registry, cfg, folded=0), app=app_with(cap=1))
+    assert chapter_numbers(request) == [1, 2, 3, 4]
+    assert [s for s, _ in builder.last_plan.dropped if s == "chapters"] == []
+
+
+def one_folded_cap(registry, cfg):
+    # динамика запроса, где глава 1 уже вытеснена, а главы 2-4 остались (глава 2 -- как неподвижная)
+    _, one = build(chapters_scenario(registry, cfg, folded=1), app=app_with(cap=1))
+    return one.last_plan.estimate - one.last_plan.static
+
+
+def test_chapter_drop_stops_when_dynamic_part_fits(registry, cfg):
+    cap = one_folded_cap(registry, cfg)
+    _, builder = build(chapters_scenario(registry, cfg, folded=2), app=app_with(cap=cap))
+    assert builder.last_plan.dropped == FULL_ORDER + [("chapters", "ch1")]
+    assert builder.last_plan.raised is False
+
+
+def test_chapter_drop_goes_on_one_token_below(registry, cfg):
+    cap = one_folded_cap(registry, cfg) - 1
+    _, builder = build(chapters_scenario(registry, cfg, folded=2), app=app_with(cap=cap))
+    assert builder.last_plan.dropped == FULL_ORDER + CHAPTER_TAIL
+
+
+def test_dropped_chapters_leave_the_request_estimate_equal_to_final(registry, cfg):
+    app = app_with(cap=1)
+    request, builder = build(chapters_scenario(registry, cfg), app=app)
+    assert builder.last_plan.estimate == request_tokens(request, app.master.chars_per_token)

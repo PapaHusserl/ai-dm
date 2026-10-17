@@ -20,7 +20,7 @@
 #         timeout_s=180
 #     .journal: max_mb=50, segment_mb=5
 #     .cost_limits: enabled=False, warn_percent=80
-#     .master: recent_turns=8, context_cap=30000, chars_per_token=2.5, recent_turns_floor=1,
+#     .master: recent_turns=8, context_cap=16000, chars_per_token=2.5, recent_turns_floor=1,
 #         key_npc_consult_hp_percent=50
 #     .llm: refusal_fallback=False (решение проектировщика 1), strict_tools=True
 #   load_settings(toml_text: str | None = None, path: Path | None = None) -> Settings
@@ -160,7 +160,7 @@ def test_master_defaults():
     master = app().master
     assert master.recent_turns == 8
     assert master.key_npc_consult_hp_percent == 50
-    assert master.context_cap == 30000
+    assert master.context_cap == 16000
     assert master.chars_per_token == 2.5
     assert master.recent_turns_floor == 1
 
@@ -656,22 +656,54 @@ def test_unknown_key_in_audio_section_is_rejected():
 
 
 # ТБ #15 (docs/plan-tb.md п.4): chars_per_token по провайдеру; дефолт -- пустая таблица
-# (значение для anthropic -- в Ж0, BACKLOG 77), перекрытие -- только пользовательское
+# Ж0 п.0 (BACKLOG 77): в дефолте только anthropic = 2.2, остальные -- общее значение
 
-def test_cpt_by_provider_default_is_empty():
-    assert app().master.chars_per_token_by_provider == {}
+def test_cpt_by_provider_default_is_anthropic_only():
+    assert app().master.chars_per_token_by_provider == {"anthropic": 2.2}
 
 
-@pytest.mark.parametrize("provider", ["anthropic", "gemini", "mock", "someone_else"])
+@pytest.mark.parametrize("provider", ["gemini", "mock", "someone_else"])
 def test_cpt_for_is_common_value_by_default(provider):
     master = app().master
     assert master.cpt_for(provider) == master.chars_per_token == 2.5
 
 
-def test_common_cpt_override_applies_to_every_provider_by_default():
+def test_context_cap_default_keeps_dynamic_reserve_of_8000():
+    # Ж0 п.0 (решение 1): запас под динамику (без кэшируемой статики) не меньше 8k
+    assert app().master.context_cap >= 8000
+
+
+def test_cpt_for_anthropic_is_2_2_by_default():
+    assert app().master.cpt_for("anthropic") == 2.2
+
+
+def test_common_cpt_override_beats_default_provider_value():
     master = load_settings("[master]\nchars_per_token = 3.0\n").app.master
     assert master.cpt_for("gemini") == 3.0
     assert master.cpt_for("anthropic") == 3.0
+    assert master.chars_per_token_by_provider == {}
+
+
+def test_common_cpt_in_later_layer_beats_provider_value_of_earlier_layer(tmp_path):
+    path = tmp_path / "audio.toml"
+    path.write_text("[master]\nchars_per_token = 3.0\n", encoding="utf-8")
+    text = "[master.chars_per_token_by_provider]\ngemini = 3.5\n"
+    master = load_settings(text, path=path).app.master
+    assert master.cpt_for("gemini") == 3.0
+    assert master.cpt_for("anthropic") == 3.0
+
+
+def test_provider_value_in_later_layer_beats_common_of_earlier_layer(tmp_path):
+    path = tmp_path / "audio.toml"
+    path.write_text("[master.chars_per_token_by_provider]\ngemini = 3.5\n", encoding="utf-8")
+    master = load_settings("[master]\nchars_per_token = 3.0\n", path=path).app.master
+    assert master.cpt_for("gemini") == 3.5
+    assert master.cpt_for("anthropic") == 3.0
+
+
+def test_layer_without_common_cpt_keeps_default_provider_value():
+    master = load_settings("[master]\nrecent_turns_floor = 2\n").app.master
+    assert master.cpt_for("anthropic") == 2.2
 
 
 def test_cpt_by_provider_can_be_set_for_anthropic():

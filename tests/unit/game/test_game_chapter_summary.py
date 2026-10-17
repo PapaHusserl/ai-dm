@@ -312,6 +312,23 @@ def test_chapter_failure_returns_boundary_failed_with_menu(registry, cfg, tmp_pa
     assert result.menu == ERROR_MENU
 
 
+def test_chapter_failure_hint_names_the_boundary_error(registry, cfg, tmp_path):
+    rig = close_rig(registry, cfg, tmp_path, summ_steps("Сцена.") + summ_fail_steps())
+    result = rig.runner.play("ход")
+    assert result.hint.startswith("Не удалось завершить границу сцены: ")
+    assert len(result.hint) > len("Не удалось завершить границу сцены: ")
+
+
+def test_chapter_failure_leaves_chapter_closed_empty(registry, cfg, tmp_path):
+    rig = close_rig(registry, cfg, tmp_path, summ_steps("Сцена.") + summ_fail_steps())
+    assert rig.runner.play("ход").chapter_closed is None
+
+
+def test_chapter_closed_of_result_is_number_and_title(registry, cfg, tmp_path):
+    rig = close_rig(registry, cfg, tmp_path, summ_steps("Сцена.") + chapter_steps())
+    assert rig.runner.play("ход").chapter_closed == (1, "Пролог")
+
+
 def test_chapter_failure_rolls_back_scene_summary_of_step_1(registry, cfg, tmp_path):
     rig = failed_chapter_rig(registry, cfg, tmp_path)
     memory = rig.runner.bundle.memory

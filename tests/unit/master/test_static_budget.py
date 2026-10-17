@@ -5,6 +5,9 @@
 #
 # STATIC_MAX = текущий explore.total после ТБ #56 + ~3 %. Поднимать порог только с причиной здесь:
 #   ТБ (2026-10-17): порог введён, 28900 = 28022 + 3 %.
+#   Ж0 п.0 (2026-10-17): static_tokens считает схемы с ensure_ascii=False (раньше кириллица в
+#   \uXXXX удваивала tools): explore.total 28022 -> 17666 (rules 8167, tools 9499);
+#   18200 = 17666 + 3 %.
 import json
 from importlib import resources
 
@@ -17,8 +20,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# ТБ: замер кабана после #56 -- explore.total 28022 (rules 8167, tools 19855) + 3 %.
-STATIC_MAX = 28900
+# Ж0 п.0: замер explore.total 17666 (rules 8167, tools 9499) + 3 %.
+STATIC_MAX = 18200
 
 MODES = sorted(MODE_TOOLS)
 
@@ -76,7 +79,7 @@ def test_rules_tokens_are_estimate_of_rules_file_by_common_cpt():
 def test_tools_tokens_are_estimate_of_serialized_tool_schemas(mode):
     app = load_settings().app
     specs = [ToolSpec.model_validate(d) for d in tool_set(mode)]
-    dumped = json.dumps([s.model_dump(mode="json") for s in specs])
+    dumped = json.dumps([s.model_dump(mode="json") for s in specs], ensure_ascii=False)
     expected = estimate_tokens(dumped, app.master.chars_per_token)
     assert builder(app).static_tokens(mode)["tools"] == expected
 
@@ -97,6 +100,32 @@ def test_static_tokens_do_not_depend_on_role_provider():
     gemini = app_cfg()
     gemini.roles = gemini.profiles["gemini"]
     assert builder(anthropic).static_tokens("explore") == builder(gemini).static_tokens("explore")
+
+
+def narrator_models(app):
+    roles = [app.roles.narrator, app.alternatives.narrator]
+    roles += [profile.narrator for profile in app.profiles.values()]
+    models = {role.model for role in roles}
+    models |= {key.partition(":")[2] for key in app.llm.narrator_chain}
+    return sorted(models)
+
+
+def test_narrator_models_are_found_in_default_config():
+    models = narrator_models(load_settings().app)
+    assert {"gemini-3.8-flash", "claude-opus-5-5", "claude-sonnet-5-5"} <= set(models)
+
+
+def test_context_cap_is_at_least_8000():
+    # Ж0 п.0 (решение 1): запас под динамику не меньше 8k
+    assert load_settings().app.master.context_cap >= 8000
+
+
+def test_static_max_plus_context_cap_fits_window_80_of_every_narrator_model():
+    # иначе потолок динамики сжимается окном, а вытеснение режет память на ровном месте
+    app = load_settings().app
+    for model in narrator_models(app):
+        window80 = app.context_windows[model] * 80 // 100
+        assert STATIC_MAX + app.master.context_cap <= window80, model
 
 
 def test_static_tokens_ignore_per_provider_cpt():

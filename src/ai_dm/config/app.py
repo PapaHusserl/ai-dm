@@ -239,12 +239,19 @@ class Settings(BaseModel):
         return self
 
 
+def merge_layer(data, layer):
+    # общий chars_per_token слоя перекрывает перекрытия по провайдеру нижних слоёв (решение Ж0)
+    if "chars_per_token" in layer.get("master", {}):
+        data["master"]["chars_per_token_by_provider"] = {}
+    return deep_merge(data, layer)
+
+
 def load_settings(toml_text: str | None = None, path: Path | None = None) -> Settings:
     data = tomllib.loads(DEFAULTS_PATH.read_text(encoding="utf-8"))
     data = {"rules": data, **tomllib.loads(APP_DEFAULTS_PATH.read_text(encoding="utf-8"))}
     if toml_text is not None:
-        data = deep_merge(data, tomllib.loads(toml_text))
+        data = merge_layer(data, tomllib.loads(toml_text))
     if path is not None:
-        data = deep_merge(data, tomllib.loads(path.read_text(encoding="utf-8")))
+        data = merge_layer(data, tomllib.loads(path.read_text(encoding="utf-8")))
     rules = data.pop("rules")
     return Settings(rules=RulesConfig.model_validate(rules), app=AppConfig.model_validate(data))

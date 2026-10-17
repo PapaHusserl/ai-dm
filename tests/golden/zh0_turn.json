@@ -1,0 +1,77 @@
+{
+  "committed": true,
+  "hero": {
+    "hp_current": 12,
+    "inventory": [
+      [
+        "longsword",
+        1
+      ],
+      [
+        "potion_of_healing",
+        1
+      ]
+    ],
+    "location_id": "lame_goose",
+    "money_cp": 1400
+  },
+  "lines": [
+    "Убеждение (Хар): d20 (10) + 1 Хар = 11 против СЛ 15 → провал"
+  ],
+  "now_s": 4536,
+  "npcs": {
+    "grakh": {
+      "attitude": 0,
+      "location_id": "cellar",
+      "status": "alive"
+    },
+    "innkeeper": {
+      "attitude": 10,
+      "location_id": "lame_goose",
+      "status": "alive"
+    },
+    "mira": {
+      "attitude": -5,
+      "location_id": "lame_goose",
+      "status": "alive"
+    },
+    "old_tam": {
+      "attitude": 0,
+      "location_id": "vale",
+      "status": "alive"
+    }
+  },
+  "recent_turns": 4,
+  "record": {
+    "at_s": 4536,
+    "money_delta_cp": 0,
+    "narration": "Гарт хмурится, но кивает и достаёт ключ.",
+    "outcomes": [
+      "Убеждение (Хар): d20 (10) + 1 Хар = 11 против СЛ 15 → провал"
+    ],
+    "player_input": "Убеждаю Гарта открыть подвал",
+    "requests": [
+      "skill_check"
+    ],
+    "rolls": [
+      "Убеждение (Хар): d20 (10) + 1 Хар = 11 против СЛ 15 → провал"
+    ],
+    "turn_seq": 4
+  },
+  "requests": [
+    "skill_check"
+  ],
+  "rng": {
+    "algo": "pcg32",
+    "draws": 36,
+    "inc": 109,
+    "seed": 1,
+    "state": 11946939534201005167
+  },
+  "scene": {
+    "id": "scene_2",
+    "location_id": "lame_goose",
+    "player_turns": 3
+  },
+  "turn_seq": 4
+}

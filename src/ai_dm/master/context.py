@@ -4,11 +4,11 @@ from collections.abc import Callable
 from pydantic import BaseModel, ConfigDict
 
 from ai_dm.llm.types import ChatRequest
-from ai_dm.state.memory import Memory, SceneSummary
+from ai_dm.state.memory import ChapterSummary, Memory, SceneSummary
 from ai_dm.state.scene import TurnRecord
 
 # порядок вытеснения (ТЗ 11)
-STAGES = ("turns", "scenes", "npcs", "locations")
+STAGES = ("turns", "scenes", "npcs", "locations", "chapters")
 
 
 class Candidates(BaseModel):
@@ -19,14 +19,18 @@ class Candidates(BaseModel):
     scenes: list[SceneSummary] = []
     npcs: list[str] = []
     locations: list[str] = []
+    # главы, уже свёрнутые в game_summary (старшие первыми)
+    chapters: list[ChapterSummary] = []
     # неустранимое: в запросе всегда
     fixed_npcs: list[str] = []
     fixed_locations: list[str] = []
+    fixed_chapters: list[ChapterSummary] = []
 
 
 class ContextPlan(BaseModel):
     model_config = ConfigDict(frozen=True)
     budget: int
+    # потолок динамики: бюджет без статики
     cap: int
     estimate: int
     turns: list[TurnRecord]
@@ -36,11 +40,15 @@ class ContextPlan(BaseModel):
     dropped: list[tuple[str, str]]
     raised: bool
     overflow: bool
+    chapters: list[ChapterSummary] = []
+    # оценка кэшируемой статики запроса (правила, мир, схемы инструментов)
+    static: int = 0
 
     def meta(self) -> dict:
         return {
             "budget": self.budget,
             "cap": self.cap,
+            "static": self.static,
             "estimate": self.estimate,
             "dropped": [[stage, item] for stage, item in self.dropped],
             "raised": self.raised,
@@ -53,8 +61,9 @@ def window_budget(app_cfg, model: str) -> int:
     return app_cfg.context_windows[model] * 80 // 100
 
 
-def budget(app_cfg, model: str) -> int:
-    return min(window_budget(app_cfg, model), app_cfg.master.context_cap)
+def budget(app_cfg, model: str, static: int) -> int:
+    # кэшируемая статика в потолок не входит: потолок = статика + context_cap (динамика)
+    return min(window_budget(app_cfg, model), static + app_cfg.master.context_cap)
 
 
 def estimate_tokens(text: str, chars_per_token: float) -> int:
@@ -80,7 +89,7 @@ def _has_candidates(left, stage) -> bool:
 def _item_id(stage, item) -> str:
     if stage == "turns":
         return str(item.turn_seq)
-    if stage == "scenes":
+    if stage in ("scenes", "chapters"):
         return item.id
     return item
 
@@ -92,6 +101,7 @@ def plan(
     cap: int,
     window80: int,
     cpt: float,
+    static: int = 0,
 ) -> ContextPlan:
     left = candidates.model_copy(deep=True)
     dropped = []
@@ -105,7 +115,7 @@ def plan(
     raised = estimate > cap
     return ContextPlan(
         budget=window80 if raised else cap,
-        cap=cap,
+        cap=max(cap - static, 0),
         estimate=estimate,
         turns=left.turns,
         scene_summaries=left.scenes,
@@ -114,4 +124,6 @@ def plan(
         dropped=dropped,
         raised=raised,
         overflow=raised,
+        chapters=left.chapters + left.fixed_chapters,
+        static=static,
     )
