@@ -239,6 +239,37 @@ def pack_npc_trade(pack_dir, registry) -> dict[str, str] | None:
     return {npc.id: npc.trade.kind for npc in pack.npcs if npc.trade is not None}
 
 
+def pack_monster_scope(pack_dir) -> list[str] | None:
+    # список monsters из campaign.yaml; None -- нет файла, невалиден или список пуст (без фильтра)
+    path = Path(pack_dir) / "campaign.yaml"
+    if not path.is_file():
+        return None
+    manifest = read_model(path, CampaignManifest, [])
+    if manifest is None or not manifest.monsters:
+        return None
+    return manifest.monsters
+
+
+def check_manifest_monsters(pack, registry) -> list[str]:
+    path = Path(pack.path)
+    monsters = pack.manifest.monsters
+    errors = []
+    for monster_id in monsters:
+        if not registry.has("monster", monster_id):
+            errors.append(
+                f"{path / 'campaign.yaml'}: поле monsters: неизвестный монстр {monster_id!r}"
+            )
+    if not monsters:
+        return errors
+    for npc in pack.npcs:
+        if npc.combat is not None and npc.combat["monster_id"] not in monsters:
+            errors.append(
+                f"{path / 'npcs.yaml'}: NPC {npc.id!r}, поле combat.monster_id: "
+                f"монстр {npc.combat['monster_id']!r} вне списка monsters в campaign.yaml"
+            )
+    return errors
+
+
 def check_manifest(pack, registry) -> list[str]:
     manifest = pack.manifest
     path = Path(pack.path)
@@ -279,7 +310,7 @@ def check_manifest(pack, registry) -> list[str]:
                     f"{path / 'campaign.yaml'}: поле natural_events.kinds: "
                     f"{kind.type!r}, неизвестная локация {region!r}"
                 )
-    return errors
+    return errors + check_manifest_monsters(pack, registry)
 
 
 def check_hero(pack, preset, registry) -> list[str]:

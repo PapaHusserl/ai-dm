@@ -360,3 +360,59 @@ def test_no_overflow_means_no_tag(tmp_path, registry, cfg):
     assert "context_overflow" not in result.report_tags
     assert [r["report_tags"] for r in records] == [[], []]
     assert records[0]["meta"]["context"]["overflow"] is False
+
+
+# ТБ #15 (docs/plan-tb.md п.5): api_tokens -- у Gemini токены явного кэша уже в cache_read
+
+CACHE_USAGE = Usage(input=1, output=500, cache_read=2, cache_write=3, cache_write_1h=4)
+
+
+def test_api_tokens_function_anthropic_sums_input_and_cache_fields():
+    from ai_dm.master.session import api_tokens
+
+    assert api_tokens(CACHE_USAGE, "anthropic") == 10
+
+
+def test_api_tokens_function_gemini_skips_cache_write():
+    from ai_dm.master.session import api_tokens
+
+    assert api_tokens(CACHE_USAGE, "gemini") == 3
+
+
+def test_api_tokens_function_mock_counts_cache_write_like_anthropic():
+    from ai_dm.master.session import api_tokens
+
+    assert api_tokens(CACHE_USAGE, "mock") == 10
+
+
+def test_api_tokens_function_ignores_output_for_both():
+    from ai_dm.master.session import api_tokens
+
+    usage = Usage(input=5, output=1000)
+    assert api_tokens(usage, "anthropic") == api_tokens(usage, "gemini") == 5
+
+
+def gemini_records(tmp_path, registry, cfg, usage):
+    from master_kit import Recorder
+
+    from ai_dm.llm.mock import ScriptedAdapter
+
+    model = app_cfg().profiles["gemini"].narrator.model
+    steps = [text_step() | {"usage": usage}]
+    adapter = Recorder(ScriptedAdapter(steps, provider="gemini", model=model))
+    session, journal, _, _ = make_session(adapter, tmp_path, builder=PlanBuilder(make_plan()))
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    return journal.read_records()
+
+
+def test_gemini_call_api_tokens_has_no_double_cache_write(tmp_path, registry, cfg):
+    usage = {"input": 1, "output": 500, "cache_read": 2, "cache_write": 3, "cache_write_1h": 4}
+    records = gemini_records(tmp_path, registry, cfg, usage)
+    assert records[0]["meta"]["context"]["api_tokens"] == 3
+
+
+def test_anthropic_call_api_tokens_counts_cache_write(tmp_path, registry, cfg):
+    usage = {"input": 1, "output": 500, "cache_read": 2, "cache_write": 3, "cache_write_1h": 4}
+    steps = [text_step() | {"usage": usage}]
+    _, records = run_with_plan(steps, tmp_path, registry, cfg, make_plan())
+    assert records[0]["meta"]["context"]["api_tokens"] == 10

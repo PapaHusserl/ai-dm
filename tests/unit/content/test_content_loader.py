@@ -769,3 +769,73 @@ def test_table_from_second_layer_conflicts_with_srd_table(tmp_path):
     write(tmp_path / "tables" / "xp.yaml", "id: xp\nname: Опыт\n")
     with pytest.raises((ContentError, ContentConflictError)):
         load_registry([tmp_path])
+
+
+# ТБ #56 (docs/plan-tb.md п.2): monster_scope -- монстры пака для рассказчика, реестр полный
+
+def scoped(registry, scope):
+    reg = registry.with_items({})
+    reg.monster_scope = scope
+    return reg
+
+
+def extra_monster(registry, monster_id):
+    from ai_dm.content.models.monsters import Monster
+
+    data = registry.get("monster", "wolf").model_dump()
+    data.update(id=monster_id)
+    return Monster.model_validate(data)
+
+
+def test_narrator_monster_ids_without_scope_are_all_monsters(registry):
+    assert registry.narrator_monster_ids() == registry.ids("monster")
+
+
+def test_narrator_monster_ids_with_scope_are_sorted_scope(registry):
+    scope = ["wolf", "boar", "guard"]
+    assert scoped(registry, scope).narrator_monster_ids() == ["boar", "guard", "wolf"]
+
+
+def test_narrator_monster_ids_drop_scope_ids_missing_in_registry(registry):
+    reg = scoped(registry, ["wolf", "no_such_monster"])
+    assert reg.narrator_monster_ids() == ["wolf"]
+
+
+def test_narrator_monster_ids_empty_scope_means_all_monsters(registry):
+    assert scoped(registry, []).narrator_monster_ids() == registry.ids("monster")
+
+
+def test_ids_monster_stays_full_with_scope(registry):
+    assert scoped(registry, ["wolf"]).ids("monster") == registry.ids("monster")
+
+
+def test_has_monster_outside_scope_is_true(registry):
+    assert scoped(registry, ["wolf"]).has("monster", "goblin_boss")
+
+
+def test_with_items_keeps_monster_scope(registry):
+    extra = {"monster": [extra_monster(registry, "x1")]}
+    reg = scoped(registry, ["wolf", "boar"]).with_items(extra)
+    assert reg.narrator_monster_ids() == ["boar", "wolf"]
+
+
+def test_with_items_keeps_scope_for_item_only_extra(registry):
+    # риск 2 плана: сюжетные предметы мира не должны молча снимать фильтр
+    from ai_dm.content.models.items import Item
+
+    data = registry.get("item", "crowbar").model_dump()
+    data.update(id="story_key", source="world")
+    reg = scoped(registry, ["wolf"]).with_items({"item": [Item.model_validate(data)]})
+    assert reg.narrator_monster_ids() == ["wolf"]
+
+
+def test_with_items_adds_new_monster_to_full_ids_but_not_to_scope(registry):
+    reg = scoped(registry, ["wolf"]).with_items({"monster": [extra_monster(registry, "x1")]})
+    assert "x1" in reg.ids("monster")
+    assert reg.narrator_monster_ids() == ["wolf"]
+
+
+def test_with_items_without_scope_stays_without_scope(registry):
+    reg = registry.with_items({"monster": [extra_monster(registry, "x1")]})
+    assert reg.narrator_monster_ids() == reg.ids("monster")
+    assert "x1" in reg.narrator_monster_ids()

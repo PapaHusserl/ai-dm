@@ -29,6 +29,15 @@ SINGLE_SHOT_MODES = (
     "summarize_scene", "summarize_chapter", "hero_background", "hero_sheet", IMPORT_MODE
 )
 
+
+def api_tokens(usage, provider):
+    # у Gemini токены явного кэша уже в cache_read: cache_write считать нельзя (двойной счёт)
+    total = usage.input + usage.cache_read
+    if provider == "gemini":
+        return total
+    return total + usage.cache_write + usage.cache_write_1h
+
+
 # инструменты, после которых рассказ уже можно считать законченным
 FREE_TOOLS = ("offer_choices",)
 
@@ -222,10 +231,7 @@ class MasterSession:
                 cost = cost_nano(response.usage, price)
                 if meta is not None:
                     # калибровка оценки: реальные токены запроса по usage (без count_tokens)
-                    usage = response.usage
-                    meta["context"]["api_tokens"] = (
-                        usage.input + usage.cache_read + usage.cache_write + usage.cache_write_1h
-                    )
+                    meta["context"]["api_tokens"] = api_tokens(response.usage, info.provider)
             if self.journal is not None:
                 self.journal.record_call(
                     call_id=call_id, run_id=run_id, ts=moment.isoformat(),

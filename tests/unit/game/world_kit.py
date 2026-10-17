@@ -18,7 +18,8 @@
 #   Мягкий сбой world (refusal, invalid -- бюджет невалидных исчерпан, network): вызов
 #     пропускается, граница завершается: метка отчёта "world_skipped",
 #     вердикты не применяются, boundary_pending False, игроку строк нет.
-#     Записи пропущенного вызова в журнале помечаются committed (граница прошла без ошибки).
+#     Записи пропущенного вызова world в журнале -- aborted (вердикты не применены), записи
+#     summarizer той же границы -- committed (ТБ #71, docs/plan-tb.md п.6).
 #   Жёсткий сбой world (fatal, rounds): TurnResult.boundary_failed, bundle.session.boundary_pending
 #     True, бандл как после автосейва закрытой сцены, меню 2.2. TurnResult.offscreen --
 #     доставленные закадровые тексты.

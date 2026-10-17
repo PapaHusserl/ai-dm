@@ -76,6 +76,8 @@ class CampaignManifest(BaseModel):
     # id пресета мира по умолчанию; пусто -- тон пака как есть
     preset: str = ""
     flags: dict[str, bool | int | str] = Field(default_factory=dict)
+    # монстры пака, которых видит рассказчик (monster_ids); пусто -- все
+    monsters: list[str] = Field(default_factory=list)
 
 
 class PackItem(BaseModel):

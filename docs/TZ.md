@@ -603,7 +603,7 @@ saves/<world_id>/
   - `limit-exceeded` — запрос ИИ урезан движком (2.3);
   - `invalid-death` — запрос смерти без причины (4.1);
   - `refusal` — отказ модели (2.2);
-  - `refusal_retry` — ход повторён после отказа (при повторном отказе теги идут в порядке `["refusal_retry", "refusal"]`); `summarizer_backup` (до #22 `refusal_fallback`) — запасная выжимка после отказа или невалидного ответа (`refusal`/`invalid`) summarizer; `summary_trimmed` — выжимка длиннее предела обрезана движком по границе предложения (после `[memory] summary_trim_after` переполнений); `world_skipped` — вызов world на границе пропущен при мягком сбое (`refusal`/`invalid`/`network`), кандидаты `verdict` уйдут на следующую границу.
+  - `refusal_retry` — ход повторён после отказа (при повторном отказе теги идут в порядке `["refusal_retry", "refusal"]`); `summarizer_backup` (до #22 `refusal_fallback`) — запасная выжимка после отказа или невалидного ответа (`refusal`/`invalid`) summarizer; `summary_trimmed` — выжимка длиннее предела обрезана движком по границе предложения (после `[memory] summary_trim_after` переполнений); `world_skipped` — вызов world на границе пропущен при мягком сбое (`refusal`/`invalid`/`network`), кандидаты `verdict` уйдут на следующую границу (записи world этой границы в журнале — `aborted`, summarizer — `committed`).
 - Репорт — markdown-файл в `issues/` с контекстом для воспроизведения:
   текст, последние N ходов, снимок состояния, **сид и состояние RNG**, модель, сырой запрос/ответ.
 - API-ключи в репорты не попадают.

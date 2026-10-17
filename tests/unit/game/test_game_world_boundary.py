@@ -116,8 +116,8 @@ def test_verdict_with_extra_ref_is_invalid(registry, cfg, tmp_path):
 
 def test_three_invalid_verdicts_skip_world_and_finish_boundary(registry, cfg, tmp_path):
     # ТС #22 (BACKLOG 46): мягкий сбой world -- пропуск, не откат границы.
-    # Журнал: записи пропущенного вызова помечаются committed (граница завершена без ошибки;
-    # риск «Записи мягко упавшего world помечаются committed» из TS-PLAN §7).
+    # Журнал (ТБ #71): записи пропущенного вызова world -- aborted (вердикты не применены),
+    # граница завершена без ошибки.
     bundle = bundle_with_brann(registry, cfg)
     steps = []
     for n in range(3):
@@ -131,7 +131,7 @@ def test_three_invalid_verdicts_skip_world_and_finish_boundary(registry, cfg, tm
     assert trigger_of(after, "brann", "brann_trust").fired_count == 0
     assert after.chronicle.entries == []
     statuses = {r["turn_status"] for r in rig.world_records()}
-    assert statuses == {"committed"}
+    assert statuses == {"aborted"}
 
 
 def test_holds_true_fires_trigger(registry, cfg, tmp_path):

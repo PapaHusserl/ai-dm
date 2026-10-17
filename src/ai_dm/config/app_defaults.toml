@@ -129,6 +129,10 @@ recent_turns_floor = 1
 # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
 min_narration_chars = 80
 
+# chars_per_token по провайдеру, например anthropic = 2.2 (Claude считает кириллицу плотнее);
+# значение для anthropic -- в Ж0 вместе с пересчётом context_cap (docs/plan-tb.md, BACKLOG 77)
+[master.chars_per_token_by_provider]
+
 [llm]
 refusal_fallback = false
 strict_tools = true

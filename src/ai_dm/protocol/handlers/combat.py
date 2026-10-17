@@ -126,7 +126,8 @@ def start_combat(ctx, request):
         if not ctx.registry.has("monster", spec.monster_id):
             return Invalid(
                 code="unknown_monster",
-                message=f"нет монстра {spec.monster_id!r}" + allowed(ctx.registry.ids("monster")),
+                message=f"нет монстра {spec.monster_id!r}"
+                + allowed(ctx.registry.narrator_monster_ids()),
             )
         npc = world.npcs.get(spec.ref)
         if npc is not None and npc.status != "alive":

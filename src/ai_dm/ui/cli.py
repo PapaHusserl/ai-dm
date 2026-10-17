@@ -18,6 +18,7 @@ from ai_dm.campaign.loader import (
     PackError,
     load_pack,
     pack_content_dir,
+    pack_monster_scope,
     pack_npc_trade,
 )
 from ai_dm.campaign.presets import PACK_TONE, load_presets, preset_packs
@@ -648,7 +649,10 @@ def campaign_registry(campaign_id, campaigns_dir):
         content_dir = pack_content_dir(pack_dir)
         if content_dir is not None:
             content_dirs.append(content_dir)
-    return pack_dir, load_registry(content_dirs)
+    registry = load_registry(content_dirs)
+    if pack_dir is not None:
+        registry.monster_scope = pack_monster_scope(pack_dir)
+    return pack_dir, registry
 
 
 def role_replay(records, role):

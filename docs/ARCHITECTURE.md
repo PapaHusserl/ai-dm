@@ -494,7 +494,9 @@ ui ──> game ──> master ──> llm
 ## C4. Журнал и Replay
 
 Каждый вызов модели пишется в `saves/<world>/journal/calls-NNN.jsonl` (статические блоки в `blobs/` по sha256, ротация и
-gzip, `turn_status committed|aborted`, без ключей). `ReplayAdapter` отдаёт записанные ответы по порядку и проверяет
+gzip, `turn_status committed|aborted`, без ключей). У границы сцены world и summarizer пишут под одним `run_id`: при мягком сбое world (`world_skipped`)
+`Journal.mark_turn(run_id, status, role="world")` метит его записи `aborted`, остальное — `committed`. `ReplayAdapter`
+отдаёт записанные ответы по порядку и проверяет
 отпечаток запроса: изменённый ввод или промпт — `ReplayDivergence`. `ai-dm --replay` воспроизводит бой и броски без сети.
 Ограничения replay: обязательны `--world`, `--seed` и `--hero` исходного прогона (`--new` подразумевается); записи
 читаются из `saves/<world>/journal`, а игра идёт во временном каталоге `ai-dm-replay-*` (путь печатается при запуске),
@@ -545,7 +547,9 @@ ui ──> game ──> master ──> llm
 
 ## D2. Пак кампании
 
-`campaign.yaml` (метаданные, календарь, старт, `mortality`, природные события, подталкивание, tone, флаги), `world.md`,
+`campaign.yaml` (метаданные, календарь, старт, `mortality`, природные события, подталкивание, tone, флаги,
+`monsters` — монстры пака для `monster_ids` рассказчика: пусто — все; реестр остаётся полным,
+`ContentRegistry.narrator_monster_ids()`), `world.md`,
 `truths.md`, `npcs.yaml`, `factions.yaml`, `pantheon.yaml`, `locations.yaml`, `events.yaml`, `heroes/<id>.yaml`
 (пресеты), `start/` (память и хроника «середины игры»), `content/` (третий слой контента). Сущности пака — те же модели,
 что в сейве. Конфликтная сущность (5.3) не загружается и попадает в список игроку; ссылающиеся на неё — тоже. Догрузка:
@@ -608,7 +612,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, master.context_cap=30000)` (Д1); детерминированная оценка токенов по длине запроса; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, master.context_cap=30000)` (Д1); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)`, порог `STATIC_MAX` в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |

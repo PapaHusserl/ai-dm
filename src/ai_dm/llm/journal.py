@@ -163,7 +163,8 @@ class Journal:
         with (self.dir / "attempts.log").open("a", encoding="utf-8") as f:
             f.write(line + "\n")
 
-    def mark_turn(self, run_id, status):
+    def mark_turn(self, run_id, status, role=None):
+        # role задана -- только записи этой роли (у границы общий run_id: world и summarizer)
         if status not in ("committed", "aborted"):
             raise ValueError(f"неизвестный статус хода: {status}")
         # с конца: записи прогона лежат в последних сегментах
@@ -176,7 +177,7 @@ class Journal:
                     continue
                 if first is None:
                     first = i
-                if record["turn_status"] is None:
+                if record["turn_status"] is None and role in (None, record["role"]):
                     record["turn_status"] = status
                     changed = True
             if changed:
@@ -190,7 +191,8 @@ class Journal:
                 break
 
     def records_for(self, run_ids):
-        # записи этих прогонов по порядку; с конца, как mark_turn, чтобы не разжимать весь журнал
+        # записи этих прогонов по порядку; с конца, как mark_turn, чтобы не разжимать весь журнал;
+        # предпосылка (проверена в ТБ): записи прогона идут подряд, чужой между ними не вклинивается
         wanted = set(run_ids)
         found = []
         if not wanted:

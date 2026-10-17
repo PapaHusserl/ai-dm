@@ -119,14 +119,14 @@ updated: 2026-10-04
 ## 15. Хвосты этапа 4
 status: planned
 priority: high
-updated: 2026-10-05
+updated: 2026-10-17
 
 (аудит кабана-свекрови, 2026-10-05)
 - Калибровка (живой прогон, saves/drunk_dragon-d2aabbcf, 50 запросов нарратора): Gemini Flash — api/estimate 0.76–0.90
   (оценка завышена на 10–24%, безопасно); Anthropic Sonnet — 1.09–1.14 (оценка ЗАНИЖЕНА до 14%, в пределах 20%, но не в
-  безопасную сторону). Решить: chars_per_token по провайдеру (Anthropic ~2.2) или общий запас.
+  безопасную сторону). Решить: chars_per_token по провайдеру (Anthropic ~2.2) или общий запас. ✅ ТБ: механизм `chars_per_token_by_provider`; значение anthropic = 2.2 — в Ж0 (BACKLOG 77).
 - `meta.context.api_tokens` (src/ai_dm/master/session.py:113) у Gemini на запросе, создающем явный кэш, считает кэш дважды
-  (cache_write == cache_read) → ложные 1.09–1.41. Для калибровки считать без cache_write у Gemini.
+  (cache_write == cache_read) → ложные 1.09–1.41. Для калибровки считать без cache_write у Gemini. ✅ ТБ: `api_tokens(usage, provider)`.
 - Окно мока 20 000 в tests/scenarios/memory_script.py подбирать заново при росте правил/tools нарратора.
 - Пятая ступень вытеснения: выкидывать выжимки глав, уже свёрнутые в game_summary (G1, вариант «б»).
 - Риск 6 плана (кэш памяти Gemini на Pro) закрыт решением E1 (память внутри явного кэша).
@@ -382,11 +382,11 @@ updated: 2026-10-08
 ## 30. Хвосты этапа 6а
 status: idea
 priority: low
-updated: 2026-10-08
+updated: 2026-10-17
 
 (из аудита docs/plan-stage6a.md, 2026-10-08)
 - Лимит размера issues/ (риск D.3 плана 6а) — ✅ #21 ТО, 2026-10-16: `[reports] max_mb = 200`, `trim_issues` (docs/plan-to.md, docs/plan-to.md).
-- journal.records_for: предпосылка «прогоны хода идут в журнале подряд» — пересмотреть при фоновом summarizer/retry после чужого хода.
+- journal.records_for: предпосылка «прогоны хода идут в журнале подряд» — ✅ ТБ, 2026-10-17: проверена, summarizer/world пишут под одним run_id границы подряд; правка — комментарий (docs/plan-tb.md).
 - report.md: экранирование ``` внутри рассказа/tool_result — ✅ закрыто в AD1 (fence).
 - Мутанты campaign_registry/pack_npc_trade с None в cli replay — нужен тестовый мир с другим campaign_id. ✅ Б3: тестовый мир
   `vale-old` (`m0003` ставит `campaign_id = "vale"`) и `ghost` без каталога; мутанты на старых строках, оставшиеся после
@@ -493,17 +493,6 @@ updated: 2026-10-12
   возможно, свой ребёнок), BACKLOG 27 (старение вещей и мест), `world_sim` (aging, mortality, triggers).
 - Новые поля сейва неизбежны (возраст, семья, детские события) — к ближайшей версии схемы на груминге.
 
-## 45. Бюджет статической части промпта рассказчика
-status: planned
-priority: high
-updated: 2026-10-13
-
-(из ревью Ф1, 2026-10-13, без приоритета)
-Кэшируемая часть промпта (narrator_rules.md, world_rules, схемы инструментов) растёт с каждой партией: `WINDOW` мок-сценария
-памяти (`tests/scenarios/memory_script.py`) поднимали 4 раза подряд (Ф1: 23500→24000, пик 18880 токенов, +315 за схему
-`companion_update` и правило зверя); пятый подъём — Р2: 24000→24500, блок «Темп», пик 19302; шестой подъём — К1: 24500→25000 (правило апкаста и `prepared_swap` в narrator_rules, поля схем `Rest`/`CastSpell`; пик 19666 > бюджета 19600). Нужно: замер размера статической части в тесте/`make` с порогом, периодическая
-ужимка правил (дубли, длинные абзацы), выносить редкие правила в условные блоки по состоянию. Решение 2026-10-14: замер с порогом — в Ж0 (там пересчёт WINDOW), до схемы `scene_mood` Му-р в Ж3 (≈ +150–250 ток.).
-
 ## 46. Отказ роли world вешает границу сцены
 status: planned
 priority: medium
@@ -568,14 +557,6 @@ updated: 2026-10-17
 
 (из К7д, без приоритета)
 `art_for_monster` берёт рисунок по `creature_type`: для beast и undead он есть, для elemental и construct нет (мефиты, магмин, горгулья, элементали, гомункул, меч, доспехи — без рисунка, не блокирует).
-
-## 56. Фильтр monster_ids в промпте рассказчика по паку
-status: planned
-priority: high
-updated: 2026-10-17
-
-(из К7д, В8б, без приоритета)
-`world_block.monster_ids` содержит все id реестра (теперь 30): +27 id ≈ +150–200 токенов статики каждого вызова, а в «Пьяном драконе» рассказчик может завести упыря. Отдельная партия: подвязка «монстры → пак» и фильтр id. Рассказчик видит черты боевых монстров (`combat.monster_traits`), но не описания монстров вне боя.
 
 ## 57. Размер цели у prone
 status: planned
@@ -666,17 +647,6 @@ updated: 2026-10-17
 правило «время — только когда действие его занимает; разговор/осмотр — без advance_time или minute» и защита
 повтора (`hour` подряд без пути/дела → мягкий отказ + авто-репорт).
 
-## 71. Разметка журнала границы по роли
-status: planned
-priority: high
-updated: 2026-10-17
-
-(из ревью #22 ТС, 2026-10-17, без приоритета)
-Summarizer и world пишут журнал под одним run_id границы (`bnd-…`), `TurnRunner.take_boundary`/`mark_journal`
-размечает committed/aborted по run_id. После #22 мягко упавший world пропускается, а его записи остаются `committed`
-(сбой виден по `error`/`stop_reason` записи и тегу `world_skipped`). Чтобы помечать aborted только записи world —
-разметка по роли (или отдельный run_id у world).
-
 ## 73. Rules-настройки не читаются из пользовательского config.toml
 status: planned
 priority: low
@@ -707,11 +677,23 @@ updated: 2026-10-17
 Ввод игрока стоит не в конце сообщения — возможная причина копирования прошлых ходов слабыми моделями (T6/Ф3, BACKLOG 69/70).
 Смотреть в ЖП2 (R7 #4); если повторы ходов остались после ТМ/ТХ — в фикс 26ф (R7 #5), вариант: вынести ввод в конец сообщения.
 
-## 76. mutmut в `mutants/` падает на test_attribution (нет README/Makefile/docs)
+## 77. Статика рассказчика и потолок контекста
 status: planned
-priority: medium
+priority: high
 updated: 2026-10-17
 
-(ТС, 19ф — docs/plan-ts.md, docs/plan-19f.md)
-`make mutate` в каталоге `mutants/` падает на тестах, читающих README/Makefile/docs — критерий mutmut закрывается ручной
-проверкой doeba. Починить: `also_copy` в конфиге mutmut или копия файлов в Makefile. Шаг 0 партии ТБ (R7 #1).
+Статика explore ≈ 28k токенов при cpt 2.5 и ≈ 32k при cpt 2.2 (anthropic) против `context_cap = 30000`: на Claude
+при 2.2 каждый ход вытесняет всю динамику и ставит `context_overflow` (ревью ТБ, docs/plan-tb.md). В ТБ значение 2.2
+не включено (решение (в)). В Ж0 вместе с пересчётом WINDOW: включить anthropic = 2.2 и пересмотреть `context_cap`
+(по провайдеру / без кэшируемой статики), тест «дефолтный конфиг, anthropic, explore, пустая история — без вытеснения»,
+проверка `STATIC_MAX` заметно меньше `context_cap`.
+
+## 78. Выжившие мутанты на старых строках функций партии ТБ
+status: idea
+priority: low
+updated: 2026-10-17
+
+mutmut партии ТБ (docs/plan-tb.md): выжившие на строках до партии — `protocol.handlers.combat.start_combat` ≈ 175
+(tests/unit/protocol не входил в TESTS), `TurnRunner.take_boundary` 10, `TurnRunner.mark_journal` 1, `Journal.mark_turn` 9,
+`PromptBuilder.world_block` 7, `PromptBuilder.build` 2, `ui.cli.campaign_registry` 3, `ContentRegistry.with_items` 2.
+Добить при касании функций.

@@ -39,3 +39,31 @@ def test_campaign_yaml_tone_notes_say_adults_18plus():
 def test_dormitory_location_is_kept():
     text = (DUSK_DIR / "locations.yaml").read_text(encoding="utf-8")
     assert "Общежитие первокурсников" in text
+
+
+# ТБ #56 (docs/plan-tb.md Q1а): список monsters в campaign.yaml пака
+
+DUSK_MONSTERS = [
+    "wolf", "dire_wolf", "giant_rat", "swarm_of_rats", "giant_spider", "hawk", "mastiff",
+    "panther", "black_bear", "boar", "shadow", "specter", "animated_armor", "homunculus", "guard",
+]
+
+
+def test_dusk_academy_monsters_list_is_as_agreed():
+    from ai_dm.campaign.loader import pack_monster_scope
+
+    assert sorted(pack_monster_scope(DUSK_DIR)) == sorted(DUSK_MONSTERS)
+
+
+def test_dusk_academy_monsters_are_known_to_registry():
+    content = pack_content_dir(DUSK_DIR)
+    registry = load_registry([content] if content is not None else [])
+    assert [m for m in DUSK_MONSTERS if not registry.has("monster", m)] == []
+
+
+def test_dusk_academy_narrator_sees_only_the_list():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("dusk_academy", ROOT / "campaigns")
+    assert registry.narrator_monster_ids() == sorted(DUSK_MONSTERS)
+    assert len(registry.ids("monster")) > len(DUSK_MONSTERS)

@@ -247,3 +247,26 @@ def test_grakh_is_still_a_goblin_boss_taking_the_prisoners(registry):
     grakh = {n.id: n for n in vale(registry).npcs}["grakh"]
     assert (grakh.combat["monster_id"], grakh.combat["intent"]) == ("goblin_boss", "capture")
     assert "disarmer" in registry.get("monster", "goblin_boss").tags
+
+
+# ТБ #56 (docs/plan-tb.md Q1а): vale и test -- без списка monsters, рассказчик видит всех монстров
+
+def test_vale_and_test_packs_have_no_monsters_list():
+    from ai_dm.campaign.loader import pack_monster_scope
+
+    assert pack_monster_scope(VALE_DIR) is None
+    assert pack_monster_scope(VALE_DIR.parent / "test") is None
+
+
+def test_vale_narrator_sees_all_monsters():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, reg = campaign_registry("vale", VALE_DIR.parent)
+    assert reg.narrator_monster_ids() == reg.ids("monster")
+
+
+def test_test_pack_narrator_sees_all_monsters():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, reg = campaign_registry("test", VALE_DIR.parent)
+    assert reg.narrator_monster_ids() == reg.ids("monster")

@@ -653,3 +653,48 @@ def test_audio_zero_crossfade_and_switch_are_accepted():
 def test_unknown_key_in_audio_section_is_rejected():
     with pytest.raises(ValidationError):
         load_settings("[audio]\nbogus = 1\n")
+
+
+# ТБ #15 (docs/plan-tb.md п.4): chars_per_token по провайдеру; дефолт -- пустая таблица
+# (значение для anthropic -- в Ж0, BACKLOG 77), перекрытие -- только пользовательское
+
+def test_cpt_by_provider_default_is_empty():
+    assert app().master.chars_per_token_by_provider == {}
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "gemini", "mock", "someone_else"])
+def test_cpt_for_is_common_value_by_default(provider):
+    master = app().master
+    assert master.cpt_for(provider) == master.chars_per_token == 2.5
+
+
+def test_common_cpt_override_applies_to_every_provider_by_default():
+    master = load_settings("[master]\nchars_per_token = 3.0\n").app.master
+    assert master.cpt_for("gemini") == 3.0
+    assert master.cpt_for("anthropic") == 3.0
+
+
+def test_cpt_by_provider_can_be_set_for_anthropic():
+    text = "[master.chars_per_token_by_provider]\nanthropic = 2.2\n"
+    master = load_settings(text).app.master
+    assert master.cpt_for("anthropic") == 2.2
+    assert master.cpt_for("gemini") == 2.5
+
+
+def test_cpt_by_provider_override_beats_common_value():
+    text = "[master]\nchars_per_token = 3.0\n[master.chars_per_token_by_provider]\ngemini = 3.5\n"
+    master = load_settings(text).app.master
+    assert master.cpt_for("gemini") == 3.5
+    assert master.cpt_for("anthropic") == 3.0
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[master.chars_per_token_by_provider]\nanthropic = 0\n",
+        "[master.chars_per_token_by_provider]\ngemini = -2.5\n",
+    ],
+)
+def test_cpt_by_provider_must_be_positive(text):
+    with pytest.raises(ValidationError):
+        load_settings(text)

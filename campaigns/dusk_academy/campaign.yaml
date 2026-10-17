@@ -30,3 +30,19 @@ tone:
     - Бой — редкость; опасность скорее в тайнах, недоразумениях и старом проклятии
     - Все персонажи — совершеннолетние (18+)
 preset: romantic
+monsters:
+- wolf
+- dire_wolf
+- giant_rat
+- swarm_of_rats
+- giant_spider
+- hawk
+- mastiff
+- panther
+- black_bear
+- boar
+- shadow
+- specter
+- animated_armor
+- homunculus
+- guard

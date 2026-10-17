@@ -242,3 +242,108 @@ def test_call_world_passes_cfg_registry_and_run_id_to_world(registry, cfg):
 
     call(registry, cfg, SimpleNamespace(run=run, max_calls_per_day=0))
     assert seen == [(registry, cfg, "bnd-7")]
+
+
+# ТБ #71 (docs/plan-tb.md п.6): журнал при мягком сбое world -- разметка по роли.
+# Записи world -- aborted (вердикты не применены), summarizer той же границы -- committed.
+
+def summ_world_rig(registry, cfg, tmp_path, summarizer_steps, world_steps):
+    from game_kit import scripted
+    from summarizer_kit import make_summ_rig
+
+    return make_summ_rig(
+        registry, cfg, tmp_path, narrator_turns(end_turn()), summarizer_steps,
+        bundle=bundle_with_brann(registry, cfg), world=scripted(world_steps),
+    )
+
+
+def role_statuses(rig, role):
+    return [r["turn_status"] for r in rig.journal.read_records() if r["role"] == role]
+
+
+def boundary_roles(rig):
+    return {r["role"] for r in rig.journal.read_records() if r["run_id"].startswith("bnd-")}
+
+
+@pytest.mark.parametrize("steps", [REFUSAL, NETWORK], ids=["refusal", "network"])
+def test_soft_world_skip_marks_world_records_aborted(registry, cfg, tmp_path, steps):
+    from summarizer_kit import summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), steps)
+    rig.runner.play("ход")
+    statuses = role_statuses(rig, "world")
+    assert statuses
+    assert set(statuses) == {"aborted"}
+
+
+@pytest.mark.parametrize("steps", [REFUSAL, NETWORK], ids=["refusal", "network"])
+def test_soft_world_skip_keeps_summarizer_records_committed(registry, cfg, tmp_path, steps):
+    from summarizer_kit import summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), steps)
+    rig.runner.play("ход")
+    assert role_statuses(rig, "summarizer") == ["committed"]
+
+
+def test_soft_world_skip_world_and_summarizer_share_one_boundary_run_id(registry, cfg, tmp_path):
+    from summarizer_kit import summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), REFUSAL)
+    rig.runner.play("ход")
+    records = [r for r in rig.journal.read_records() if r["role"] in ("world", "summarizer")]
+    assert len({r["run_id"] for r in records}) == 1
+
+
+def test_soft_world_skip_leaves_no_unmarked_boundary_records(registry, cfg, tmp_path):
+    from summarizer_kit import summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), REFUSAL)
+    rig.runner.play("ход")
+    boundary = [r for r in rig.journal.read_records() if r["run_id"].startswith("bnd-")]
+    assert boundary
+    assert all(r["turn_status"] is not None for r in boundary)
+
+
+def test_successful_boundary_marks_world_and_summarizer_committed(registry, cfg, tmp_path):
+    from summarizer_kit import summ_steps
+
+    steps = world_step(verdict_call([(BRANN, False), (OATH, False)]))
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), steps)
+    rig.runner.play("ход")
+    assert boundary_roles(rig) == {"summarizer", "world"}
+    assert set(role_statuses(rig, "world")) == {"committed"}
+    assert role_statuses(rig, "summarizer") == ["committed"]
+
+
+def test_fatal_world_failure_marks_world_and_summarizer_aborted(registry, cfg, tmp_path):
+    from summarizer_kit import summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_steps(), FATAL)
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is True
+    assert set(role_statuses(rig, "world")) == {"aborted"}
+    assert role_statuses(rig, "summarizer") == ["aborted"]
+
+
+def test_resume_boundary_after_soft_world_skip_marks_by_role(registry, cfg, tmp_path):
+    # первая попытка упала на summarizer (всё aborted); повтор: summarizer ок, world пропущен
+    from summarizer_kit import summ_fail_steps, summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_fail_steps() + summ_steps(), REFUSAL)
+    rig.runner.play("ход")
+    assert rig.runner.bundle.session.boundary_pending is True
+    rig.runner.retry()
+    assert rig.runner.bundle.session.boundary_pending is False
+    assert role_statuses(rig, "summarizer")[-1] == "committed"
+    assert role_statuses(rig, "world")[-1] == "aborted"
+
+
+def test_resume_boundary_world_skip_run_ids_differ_from_failed_attempt(registry, cfg, tmp_path):
+    from summarizer_kit import summ_fail_steps, summ_steps
+
+    rig = summ_world_rig(registry, cfg, tmp_path, summ_fail_steps() + summ_steps(), REFUSAL)
+    rig.runner.play("ход")
+    rig.runner.retry()
+    summarizer_runs = [r["run_id"] for r in rig.journal.read_records() if r["role"] == "summarizer"]
+    assert len(set(summarizer_runs)) == 2
+    assert role_statuses(rig, "summarizer")[0] == "aborted"

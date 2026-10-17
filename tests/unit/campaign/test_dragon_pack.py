@@ -358,3 +358,32 @@ def test_dragon_squad_starts_in_the_heros_place(cfg):
     here = bundle.heroes[0].location_id
     for npc_id in ("bran_sedogriv", "jorgen", "lira", "edrin"):
         assert bundle.world.npcs[npc_id].location_id == here
+
+
+# ТБ #56 (docs/plan-tb.md Q1а): список monsters в campaign.yaml пака
+
+DRAGON_MONSTERS = [
+    "guard", "goblin_warrior", "goblin_boss", "wolf", "dire_wolf", "giant_rat", "swarm_of_rats",
+    "giant_spider", "black_bear", "boar", "ghoul", "ghast", "zombie", "ogre_zombie", "skeleton",
+    "wight", "shadow", "specter", "gargoyle", "magmin", "fire_elemental", "earth_elemental",
+    "dust_mephit", "steam_mephit", "homunculus",
+]
+
+
+def test_dragon_monsters_list_is_as_agreed():
+    from ai_dm.campaign.loader import pack_monster_scope
+
+    assert sorted(pack_monster_scope(DRAGON_DIR)) == sorted(DRAGON_MONSTERS)
+
+
+def test_dragon_monsters_are_known_to_registry():
+    registry = dragon_registry()
+    assert [m for m in DRAGON_MONSTERS if not registry.has("monster", m)] == []
+
+
+def test_dragon_narrator_sees_only_the_list():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("drunk_dragon", ROOT / "campaigns")
+    assert registry.narrator_monster_ids() == sorted(DRAGON_MONSTERS)
+    assert len(registry.ids("monster")) > len(DRAGON_MONSTERS)

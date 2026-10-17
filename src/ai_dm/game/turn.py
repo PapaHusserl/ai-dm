@@ -264,9 +264,9 @@ class TurnRunner:
         result.hint = REFUSAL_HINT if failure.reason == "refusal" else str(failure)
         return result
 
-    def mark_journal(self, run_id, status):
+    def mark_journal(self, run_id, status, role=None):
         if self.journal is not None:
-            self.journal.mark_turn(run_id, status)
+            self.journal.mark_turn(run_id, status, role)
         self.call_numbers.pop(run_id, None)
 
     def commit(self, work, rng, player_input, narration, result):
@@ -366,7 +366,11 @@ class TurnRunner:
 
     def take_boundary(self, done, result):
         status = "aborted" if done.error else "committed"
+        world_skipped = done.error is None and "world_skipped" in done.report_tags
         for run_id in sorted({done.summary_run_id, done.world_run_id} - {None}):
+            if world_skipped and run_id == done.world_run_id:
+                # мягкий сбой world: его записи не вошли в итог границы, остальное закоммичено
+                self.mark_journal(run_id, "aborted", role="world")
             self.mark_journal(run_id, status)
             self.call_numbers.pop(run_id, None)
             if run_id not in result.run_ids:

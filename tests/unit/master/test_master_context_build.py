@@ -72,6 +72,8 @@ def make_scenario(registry, cfg, turns=8):
 def app_with(cap=BIG, **master):
     app = app_cfg().model_copy(deep=True)
     app.master.context_cap = cap
+    # ТБ #15: оценка по провайдеру; перекрытия снимаем, чтобы chars_per_token работал для всех
+    app.master.chars_per_token_by_provider = {}
     for key, value in master.items():
         setattr(app.master, key, value)
     return app
@@ -139,6 +141,57 @@ def test_estimate_uses_chars_per_token_of_config(registry, cfg):
     _, loose = build(make_scenario(registry, cfg), app=app_with(chars_per_token=5.0))
     _, tight = build(make_scenario(registry, cfg), app=app_with(chars_per_token=2.5))
     assert tight.last_plan.estimate > loose.last_plan.estimate * 1.9
+
+
+# ТБ #15: chars_per_token по провайдеру роли (docs/plan-tb.md п.4)
+
+def app_for(provider_cpt, provider="anthropic"):
+    app = app_with()
+    app.master.chars_per_token = 2.5
+    app.master.chars_per_token_by_provider = provider_cpt
+    app.roles = app.profiles[provider]
+    return app
+
+
+def test_estimate_of_anthropic_role_uses_its_own_cpt(registry, cfg):
+    app = app_for({"anthropic": 2.0})
+    request, builder = build(make_scenario(registry, cfg), app=app)
+    assert builder.last_plan.estimate == request_tokens(request, 2.0)
+
+
+def test_estimate_of_gemini_role_uses_common_cpt_when_not_overridden(registry, cfg):
+    app = app_for({"anthropic": 2.0}, provider="gemini")
+    request, builder = build(make_scenario(registry, cfg), app=app)
+    assert builder.last_plan.estimate == request_tokens(request, 2.5)
+
+
+def test_anthropic_estimate_is_larger_than_gemini_for_same_request(registry, cfg):
+    _, anthropic = build(make_scenario(registry, cfg), app=app_for({"anthropic": 2.0}))
+    gemini_app = app_for({"anthropic": 2.0}, provider="gemini")
+    _, gemini = build(make_scenario(registry, cfg), app=gemini_app)
+    assert anthropic.last_plan.estimate > gemini.last_plan.estimate
+
+
+def test_cpt_override_changes_what_is_dropped(registry, cfg):
+    # при cpt 2.5 запрос ровно влезает (ничего не вытеснено), при 2.0 оценка выше -- вытеснение
+    cap = total(registry, cfg)
+    fits = app_for({})
+    fits.master.context_cap = cap
+    tight = app_for({"anthropic": 2.0})
+    tight.master.context_cap = cap
+    _, fit_builder = build(make_scenario(registry, cfg), app=fits)
+    _, tight_builder = build(make_scenario(registry, cfg), app=tight)
+    assert fit_builder.last_plan.dropped == []
+    assert tight_builder.last_plan.dropped
+
+
+def test_default_config_anthropic_explore_empty_history_fits_without_drop(registry, cfg):
+    # ТБ #15: дефолтный конфиг (cap 30000, общий cpt) -- статика anthropic влезает без вытеснения
+    ctx = make_ctx(registry, cfg)
+    builder = PromptBuilder(app_cfg())
+    builder.build(ctx, "Осматриваюсь.", "explore")
+    assert builder.last_plan.dropped == []
+    assert builder.last_plan.overflow is False
 
 
 # порядок вытеснения целиком

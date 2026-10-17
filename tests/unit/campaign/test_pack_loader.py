@@ -447,3 +447,165 @@ def test_event_without_cause_is_fine(tmp_path, registry):
     files = default_files()
     files["events.yaml"] = [{"id": "war", "type": "war", "regions": ["town"]}]
     assert ids(load(write_pack(tmp_path, files), registry).events) == ["war"]
+
+
+# ТБ #56 (docs/plan-tb.md п.2): поле manifest.monsters -- монстры пака для рассказчика
+
+def with_monsters(monsters, npc_monster=None):
+    files = default_files()
+    if monsters is not None:
+        files["campaign.yaml"]["monsters"] = monsters
+    if npc_monster is not None:
+        files["npcs.yaml"][1]["combat"] = {"monster_id": npc_monster, "intent": "kill"}
+    return files
+
+
+def test_manifest_monsters_default_is_empty_list(tmp_path, registry):
+    assert load(write_pack(tmp_path), registry).manifest.monsters == []
+
+
+def test_manifest_monsters_list_is_read(tmp_path, registry):
+    pack = load(write_pack(tmp_path, with_monsters(["wolf", "boar"])), registry)
+    assert pack.manifest.monsters == ["wolf", "boar"]
+
+
+def test_pack_with_valid_monsters_loads(tmp_path, registry):
+    assert pack_errors(write_pack(tmp_path, with_monsters(["wolf", "guard"])), registry) is None
+
+
+def test_unknown_monster_in_manifest_is_error_with_file_field_and_id(tmp_path, registry):
+    files = with_monsters(["wolf", "no_such_monster"])
+    check_error(tmp_path, registry, files, "campaign.yaml", "monsters", "no_such_monster")
+
+
+def test_each_unknown_monster_gets_own_error_line(tmp_path, registry):
+    errors = pack_errors(write_pack(tmp_path, with_monsters(["zz_a", "zz_b"])), registry)
+    assert [e for e in errors if "zz_a" in e] and [e for e in errors if "zz_b" in e]
+
+
+def test_npc_monster_outside_nonempty_list_is_error(tmp_path, registry):
+    files = with_monsters(["wolf"], npc_monster="goblin_boss")
+    check_error(tmp_path, registry, files, "guard", "goblin_boss")
+
+
+def test_npc_monster_inside_list_is_ok(tmp_path, registry):
+    files = with_monsters(["wolf", "goblin_boss"], npc_monster="goblin_boss")
+    assert pack_errors(write_pack(tmp_path, files), registry) is None
+
+
+def test_npc_monster_with_empty_list_is_ok(tmp_path, registry):
+    files = with_monsters(None, npc_monster="goblin_boss")
+    assert pack_errors(write_pack(tmp_path, files), registry) is None
+
+
+def test_check_manifest_monsters_clean_pack_gives_no_lines(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest_monsters
+
+    pack = load(write_pack(tmp_path, with_monsters(["wolf"])), registry)
+    assert check_manifest_monsters(pack, registry) == []
+
+
+def test_check_manifest_monsters_reports_unknown_id(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest_monsters
+
+    pack = load(write_pack(tmp_path, with_monsters(["wolf"])), registry)
+    pack.manifest.monsters = ["wolf", "ghost_x"]
+    lines = check_manifest_monsters(pack, registry)
+    assert len(lines) == 1
+    assert "campaign.yaml" in lines[0]
+    assert "monsters" in lines[0]
+    assert "'ghost_x'" in lines[0]
+
+
+def test_check_manifest_monsters_unknown_id_line_starts_with_manifest_path(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest_monsters
+
+    pack = load(write_pack(tmp_path, with_monsters(["wolf"])), registry)
+    pack.manifest.monsters = ["ghost_x"]
+    lines = check_manifest_monsters(pack, registry)
+    assert lines[0].startswith(f"{pack.path}/campaign.yaml:")
+
+
+def test_check_manifest_monsters_npc_outside_list_line_starts_with_npcs_path(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest_monsters
+
+    files = with_monsters(["wolf", "goblin_boss"], npc_monster="goblin_boss")
+    pack = load(write_pack(tmp_path, files), registry)
+    pack.manifest.monsters = ["wolf"]
+    lines = check_manifest_monsters(pack, registry)
+    assert len(lines) == 1
+    assert lines[0].startswith(f"{pack.path}/npcs.yaml:")
+    assert "'goblin_boss'" in lines[0]
+
+
+def test_check_manifest_monsters_empty_list_skips_npc_check(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest_monsters
+
+    pack = load(write_pack(tmp_path, with_monsters(None, npc_monster="goblin_boss")), registry)
+    assert check_manifest_monsters(pack, registry) == []
+
+
+def test_check_manifest_includes_monsters_check(tmp_path, registry):
+    from ai_dm.campaign.loader import check_manifest
+
+    pack = load(write_pack(tmp_path), registry)
+    pack.manifest.monsters = ["ghost_x"]
+    assert any("ghost_x" in line for line in check_manifest(pack, registry))
+
+
+# pack_monster_scope: читает только campaign.yaml, None -- «без фильтра»
+
+def scope_of(pack_dir):
+    from ai_dm.campaign.loader import pack_monster_scope
+
+    return pack_monster_scope(pack_dir)
+
+
+def test_pack_monster_scope_returns_list(tmp_path, registry):
+    assert scope_of(write_pack(tmp_path, with_monsters(["wolf", "boar"]))) == ["wolf", "boar"]
+
+
+def test_pack_monster_scope_without_field_is_none(tmp_path, registry):
+    assert scope_of(write_pack(tmp_path)) is None
+
+
+def test_pack_monster_scope_empty_list_is_none(tmp_path, registry):
+    assert scope_of(write_pack(tmp_path, with_monsters([]))) is None
+
+
+def test_pack_monster_scope_missing_dir_is_none(tmp_path):
+    assert scope_of(tmp_path / "nowhere") is None
+
+
+def test_pack_monster_scope_without_campaign_yaml_is_none(tmp_path):
+    (tmp_path / "bare").mkdir()
+    assert scope_of(tmp_path / "bare") is None
+
+
+def test_pack_monster_scope_broken_yaml_is_none(tmp_path):
+    pack_dir = write_pack(tmp_path, files_with(**{"campaign.yaml": "id: [незакрытый\n"}))
+    assert scope_of(pack_dir) is None
+
+
+def test_pack_monster_scope_non_mapping_yaml_is_none(tmp_path):
+    pack_dir = write_pack(tmp_path, files_with(**{"campaign.yaml": "- a\n- b\n"}))
+    assert scope_of(pack_dir) is None
+
+
+def test_pack_monster_scope_invalid_manifest_is_none(tmp_path):
+    files = with_monsters(["wolf"])
+    files["campaign.yaml"]["bogus"] = 1
+    assert scope_of(write_pack(tmp_path, files)) is None
+
+
+def test_pack_monster_scope_reads_only_campaign_yaml(tmp_path):
+    files = with_monsters(["wolf"])
+    files["locations.yaml"] = "- id: [незакрытый\n"
+    files["world.md"] = None
+    assert scope_of(write_pack(tmp_path, files)) == ["wolf"]
+
+
+def test_pack_monster_scope_keeps_manifest_order(tmp_path):
+    assert scope_of(write_pack(tmp_path, with_monsters(["wolf", "boar", "guard"]))) == [
+        "wolf", "boar", "guard",
+    ]

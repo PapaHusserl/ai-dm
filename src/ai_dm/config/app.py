@@ -1,6 +1,6 @@
 import tomllib
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -87,6 +87,10 @@ class MasterConfig(BaseModel):
     context_cap: int = Field(gt=0)
     # оценка токенов: символов в токене (кириллица)
     chars_per_token: float = Field(gt=0)
+    # перекрытие по провайдеру роли (токенайзеры различаются); нет ключа -- общий chars_per_token
+    chars_per_token_by_provider: dict[str, Annotated[float, Field(gt=0)]] = Field(
+        default_factory=dict
+    )
     # сколько последних ходов не вытесняется до ступени 2
     recent_turns_floor: int = Field(ge=0)
     # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
@@ -97,6 +101,9 @@ class MasterConfig(BaseModel):
         if self.recent_turns_floor > self.recent_turns:
             raise ValueError("master.recent_turns_floor больше master.recent_turns")
         return self
+
+    def cpt_for(self, provider):
+        return self.chars_per_token_by_provider.get(provider, self.chars_per_token)
 
 
 class LlmConfig(BaseModel):

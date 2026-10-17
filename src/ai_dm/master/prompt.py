@@ -6,6 +6,7 @@ from ai_dm.master.context import (
     Candidates,
     ContextPlan,
     budget,
+    estimate_tokens,
     plan,
     recent_window,
     window_budget,
@@ -208,10 +209,18 @@ class PromptBuilder:
             self.candidates(ctx), render,
             cap=budget(self.app_cfg, self.model),
             window80=window_budget(self.app_cfg, self.model),
-            cpt=self.app_cfg.master.chars_per_token,
+            cpt=self.app_cfg.master.cpt_for(self.role_cfg.provider),
         )
         self.last_plan = result
         return self.request(ctx, user_input, tools, world_text, result)
+
+    def static_tokens(self, mode):
+        # статика запроса: правила и схемы инструментов режима (общий chars_per_token, без пака)
+        cpt = self.app_cfg.master.chars_per_token
+        tools = [ToolSpec.model_validate(d) for d in tool_set(mode)]
+        rules = estimate_tokens(self.rules, cpt)
+        tools = estimate_tokens(json.dumps([t.model_dump(mode="json") for t in tools]), cpt)
+        return {"rules": rules, "tools": tools, "total": rules + tools}
 
     def request(self, ctx, user_input, tools, world_text, context_plan):
         system = [
@@ -260,7 +269,7 @@ class PromptBuilder:
             "tone": world.tone.model_dump(mode="json"),
             "settings": world.settings,
             "world_text": world_text,
-            "monster_ids": ctx.registry.ids("monster"),
+            "monster_ids": ctx.registry.narrator_monster_ids(),
             "item_ids": [i.id for i in ctx.registry.all("item") if i.source != "world"],
         }
         return dump(data)

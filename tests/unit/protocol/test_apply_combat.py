@@ -702,3 +702,39 @@ def test_player_action_without_options_does_not_check_first_step(registry, cfg):
     assert ctx.combat_options is None
     d = apply(ctx, req("player_action", steps=["attack:longsword:ghost"]))
     assert d.status == "accepted"
+
+
+# ТБ #56 (docs/plan-tb.md п.2): ошибка start_combat -- монстры пака, существование -- весь реестр
+
+def scoped_registry(registry, scope):
+    reg = registry.with_items({})
+    reg.monster_scope = scope
+    return reg
+
+
+def unknown_monster_request():
+    return combat_request(
+        enemies=[{"ref": "g1", "monster_id": "tarrasque_9", "zone": "hall", "group": "goblins"}]
+    )
+
+
+def test_start_combat_unknown_monster_message_lists_scope_only(registry, cfg):
+    reg = scoped_registry(registry, ["wolf", "boar"])
+    _, d = start(reg, cfg, unknown_monster_request())
+    assert d.code == "unknown_monster"
+    assert "boar" in d.message
+    assert "wolf" in d.message
+    assert "goblin_boss" not in d.message
+
+
+def test_start_combat_unknown_monster_message_without_scope_lists_all(registry, cfg):
+    _, d = start(registry, cfg, unknown_monster_request())
+    assert "goblin_boss" in d.message
+
+
+def test_start_combat_monster_outside_scope_is_accepted(registry, cfg):
+    reg = scoped_registry(registry, ["wolf"])
+    ctx, d = start(reg, cfg)
+    assert isinstance(d, Decision)
+    assert d.status == "accepted"
+    assert ctx.bundle.session.active_combat is not None

@@ -591,3 +591,91 @@ def test_stop_detail_is_none_in_record_when_not_set(tmp_path):
     journal = make_journal(tmp_path)
     record(journal)
     assert journal.read_records()[0]["response"]["stop_detail"] is None
+
+
+# ТБ #71 (docs/plan-tb.md п.6): mark_turn(run_id, status, role=None) -- разметка только своей роли
+
+def record_of_role(journal, n, role, run_id="bnd-1"):
+    journal.record_call(
+        call_id=f"c{n}", run_id=run_id, ts=TS, turn_seq=1, attempt=1, role=role,
+        provider="anthropic", model="claude-opus-5-5",
+        request=make_request(), response=make_response(),
+    )
+
+
+def statuses_by_role(journal):
+    return [(r["role"], r["turn_status"]) for r in journal.read_records()]
+
+
+def boundary_journal(tmp_path, cfg=CFG):
+    journal = make_journal(tmp_path, cfg)
+    record_of_role(journal, 1, "summarizer")
+    record_of_role(journal, 2, "world")
+    return journal
+
+
+def test_mark_turn_with_role_marks_only_that_role(tmp_path):
+    journal = boundary_journal(tmp_path)
+    journal.mark_turn("bnd-1", "aborted", role="world")
+    assert statuses_by_role(journal) == [("summarizer", None), ("world", "aborted")]
+
+
+def test_mark_turn_with_role_marks_all_records_of_that_role(tmp_path):
+    journal = boundary_journal(tmp_path)
+    record_of_role(journal, 3, "world")
+    journal.mark_turn("bnd-1", "aborted", role="world")
+    assert [s for r, s in statuses_by_role(journal) if r == "world"] == ["aborted", "aborted"]
+
+
+def test_mark_turn_with_role_then_general_mark_keeps_aborted_world(tmp_path):
+    journal = boundary_journal(tmp_path)
+    journal.mark_turn("bnd-1", "aborted", role="world")
+    journal.mark_turn("bnd-1", "committed")
+    assert statuses_by_role(journal) == [("summarizer", "committed"), ("world", "aborted")]
+
+
+def test_mark_turn_with_role_does_not_override_set_status(tmp_path):
+    journal = boundary_journal(tmp_path)
+    journal.mark_turn("bnd-1", "committed", role="world")
+    journal.mark_turn("bnd-1", "aborted", role="world")
+    assert statuses_by_role(journal)[1] == ("world", "committed")
+
+
+def test_mark_turn_with_role_ignores_other_runs(tmp_path):
+    journal = boundary_journal(tmp_path)
+    record_of_role(journal, 3, "world", run_id="bnd-2")
+    journal.mark_turn("bnd-1", "aborted", role="world")
+    assert journal.read_records()[2]["turn_status"] is None
+
+
+def test_mark_turn_with_unknown_role_changes_nothing(tmp_path):
+    journal = boundary_journal(tmp_path)
+    journal.mark_turn("bnd-1", "aborted", role="narrator")
+    assert statuses_by_role(journal) == [("summarizer", None), ("world", None)]
+
+
+def test_mark_turn_role_none_marks_all_roles_as_before(tmp_path):
+    journal = boundary_journal(tmp_path)
+    journal.mark_turn("bnd-1", "committed")
+    assert statuses_by_role(journal) == [("summarizer", "committed"), ("world", "committed")]
+
+
+def test_mark_turn_with_role_rejects_unknown_status(tmp_path):
+    journal = boundary_journal(tmp_path)
+    with pytest.raises(ValueError):
+        journal.mark_turn("bnd-1", "pending", role="world")
+
+
+def test_mark_turn_with_role_works_in_gz_segments(tmp_path):
+    journal = boundary_journal(tmp_path, JournalConfig(max_mb=50, segment_mb=0))
+    record_of_role(journal, 3, "narrator", run_id="run-9")
+    assert any(p.name.endswith(".gz") for p in journal.segments())
+    journal.mark_turn("bnd-1", "aborted", role="summarizer")
+    assert statuses_by_role(journal)[:2] == [("summarizer", "aborted"), ("world", None)]
+
+
+def test_mark_turn_with_role_finds_role_in_older_segment_of_the_same_run(tmp_path):
+    journal = boundary_journal(tmp_path, JournalConfig(max_mb=50, segment_mb=0))
+    journal.mark_turn("bnd-1", "aborted", role="summarizer")
+    journal.mark_turn("bnd-1", "committed", role="world")
+    assert statuses_by_role(journal) == [("summarizer", "aborted"), ("world", "committed")]

@@ -164,3 +164,43 @@ def test_campaign_registry_of_missing_pack_keeps_pack_dir_path(tmp_path):
 
     pack_dir, _ = campaign_registry("ghost", tmp_path)
     assert pack_dir == tmp_path / "ghost"
+
+
+# ТБ #56 (docs/plan-tb.md п.2): campaign_registry ставит monster_scope пака
+
+def test_campaign_registry_sets_scope_of_pack_with_monsters_list():
+    from ai_dm.campaign.loader import pack_monster_scope
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("dusk_academy", CAMPAIGNS)
+    scope = pack_monster_scope(CAMPAIGNS / "dusk_academy")
+    assert registry.narrator_monster_ids() == sorted(scope)
+
+
+def test_campaign_registry_keeps_full_monster_ids_with_scope():
+    from ai_dm.content.loader import load_registry
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("dusk_academy", CAMPAIGNS)
+    assert registry.ids("monster") == load_registry([]).ids("monster")
+
+
+def test_campaign_registry_of_pack_without_list_shows_all_monsters():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("vale", CAMPAIGNS)
+    assert registry.narrator_monster_ids() == registry.ids("monster")
+
+
+def test_campaign_registry_without_campaign_shows_all_monsters():
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry(None, CAMPAIGNS)
+    assert registry.narrator_monster_ids() == registry.ids("monster")
+
+
+def test_campaign_registry_of_missing_pack_shows_all_monsters(tmp_path):
+    from ai_dm.ui.cli import campaign_registry
+
+    _, registry = campaign_registry("ghost", tmp_path)
+    assert registry.narrator_monster_ids() == registry.ids("monster")

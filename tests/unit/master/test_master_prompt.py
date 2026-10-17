@@ -543,3 +543,42 @@ def test_narrator_max_tokens_is_16000_for_every_narrator_model(registry, cfg):
     for model in models:
         assert build(make_ctx(registry, cfg), model=model).max_tokens == 16000
 
+
+
+# ТБ #56 (docs/plan-tb.md п.2): рассказчик видит в monster_ids только монстров пака
+
+def scoped(registry, scope):
+    reg = registry.with_items({})
+    reg.monster_scope = scope
+    return reg
+
+
+def world_data(registry, cfg, reg):
+    bundle = make_bundle(registry)
+    return json.loads(build(make_ctx(reg, cfg, bundle=bundle)).system[1].text)
+
+
+def test_system_1_monster_ids_are_scope_only(registry, cfg):
+    data = world_data(registry, cfg, scoped(registry, ["wolf", "boar", "guard"]))
+    assert data["monster_ids"] == ["boar", "guard", "wolf"]
+
+
+def test_system_1_without_scope_has_all_monster_ids(registry, cfg):
+    assert world_data(registry, cfg, registry)["monster_ids"] == registry.ids("monster")
+
+
+def test_system_1_scope_keeps_item_ids(registry, cfg):
+    scoped_data = world_data(registry, cfg, scoped(registry, ["wolf"]))
+    assert scoped_data["item_ids"] == world_data(registry, cfg, registry)["item_ids"]
+
+
+def test_system_1_scope_is_shorter_than_full_list(registry, cfg):
+    short = build(make_ctx(scoped(registry, ["wolf"]), cfg)).system[1].text
+    full = build(make_ctx(registry, cfg)).system[1].text
+    assert len(short) < len(full)
+
+
+def test_system_1_scope_is_stable_between_builds(registry, cfg):
+    reg = scoped(registry, ["wolf", "boar"])
+    first = build(make_ctx(reg, cfg)).system[1].text
+    assert build(make_ctx(reg, cfg)).system[1].text == first
