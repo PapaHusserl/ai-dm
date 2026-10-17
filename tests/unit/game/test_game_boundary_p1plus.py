@@ -12,7 +12,7 @@ from ai_dm.state.session import ChapterState
 
 def fake_summarizer(title="", text="Выжимка."):
     def try_scene(work, registry, cfg, run_id):
-        return SimpleNamespace(summary_title=title, summary_text=text), False
+        return SimpleNamespace(summary_title=title, summary_text=text, marks=[]), False
 
     return SimpleNamespace(try_scene=try_scene)
 
@@ -20,7 +20,7 @@ def fake_summarizer(title="", text="Выжимка."):
 def run_boundary(registry, cfg, summarizer, scene_title=""):
     bundle = make_bundle(registry)
     bundle.session.current_scene.title = scene_title
-    summarize_scene(bundle, cfg, registry, summarizer, "bnd-1", SimpleNamespace())
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-1", SimpleNamespace(report_tags=[]))
     return bundle
 
 
@@ -103,7 +103,7 @@ def recording(kind, ctx, fell=False):
 
 def test_summarize_scene_passes_bundle_registry_cfg_and_run_id(registry, cfg):
     bundle = make_bundle(registry)
-    ctx = SimpleNamespace(summary_title="", summary_text="Текст.")
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.", marks=[])
     seen, summarizer = recording("try_scene", ctx)
     result = SimpleNamespace(report_tags=[])
     summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
@@ -114,7 +114,7 @@ def test_summarize_scene_passes_bundle_registry_cfg_and_run_id(registry, cfg):
 def test_summarize_scene_writes_text_title_and_time_to_scene_and_memory(registry, cfg):
     bundle = make_bundle(registry)
     bundle.world.clock.now_s = 777
-    ctx = SimpleNamespace(summary_title="Имя", summary_text="Текст.")
+    ctx = SimpleNamespace(summary_title="Имя", summary_text="Текст.", marks=[])
     _, summarizer = recording("try_scene", ctx)
     summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[]))
     scene = bundle.session.current_scene
@@ -124,11 +124,29 @@ def test_summarize_scene_writes_text_title_and_time_to_scene_and_memory(registry
 
 def test_summarize_scene_fell_adds_tag_once(registry, cfg):
     bundle = make_bundle(registry)
-    ctx = SimpleNamespace(summary_title="", summary_text="Текст.")
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.", marks=[])
     _, summarizer = recording("try_scene", ctx, fell=True)
     result = SimpleNamespace(report_tags=[])
     summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
-    assert result.report_tags == ["refusal_fallback"]
+    assert result.report_tags == ["summarizer_backup"]
+
+
+def test_summarize_scene_adds_ctx_marks_to_report_tags(registry, cfg):
+    bundle = make_bundle(registry)
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.", marks=["summary_trimmed"])
+    _, summarizer = recording("try_scene", ctx)
+    result = SimpleNamespace(report_tags=[])
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert result.report_tags == ["summary_trimmed"]
+
+
+def test_summarize_scene_with_backup_and_marks_keeps_both_tags(registry, cfg):
+    bundle = make_bundle(registry)
+    ctx = SimpleNamespace(summary_title="", summary_text="Текст.", marks=["summary_trimmed"])
+    _, summarizer = recording("try_scene", ctx, fell=True)
+    result = SimpleNamespace(report_tags=[])
+    summarize_scene(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert result.report_tags == ["summarizer_backup", "summary_trimmed"]
 
 
 def closing_bundle(registry, number=2, reason="end_chapter"):
@@ -139,10 +157,15 @@ def closing_bundle(registry, number=2, reason="end_chapter"):
     return bundle
 
 
+def chapter_ctx(marks=None):
+    return SimpleNamespace(
+        chapter_text="Г.", game_text="И.", chapter_title_new="Н", marks=marks or [],
+    )
+
+
 def test_close_chapter_passes_arguments_and_run_id(registry, cfg):
     bundle = closing_bundle(registry)
-    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
-    seen, summarizer = recording("try_chapter", ctx)
+    seen, summarizer = recording("try_chapter", chapter_ctx())
     result = SimpleNamespace(report_tags=[])
     close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
     assert seen == [(bundle, registry, cfg, "bnd-9")]
@@ -153,8 +176,7 @@ def test_close_chapter_passes_arguments_and_run_id(registry, cfg):
 def test_close_chapter_opens_next_chapter_and_returns_number_and_title(registry, cfg):
     bundle = closing_bundle(registry, number=2)
     bundle.session.current_chapter.title = "Название"
-    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
-    _, summarizer = recording("try_chapter", ctx)
+    _, summarizer = recording("try_chapter", chapter_ctx())
     closed = close_chapter(
         bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[])
     )
@@ -168,8 +190,7 @@ def test_close_chapter_opens_next_chapter_and_returns_number_and_title(registry,
 def test_close_chapter_by_scene_limit_sets_reason(registry, cfg):
     bundle = closing_bundle(registry, reason=None)
     bundle.session.current_chapter.scene_count = cfg.scene.max_per_chapter
-    ctx = SimpleNamespace(chapter_text="Г.", game_text="И.", chapter_title_new="Н")
-    _, summarizer = recording("try_chapter", ctx)
+    _, summarizer = recording("try_chapter", chapter_ctx())
     closed = close_chapter(
         bundle, cfg, registry, summarizer, "bnd-9", SimpleNamespace(report_tags=[])
     )
@@ -185,4 +206,20 @@ def test_close_chapter_none_ctx_gives_concat_and_tag(registry, cfg):
     close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
     assert bundle.memory.chapters[0].source == "concat"
     assert bundle.memory.game_summary == "ПРЕЖНЯЯ"
-    assert result.report_tags == ["refusal_fallback"]
+    assert result.report_tags == ["summarizer_backup"]
+
+
+def test_close_chapter_adds_ctx_marks_to_report_tags(registry, cfg):
+    bundle = closing_bundle(registry)
+    _, summarizer = recording("try_chapter", chapter_ctx(["summary_trimmed"]))
+    result = SimpleNamespace(report_tags=[])
+    close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert result.report_tags == ["summary_trimmed"]
+
+
+def test_close_chapter_concat_adds_no_marks(registry, cfg):
+    bundle = closing_bundle(registry)
+    _, summarizer = recording("try_chapter", None)
+    result = SimpleNamespace(report_tags=[])
+    close_chapter(bundle, cfg, registry, summarizer, "bnd-9", result)
+    assert result.report_tags == []

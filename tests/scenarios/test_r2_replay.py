@@ -91,9 +91,9 @@ def test_boundary_with_both_refused_fallback_replays(registry, tmp_path):
     assert MATCH in out.lines
 
 
-def test_report_of_boundary_with_backup_names_refusal_fallback(registry, tmp_path):
+def test_report_of_boundary_with_backup_names_summarizer_backup(registry, tmp_path):
     root = tmp_path / "saves"
     narrator = [tools_step(end_scene_call(summary="Подсказка.")), text_step("Конец.")]
     narrator += summ_steps("От рассказчика.")
     boundary_app(registry, root, narrator, [REFUSAL]).handle("Прощаюсь и ухожу")
-    assert reports_of(root)[-1].name.endswith("refusal_fallback")
+    assert reports_of(root)[-1].name.endswith("summarizer_backup")

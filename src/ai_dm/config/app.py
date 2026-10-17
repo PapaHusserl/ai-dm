@@ -135,6 +135,8 @@ class MemoryConfig(BaseModel):
     scene_summary_max: int = Field(default=600, ge=1)
     chapter_summary_max: int = Field(default=1500, ge=1)
     game_summary_max: int = Field(default=3000, ge=1)
+    # после скольких переполнений предела движок режет выжимку сам; 0 -- не режет
+    summary_trim_after: int = Field(default=2, ge=0)
 
 
 class ReportsConfig(BaseModel):

@@ -138,9 +138,8 @@ def test_boundary_run_id_is_listed_once(registry, cfg, tmp_path):
 
 def failed_boundary_rig(registry, cfg, tmp_path):
     bundle = bundle_with_brann(registry, cfg)
-    steps = []
-    for n in range(3):
-        steps.append(tools_step(verdict_call([(BRANN, True)], f"wv-{n}")))
+    # жёсткий сбой world (мягкий после #22 ТС пропускается и границу не роняет)
+    steps = [{"error": "fatal", "message": "сбой сети"}]
     steps += world_step(verdict_call([(BRANN, False), (OATH, False)], "wv-ok"))
     return make_world_rig(registry, cfg, tmp_path, narrator_turns(end_turn()), steps, bundle=bundle)
 

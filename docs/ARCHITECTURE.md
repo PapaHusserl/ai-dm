@@ -634,7 +634,7 @@ ui ──> game ──> master ──> llm
 ## E3. Граница сцены с summarizer
 
 Закрытие → автосейв → на копии: **выжимка сцены** → тик → триггеры → `world` → глава (**выжимка главы + свёртка
-`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer `refusal`/`invalid`/`network` (`SOFT_REASONS`) — повтор на модели рассказчика → запасная выжимка (`fallback`/`concat`, тег `refusal_fallback`); `fatal` — меню 2.2, новая сцена не стартует (Д2);
+`game_summary`**) → новая сцена → заметки → commit. Сбой summarizer `refusal`/`invalid`/`network` (`SOFT_REASONS`) — повтор на модели рассказчика → запасная выжимка (`fallback`/`concat`, тег `summarizer_backup`, до #22 назывался `refusal_fallback`; выжимка длиннее предела не отклоняется бесконечно: после `[memory] summary_trim_after` = 2 переполнений движок режет её по границе предложения, тег `summary_trimmed`); мягкий сбой world (`refusal`/`invalid`/`network`) — вызов world на границе пропускается, тег `world_skipped` (причина — в записи журнала); `fatal`/`rounds` — как раньше; `fatal` — меню 2.2, новая сцена не стартует (Д2);
 незавершённая граница достраивается при загрузке. Журнал `role: summarizer`, `run_id` границы; replay по роли.
 
 ## E3а. Сеть и цепочка (Т60)

@@ -369,7 +369,7 @@ def test_refusal_goes_to_narrator_backup_and_boundary_finishes(registry, cfg, tm
     assert bundle.session.current_scene.id == "scene_2"
     assert bundle.memory.scenes[0].summary == "От рассказчика."
     assert bundle.memory.scenes[0].source == "summarizer"
-    assert "refusal_fallback" in result.report_tags
+    assert "summarizer_backup" in result.report_tags
 
 
 def test_backup_request_is_summarizer_role_on_narrator_model(registry, cfg, tmp_path):
@@ -415,7 +415,7 @@ def test_both_refused_give_fallback_with_hint_title_and_one_tag(registry, cfg, t
     assert after.memory.scenes[0].title == "Название нарратора"
     assert after.session.boundary_pending is False
     assert after.session.current_scene.id == "scene_2"
-    assert result.report_tags.count("refusal_fallback") == 1
+    assert result.report_tags.count("summarizer_backup") == 1
 
 
 def test_both_refused_without_hint_give_numbered_scene_line(registry, cfg, tmp_path):
@@ -441,7 +441,7 @@ def test_both_refused_still_ticks_the_world_day(registry, cfg, tmp_path, monkeyp
 def test_clean_summary_has_no_fallback_tag(registry, cfg, tmp_path):
     rig = make_summ_rig(registry, cfg, tmp_path, end_narrator(), summ_steps("Итог."))
     result = rig.runner.play("ход")
-    assert "refusal_fallback" not in result.report_tags
+    assert "summarizer_backup" not in result.report_tags
 
 
 def test_fatal_summarizer_still_gives_menu_and_backup_is_not_called(registry, cfg, tmp_path):
@@ -453,7 +453,7 @@ def test_fatal_summarizer_still_gives_menu_and_backup_is_not_called(registry, cf
     assert rig.runner.failed_role == "summarizer"
     assert rig.runner.bundle.session.boundary_pending is True
     assert rig.narrator_view().summarizer_requests() == []
-    assert "refusal_fallback" not in result.report_tags
+    assert "summarizer_backup" not in result.report_tags
 
 
 def test_network_summarizer_goes_to_backup_without_menu(registry, cfg, tmp_path):
@@ -466,7 +466,7 @@ def test_network_summarizer_goes_to_backup_without_menu(registry, cfg, tmp_path)
     assert rig.runner.failed_role is None
     assert len(rig.narrator_view().summarizer_requests()) == 1
     assert rig.runner.bundle.memory.scenes[0].summary == "От рассказчика."
-    assert "refusal_fallback" in result.report_tags
+    assert "summarizer_backup" in result.report_tags
 
 
 def test_backup_fatal_gives_error_menu(registry, cfg, tmp_path):

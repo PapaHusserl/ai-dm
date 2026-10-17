@@ -2,11 +2,14 @@ from ai_dm.core.clock import DAY
 from ai_dm.core.rng import Rng
 from ai_dm.game.scene import close_scene, ensure_chapter, start_scene
 from ai_dm.llm.errors import LlmError
-from ai_dm.master.session import TurnFailed
+from ai_dm.master.session import TurnFailed, soft_failure
 from ai_dm.persistence.store import save_auto
 from ai_dm.state.memory import ChapterSummary, SceneSummary
 from ai_dm.state.session import ChapterState
 from ai_dm.world_sim import nudge, tick, triggers, verdicts
+
+# метка репорта: выжимка пришла не от первичной модели summarizer (до #22 -- refusal_fallback)
+BACKUP_TAG = "summarizer_backup"
 
 
 class BoundaryResult:
@@ -75,7 +78,7 @@ def summarize_scene(work, cfg, registry, summarizer, run_id, result) -> None:
             result.failed_role = "summarizer"
             raise
         if fell:
-            result.report_tags.append("refusal_fallback")
+            result.report_tags.append(BACKUP_TAG)
         if ctx is None:
             title = scene.title
             text = fallback_summary(work, scene)
@@ -85,6 +88,7 @@ def summarize_scene(work, cfg, registry, summarizer, run_id, result) -> None:
             title = scene.title or ctx.summary_title
             text = ctx.summary_text
             source = "summarizer"
+            result.report_tags += ctx.marks
     # world видит закрытую сцену с итоговой выжимкой
     scene.summary = text
     scene.title = title
@@ -109,7 +113,8 @@ def check_triggers(work, cfg, registry):
 
 
 def call_world(work, cfg, registry, check, world, run_id, result) -> None:
-    # один пакетный вызов world по кандидатам; без кандидатов или без сессии world -- вызова нет
+    # один пакетный вызов world по кандидатам; без кандидатов или без сессии world -- вызова нет;
+    # мягкий сбой world (отказ, невалидные ответы, сеть) -- пропуск: граница идёт дальше
     if world is None:
         return
     candidates = list(check.candidates)
@@ -125,7 +130,14 @@ def call_world(work, cfg, registry, check, world, run_id, result) -> None:
     sim.world_calls_day = day
     sim.world_calls_today = calls_today + 1
     result.world_run_id = run_id
-    ctx = world.run(work, registry, cfg, candidates, run_id)
+    try:
+        ctx = world.run(work, registry, cfg, candidates, run_id)
+    except TurnFailed as error:
+        if not soft_failure(error):
+            raise
+        # мягкий сбой: world на этой границе пропущен; причина -- в записи журнала
+        result.report_tags.append("world_skipped")
+        return
     verdicts.apply_verdicts(work, candidates, ctx.verdicts or {})
     result.report_tags += ctx.marks
 
@@ -158,7 +170,7 @@ def close_chapter(work, cfg, registry, summarizer, run_id, result) -> tuple[int,
             result.failed_role = "summarizer"
             raise
         if fell:
-            result.report_tags.append("refusal_fallback")
+            result.report_tags.append(BACKUP_TAG)
     if ctx is None:
         title, text = concat_chapter(work, chapter)
         source = "concat"
@@ -169,6 +181,7 @@ def close_chapter(work, cfg, registry, summarizer, run_id, result) -> tuple[int,
         source = "summarizer"
         work.memory.game_summary = ctx.game_text
         work.memory.game_summary_chapter = chapter.number
+        result.report_tags += ctx.marks
     work.memory.chapters.append(
         ChapterSummary(
             id=chapter.id, number=chapter.number, title=title, summary=text, source=source,

@@ -433,12 +433,85 @@ def test_three_over_limit_answers_go_to_concat_and_chapter_is_closed(
     for n in range(3):
         steps += chapter_steps(game="я" * 3001, suffix=str(n))
     rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
+    rig.runner.app_cfg.memory.summary_trim_after = 0
     result = rig.runner.play("ход")
     memory = rig.runner.bundle.memory
     assert result.boundary_failed is False
     assert [c.source for c in memory.chapters] == ["concat"]
     assert rig.runner.bundle.session.current_chapter.number == 2
     assert [s.summary for s in memory.scenes] == ["Сцена."]
+
+
+# ТС #22: мягкий предел -- обрезка движком после summary_trim_after переполнений
+
+def test_three_over_limit_game_answers_are_trimmed_without_backup(registry, cfg, tmp_path):
+    steps = summ_steps("Сцена.")
+    for n in range(3):
+        steps += chapter_steps(game="я" * 3001, suffix=str(n))
+    rig = close_rig(registry, cfg, tmp_path, steps)
+    result = rig.runner.play("ход")
+    memory = rig.runner.bundle.memory
+    assert result.boundary_failed is False
+    assert [c.source for c in memory.chapters] == ["summarizer"]
+    assert 0 < len(memory.game_summary) <= 3000
+    assert memory.game_summary_chapter == 1
+    assert chapter_requests(rig.narrator_view()) == []
+    assert len(chapter_requests(rig)) == 3
+    assert "summary_trimmed" in result.report_tags
+    assert "summarizer_backup" not in result.report_tags
+
+
+def test_three_over_limit_chapter_answers_are_trimmed_and_chapter_closed(
+    registry, cfg, tmp_path
+):
+    steps = summ_steps("Сцена.")
+    for n in range(3):
+        steps += chapter_steps(chapter="я" * 1501, suffix=str(n))
+    rig = close_rig(registry, cfg, tmp_path, steps)
+    rig.runner.play("ход")
+    memory = rig.runner.bundle.memory
+    assert [c.source for c in memory.chapters] == ["summarizer"]
+    assert 0 < len(memory.chapters[0].summary) <= 1500
+    assert rig.runner.bundle.session.current_chapter.number == 2
+
+
+def test_two_over_limit_game_answers_are_not_trimmed_yet(registry, cfg, tmp_path):
+    steps = summ_steps("Сцена.")
+    for n in range(2):
+        steps += chapter_steps(game="я" * 3001, suffix=str(n))
+    steps += chapter_steps(game="Короткая.", suffix="9")
+    rig = close_rig(registry, cfg, tmp_path, steps)
+    result = rig.runner.play("ход")
+    assert rig.runner.bundle.memory.game_summary == "Короткая."
+    assert "summary_trimmed" not in result.report_tags
+
+
+def test_trimming_both_chapter_and_game_gives_summary_trimmed_tag_once(
+    registry, cfg, tmp_path
+):
+    steps = summ_steps("Сцена.")
+    for n in range(3):
+        steps += chapter_steps(chapter="я" * 1501, game="я" * 3001, suffix=str(n))
+    rig = close_rig(registry, cfg, tmp_path, steps)
+    result = rig.runner.play("ход")
+    memory = rig.runner.bundle.memory
+    assert len(memory.chapters[0].summary) <= 1500
+    assert len(memory.game_summary) <= 3000
+    assert result.report_tags.count("summary_trimmed") == 1
+
+
+def test_trim_after_zero_goes_to_backup_with_summarizer_backup_tag(registry, cfg, tmp_path):
+    steps = summ_steps("Сцена.")
+    for n in range(3):
+        steps += chapter_steps(game="я" * 3001, suffix=str(n))
+    rig = close_rig(
+        registry, cfg, tmp_path, steps, backup=chapter_steps(game="От рассказчика.", suffix="b")
+    )
+    rig.runner.app_cfg.memory.summary_trim_after = 0
+    result = rig.runner.play("ход")
+    assert rig.runner.bundle.memory.game_summary == "От рассказчика."
+    assert "summarizer_backup" in result.report_tags
+    assert "summary_trimmed" not in result.report_tags
 
 
 # память в следующем ходе нарратора
@@ -538,6 +611,7 @@ def test_valid_chapter_and_invalid_game_until_retries_exhausted_go_to_concat(
     for n in range(4):
         steps += chapter_steps(chapter="Годная глава.", game="я" * 3001, suffix=str(n))
     rig = close_rig(registry, cfg, tmp_path, steps, backup=REFUSAL)
+    rig.runner.app_cfg.memory.summary_trim_after = 0
     result = rig.runner.play("ход")
     bundle = rig.runner.bundle
     assert result.boundary_failed is False
@@ -561,7 +635,7 @@ def test_chapter_refusal_then_narrator_backup_writes_chapter_and_game(registry, 
     assert memory.chapters[0].summary == "От рассказчика."
     assert memory.game_summary == "Свёртка рассказчика."
     assert memory.game_summary_chapter == 1
-    assert "refusal_fallback" in result.report_tags
+    assert "summarizer_backup" in result.report_tags
 
 
 def test_chapter_backup_request_is_summarizer_role_on_narrator_model(registry, cfg, tmp_path):
@@ -598,7 +672,7 @@ def test_chapter_both_refused_gives_concat_of_scene_summaries(registry, cfg, tmp
     assert after.memory.game_summary_chapter == 0
     assert after.session.current_chapter.number == 2
     assert after.session.boundary_pending is False
-    assert result.report_tags.count("refusal_fallback") == 1
+    assert result.report_tags.count("summarizer_backup") == 1
 
 
 def test_chapter_fatal_still_gives_error_menu_and_backup_is_not_called(

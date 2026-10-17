@@ -1,8 +1,9 @@
-# Помощники тестов роли world (этап 3, партия 4). Не фикстуры pytest, а функции. Импорты ai_dm.*
-# для новых модулей -- внутри функций: пока кода нет, тесты падают по одному (red).
+# Помощники тестов роли world (этап 3, партия 4; контракт сбоя обновлён партией #22 ТС). Не
+# фикстуры pytest, а функции. Импорты ai_dm.* для новых модулей -- внутри функций: пока кода нет,
+# тесты падают по одному (red).
 #
-# КОНТРАКТ (STAGE3-PLAN A4, П4, Т-9..Т-11). Где план не даёт имён, они выбраны здесь -- это
-# ТРЕБОВАНИЕ к реализации:
+# КОНТРАКТ (STAGE3-PLAN A4, П4, Т-9..Т-11; TS-PLAN п.5). Где план не даёт имён, они выбраны здесь --
+# это ТРЕБОВАНИЕ к реализации:
 #   TurnRunner(..., world_adapter=None): адаптер роли world; None -> тот же, что у нарратора.
 #     Запросы роли world: req.role == "world", набор инструментов tool_set("world").
 #   Вход вызова world: messages[0].content[0].text -- JSON с ключом "candidates": список
@@ -14,8 +15,13 @@
 #     skill_check/saving_throw получают actor (id NPC, "" = герой).
 #   Журнал: записи world -- role "world", run_id "bnd-..." (общий на границу), turn_status
 #     "committed" / "aborted".
-#   Сбой world: TurnResult.boundary_failed, bundle.session.boundary_pending True, бандл как
-#     после автосейва закрытой сцены. TurnResult.offscreen -- доставленные закадровые тексты.
+#   Мягкий сбой world (refusal, invalid -- бюджет невалидных исчерпан, network): вызов
+#     пропускается, граница завершается: метка отчёта "world_skipped",
+#     вердикты не применяются, boundary_pending False, игроку строк нет.
+#     Записи пропущенного вызова в журнале помечаются committed (граница прошла без ошибки).
+#   Жёсткий сбой world (fatal, rounds): TurnResult.boundary_failed, bundle.session.boundary_pending
+#     True, бандл как после автосейва закрытой сцены, меню 2.2. TurnResult.offscreen --
+#     доставленные закадровые тексты.
 #   Конфиг: app.world.max_calls_per_day (0 = выключено).
 #   ai_dm.devtools.world_run.run_world(registry, cfg, pack_dir, *, days, seed, world_adapter,
 #       saves_root, flags=None, mortality_per_day=None) -> WorldRun(bundle, journal, chronicle);

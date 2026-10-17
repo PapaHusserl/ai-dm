@@ -1,22 +1,31 @@
-# Помощники тестов роли summarizer (этап 4, партия P1). Не фикстуры pytest, а функции. Импорты
-# ai_dm.* для новых модулей -- внутри функций: пока кода нет, тесты падают по одному (red).
+# Помощники тестов роли summarizer (этап 4, партия P1; контракт обновлён партией #22 ТС). Не
+# фикстуры pytest, а функции. Импорты ai_dm.* для новых модулей -- внутри функций: пока кода нет,
+# тесты падают по одному (red).
 #
-# КОНТРАКТ (STAGE4-PLAN A3-A5, P1). Где план не даёт имён, они выбраны здесь -- это ТРЕБОВАНИЕ:
+# КОНТРАКТ (STAGE4-PLAN A3-A5, P1; Р2, Т60, ТС). Где план не даёт имён, они выбраны здесь -- это
+# ТРЕБОВАНИЕ:
 #   TurnRunner(..., summarizer_adapter=None, summarizer_model=None) и GameApp(...,
 #     summarizer_adapter=None, summarizer_model=None) -- по образцу world_adapter / world_model.
 #     summarizer_adapter=None -- тот же адаптер, что у нарратора. Модель по умолчанию --
 #     профиль провайдера адаптера (app.profiles[provider].summarizer.model), иначе roles.summarizer.
 #   Запросы роли: req.role == "summarizer", набор инструментов == {"scene_summary"}.
 #   Инструмент scene_summary: {type, title: str ("" = нет), summary: str}; ровно один
-#     вызов, summary 1-600 символов; пустой / длиннее -- ответ инструмента is_error=True
-#     (повтор с пояснением, 3-й неверный ответ -- сбой границы).
+#     вызов, summary не пустая. Пустая -- ответ инструмента is_error=True (повтор с пояснением).
+#     Длиннее app.memory.scene_summary_max (600) -- тоже is_error=True с кратностью сокращения и
+#     «Попытка k из N» (N = app.memory.summary_trim_after, по умолчанию 2); после N отклонений
+#     следующая длинная выжимка принимается обрезанной по границе предложения (метка отчёта
+#     summary_trimmed, SceneSummary.source == "summarizer"). summary_trim_after = 0 -- движок не
+#     режет: длинные ответы идут в бюджет невалидных (retry.invalid_retries).
+#   Бюджет невалидных исчерпан (3-й неверный ответ при invalid_retries = 2) -- не сбой границы, а
+#     мягкий сбой: запасной вызов на модели рассказчика (Р2), затем fallback-выжимка
+#     (source "fallback", метка отчёта summarizer_backup). Меню 2.2 -- только на fatal/rounds.
 #   Как у world, ответ модели = шаг с вызовом инструмента + шаг с итоговым текстом.
 #   Вход: messages[0].content[0].text содержит player_input и narration ходов закрытой сцены
 #     (TurnRecord.scene_id == id закрытой сцены), подсказку (scene.summary / scene.title от
 #     нарратора), причину закрытия. title: приоритет у scene.title нарратора.
 #   Журнал: записи role "summarizer", run_id "bnd-..." (общий с world границы).
-#   Сбой summarizer: TurnResult.boundary_failed, menu ["retry", "switch_model", "save_and_quit"],
-#     session.boundary_pending True, бандл как после автосейва закрытой сцены.
+#   Сбой summarizer (fatal): TurnResult.boundary_failed, menu ["retry", "switch_model",
+#     "save_and_quit"], session.boundary_pending True, бандл как после автосейва закрытой сцены.
 #   Выжимка: SceneSummary(source="summarizer"). Меню 2.2 «сменить модель» при сбое границы
 #     меняет модель (и адаптер из adapter_factory) роли summarizer, нарратор не трогает.
 import json

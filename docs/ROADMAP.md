@@ -5,7 +5,7 @@
 BACKLOG 1–65 — там же, раздел 1); история — docs/decisions/roadmap-r5-proposal.md, docs/ROADMAP-PLAN.md (ред. 2–4).
 Детали партий — docs/HANDOFF.md, BACKLOG — docs/BACKLOG.md.
 
-Обновлено: 2026-10-16 (ЖП1 закрыт частично — сеанс 1 блоки А–Б, находки docs/decisions/zhp1-findings.md;
+Обновлено: 2026-10-17 (#22 ТС ✅; BACKLOG 69–71). Ранее 2026-10-16 (ЖП1 закрыт частично — сеанс 1 блоки А–Б, находки docs/decisions/zhp1-findings.md;
 пользовательский config.toml очищен; BACKLOG 66 → К2; 19ф ✅ закоммичена; #20 ТМ ✅ (сейв v10); #21 ТО ✅; дальше — #22 ТС).
 
 ## Сделано
@@ -24,7 +24,7 @@ R6 #17 Т60 «Сеть» (≈ 0,48 млн при оценке 0,5).
 | 19ф | ✅ **Фикс ЖП1** | фикс | v9 | 0,4 | Q1а–Q5а (docs/19F-PLAN.md): Ф1 первый таймаут/504 → сразу меню (`retry_timeouts`), Ф2а тег `combat_announced`, Ф2б варианты на ходу конца боя, Ф4 `/fight`; ревью и аудит docs/decisions/19f-review.md; закоммичена 2026-10-16; Ф3 → ТМ |
 | 20 | ✅ **ТМ Повторы механики** | мини | **v10** | 0,6 | docs/TM-PLAN.md (Q1а v10, Q2б кулдаун 12h, Q3а, Q4а): T6 + Ф3 (vale t21 — повтор `rest long`); `outcomes`/`money_delta_cp` в `TurnRecord`, `turn_data` в промпте, защиты `gold_repeat`/`rest_repeat`, правило про `recent_turns`; ревью docs/decisions/tm-review.md; закоммичена 2026-10-16. Версии сейва дальше сдвинуты на +1 (Ж0 — v11, М0 — v12, С0 — v13) |
 | 21 | ✅ **ТО Отказы Gemini и репорты** | мини | v10 | 0,45 | docs/TO-PLAN.md (Q1а постоянный переход, Q2б PROHIBITED_CONTENT/BLOCKLIST/SPII, Q3а `[reports] max_mb = 200`, Q4б, Q5а, Q6а): жёсткий отказ → без SOFTEN, `chain_turn` — следующая модель цепочки; T9 один авто-репорт на попытку и модель; `trim_issues`; пак dusk_academy 18+; автономный скрипт `scripts/migrate_dusk_18plus.py` для сейва игрока (v9/v10); ревью и аудит docs/decisions/to-review.md; закоммичена 2026-10-16 |
-| 22 | **ТС Summarizer и границы** | мини | v9 | 0,45 | T7, 61, 46 |
+| 22 | ✅ **ТС Summarizer и границы** | мини | v10 | 0,45 | docs/TS-PLAN.md (Q1–Q8 по рекомендациям): T7 — предел явнее в промпте, мягкий предел (`[memory] summary_trim_after = 2`, обрезка по предложению, тег `summary_trimmed`); 61 — тег `summarizer_backup`; 46 — мягкий сбой world → пропуск (`world_skipped`); ревью и аудит docs/decisions/ts-review.md; закоммичена 2026-10-17. Новые BACKLOG 69 (опыт каждый ход), 70 (час каждый ход) — кандидаты в мини-партию, 71 (журнал по роли) |
 | 23 | Ж0 | M | **v10** | 0,95 | + 63/T8 (`relations_text`), 56, 45, 15, `records_for`, `NPC.services`, `mood` (Му-р), поля 42 |
 | 24–26 | Ж1 (+34), Ж2 (+9, 10), Ж3 (+Му-р, +41) | L, L, M+ | v10 | 3,9 | |
 | 26п | ЖП2 живой прогон | — | — | — | Ж0–Ж3 + ТМ/ТО/ТС |

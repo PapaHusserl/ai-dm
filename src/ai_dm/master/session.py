@@ -61,6 +61,9 @@ EMPTY_NOTES = {
 
 FENCE = re.compile(r"^\s*```[\w-]*\s*$")
 
+# сбои, после которых граница идёт дальше: отказ, невалидные ответы, сеть
+SOFT_REASONS = ("refusal", "invalid", "network")
+
 
 def ends_with_choice(narration) -> bool:
     # рассказ кончается вопросом к игроку или списком вариантов
@@ -113,6 +116,10 @@ class TurnFailed(Exception):
         self.reason = reason
         self.report_tags = report_tags or []
         self.detail = detail
+
+
+def soft_failure(error) -> bool:
+    return isinstance(error, TurnFailed) and error.reason in SOFT_REASONS
 
 
 class MasterResult:

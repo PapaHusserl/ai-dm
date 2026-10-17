@@ -4,12 +4,10 @@ from importlib import resources
 
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
 from ai_dm.master.prompt import dump
-from ai_dm.master.session import MasterSession, TurnFailed
+from ai_dm.master.session import MasterSession, TurnFailed, soft_failure
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.schema import tool_set
-
-SOFT_REASONS = ("refusal", "invalid", "network")
 
 
 def scene_turns(bundle, scene):
@@ -191,6 +189,7 @@ class SummarizerSession:
         # bundle -- рабочая копия границы; результат -- контекст с summary_text и summary_title
         ctx = TurnContext(bundle, registry, cfg, mode="summarize_scene")
         ctx.summary_max = self.app_cfg.memory.scene_summary_max
+        ctx.summary_trim_after = self.app_cfg.memory.summary_trim_after
         session = MasterSession(
             self.adapter, self.app_cfg, journal=self.journal, ledger=self.ledger, run_id=run_id,
             sleeper=self.sleeper, now=self.now, role="summarizer", call_numbers=self.call_numbers,
@@ -204,6 +203,7 @@ class SummarizerSession:
         ctx = TurnContext(bundle, registry, cfg, mode="summarize_chapter")
         ctx.chapter_summary_max = self.app_cfg.memory.chapter_summary_max
         ctx.game_summary_max = self.app_cfg.memory.game_summary_max
+        ctx.summary_trim_after = self.app_cfg.memory.summary_trim_after
         session = MasterSession(
             self.adapter, self.app_cfg, journal=self.journal, ledger=self.ledger, run_id=run_id,
             sleeper=self.sleeper, now=self.now, role="summarizer", call_numbers=self.call_numbers,
@@ -211,7 +211,3 @@ class SummarizerSession:
         )
         session.run(ctx, "", apply, "summarize_chapter", run_id=run_id)
         return ctx
-
-
-def soft_failure(error) -> bool:
-    return isinstance(error, TurnFailed) and error.reason in SOFT_REASONS

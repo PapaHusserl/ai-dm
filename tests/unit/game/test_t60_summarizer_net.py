@@ -1,6 +1,6 @@
 # Т60 «Сеть» (docs/T60-PLAN.md п.1.4, 1.6, раздел 10): summarizer на границе при сетевых сбоях.
 #   network -- мягкий сбой: primary -> backup (модель рассказчика) -> fallback-выжимка (тег
-#   refusal_fallback), без меню; fatal по-прежнему меню. Primary с backup идёт на
+#   summarizer_backup), без меню; fatal по-прежнему меню. Primary с backup идёт на
 #   retry.chain_delays ([] -- одна попытка), backup и primary без backup -- на полных delays.
 from game_kit import end_scene_call, text_step, tools_step
 from summarizer_kit import make_summ_rig, summ_fail_steps, summ_steps
@@ -44,7 +44,7 @@ def test_both_network_gives_fallback_summary_and_finished_boundary(registry, cfg
     assert rig.runner.failed_role is None
     assert rig.runner.bundle.session.boundary_pending is False
     assert scene(rig).source == "fallback"
-    assert "refusal_fallback" in result.report_tags
+    assert "summarizer_backup" in result.report_tags
 
 
 def test_backup_after_network_of_primary_uses_full_delays(registry, cfg, tmp_path):

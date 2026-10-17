@@ -50,6 +50,9 @@ class TurnContext:
         self.game_text = None
         self.chapter_summary_max = 0
         self.game_summary_max = 0
+        # после скольких переполнений движок режет выжимку сам (0 -- не режет)
+        self.summary_overflows = {}
+        self.summary_trim_after = 0
 
     @property
     def turn_seq(self):

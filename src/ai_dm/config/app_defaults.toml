@@ -155,6 +155,9 @@ width = 80
 scene_summary_max = 600
 chapter_summary_max = 1500
 game_summary_max = 3000
+# после скольких переполнений предела движок режет выжимку сам; 0 = не режет;
+# не больше retry.invalid_retries, иначе обрезка не наступит
+summary_trim_after = 2
 
 [world]
 # потолок вызовов роли world в игровой день; 0 = выключено
