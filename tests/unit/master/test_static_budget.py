@@ -8,6 +8,8 @@
 #   Ж0 п.0 (2026-10-17): static_tokens считает схемы с ensure_ascii=False (раньше кириллица в
 #   \uXXXX удваивала tools): explore.total 28022 -> 17666 (rules 8167, tools 9499);
 #   18200 = 17666 + 3 %.
+#   Ж0 п.18 (2026-10-18): правило записи памяти NPC и поля memory_kind/memory_text в npc_update;
+#   explore.total 17666 -> 18185; 18700 = 18185 + 3 %.
 import json
 from importlib import resources
 
@@ -20,8 +22,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# Ж0 п.0: замер explore.total 17666 (rules 8167, tools 9499) + 3 %.
-STATIC_MAX = 18200
+# Ж0 п.18: замер explore.total 18185 + 3 % (до этого п.0: 17666 -> 18200).
+STATIC_MAX = 18700
 
 MODES = sorted(MODE_TOOLS)
 

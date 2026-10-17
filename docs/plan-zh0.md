@@ -54,6 +54,16 @@ R7 #3, M, сейв v10 → v11, смета 0,95 млн. Груминг — svino
 - vulture_allowlist: задел v11 (13 имён) — блок с пометкой этапа, строку убрать, когда поле начнут читать; устаревшая
   строка `relations_text` удалена (согласие проектировщика 2026-10-17).
 
+### Решения по подшагу 2 (проектировщик, 2026-10-18)
+- Лимит событий памяти проверяется до изменения отношения (`memory_problem`): при `limit-exceeded` запрос не
+  применяется целиком.
+- `notes` показываются и у `known_npcs`, не только у `scene_npcs`.
+- `memory_last`, `goals_data` (kaban сверх плана) — по Q6 и п. 17.
+- `memory_text` длиннее 120 знаков (вариант б): обрезать по последнему пробелу до предела с «…» (итог ≤ 120),
+  рассказчику — пометка в ответе «текст укорочен до 120», в decision.log — запись; запрос не отклоняется.
+- По аудиту: обрезка — `clamped` с отдельной меткой `text-shortened` (при урезанном отношении остаётся
+  `limit-exceeded`); рассказчику — только активные цели NPC; неиспользуемый параметр мока `turns_per_scene` удалён.
+
 ## План (papa-kaban, 2026-10-17)
 Находка: `PromptBuilder.static_tokens` (master/prompt.py:217) считает схемы через `json.dumps` с `ensure_ascii=True` —
 кириллица ×2. Реальная статика explore ≈ 17,7k при cpt 2,5 и ≈ 20,1k при 2,2 (не 28k/32k).
@@ -161,6 +171,22 @@ TESTS — по подшагам: tests/unit/{master,protocol,rules,persistence,c
 - kaban-svekrov: партия чистая; MEMORY_KINDS/GOAL_KINDS — из Q2/Q3; согласие на allowlist и раздел «Решения по
   подшагу 1» подтверждены проектировщиком.
 - Расход: kaban 49k + 64k, doeba 79k + 86k, mama-kaban 30k, svekrov 29k.
+
+## Правки по ревью — подшаг 2
+- Сделано: `[npc_memory]`/`NpcMemoryConfig`, `rules/npc_memory.py`, поля памяти `NpcUpdate`, `change_memory`/
+  `memory_problem`, `refresh_weight` в `change_attitude` и `settle_parley`, `npc_memory_data` в `state_data` (память,
+  цели, `notes`), правило записи в `narrator_rules.md`, `STATIC_MAX` 18700, мок 50 сцен; из allowlist — `MEMORY_KINDS`,
+  `goals` (`GOAL_KINDS` остаётся: цели пока никто не пишет).
+- mama-kaban: (а) `memory_text` без вида → `memory_text_without_kind` — исправлено оркестратором; (б) лимит событий
+  проверялся после `change_attitude` — перенесён в `memory_problem` (решение 2026-10-18); WINDOW мока 26000 принят,
+  перевод на большое окно — BACKLOG 81; `memory_last`/`goals_data` приняты.
+- kaban-svekrov: лишнего нет; три мелочи вынесены проектировщику и приняты (метка `text-shortened`, только активные
+  цели, удалён параметр мока `turns_per_scene`).
+- mutmut (17 функций): 708, убито 572, выжило 136; на новых строках 2 — закрыты тестами, `memory_problem` 9/10/18–20 —
+  тексты сообщений; старые строки — BACKLOG 80.
+- Проверки: 17701 passed, cov 97,67 %, smells 200/200, dead чист; ruff — 18 старых E501, новых нет.
+- Расход: kaban 90k + 27k + 25k, doeba 142k + 35k + 40k + 30k + 37k (sonnet), mama-kaban 32k, svekrov 36k;
+  архитектор (R9) 85k + 108k + 120k.
 
 ## Находки груминга
 - В R7 (docs/plan-roadmap-r7.md:136) состав Ж0 шире ROADMAP: бестиарий, поля напарника и У2 — по 0б решает архитектор.

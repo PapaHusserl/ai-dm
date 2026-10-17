@@ -13,6 +13,7 @@ from ai_dm.config.settings import load_rules_config
 from ai_dm.game.combat_flow import finish_combat, settle_parley
 from ai_dm.rules.xp import combat_xp
 from ai_dm.state.creature import ActiveEffect
+from ai_dm.state.relations import NpcEvent, NpcSceneMemory
 from ai_dm.state.scene import SceneState
 from ai_dm.state.world import NPC
 
@@ -188,3 +189,55 @@ def test_scene_limit_counts_the_applied_change_from_zero(registry, cfg):
     bundle.session.current_scene = SceneState.model_construct(attitude_spent={})
     settle_parley(bundle, cfg)
     assert bundle.session.current_scene.attitude_spent == {"g1": 10}
+
+
+# Ж0 подшаг 2 (п. 16): settle_parley обновляет вес памяти NPC за текущую сцену (refresh_weight)
+
+def with_memory(bundle, weight=0):
+    scene = SceneState(id="scene_9", started_at_s=900)
+    bundle.session.current_scene = scene
+    bundle.world.npcs["g1"].memory = [
+        NpcSceneMemory(
+            scene_id="scene_9", at_s=900, weight=weight,
+            events=[NpcEvent(kind="threat", turn_seq=1, text="угрожал")],
+        )
+    ]
+    return scene
+
+
+def test_parley_refreshes_memory_weight_to_spent_attitude(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered"})
+    with_memory(bundle)
+    settle_parley(bundle, cfg)
+    assert bundle.world.npcs["g1"].memory[0].weight == 10
+
+
+def test_parley_defect_weight_is_twenty_capped_by_scene_limit(registry, cfg):
+    bundle = fight(registry, cfg)
+    with_memory(bundle)
+    flag(bundle, "g1", "parley_defected")
+    settle_parley(bundle, cfg)
+    assert bundle.world.npcs["g1"].memory[0].weight == 20
+
+
+def test_parley_offended_weight_is_absolute(registry, cfg):
+    bundle = fight(registry, cfg)
+    with_memory(bundle)
+    flag(bundle, "g1", "parley_offended")
+    settle_parley(bundle, cfg)
+    assert bundle.world.npcs["g1"].memory[0].weight == 10
+
+
+def test_parley_without_memory_for_scene_creates_none(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered"})
+    bundle.session.current_scene = SceneState(id="scene_9", started_at_s=900)
+    settle_parley(bundle, cfg)
+    assert bundle.world.npcs["g1"].memory == []
+
+
+def test_parley_keeps_memory_of_other_scenes(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered"})
+    with_memory(bundle, weight=3)
+    bundle.session.current_scene = SceneState(id="scene_10", started_at_s=1000)
+    settle_parley(bundle, cfg)
+    assert bundle.world.npcs["g1"].memory[0].weight == 3

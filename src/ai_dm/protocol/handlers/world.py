@@ -3,12 +3,14 @@ from ai_dm.protocol.hints import allowed
 from ai_dm.rules import divine, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.mortality_guard import remove_creature
+from ai_dm.rules.npc_memory import events_full, refresh_weight, remember
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
 from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.memory import add_entry
+from ai_dm.state.relations import NPC_EVENT_TEXT_MAX, NpcEvent
 from ai_dm.state.world import NPC, Connection, DangerMark, GlobalEvent, Location, TradeProfile
 
 MASTER_DEATH_CAUSES = ("goal", "hazard")
@@ -162,6 +164,8 @@ def change_attitude(ctx, npc, delta, decision):
     spent[npc.id] = spent.get(npc.id, 0) + abs(applied)
     decision.result["attitude"] = npc.attitude
     decision.log.append(f"Отношение {npc.name}: {applied:+d} (теперь {npc.attitude})")
+    if ctx.scene is not None:
+        refresh_weight(npc, ctx.scene)
     if abs(applied) < abs(delta):
         decision.status = "clamped"
         decision.report_tag = "limit-exceeded"
@@ -169,6 +173,36 @@ def change_attitude(ctx, npc, delta, decision):
         decision.signal_to_master = (
             f"Отношение изменено только на {applied:+d}: опиши реакцию по факту."
         )
+
+
+def change_memory(ctx, npc, request, decision):
+    # событие в память NPC о герое (сцена обязательна: проверено в memory_problem);
+    # вес новой записи -- потраченное за сцену отношение (звать после change_attitude)
+    scene = ctx.scene
+    text = request.memory_text or ""
+    short = shorten_memory_text(text)
+    event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
+    remember(npc, scene, event, ctx.cfg.npc_memory)
+    decision.log.append(f"{npc.name} запомнил: {request.memory_kind}")
+    if short != text:
+        note = f"текст укорочен до {NPC_EVENT_TEXT_MAX}"
+        decision.log.append(f"{npc.name}: {note}")
+        decision.reason = f"{decision.reason}; {note}" if decision.reason else note
+        decision.signal_to_master = (
+            f"{decision.signal_to_master} " if decision.signal_to_master else ""
+        ) + f"Память NPC: {note} знаков."
+        if decision.status == "accepted":
+            decision.status = "clamped"
+            decision.report_tag = "text-shortened"
+
+
+def shorten_memory_text(text):
+    # по последнему пробелу до предела с «…» (итог <= предела); без пробела -- жёсткий срез
+    if len(text) <= NPC_EVENT_TEXT_MAX:
+        return text
+    head = text[: NPC_EVENT_TEXT_MAX - 1]
+    cut = head.rfind(" ")
+    return (head[:cut] if cut > 0 else head).rstrip() + "…"
 
 
 def change_follows(ctx, npc, request, decision):
@@ -224,7 +258,8 @@ def nothing_to_change(request, *names) -> bool:
 def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
-        request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns"
+        request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
+        "memory_kind", "memory_text",
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -233,7 +268,27 @@ def update_problem(ctx, npc, request):
         return Invalid(
             code="trade_kind_with_status", message="trade_kind и status нельзя в одном запросе"
         )
-    return death_problem(ctx, npc, request) or merchant_update_problem(ctx, npc, request)
+    return (
+        memory_problem(ctx, npc, request) or death_problem(ctx, npc, request)
+        or merchant_update_problem(ctx, npc, request)
+    )
+
+
+def memory_problem(ctx, npc, request):
+    if request.memory_kind is None:
+        if request.memory_text is None:
+            return None
+        return Invalid(code="memory_text_without_kind", message="memory_text нужен с memory_kind")
+    if ctx.scene is None:
+        return Invalid(code="no_scene", message="память NPC пишется в сцене, а сцены сейчас нет")
+    if not events_full(npc, ctx.scene, ctx.cfg.npc_memory):
+        return None
+    # до любых изменений: отношение тоже не применяется
+    return rejected(
+        f"в сцене уже {ctx.cfg.npc_memory.max_events_per_scene} событий памяти",
+        f"{npc.name} больше не запомнит в этой сцене: лимит событий памяти. Опиши по факту.",
+        report_tag="limit-exceeded",
+    )
 
 
 def death_problem(ctx, npc, request):
@@ -264,6 +319,8 @@ def npc_update(ctx, request):
     change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)
+    if request.memory_kind is not None:
+        change_memory(ctx, npc, request, decision)
     if request.status is not None:
         change_status(ctx, npc, request, decision)
     if request.trade_kind is not None:

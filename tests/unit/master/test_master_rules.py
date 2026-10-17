@@ -70,6 +70,7 @@ def test_rules_mention_only_known_tools():
         "lost_items", "gear_looted", "purse_cp", "sell_factor", "min_cp", "max_cp", "total_cp",
         "cost_cp", "price_cp", "item_id", "trade_kind", "holder_npc_id", "haggle_percent",
             "bad_circle", "prepared_swap", "recent_turns",
+        "memory_kind", "memory_text", "memory_last",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []

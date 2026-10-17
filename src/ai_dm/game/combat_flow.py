@@ -6,6 +6,7 @@ from ai_dm.game.controllers import MasterChoiceController, PlayerController
 from ai_dm.game.scene import hero_of
 from ai_dm.rules.derived import ac_summary, clock_text
 from ai_dm.rules.inventory import effects_line
+from ai_dm.rules.npc_memory import refresh_weight
 from ai_dm.rules.xp import combat_xp
 from ai_dm.state.session import LastCombat
 
@@ -205,6 +206,8 @@ def settle_parley(bundle, cfg) -> None:
         before = npc.attitude
         npc.attitude = max(-100, min(100, npc.attitude + amount))
         spent[npc.id] = spent.get(npc.id, 0) + abs(npc.attitude - before)
+        if scene is not None:
+            refresh_weight(npc, scene)
 
 
 def finish_combat(bundle, registry) -> str:

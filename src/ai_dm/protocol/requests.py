@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator,
 from ai_dm.content.models.common import Ability, DcCategory, Skill
 from ai_dm.state.combat import ImproviseEffect, Intent
 from ai_dm.state.gender import Gender
+from ai_dm.state.relations import MEMORY_KINDS
 from ai_dm.state.world import Tone
 
 # strict-схема без union: необязательные поля обязательны для модели и имеют нейтральное значение
@@ -13,6 +14,7 @@ AbilityOrNone = Literal[(*get_args(Ability), "none")]
 SkillOrNone = Literal[(*get_args(Skill), "none")]
 GenderOrNone = Literal[(*get_args(Gender), "none")]
 GenderUpdate = Literal[(*get_args(Gender), "none", "unset")]
+MemoryKindOrNone = Literal[(*MEMORY_KINDS, "none")]
 ImproviseEffectOrNone = Literal[(*get_args(ImproviseEffect), "none")]
 DcCategoryOrNone = Literal[(*get_args(DcCategory), "none")]
 ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
@@ -505,7 +507,15 @@ class NpcUpdate(NpcUpdateBase):
     trade_kind: str = Field(
         "none", description="Сделать NPC торговцем типа (пресет ассортимента); none = не менять."
     )
-    NEUTRAL: ClassVar[dict] = {**NpcUpdateBase.NEUTRAL, "trade_kind": "none"}
+    memory_kind: MemoryKindOrNone = Field(
+        "none", description="Вид значимого поступка героя, который NPC запомнит; none = нет."
+    )
+    memory_text: str = Field(
+        "", description="Коротко, что сделал герой (до 120 знаков); только вместе с memory_kind."
+    )
+    NEUTRAL: ClassVar[dict] = {
+        **NpcUpdateBase.NEUTRAL, "trade_kind": "none", "memory_kind": "none", "memory_text": "",
+    }
 
 
 class CompanionUpdate(Request):

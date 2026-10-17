@@ -17,6 +17,7 @@ from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
 from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
+from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.trade import (
     category_models,
@@ -47,6 +48,24 @@ def identity_data(who):
         data["gender"] = who.gender
     if who.pronouns:
         data["pronouns"] = who.pronouns
+    return data
+
+
+def npc_memory_data(npc, short=False):
+    # заметки, память о герое и цели NPC: ключи только если непусты;
+    # short (known_npcs) -- заметки, цели и последнее событие вместо всей памяти
+    data = {}
+    if npc.notes:
+        data["notes"] = npc.notes
+    if short:
+        last = memory_last(npc)
+        if last is not None:
+            data["memory_last"] = last
+    elif npc.memory:
+        data["memory"] = memory_data(npc)
+    goals = goals_data(npc)
+    if goals:
+        data["goals"] = goals
     return data
 
 
@@ -430,6 +449,7 @@ class PromptBuilder:
                     item.update(identity_data(npc))
                     if npc.trade is not None:
                         item["merchant"] = npc.trade.kind
+                    item.update(npc_memory_data(npc))
                     scene_npcs.append(item)
             scene_npcs.sort(key=lambda n: n["id"])
         known_npcs = []
@@ -439,6 +459,7 @@ class PromptBuilder:
             item.update(identity_data(n))
             if n.follows == hero.id:
                 item["follows"] = hero.id
+            item.update(npc_memory_data(n, short=True))
             known_npcs.append(item)
         secrets = []
         # секреты только у NPC сцены (локация героя: ход идёт)

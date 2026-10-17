@@ -46,11 +46,9 @@ knowledge  # unused variable (src/ai_dm/state/hero.py:213) -- Ж3
 KNOWLEDGE_KINDS  # unused variable (src/ai_dm/state/knowledge.py:4) -- Ж3
 KNOWLEDGE_SOURCES  # unused variable (src/ai_dm/state/knowledge.py:5) -- Ж3
 from_ref  # unused variable (src/ai_dm/state/knowledge.py:18) -- Ж3
-MEMORY_KINDS  # unused variable (src/ai_dm/state/relations.py:8) -- Ж0 подшаг 2
 GOAL_KINDS  # unused variable (src/ai_dm/state/relations.py:12) -- Ж0 подшаг 2
 ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
 scene_mood  # unused variable (src/ai_dm/state/scene.py:32) -- Ж3
-goals  # unused variable (src/ai_dm/state/world.py:97) -- Ж0 подшаг 2
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
 pending_acts  # unused variable (src/ai_dm/state/world.py:225) -- BACKLOG 46

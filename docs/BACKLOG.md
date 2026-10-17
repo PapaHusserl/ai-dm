@@ -719,3 +719,24 @@ updated: 2026-10-17
 cap 30k). Решение проектировщика (груминг Ж0, docs/plan-zh0.md, решение 11): до 20 сцен на NPC в отношении героя, у
 каждой вес; новая сцена вытесняет сцену с наименьшим весом. Вес — по тому, насколько сцена изменила отношения (улучшила
 или ухудшила). Мок на 50 сцен проверяет лимит и вытеснение. Шаг — Ж0.
+
+## 80. Выжившие мутанты на старых строках функций Ж0 подшага 2
+status: idea
+priority: low
+updated: 2026-10-18
+
+mutmut Ж0 подшага 2 (docs/plan-zh0.md): выжившие на строках до партии — `world.change_attitude` 6 (`spent.get` по
+умолчанию, знак `delta`, ключ `result["attitude"]`), `world.update_problem` ≈ 17 (`follows == "hero"`, коды и тексты
+`npc_not_alive`, `trade_kind_with_status`, `empty_update`), `world.npc_update` 4 (ключ `result["trade_kind"]`),
+`combat_flow.settle_parley` 4 (`has_parley_flag(None…)`, знак `delta`), `PromptBuilder.state_data` ≈ 100 (вокруг
+`trade_data`; тесты `state_data` в TESTS не входили). Добить при касании функций.
+
+## 81. Окно мока памяти без подбора WINDOW
+status: idea
+priority: low
+updated: 2026-10-18
+
+`tests/scenarios/memory_script.py:WINDOW` (test_stage4_memory) подбирается под размер статики: в Ж0 подшаге 2 поднят
+25400 → 26000, и проходит только это значение — следующая правка `narrator_rules` снова сломает тест. Перевести на
+большое окно и фиксированный `context_cap`, как мок памяти NPC (`npc_memory_bundle`). Рекомендация mama-kaban, ревью Ж0
+подшага 2.

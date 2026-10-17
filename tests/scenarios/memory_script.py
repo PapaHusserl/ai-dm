@@ -44,7 +44,13 @@ MODEL = "mock"
 # 25500 -> 25400: Ж0 п.0 (пятая ступень вытеснения «chapters», кэшируемая статика вне context_cap):
 # при 25500 главы не вытесняются, ступень не срабатывает; при 25400 срабатывает, но выжимки глав
 # сцены 50 ещё на месте; при 25300 и ниже глава 1 уходит уже на сцене 50 (тесты сцены 50 падают).
-WINDOW = 25400
+# 25400 -> 26000: Ж0 п.18 (правило памяти NPC, поля memory_kind/memory_text): при 25400-25800
+# главы вытесняются раньше сцены 50; при 26200 не срабатывает одна из ступеней; 26000 проходит.
+WINDOW = 26000
+# мок памяти NPC: окно не подбирается (бюджет = статика + context_cap, пока окно больше)
+NPC_MEMORY_WINDOW = 400_000
+NPC_MEMORY_CONTEXT_CAP = 16_000
+MEMORY_NPC = "witness"
 SCENES = 52
 TURNS_PER_SCENE = 3
 SCENES_PER_CHAPTER = 12
@@ -55,11 +61,21 @@ GAME_FILLER = " Игра идёт, обещания копятся." * 40
 LONG_NAME = "Достопочтенный хранитель дальних дорог и старых обещаний " * 14
 
 
-def memory_settings():
-    # (app_cfg, rules_cfg) под мок-модель: окно WINDOW, 12 сцен в главе
+def memory_delta(scene_number):
+    # изменение отношения MEMORY_NPC в сцене scene_number (нумерация сцен прогона с 1):
+    # модуль 1..9 по кругу (есть равные веса -- при вытеснении решает at_s), знак чередуется
+    size = (scene_number * 7) % 9 + 1
+    return size if scene_number % 2 else -size
+
+
+def memory_settings(npc_memory=False):
+    # (app_cfg, rules_cfg) под мок-модель: окно WINDOW, 12 сцен в главе;
+    # npc_memory: большое окно и фиксированный context_cap вместо подбора WINDOW (Ж0 подшаг 2)
     base = settings()
     app = base.app.model_copy(deep=True)
-    app.context_windows[MODEL] = WINDOW
+    app.context_windows[MODEL] = NPC_MEMORY_WINDOW if npc_memory else WINDOW
+    if npc_memory:
+        app.master.context_cap = NPC_MEMORY_CONTEXT_CAP
     app.prices[MODEL] = next(iter(app.prices.values())).model_copy()
     rules = base.rules.model_copy(deep=True)
     rules.scene.max_per_chapter = SCENES_PER_CHAPTER
@@ -89,6 +105,16 @@ def memory_bundle(registry):
     return bundle
 
 
+def npc_memory_bundle(registry):
+    # memory_bundle + NPC MEMORY_NPC в локации героя (он в scene_npcs, на нём копится память)
+    bundle = memory_bundle(registry)
+    bundle.world.npcs[MEMORY_NPC] = NPC(
+        id=MEMORY_NPC, name="Свидетель", named=True, means=["m"],
+        location_id=bundle.heroes[0].location_id,
+    )
+    return bundle
+
+
 def end_scene_call(call_id):
     return ToolCall(
         id=call_id, name="end_scene", input={"type": "end_scene", "summary": ""}
@@ -102,11 +128,14 @@ def answered(request):
 class MemoryMock:
     # один адаптер на три роли; ответы зависят только от роли, набора инструментов и счётчиков
     # (turns_done, scenes_done, chapters_done -- стартовое состояние при продолжении после загрузки)
-    def __init__(self, *, turns_done=0, scenes_done=0, chapters_done=0, turns_per_scene=None):
+    # npc_memory=True: первый ход каждой сцены -- npc_update MEMORY_NPC с отношением
+    # memory_delta(k) и событием памяти «Сцена k» (k -- номер сцены прогона)
+    def __init__(self, *, turns_done=0, scenes_done=0, chapters_done=0, npc_memory=False):
+        self.npc_memory = npc_memory
         self.turns_done = turns_done
         self.scenes_done = scenes_done
         self.chapters_done = chapters_done
-        self.turns_per_scene = turns_per_scene or TURNS_PER_SCENE
+        self.turns_per_scene = TURNS_PER_SCENE
         self.requests = []
         # первые запросы нарратора каждого хода (без раундов инструментов), по порядку
         self.narrator_turns = []
@@ -141,8 +170,18 @@ class MemoryMock:
         if number % self.turns_per_scene == 0:
             call = end_scene_call(f"es-{number}")
             return self.reply(request, [call], "tool_use")
+        if self.npc_memory and (number - 1) % self.turns_per_scene == 0:
+            return self.reply(request, [self.memory_call(number)], "tool_use")
         text = f"Ход {number}. {NARRATION_FILLER}"
         return self.reply(request, [Text(text=text)], "end_turn")
+
+    def memory_call(self, number):
+        k = (number - 1) // self.turns_per_scene + 1
+        data = {
+            "type": "npc_update", "npc_id": MEMORY_NPC, "attitude_delta": memory_delta(k),
+            "memory_kind": "helped", "memory_text": f"Сцена {k}",
+        }
+        return ToolCall(id=f"nm-{number}", name="npc_update", input=data)
 
     def scene_summary(self, request):
         self.scenes_done += 1
@@ -192,9 +231,9 @@ def new_run(
     # adapters: (narrator, summarizer, world) для replay; по умолчанию один MemoryMock на всех
     from ai_dm.game.turn import TurnRunner
 
-    app, rules = memory_settings()
-    bundle = bundle or memory_bundle(registry)
     mock = mock or MemoryMock()
+    app, rules = memory_settings(npc_memory=mock.npc_memory)
+    bundle = bundle or (npc_memory_bundle if mock.npc_memory else memory_bundle)(registry)
     narrator, summarizer, world = adapters or (mock, mock, mock)
     journal = Journal(root, bundle.world.world_id, app.journal)
     ledger = CostLedger(root, bundle.world.world_id)

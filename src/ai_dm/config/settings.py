@@ -135,6 +135,13 @@ class AttitudeConfig(BaseModel):
     per_scene: int
 
 
+class NpcMemoryConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # сцен в памяти одного NPC о герое; новая сцена вытесняет сцену с наименьшим весом
+    max_scenes: int = Field(default=20, gt=0)
+    max_events_per_scene: int = Field(default=5, gt=0)
+
+
 class FavorConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # ТЗ 4.2: шаг ±2 за поступок, ±3 к одному богу за сцену
@@ -311,6 +318,7 @@ class RulesConfig(BaseModel):
     saves: SavesConfig
     scene: SceneConfig
     attitude: AttitudeConfig
+    npc_memory: NpcMemoryConfig = NpcMemoryConfig()
     favor: FavorConfig = FavorConfig()
     parley: ParleyConfig = ParleyConfig()
     disarm: DisarmConfig = DisarmConfig()
