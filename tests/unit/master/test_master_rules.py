@@ -288,3 +288,31 @@ def test_rules_say_recent_turns_are_past_and_calls_not_repeated():
     at = text.index("`recent_turns`")
     assert "outcomes" in text[at:at + 400]
     assert "не повторяй" in text[at:at + 400]
+
+
+# ТХ: раздел «Опыт и время» согласован с логами движка
+
+def xp_time_section():
+    text = rules_text()
+    return text[text.index("## Опыт и время"):].split("\n## ", 1)[0]
+
+
+def test_rules_xp_section_says_once_per_scene():
+    assert "одного раза за сцену" in xp_time_section()
+
+
+def test_rules_time_section_mentions_travel_to():
+    assert "`advance_time.travel_to`" in xp_time_section()
+
+
+def test_rules_quote_xp_log_prefix():
+    from ai_dm.protocol.handlers.resources import XP_LOG
+
+    assert XP_LOG in xp_time_section()
+
+
+def test_rules_quote_time_log_prefix_before_placeholder():
+    from ai_dm.protocol.handlers.resources import TIME_LOG
+
+    prefix = TIME_LOG.split("{}")[0]
+    assert prefix and prefix in xp_time_section()

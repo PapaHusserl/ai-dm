@@ -169,6 +169,10 @@ class LimitsConfig(BaseModel):
     gold_explicit_max_cp_by_level: dict[int, int]
     # окно последних ходов, где повтор той же суммы explicit gain отклоняется; 0 -- выкл.
     gold_repeat_turns: int = Field(default=3, ge=0)
+    # наград опыта за сцену; сверх лимита award_xp отклоняется; 0 -- выкл.
+    xp_awards_per_scene: int = Field(default=1, ge=0)
+    # окно последних ходов, где повтор часа без пути и дела отклоняется; 0 -- выкл.
+    time_repeat_turns: int = Field(default=2, ge=0)
     # кулдаун повторного длинного отдыха от конца предыдущего (строка Duration)
     long_rest_cooldown: str = "12h"
 

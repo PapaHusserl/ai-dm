@@ -22,7 +22,7 @@ ui ──> game ──> master ──> llm
 | Пакет | Ответственность | Этап |
 |---|---|---|
 | `core` | RNG, кубики, игровые часы/календарь, длительности, id, доменные события, ошибки. Ни от чего не зависит. | 1 |
-| `config` | `RulesConfig`/`AppConfig` (Pydantic) из `defaults.toml` в пакете + пользовательский `ai-dm.toml` (stdlib `tomllib`). Все «в конфиге» из ТЗ — здесь. | 1 (rules), 2 (app) |
+| `config` | `RulesConfig`/`AppConfig` (Pydantic) из `defaults.toml` в пакете + пользовательский `~/.config/ai-dm/config.toml` (stdlib `tomllib`; только app-секции из `app_defaults.toml`, rules-секции `defaults.toml` в нём отвергаются). Все «в конфиге» из ТЗ — здесь. | 1 (rules), 2 (app) |
 | `content` | Pydantic-схемы контента (класс, подкласс, вид/раса, предыстория, черта, умение, оружие, доспех, предмет, заклинание, монстр, состояние), загрузчик YAML, реестр по id с наложением слоёв, реестр именованных обработчиков. | 1 |
 | `srd` | Данные SRD 5.2 в YAML (package data). | 1 (минимум), далее трек контента |
 | `state` | Модели runtime-состояния: герой, существо, NPC, фракция, бог, локация, триггеры, мир, бой, сессия, сейв-бандл. Только данные, без логики. | 1 |
@@ -489,7 +489,11 @@ ui ──> game ──> master ──> llm
 Защиты от копирования прошлых ходов (rejected с тегом в авто-репорт): `gold` explicit gain — отказ `gold_repeat`, если
 та же сумма (после капа) была дельтой хода за последние `[limits] gold_repeat_turns` (3); `rest long` — отказ
 `rest_repeat`, пока не прошло `[limits] long_rest_cooldown` (12h) от `HeroState.long_rest_end_s` (герой с 0 HP —
-прежний Invalid `rest_impossible`).
+прежний Invalid `rest_impossible`); `award_xp` — отказ `xp_repeat`, если в `recent_turns` текущей сцены уже `[limits]
+xp_awards_per_scene` (1) записей с outcome «Опыт: +» (0 — выкл.); `advance_time` с `category: hour` — отказ
+`time_repeat`, если за последние `[limits] time_repeat_turns` (2) ходов был тот же сдвиг («Время идёт: 3600 с») на ходу
+без дела (в `requests` только `advance_time`/`offer_choices`; путь `travel_to` не затрагивается; 0 — выкл.). Строки
+лога — константы `XP_LOG`, `TIME_LOG` в `protocol/handlers/resources.py`.
 
 ## C4. Журнал и Replay
 

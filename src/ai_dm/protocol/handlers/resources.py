@@ -42,6 +42,9 @@ from ai_dm.state.world import CustomItem
 
 PREY_FEATURE = "hunters_prey"
 USE_EFFECTS = ("heal", "ac_bonus", "resist")
+# строки лога, по которым защиты от повтора находят прошлые начисления в outcomes
+XP_LOG = "Опыт: +"
+TIME_LOG = "Время идёт: {} с"
 TAKE_WORDS = {"given": "Отдано", "lost": "Потеряно", "stolen": "Украдено", "spent": "Израсходовано"}
 
 
@@ -673,12 +676,32 @@ def gold_hoard(ctx, request):
     )
 
 
+def xp_awarded_in_scene(ctx) -> list[int]:
+    # turn_seq записей recent_turns текущей сцены, где герою уже начислен опыт
+    if ctx.scene is None:
+        return []
+    return [
+        turn.turn_seq for turn in ctx.bundle.memory.recent_turns
+        if turn.scene_id == ctx.scene.id
+        and any(line.startswith(XP_LOG) for line in turn.outcomes)
+    ]
+
+
 def award_xp(ctx, request):
+    limit = ctx.cfg.limits.xp_awards_per_scene
+    seqs = xp_awarded_in_scene(ctx) if limit > 0 else []
+    if seqs and len(seqs) >= limit:
+        return rejected(
+            "повтор награды",
+            f"За эту сцену опыт уже начислен (ход {seqs[-1]}). Повторно не начисляй; "
+            "новая награда — за новую цель в следующей сцене.",
+            report_tag="xp_repeat",
+        )
     amount = xp.quest_xp(ctx.hero, request.scale, ctx.registry, ctx.cfg)
     ctx.hero.sheet.xp += amount
     return Decision(
         status="accepted", result={"xp": amount, "total_xp": ctx.hero.sheet.xp},
-        log=[f"Опыт: +{amount} ({request.reason})"],
+        log=[f"{XP_LOG}{amount} ({request.reason})"],
     )
 
 
@@ -774,18 +797,44 @@ def rest(ctx, request):
     return Decision(status="accepted", result=result, log=log)
 
 
+def time_repeated(ctx, seconds):
+    # turn_seq хода из последних time_repeat_turns, где уже шёл тот же сдвиг времени без пути
+    # и дела (в requests только advance_time и offer_choices), или None
+    window = ctx.cfg.limits.time_repeat_turns
+    if window == 0:
+        return None
+    idle = {"advance_time", "offer_choices"}
+    for turn in ctx.bundle.memory.recent_turns[-window:]:
+        if TIME_LOG.format(seconds) in turn.outcomes and set(turn.requests) <= idle:
+            return turn.turn_seq
+    return None
+
+
+def time_by_category(ctx, request):
+    world = ctx.bundle.world
+    if request.category == "hour":
+        seq = time_repeated(ctx, ctx.cfg.time.advance_categories["hour"])
+        if seq is not None:
+            return rejected(
+                "повтор часа",
+                f"Час уже прошёл на ходу {seq} без пути и дела. Время не двигай: опиши "
+                "сцену по факту, а ожидание продолжай только по просьбе героя.",
+                report_tag="time_repeat",
+            )
+    seconds = time_ops.advance_by_category(world.clock, request.category, ctx.cfg)
+    result = {"seconds": seconds, "now_s": world.clock.now_s}
+    log = [TIME_LOG.format(seconds)]
+    concentration_note(ctx, log, result)
+    return Decision(status="accepted", result=result, log=log)
+
+
 def advance_time(ctx, request):
     if (request.category is None) == (request.travel_to is None):
         return Invalid(
             code="category_or_travel_to", message="нужно ровно одно из category и travel_to"
         )
-    world = ctx.bundle.world
     if request.category is not None:
-        seconds = time_ops.advance_by_category(world.clock, request.category, ctx.cfg)
-        result = {"seconds": seconds, "now_s": world.clock.now_s}
-        log = [f"Время идёт: {seconds} с"]
-        concentration_note(ctx, log, result)
-        return Decision(status="accepted", result=result, log=log)
+        return time_by_category(ctx, request)
     return travel(ctx, request)
 
 

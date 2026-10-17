@@ -127,6 +127,59 @@ def test_rest_repeat_does_not_move_the_clock(registry, tmp_path):
     assert app.bundle.world.clock.now_s == end_s
 
 
+# ТХ: xp_repeat и time_repeat
+
+def xp_call(call_id="x1"):
+    return {
+        "id": call_id, "name": "award_xp",
+        "input": {"type": "award_xp", "scale": "minor", "reason": "цель"},
+    }
+
+
+def hour_call(call_id="h1"):
+    return {
+        "id": call_id, "name": "advance_time",
+        "input": {"type": "advance_time", "category": "hour"},
+    }
+
+
+def two_turns(registry, tmp_path, call):
+    steps = [
+        tools_step(call()), text_step("Раз."),
+        tools_step(call()), text_step("Два."),
+    ]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    return app.handle("Первый"), app.handle("Второй")
+
+
+def test_xp_repeat_tag_is_in_reply_turn(registry, tmp_path):
+    first, second = two_turns(registry, tmp_path, xp_call)
+    assert first.turn.report_tags == []
+    assert second.turn.report_tags == ["xp_repeat"]
+
+
+def test_xp_repeat_writes_one_report_with_tag(registry, tmp_path):
+    two_turns(registry, tmp_path, xp_call)
+    found = issues(tmp_path)
+    assert len(found) == 1
+    assert found[0].name.endswith("-t2-xp_repeat")
+    assert meta_of(found[0])["tags"] == ["xp_repeat"]
+
+
+def test_time_repeat_tag_is_in_reply_turn(registry, tmp_path):
+    first, second = two_turns(registry, tmp_path, hour_call)
+    assert first.turn.report_tags == []
+    assert second.turn.report_tags == ["time_repeat"]
+
+
+def test_time_repeat_writes_one_report_with_tag(registry, tmp_path):
+    two_turns(registry, tmp_path, hour_call)
+    found = issues(tmp_path)
+    assert len(found) == 1
+    assert found[0].name.endswith("-t2-time_repeat")
+    assert meta_of(found[0])["tags"] == ["time_repeat"]
+
+
 # обе метки в одном ходу -- один каталог
 
 def test_both_tags_in_one_turn_make_one_report(registry, tmp_path):

@@ -1,13 +1,13 @@
 # Приёмка этапа 4 (STAGE4-PLAN, P4): мок-прогон 52 сцен (4 главы + 4 сцены пятой) на мок-модели
-# с окном WINDOW. Генератор: memory_script.py (один MemoryMock на три роли). Без сети.
+# с фиксированным context_cap. Генератор: memory_script.py (один MemoryMock на три роли). Без сети.
 import json
 
 import pytest
 from memory_script import (
+    MEMORY_CONTEXT_CAP,
     SCENES,
     SCENES_PER_CHAPTER,
     TURNS_PER_SCENE,
-    WINDOW,
     MemoryMock,
     new_run,
     play_memory,
@@ -17,7 +17,6 @@ from ai_dm.llm.replay import ReplayAdapter
 from ai_dm.master.context import STAGES
 from ai_dm.persistence.store import load_slot, save_slot
 
-BUDGET = WINDOW * 80 // 100
 SAVED_AT = "2026-10-03T12:00:00Z"
 
 
@@ -36,6 +35,13 @@ def turn_record(run, turn_index):
     for record in run.narrator_records():
         seen.setdefault(record["run_id"], record)
     return list(seen.values())[turn_index]
+
+
+def turn_records(run):
+    seen = {}
+    for record in run.narrator_records():
+        seen.setdefault(record["run_id"], record)
+    return list(seen.values())
 
 
 def dumps(model):
@@ -97,18 +103,19 @@ def test_estimate_within_budget_and_no_overflow_on_every_narrator_call(first):
         context = record["meta"]["context"]
         assert context["estimate"] <= context["budget"], (
             f"estimate {context['estimate']} > budget {context['budget']}: "
-            "подобрать WINDOW в tests/scenarios/memory_script.py"
+            "подобрать MEMORY_CONTEXT_CAP в tests/scenarios/memory_script.py"
         )
-        assert context["budget"] == BUDGET, "окно мока: WINDOW в tests/scenarios/memory_script.py"
+        assert context["budget"] == context["static"] + MEMORY_CONTEXT_CAP
         assert context["overflow"] is False
         assert context["raised"] is False
         assert "context_overflow" not in record["report_tags"]
 
 
 def test_json_length_over_2_5_within_budget_on_every_turn(first):
-    for request in first.mock.narrator_turns:
+    for request, record in zip(first.mock.narrator_turns, turn_records(first), strict=True):
         size = len(request.model_dump_json()) / 2.5
-        assert size <= BUDGET, f"{size} > {BUDGET}: подобрать WINDOW в memory_script.py"
+        budget = record["meta"]["context"]["budget"]
+        assert size <= budget, f"{size} > {budget}: подобрать MEMORY_CONTEXT_CAP в memory_script.py"
 
 
 # память в запросе сцены 50

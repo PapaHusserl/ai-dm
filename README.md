@@ -151,7 +151,8 @@ saves/<id>/meta/models.json    выбранная модель рассказч�
   отвечает «Звук выключен: звук только в TUI».
 - `--mute` — без музыки в этом запуске (в настройки не пишется).
 - Настройки: `~/.config/ai-dm/` (`$XDG_CONFIG_HOME/ai-dm`, или `$AI_DM_CONFIG_DIR`). `config.toml` правите вы (любые секции из
-  `app_defaults.toml`, в том числе `[audio]` с дефолтами); `audio.toml` пишет игра (`/music` сохраняет `enabled`, `volume`, `ambient`)
+  `app_defaults.toml`, в том числе `[audio]` с дефолтами; секции правил — `[limits]`, `[disarm]`, `[time]` и прочие из
+  `defaults.toml` — `config.toml` не принимает, они правятся только в `src/ai_dm/config/defaults.toml`); `audio.toml` пишет игра (`/music` сохраняет `enabled`, `volume`, `ambient`)
   и применяет поверх `config.toml` — ручная правка `[audio]` слабее `/music`.
 - Заменить трек: положите файл с тем же именем в `src/ai_dm/audio/data/` (OGG; имена — в `index.yaml`). Лицензии — `ATTRIBUTION.md` там же.
 - Страшные места (теги «чаща», «тёмный лес», «топь») и природа при тоне ужаса «сильно» играют тему `wilds`; для романтики тона «откровенно» есть тема
