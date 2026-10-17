@@ -256,7 +256,7 @@ def npc_entity(npc, drafts, report):
     if npc["favor"]:
         fields["favor"] = npc["favor"]
     if npc["relations_text"]:
-        fields["relations_text"] = npc["relations_text"]
+        fields["notes"] = npc["relations_text"]
     if npc["combat"] is not None or npc["creature"] is not None:
         report.append(f"npcs.{npc['id']}: combat/creature источника не перенесены")
     if npc["id"] in NPC_TAGS:

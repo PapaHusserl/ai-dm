@@ -253,7 +253,7 @@
     "named": true,
     "opportunity": [],
     "origin": "pack",
-    "relations_text": "",
+    "notes": "",
     "secrets": [],
     "species_id": null,
     "status": "alive"
@@ -278,7 +278,7 @@
     "named": true,
     "opportunity": [],
     "origin": "pack",
-    "relations_text": "",
+    "notes": "",
     "secrets": [],
     "species_id": null,
     "status": "alive"
@@ -537,7 +537,7 @@
     "named": true,
     "opportunity": [],
     "origin": "pack",
-    "relations_text": "",
+    "notes": "",
     "secrets": [],
     "species_id": null,
     "status": "alive"
@@ -562,7 +562,7 @@
     "named": true,
     "opportunity": [],
     "origin": "pack",
-    "relations_text": "",
+    "notes": "",
     "secrets": [],
     "species_id": null,
     "status": "alive"

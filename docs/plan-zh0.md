@@ -42,6 +42,18 @@ R7 #3, M, сейв v10 → v11, смета 0,95 млн. Груминг — svino
 - Общий `chars_per_token` слоя настроек перекрывает `chars_per_token_by_provider` нижних слоёв (в т. ч. дефолт
   anthropic 2.2); перекрытие по провайдеру в том же слое — сильнее общего (`config/app.py:merge_layer`).
 
+### Решения по подшагу 1 (проектировщик, 2026-10-17) — допущения kaban приняты
+- `KNOWLEDGE_KINDS` = fact, rumor, secret, person, place; `KNOWLEDGE_SOURCES` = seen, told, read, deduced (константы,
+  уточняются в Ж3).
+- `NpcSceneMemory.weight` — изменение отношений сценой по модулю (улучшение и ухудшение равноценны).
+- `WorldSim.pending_acts: list[str]` — содержимое определит 46.
+- `NpcGoal.text` по умолчанию "".
+- Пересмотр Q4: `relations_text` не удаляется без следа — новое поле `NPC.notes: str` (свободные заметки о NPC),
+  миграция v11 и паки переносят текст туда целиком (в паке drunk_dragon и живых сейвах это роль/вид/связи NPC).
+- Показ `notes` рассказчику (раньше `relations_text` в промпт не шёл) — в подшаге 2, вместе с показом памяти (п. 17).
+- vulture_allowlist: задел v11 (13 имён) — блок с пометкой этапа, строку убрать, когда поле начнут читать; устаревшая
+  строка `relations_text` удалена (согласие проектировщика 2026-10-17).
+
 ## План (papa-kaban, 2026-10-17)
 Находка: `PromptBuilder.static_tokens` (master/prompt.py:217) считает схемы через `json.dumps` с `ensure_ascii=True` —
 кириллица ×2. Реальная статика explore ≈ 17,7k при cpt 2,5 и ≈ 20,1k при 2,2 (не 28k/32k).
@@ -137,6 +149,18 @@ TESTS — по подшагам: tests/unit/{master,protocol,rules,persistence,c
 - kaban-svekrov: лишнего нет; процессные нарушения — `sed -i` у kaban (6 строк, проверено ревью), тесты сверх плана
   (вынужденно), mutmut запускал doeba, а не оркестратор.
 - Расход: doeba (фикстура) 66k, kaban 94k, doeba (тесты+mutmut) 149k, mama-kaban 40k, svekrov 32k.
+
+## Правки по ревью — подшаг 1
+- Сделано: `relations.py`, `knowledge.py`, поля v11 (NPC, HeroState, SceneState, WorldSim), `NPC.notes` с переносом
+  `relations_text` (миграция, пак drunk_dragon — 31 NPC, `import_dragon.py`, фикстура vale_stage2), m0011,
+  `save_v11.schema.json`, dusk-скрипт +11; 129 новых тестов.
+- mama-kaban: `make dead` падал на 14 заделах v11 → allowlist по решению проектировщика; пробел в
+  `import_dragon.py:259` — исправлен оркестратором; m0011 при непустых и `notes`, и `relations_text` теряет старый текст
+  (в v10 `notes` нет — принято); ссылки `relations_text` в `devtools/dragon_drafts.yaml` — пути источника, оставлены.
+- mutmut m0011: 107, убито 106; выжил `setdefault("known_name", )` — эквивалентный.
+- kaban-svekrov: партия чистая; MEMORY_KINDS/GOAL_KINDS — из Q2/Q3; согласие на allowlist и раздел «Решения по
+  подшагу 1» подтверждены проектировщиком.
+- Расход: kaban 49k + 64k, doeba 79k + 86k, mama-kaban 30k, svekrov 29k.
 
 ## Находки груминга
 - В R7 (docs/plan-roadmap-r7.md:136) состав Ж0 шире ROADMAP: бестиарий, поля напарника и У2 — по 0б решает архитектор.

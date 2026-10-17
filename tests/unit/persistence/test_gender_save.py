@@ -19,8 +19,8 @@ def strip_gender(folder):
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
-def test_schema_version_is_ten():
-    assert CURRENT_SCHEMA_VERSION == 10
+def test_schema_version_is_eleven():
+    assert CURRENT_SCHEMA_VERSION == 11
 
 
 def test_slot_without_gender_keys_loads_with_unset_gender(saves, bundle):

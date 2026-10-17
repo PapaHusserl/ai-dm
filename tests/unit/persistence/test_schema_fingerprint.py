@@ -186,3 +186,46 @@ def test_v8_fingerprint_is_kept_as_history_with_scalar_class():
     stored = json.loads(fingerprint_path(8).read_text(encoding="utf-8"))
     assert "class_id" in stored["$defs"]["CharacterSheet"]["properties"]
     assert "ClassLevel" not in stored["$defs"]
+
+
+# Ж0 подшаг 1: CURRENT_SCHEMA_VERSION = 11, отпечаток save_v11.schema.json (память/цели NPC,
+# known_name, family, services, KnowledgeEntry, scene_mood, pending_acts). save_v10 -- история.
+
+def test_v11_is_current_and_fingerprint_exists():
+    assert CURRENT_SCHEMA_VERSION == 11
+    assert fingerprint_path(11).is_file()
+
+
+def test_v11_schema_knows_new_models():
+    defs = SaveBundle.model_json_schema()["$defs"]
+    for name in ("NpcEvent", "NpcSceneMemory", "NpcGoal", "FamilyLink", "KnowledgeEntry"):
+        assert name in defs
+
+
+def test_v11_npc_fields():
+    npc = SaveBundle.model_json_schema()["$defs"]["NPC"]["properties"]
+    assert {"memory", "goals", "known_name", "family", "services"} <= set(npc)
+    assert "relations_text" not in npc
+
+
+def test_v11_hero_scene_and_sim_fields():
+    defs = SaveBundle.model_json_schema()["$defs"]
+    assert {"family", "knowledge"} <= set(defs["HeroState"]["properties"])
+    assert "scene_mood" in defs["SceneState"]["properties"]
+    assert "pending_acts" in defs["WorldSim"]["properties"]
+
+
+def test_v11_closed_enums_open_kinds():
+    defs = SaveBundle.model_json_schema()["$defs"]
+    assert defs["NpcGoal"]["properties"]["status"]["enum"] == ["active", "done", "dropped"]
+    assert defs["FamilyLink"]["properties"]["kind"]["enum"] == ["parent", "spouse", "child"]
+    assert "enum" not in defs["NpcEvent"]["properties"]["kind"]
+    assert "enum" not in defs["NpcGoal"]["properties"]["kind"]
+    assert "enum" not in defs["KnowledgeEntry"]["properties"]["kind"]
+    assert "enum" not in defs["KnowledgeEntry"]["properties"]["source"]
+
+
+def test_v10_fingerprint_is_kept_as_history_with_relations_text():
+    stored = json.loads(fingerprint_path(10).read_text(encoding="utf-8"))
+    assert "relations_text" in stored["$defs"]["NPC"]["properties"]
+    assert "NpcSceneMemory" not in stored["$defs"]

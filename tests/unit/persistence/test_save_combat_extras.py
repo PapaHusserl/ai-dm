@@ -15,8 +15,8 @@ SAVED_AT = "2026-01-01T12:00:00Z"
 HELD = Expiry(kind="concentration", owner="h1")
 
 
-def test_schema_version_is_current_ten():
-    assert CURRENT_SCHEMA_VERSION == 10
+def test_schema_version_is_current_eleven():
+    assert CURRENT_SCHEMA_VERSION == 11
 
 
 def test_v5_save_without_a_charge_loads_with_clean_hero_effects(saves):

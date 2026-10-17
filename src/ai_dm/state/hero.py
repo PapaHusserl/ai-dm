@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from ai_dm.state.creature import CreatureState
 from ai_dm.state.death import DeathRecord
 from ai_dm.state.gender import Gender
+from ai_dm.state.knowledge import KnowledgeEntry
+from ai_dm.state.relations import FamilyLink
 from ai_dm.state.triggers import Trigger
 
 
@@ -206,6 +208,9 @@ class HeroState(BaseModel):
     pending_level: PendingLevel | None = None
     # игровое время (с) конца последнего длинного отдыха: кулдаун повторного отдыха
     long_rest_end_s: int | None = None
+    family: list[FamilyLink] = Field(default_factory=list)
+    # журнал знаний героя (наполнение -- Ж3)
+    knowledge: list[KnowledgeEntry] = Field(default_factory=list)
 
     @field_validator("favor")
     @classmethod

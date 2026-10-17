@@ -161,7 +161,15 @@ def test_apply_replaces_human_children_with_young_people(tmp_path):
     assert "молодые люди" in text
 
 
-@pytest.mark.parametrize("version", [8, 11])
+def test_v11_save_is_accepted_and_patched(tmp_path):
+    slot = make_slot(tmp_path, version=11)
+    result = run(slot)
+    assert result.returncode == 0
+    assert "18+" in world_of(slot)["lore"]["world_text"]
+    assert "18+" in world_of(slot)["tone"]["notes"]
+
+
+@pytest.mark.parametrize("version", [8, 12])
 def test_refuses_unsupported_version_without_writing(tmp_path, version):
     slot = make_slot(tmp_path, version=version)
     state = snapshot(tmp_path)

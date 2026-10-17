@@ -10,6 +10,7 @@ from ai_dm.state.creature import CreatureState, Equipment
 from ai_dm.state.death import DeathRecord
 from ai_dm.state.gender import Gender
 from ai_dm.state.hero import InventoryEntry
+from ai_dm.state.relations import FamilyLink, NpcGoal, NpcSceneMemory
 from ai_dm.state.triggers import Condition, Secret, Trigger
 
 
@@ -87,11 +88,20 @@ class NPC(BaseModel):
     gender: Gender | None = None
     pronouns: str = ""
     birth_s: int | None = None
-    # группы для affects событий
+    # группы для affects событий; боевая группа совпадает с группой мира
     groups: list[str] = Field(default_factory=list)
     aging_steps: int = 0
     favor: dict[str, int] = Field(default_factory=dict)
-    relations_text: str = ""
+    # память о герое: сцены с событиями (до лимита, у каждой вес) и долгие цели
+    memory: list[NpcSceneMemory] = Field(default_factory=list)
+    goals: list[NpcGoal] = Field(default_factory=list)
+    # имя, под которым NPC известен герою; None -- не представился
+    known_name: str | None = None
+    family: list[FamilyLink] = Field(default_factory=list)
+    # заметки о NPC для рассказчика (свободный текст; бывший relations_text)
+    notes: str = ""
+    # id услуг (код -- У0)
+    services: list[str] = Field(default_factory=list)
     # теги существа (mor -- тварь Мора)
     tags: list[str] = Field(default_factory=list)
     origin: Literal["pack", "ai", "engine"] = "pack"
@@ -211,6 +221,8 @@ class WorldSim(BaseModel):
     world_calls_day: int = -1
     # god_id -> время (с) последней проверки триггеров бога (ТЗ 4.2: боги проверяются реже)
     god_checked_s: dict[str, int] = Field(default_factory=dict)
+    # действия мира, отложенные до границы (46)
+    pending_acts: list[str] = Field(default_factory=list)
 
 
 class DangerMark(BaseModel):

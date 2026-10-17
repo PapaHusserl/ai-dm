@@ -30,8 +30,8 @@ OLD_COMBAT = {
 }
 
 
-def test_schema_version_is_current_ten():
-    assert CURRENT_SCHEMA_VERSION == 10
+def test_schema_version_is_current_eleven():
+    assert CURRENT_SCHEMA_VERSION == 11
 
 
 def test_old_combat_without_new_fields_loads():
