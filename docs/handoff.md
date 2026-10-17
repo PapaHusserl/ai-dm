@@ -16,15 +16,9 @@
 3. Ж1 → Ж2 → Ж3 → ЖП2 (живой прогон; считать `combat_announced`, `summary_trimmed`, `choices_retry`).
 
 ## Открытые вопросы
-- .dashboard.json: треки sync (этапы ТЗ с tag_prefix stage-, очередь R4 в plan-roadmap-r4.md) — сверить с дашбордом,
-  нужны ли они при новом ROADMAP; тегов stage-* нет.
 - Агенты: у kaban/kaban-doeba нет Edit (намеренно, в msa правки через bash/ex), в ai-dm они правят скриптами вопреки правилу
   «вне msa — Edit/Write»; варианты — вернуть Edit с оговоркой или отдельные агенты для ai-dm. Пока мелкие правки после
-  ревью вносит оркестратор.
-- Пути отчётов mama-kaban/kaban-svekrov в ~/.claude/agents (kaban-svekrov.md:31, mama-kaban.md:46) указывают на
-  docs/decisions/ — каталога нет; поправить через skill-intake. До тех пор путь отчёта (раздел документа шага или
-  scratchpad) задаёт оркестратор в задании.
-- Живой мир игрока на другой машине (сейв v9, dusk_academy): раздать `scripts/migrate_dusk_18plus.py` + docs/migrate-dusk-18plus.md.
+  ревью вносит оркестратор.- Живой мир игрока на другой машине (сейв v9, dusk_academy): раздать `scripts/migrate_dusk_18plus.py` + docs/migrate-dusk-18plus.md.
 - Перед живым прогоном — бэкап saves/: первый же репорт (`trim_issues`, `[reports] max_mb = 200`) может удалить старые
   авто-каталоги issues/.
 
