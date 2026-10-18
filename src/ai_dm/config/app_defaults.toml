@@ -129,6 +129,8 @@ chars_per_token = 2.5
 recent_turns_floor = 1
 # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
 min_narration_chars = 80
+# записей журнала знаний героя в состоянии хода (отбор по сцене, новейшие); 0 = блок выключен
+knowledge_max = 30
 
 # chars_per_token по провайдеру: Claude считает кириллицу плотнее (BACKLOG 77)
 [master.chars_per_token_by_provider]

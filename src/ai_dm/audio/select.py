@@ -12,14 +12,18 @@ class SoundState:
     in_combat: bool = False
     horror: str = ""
     romance: str = ""
+    # настроение сцены от рассказчика ("" = нет); тема с таким именем в индексе перебивает локацию
+    scene_mood: str = ""
 
 
 def pick_theme(index, state):
-    # бой > локация (id, теги) > тон мира; романтика выбором пока не запускается,
-    # но её вариант по тону (romance_variants) применяется к любой выбранной теме
+    # бой > сцена (scene_mood) > локация (id, теги) > тон мира; вариант по тону
+    # (horror_variants, romance_variants) применяется к любой выбранной теме
     if state.in_combat:
         return index.combat
-    theme = index.locations.get(state.location_id)
+    theme = state.scene_mood if state.scene_mood in index.themes else None
+    if theme is None:
+        theme = index.locations.get(state.location_id)
     if theme is None:
         theme = theme_for_tags(index, state.tags)
     if theme is None:

@@ -1,6 +1,7 @@
 from ai_dm.game import difficulty, tone
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
+from ai_dm.game.lore_text import lore_lines
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import (
     ABILITY_HINT,
@@ -38,6 +39,7 @@ HELP = {
     "sheet": "лист героя: характеристики, навыки, черты",
     "inv": "инвентарь по группам",
     "shop": "торговцы здесь: что купить и что продать",
+    "lore": "[имя] журнал знаний героя: кто, что, откуда",
     "spells": "заклинания и ячейки",
     "abilities": "умения класса, подкласса, вида и черт",
     "map": "карта зон боя",
@@ -242,6 +244,11 @@ def cmd_shop(app, arg):
     return app.reply(fit(lines, app.settings.app.ui.width))
 
 
+def cmd_lore(app, arg):
+    lines = lore_lines(hero_of(app.bundle), app.bundle.world, app.registry, arg)
+    return app.reply(fit(lines, app.settings.app.ui.width))
+
+
 def cmd_spells(app, arg):
     hero = hero_of(app.bundle)
     lines = spells_lines(hero, app.registry, app.settings.app.ui.width) + ["", SPELL_HINT]
@@ -299,6 +306,7 @@ COMMANDS = {
     "sheet": cmd_sheet,
     "inv": cmd_inv,
     "shop": cmd_shop,
+    "lore": cmd_lore,
     "spells": cmd_spells,
     "abilities": cmd_abilities,
     "map": cmd_map,

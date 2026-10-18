@@ -12,13 +12,22 @@ from textual.widgets import Footer, Input, RichLog
 
 from ai_dm.art import art_for_event, art_for_location, pick_picture
 from ai_dm.game.commands import HELP, cost_report
+from ai_dm.game.lore_text import find_entity, lore_groups
+from ai_dm.game.scene import hero_of
 from ai_dm.ui.combat_menu import MenuState
 from ai_dm.ui.format import head_lines, inert_lines
 from ai_dm.ui.screen import limit_percent, picture_state, scene_mark, sound_state
 from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.blocks import map_lines, modal_lines, pickable, spell_rows
-from ai_dm.ui.tui.modals import CostModal, ModelModal, MoreModal, SpellModal, TextModal
+from ai_dm.ui.tui.modals import (
+    CostModal,
+    LoreModal,
+    ModelModal,
+    MoreModal,
+    SpellModal,
+    TextModal,
+)
 from ai_dm.ui.tui.widgets import (
     Choices,
     CombatLog,
@@ -33,7 +42,7 @@ from ai_dm.ui.tui.widgets import (
 COMMAND_SUGGESTER = SuggestFromList([f"/{name}" for name in HELP], case_sensitive=True)
 WIDE = 120
 PANEL_WIDTH = 54
-MODALS = (TextModal, ModelModal, SpellModal, MoreModal)
+MODALS = (TextModal, ModelModal, SpellModal, MoreModal, LoreModal)
 
 
 class AiDmApp(App):
@@ -442,6 +451,7 @@ class AiDmApp(App):
         entry = self.query_one("#input", Input)
         entry.disabled = False
         entry.focus()
+        lore = self.lore_modal(title, words) if modal_text and command == "/lore" else None
         # отчёт /cost считаем повторно сознательно: так не трогаем Reply
         if modal_text and command == "/cost":
             self.push_screen(CostModal(title, cost_report(self.game)), lambda _: entry.focus())
@@ -453,12 +463,23 @@ class AiDmApp(App):
             current = f"{info.provider}:{info.model}"
             modal = ModelModal(title, self.game.model_options(), current)
             self.push_screen(modal, self.model_chosen)
+        elif lore is not None:
+            self.push_screen(lore, lambda _: entry.focus())
         elif modal_text:
             self.push_screen(TextModal(title, modal_text), lambda _: entry.focus())
         # если шаг сам quit (меню «сохранить и выйти», смерть героя), выход уже пошёл по show_step
         # со своим кодом и без лишнего автосейва -- так задумано
         if self.quit_requested and not step.quit:
             self.close()
+
+    def lore_modal(self, title, words):
+        # окно журнала знаний; None при пустом журнале -- тогда ответ идёт обычным окном
+        groups = lore_groups(hero_of(self.game.bundle), self.game.bundle.world, self.game.registry)
+        if not groups:
+            return None
+        hit = find_entity(groups, " ".join(words[1:])) if len(words) > 1 else None
+        selected = None if hit is None else hit[:2]
+        return LoreModal(title, groups, self.game.bundle.world, selected)
 
     def can_cast_by_menu(self):
         # окно выбора -- только когда ход можно начать; у героя без заклинаний остаётся справка

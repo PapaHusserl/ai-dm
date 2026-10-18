@@ -10,6 +10,8 @@
 #   18200 = 17666 + 3 %.
 #   Ж0 п.18 (2026-10-18): правило записи памяти NPC и поля memory_kind/memory_text в npc_update;
 #   explore.total 17666 -> 18185; 18700 = 18185 + 3 %.
+#   Ж3 п.9 (2026-10-18): запросы knowledge_note и scene_mood, раздел правил «Журнал знаний и
+#   настроение сцены»; explore.total 18458 -> 19462; 20050 = 19462 + 3 %.
 import json
 from importlib import resources
 
@@ -22,8 +24,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# Ж0 п.18: замер explore.total 18185 + 3 % (до этого п.0: 17666 -> 18200).
-STATIC_MAX = 18700
+# Ж3 п.9: замер explore.total 19462 + 3 % (до этого Ж0 п.18: 18185 -> 18700).
+STATIC_MAX = 20050
 
 MODES = sorted(MODE_TOOLS)
 

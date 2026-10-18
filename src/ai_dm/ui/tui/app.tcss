@@ -155,6 +155,21 @@ ModelModal {
     max-height: 20;
 }
 
+LoreModal {
+    align: center middle;
+}
+
+#lore-list {
+    height: auto;
+    max-height: 14;
+}
+
+#lore-body {
+    height: auto;
+    max-height: 12;
+    border-top: solid $primary;
+}
+
 SpellModal {
     align: center middle;
 }

@@ -278,9 +278,9 @@ def test_unknown_mode_is_error():
         tool_set("flying")
 
 
-def test_visible_set_has_33_tools_from_plan():
+def test_visible_set_has_35_tools_from_plan():
     names = [t["name"] for t in tool_defs(VISIBLE_TYPES)]
-    assert len(names) == 33
+    assert len(names) == 35
     assert names == sorted(VISIBLE_TYPES)
     assert "npc_action" not in names
     for hidden in HIDDEN_TYPES:
@@ -326,6 +326,44 @@ def test_reveal_secret_is_in_explore_set_and_not_strict():
 @pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate", "npc_choice"])
 def test_reveal_secret_is_not_in_combat_modes(mode):
     assert "reveal_secret" not in [t["name"] for t in tool_set(mode)]
+
+
+# Ж3: knowledge_note и scene_mood -- только explore, не strict
+
+@pytest.mark.parametrize("name", ["knowledge_note", "scene_mood"])
+def test_zh3_tools_are_in_explore_and_not_strict(name):
+    tools = {t["name"]: t for t in tool_set("explore")}
+    assert name in tools
+    assert tools[name]["strict"] is False
+
+
+@pytest.mark.parametrize("name", ["knowledge_note", "scene_mood"])
+@pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate", "npc_choice"])
+def test_zh3_tools_are_not_in_other_modes(name, mode):
+    assert name not in [t["name"] for t in tool_set(mode)]
+
+
+def test_knowledge_note_kind_and_source_enums():
+    props = tool_defs(["knowledge_note"])[0]["input_schema"]["properties"]
+    assert props["kind"]["enum"] == ["npc", "location", "faction", "god", "creature", "situation"]
+    assert props["source"]["enum"] == ["seen", "told", "rumor", "read", "deduced"]
+
+
+def test_scene_mood_enum_is_romance_or_none():
+    props = tool_defs(["scene_mood"])[0]["input_schema"]["properties"]
+    assert props["mood"]["enum"] == ["romance", "none"]
+
+
+def test_knowledge_note_from_ref_neutral_is_empty():
+    from ai_dm.protocol.requests import KnowledgeNote
+
+    assert KnowledgeNote.NEUTRAL == {"from_ref": ""}
+
+
+def test_scene_mood_neutral_is_none_value():
+    from ai_dm.protocol.requests import SceneMood
+
+    assert SceneMood.NEUTRAL == {"mood": "none"}
 
 
 def test_no_empty_string_in_any_enum():

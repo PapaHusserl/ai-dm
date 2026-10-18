@@ -33,6 +33,7 @@ MODAL_TITLES = {
     "/sheet": "Лист героя",
     "/inv": "Инвентарь",
     "/shop": "Торговля",
+    "/lore": "Журнал знаний",
     "/spells": "Заклинания",
     "/abilities": "Умения",
     "/cost": "Расход",
@@ -42,7 +43,8 @@ SCENE_LINE = "─── {title} ───"
 MODEL_PICK = "Модель рассказчика (цифра, щелчок или Enter, Esc — закрыть без смены):"
 MODEL_CURRENT = "{key} (текущая)"
 MODEL_CHANGED = "Модель рассказчика: {key}."
-SPELL_PICK = "Заклинание (цифра, щелчок или Enter, Esc — закрыть):"
+LORE_PICK = "Кто и что (стрелки, Esc — закрыть):"
+SPELL_PICK ="Заклинание (цифра, щелчок или Enter, Esc — закрыть):"
 SPELL_CAST = "Применяю заклинание «{name}»."
 SPELL_NO_SLOT = "нет ячейки"
 SPELL_BUSY = "сейчас недоступно"

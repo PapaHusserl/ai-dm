@@ -95,6 +95,8 @@ class MasterConfig(BaseModel):
     recent_turns_floor: int = Field(ge=0)
     # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.
     min_narration_chars: int = Field(default=80, ge=0)
+    # записей журнала знаний героя в состоянии хода (новейшие по сцене); 0 = блок выключен
+    knowledge_max: int = Field(default=30, ge=0)
 
     @model_validator(mode="after")
     def check_floor(self):

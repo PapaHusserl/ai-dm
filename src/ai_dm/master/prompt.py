@@ -17,6 +17,7 @@ from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
 from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
+from ai_dm.rules.knowledge import prompt_entries
 from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.trade import (
@@ -428,6 +429,27 @@ class PromptBuilder:
                 combat["options"] = ctx.combat_options or []
         return combat
 
+    def knowledge_refs(self, ctx, context_plan, scene_npcs):
+        # отбор журнала знаний по сцене: вид -> множество ref (None -- все ref вида)
+        hero = ctx.hero
+        refs = {
+            "npc": {n["id"] for n in scene_npcs} | set(context_plan.npc_ids),
+            "location": {hero.location_id} | set(context_plan.location_ids),
+            "god": set(hero.favor),
+            "faction": None,
+            "situation": None,
+        }
+        combat = ctx.bundle.session.active_combat
+        if combat is not None and ctx.mode in ("combat_classify", "combat_narrate"):
+            refs["creature"] = {p.monster_id for p in combat.participants if p.monster_id}
+        return refs
+
+    def knowledge_data(self, ctx, context_plan, scene_npcs):
+        # блок knowledge состояния хода: ключа нет, если отбор пуст или блок выключен
+        refs = self.knowledge_refs(ctx, context_plan, scene_npcs)
+        entries = prompt_entries(ctx.hero, refs, self.app_cfg.master.knowledge_max)
+        return {"knowledge": entries} if entries else {}
+
     def state_data(self, ctx, user_input, context_plan):
         world = ctx.bundle.world
         session = ctx.bundle.session
@@ -507,6 +529,7 @@ class PromptBuilder:
             "offered_choices": session.offered_choices,
             "player_input": user_input,
         }
+        data.update(self.knowledge_data(ctx, context_plan, scene_npcs))
         data.update(items_trail_data(world, session, ctx.registry))
         data.update(trade_data(world, scene_npcs, ctx, hero.sheet.level))
         return data

@@ -114,15 +114,18 @@ def location_tag_chain(world, location):
 
 
 def sound_state(app):
-    # что нужно pick_theme: локация героя с тегами предков, идёт ли бой, оси тона мира
+    # что нужно pick_theme: локация героя с тегами предков, идёт ли бой, оси тона мира,
+    # настроение текущей сцены
     world = app.bundle.world
     location = world.locations.get(hero_of(app.bundle).location_id)
+    scene = app.bundle.session.current_scene
     return SoundState(
         None if location is None else location.id,
         location_tag_chain(world, location),
         app.bundle.session.active_combat is not None,
         world.tone.horror,
         world.tone.romance,
+        "" if scene is None else scene.scene_mood,
     )
 
 

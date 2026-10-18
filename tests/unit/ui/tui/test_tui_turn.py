@@ -358,20 +358,23 @@ def test_second_ctrl_c_calls_hard_exit_with_130_and_does_not_save(
 
     async def scenario():
         task = asyncio.create_task(app.run_async(headless=True, size=(140, 40)))
-        try:
-            while not (app.is_running and app.query("#input")):
-                await asyncio.sleep(0.01)
-            app.query_one("#input").value = "Иду"
-            await app.workers.wait_for_complete()
-            app.start_turn("Иду")
-            await asyncio.to_thread(gate_adapter.entered.wait, 10)
-            app.action_quit_game()
-            app.action_quit_game()
-        finally:
-            gate_adapter.release.set()
+        while not (app.is_running and app.query("#input")):
+            await asyncio.sleep(0.01)
+        app.query_one("#input").value = "Иду"
+        await app.workers.wait_for_complete()
+        app.start_turn("Иду")
+        await asyncio.to_thread(gate_adapter.entered.wait, 10)
+        app.action_quit_game()
+        app.action_quit_game()
+        # гейт открывает только hard_exit: release здесь пустил бы поток хода применить ход
+        # раньше, чем run_async дойдёт до hard_exit (флак 41)
         await asyncio.wait_for(task, 10)
 
-    asyncio.run(asyncio.wait_for(scenario(), 20))
+    try:
+        asyncio.run(asyncio.wait_for(scenario(), 20))
+    finally:
+        # страховка: упавший сценарий не оставляет поток хода висеть на гейте
+        gate_adapter.release.set()
     # asyncio.run дождался потока хода; в процессе его убивает os._exit, поэтому turn_seq
     # после конца потока не утверждается -- только снимок в момент hard_exit
     assert exits == [(130, [], 0)]

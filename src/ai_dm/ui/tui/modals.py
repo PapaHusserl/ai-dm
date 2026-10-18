@@ -8,6 +8,7 @@ from textual.widgets.option_list import Option
 
 from ai_dm.art import art_for_event
 from ai_dm.game.commands import cost_rows, money_text
+from ai_dm.game.lore_text import KIND_TITLES, entry_lines
 from ai_dm.ui.format import COST_TITLES
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.widgets import Choices
@@ -141,6 +142,57 @@ class SpellModal(ModalScreen):
 
     def action_close(self):
         self.dismiss(None)
+
+
+class LoreModal(ModalScreen):
+    # журнал знаний героя (/lore): слева сущности по видам, справа записи выбранной; ничего не
+    # запускает, Esc закрывает; selected -- (вид, ref) для предвыбора
+    BINDINGS = [Binding("escape", "close", strings.KEY_CLOSE, show=False)]
+
+    def __init__(self, title, groups, world, selected=None):
+        super().__init__()
+        self.title_text = title
+        self.groups = list(groups)
+        self.world = world
+        self.selected = selected
+        # индекс строки списка -> записи сущности; у заголовков видов записей нет
+        self.index_to_entries = {}
+
+    def compose(self):
+        with Vertical(id="modal"):
+            yield Static(Text(strings.LORE_PICK), id="lore-title")
+            yield OptionList(id="lore-list")
+            with VerticalScroll(id="lore-body"):
+                yield Static(id="lore-text")
+            yield Button(strings.CLOSE, id="modal-close")
+
+    def on_mount(self):
+        self.query_one("#modal").border_title = self.title_text
+        menu = self.query_one("#lore-list", OptionList)
+        first = None
+        for kind, items in self.groups:
+            menu.add_option(Option(Text(f"{KIND_TITLES[kind]}:"), disabled=True))
+            for ref, name, entries in items:
+                if first is None or (kind, ref) == self.selected:
+                    first = menu.option_count
+                self.index_to_entries[menu.option_count] = entries
+                menu.add_option(Text(f"  {name} ({len(entries)})"))
+        menu.highlighted = first
+        menu.focus()
+        self.show_entries(first)
+
+    def show_entries(self, index):
+        lines = entry_lines(self.index_to_entries[index], self.world)
+        self.query_one("#lore-text", Static).update(Text("\n".join(lines)))
+
+    def on_option_list_option_highlighted(self, event):
+        self.show_entries(event.option_index)
+
+    def on_button_pressed(self):
+        self.dismiss()
+
+    def action_close(self):
+        self.dismiss()
 
 
 class MoreModal(ModalScreen):

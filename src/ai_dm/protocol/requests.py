@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator,
 from ai_dm.content.models.common import Ability, DcCategory, Skill
 from ai_dm.state.combat import ImproviseEffect, Intent
 from ai_dm.state.gender import Gender
+from ai_dm.state.knowledge import KNOWLEDGE_KINDS, KNOWLEDGE_SOURCES
 from ai_dm.state.relations import MEMORY_KINDS
 from ai_dm.state.world import Tone
 
@@ -531,6 +532,33 @@ class CompanionUpdate(Request):
     NEUTRAL: ClassVar[dict] = {"name": "", "kind": "", "notes": ""}
 
 
+class KnowledgeNote(Request):
+    """Записать в журнал знаний героя, что он узнал: слова NPC, слух, записка, вывод."""
+
+    type: Literal["knowledge_note"]
+    kind: Literal[KNOWLEDGE_KINDS] = Field(description="О ком запись.")
+    ref: str = Field(
+        description="npc/location/faction/god: id; creature: id монстра; situation: слаг a-z0-9_."
+    )
+    text: str = Field(description="Что узнал герой, коротко (до 160 знаков).")
+    source: Literal[KNOWLEDGE_SOURCES] = Field(
+        description="seen = видел сам; told = рассказал NPC (from_ref); rumor = слух; "
+        "read = прочитал; deduced = понял сам."
+    )
+    from_ref: str = Field("", description="Id рассказавшего NPC, обязателен при told; иначе пусто.")
+    NEUTRAL: ClassVar[dict] = {"from_ref": ""}
+
+
+class SceneMood(Request):
+    """Настроение текущей сцены для музыки: romance по сюжету или none, чтобы снять."""
+
+    type: Literal["scene_mood"]
+    mood: Literal["romance", "none"] = Field(
+        description="romance = романтическая сцена; none = снять."
+    )
+    NEUTRAL: ClassVar[dict] = {"mood": "none"}
+
+
 class WarnDanger(Request):
     """Предупреждение об опасности в локации."""
 
@@ -962,6 +990,8 @@ REQUEST_MODELS = {
     "pray": Pray,
     "companion_update": CompanionUpdate,
     "reveal_secret": RevealSecret,
+    "knowledge_note": KnowledgeNote,
+    "scene_mood": SceneMood,
     "event_start": EventStart,
     "event_end": EventEnd,
     "offer_choices": OfferChoices,
@@ -1013,7 +1043,7 @@ MasterRequest = Annotated[
     | AdvanceTime | Rest
     | WarnDanger
     | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | CompanionUpdate
-    | RevealSecret | EventStart | EventEnd
+    | RevealSecret | KnowledgeNote | SceneMood | EventStart | EventEnd
     | OfferChoices | EndScene | EndChapter | AfterlifeAction | UnsupportedAction,
     Field(discriminator="type"),
 ]

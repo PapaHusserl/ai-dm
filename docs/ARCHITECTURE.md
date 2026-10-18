@@ -616,7 +616,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 17,7k), порог `STATIC_MAX` (18700) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,5k после Ж3), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |
@@ -637,7 +637,8 @@ ui ──> game ──> master ──> llm
 
 `system[0]` правила и `system[1]` мир — кэш 1h, не зависят от памяти. `system[2]` — память (`game_summary`, выжимки
 глав, выжимки сцен текущей главы), `stable=False`: у Anthropic — отдельная 5m-точка кэша, у Gemini — вне явного кэша
-(первый Part сообщения). `messages[0]` — состояние хода и сырые ходы.
+(первый Part сообщения). `messages[0]` — состояние хода и сырые ходы; в состоянии хода при непустом отборе есть блок
+`knowledge` — журнал знаний героя (E12).
 
 ## E3. Граница сцены с summarizer
 
@@ -731,8 +732,8 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 | `NPC` | `family: list[FamilyLink]` | `kind` (`parent`/`spouse`/`child`), `ref`, `ref_kind` (`npc`/`hero`) |
 | `NPC` | `notes: str` | свободные заметки рассказчику; бывший `relations_text` |
 | `NPC` | `services: list[str]` | id услуг; код — У0 |
-| `HeroState` | `family`, `knowledge: list[KnowledgeEntry]` | связи героя; журнал знаний (`kind`, `ref`, `text`, `source`, `from_ref`, `at_s`), наполнение — Ж3 |
-| `SceneState` | `scene_mood: str` | тема сцены для музыки (не `Tone.mood`); логика — Ж3 |
+| `HeroState` | `family`, `knowledge: list[KnowledgeEntry]` | связи героя; журнал знаний (`kind`, `ref`, `text`, `source`, `from_ref`, `at_s`), наполнение — Ж3 (E12) |
+| `SceneState` | `scene_mood: str` | настроение сцены для музыки (не `Tone.mood`); ставит запрос `scene_mood`, уровень «сцена» в `pick_theme` — Ж3 (F8) |
 | `WorldSim` | `pending_acts: list[str]` | действия мира, отложенные до границы (46) |
 
 Миграция: `NPC.relations_text` убирается (`pop`), текст переезжает в `notes` целиком, если `notes` пуст (в v10 `notes`
@@ -771,6 +772,56 @@ NPC сцены. Мок на 50 сцен — `MemoryMock(npc_memory=True)`, `test
 20 старших по `(weight, at_s)`, детерминизм, сейв на сцене 30).
 
 Решение 12 (перебежчик остаётся в `world.npcs`) — код в Ж1; в Ж0 только поля.
+
+## E12. Журнал знаний героя (Ж3)
+
+Схема сейва v11 не меняется: `HeroState.knowledge: list[KnowledgeEntry]` (`state/knowledge.py`) и
+`SceneState.scene_mood` заложены в Ж0, в Ж3 получили код.
+
+**Модель и перечни.** `kind` — о ком запись (`KNOWLEDGE_KINDS`: `npc`, `location`, `faction`, `god`, `creature`,
+`situation`), `source` — откуда (`KNOWLEDGE_SOURCES`: `seen` видел сам, `told` рассказал NPC, `rumor` слух, `read`
+прочитал, `deduced` понял сам). Перечни открыты (поля `str`). `ref`: у `npc`/`location`/`faction`/`god` — id сущности
+(ключ словаря мира), у `creature` — id монстра реестра, у `situation` — слаг латиницей `^[a-z0-9_]{2,40}$` от рассказчика.
+`from_ref` — id NPC, рассказавшего (`told`). `KNOWLEDGE_TEXT_MAX = 160`.
+
+**Чистые функции** — `rules/knowledge.py`: `remember_fact` (дубль по `(kind, ref, normalize(text))` → `False`; лимит
+`[knowledge] max_per_ref = 5` (`KnowledgeConfig` в `RulesConfig`) — уходит старейшая запись сущности по `at_s`),
+`note_presence`, `note_combat`, `note_favor`, `note_secret`, `backfill`, `spoils`, `shorten_text`, `prompt_entries`.
+Тексты записей движка начинаются с констант `MET` («Знакомство: »), `VISITED` («Место: »), `FOUGHT` («Бой: »).
+
+**Кто пишет.** Движок: первая встреча NPC (`TurnRunner.commit` → `note_presence`: живой NPC в локации героя или идущий с
+ним, чьё имя есть в вводе или рассказе хода) и первое посещение локации героя (`seen`); бестиарий (`TurnRunner.end_fight`
+→ `note_combat`: безымянные враги боя, текст «Бой: <монстр> — победа|бегство|поражение|прерван»); милость бога
+(`favor_change` героя → `note_favor`, `deduced`); раскрытый секрет (`reveal_secret` → `note_secret`, `deduced`).
+Рассказчик: запрос `knowledge_note` (`protocol/handlers/knowledge.py`, только explore, без strict).
+
+**Отказы `knowledge_note`.** `Invalid`: `empty_text`, `unknown_ref` (с `allowed(...)`), `bad_ref` (ситуация не слаг),
+`unknown_npc` (`from_ref`), `told_without_from`. `rejected`: дубль («уже записано», без метки); спойлер — текст покрывает
+нераскрытый секрет (доля значимых слов секрета длиной ≥ 4 в тексте ≥ 0,6), метка `spoiler`. Текст длиннее 160 знаков
+обрезается по последнему пробелу с «…»: `clamped`, метка `text-shortened`. Секреты рассказчик не пишет — их записывает
+движок при принятом `reveal_secret`.
+
+**Достройка старого мира.** `backfill(bundle, cfg)` в `GameApp.__init__` и `GameApp.load` (после старта сцены):
+записи `seen` для встреченных NPC (любой признак: `known_to_player`, `memory`, `follows`, `attitude != 0`, имя в
+`recent_turns` или выжимках сцен, глав и `game_summary` — выжимки только признак, текст не берётся), секреты из
+`known_to_player`, посещённые локации и текущая. `at_s` — начало текущей сцены; идемпотентна.
+
+**Показ рассказчику.** Блок `knowledge` в `PromptBuilder.state_data` (`messages[0]`, не `system[2]`): вид → ref → строки
+«текст (источник[: кто рассказал])». Отбор (`PromptBuilder.knowledge_refs`): `npc` — NPC сцены и `known_npcs`; `location`
+— локация героя и соседние; `god` — из `hero.favor`; `faction`, `situation` — все; `creature` — только в режимах боя по
+`monster_id` участников. Записи движка `MET`/`VISITED` не идут. Потолок `[master] knowledge_max = 30` (новейшие по `at_s`;
+0 — блок выключен); блока нет, если отбор пуст. Стоимость: худший случай ≈ 2,1k токенов, типично 0,4–0,8k на ход, внутри
+`context_cap`; роли `world` и summarizer журнал не получают. Статика: два запроса и раздел правил «Журнал знаний и
+настроение сцены» подняли `explore.total` до ≈ 19,5k (`STATIC_MAX` 20050).
+
+**`/lore`.** `game/lore_text.py` (`lore_groups`, `find_entity`, `entry_lines`, `lore_lines`): без аргумента — виды и
+сущности с числом записей, с аргументом — записи найденной сущности (подстрока имени или `ref`, без регистра) «— текст
+(источник[: имя рассказавшего], дата)». В `/lore` идут все записи, включая `MET`/`VISITED`; ответ строится только по
+журналу, без модели; время мира команда не тратит, в бою доступна. `cmd_lore` в `game/commands.py` общая для обоих
+режимов. TUI: `LoreModal` (F5).
+
+**`scene_mood`.** Запрос `scene_mood` (`romance` или `none`, только explore) ставит `SceneState.scene_mood`; метка слетает с
+концом сцены (у новой сцены `""`). Влияние на музыку — F8.
 
 # ЧАСТЬ F. Этап 5: TUI (Textual), модель экрана
 
@@ -835,6 +886,10 @@ ui.cli ──> ui.simple ─┐
 - `ui.tui.modals`: `TextModal` (ответы `/sheet /inv /spells /abilities /model`, Esc или кнопка закрывают), `CostModal` (`/cost`
   таблицей из `game.commands.cost_rows`, те же строки роль × модель, что печатает простой режим), `PickerApp(title, names)` (выбор героя и пресета мира до игры:
   цифра или клик). Цифра выбирает вариант/пункт меню через `check_action`, пока нет хода, модалки и текста в поле ввода.
+  `LoreModal(title, groups, world, selected)` (Ж3, `/lore`): слева `OptionList #lore-list` (заголовки видов — `disabled`
+  строки, сущности с числом записей), справа `VerticalScroll #lore-body` с записями выбранной; `/lore <имя>` предвыбирает
+  сущность; ничего не запускает, клавиши и `action_lore` нет (открывается только командой), Esc или кнопка закрывают,
+  цифры в окне не выбирают ход (`MODALS`). Пустой журнал — обычный `TextModal`.
 - Команды из `HELP` отвечают в обоих режимах, `/retire` — одинаковая заглушка; `/report` — см. раздел «Репорты (6а, P0)».
 - Приёмка: сценарий этапа 2 на моке даёт одинаковый бандл в простом режиме (ScriptedInput) и в TUI (Pilot);
   `tests/scenarios/test_stage5_tui.py`. Проверка Linux: `make linux-check` (`devtools/linux_check.sh`), установки колеса: `make install-check`.
@@ -942,10 +997,12 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
 - `catalog`: `data/index.yaml` -> `AudioIndex` (`extra="forbid"`): `themes` (id -> `Theme(music, ambient)`, имена файлов в `data/`), `location_tags`
   (тег -> тема; порядок тегов локации -- приоритет), `locations` (точный id), `tone` (`horror_strong`, `default`), `combat`. `load_audio(folder)` -> `Audio(index,
   folder)`; `theme_for_tags`; `theme_files(index, folder, theme)` -> (музыка, эмбиент), нет файла -> `None`.
-- `select`: `SoundState(location_id, tags, in_combat, horror, romance)`, `pick_theme(index, state)`: бой > id локации > первый тег > `horror == "сильно"` (мрачная) >
-  «исследование». Тема «романтика» лежит в данных, автотриггера нет (BACKLOG 33).
+- `select`: `SoundState(location_id, tags, in_combat, horror, romance, scene_mood)`, `pick_theme(index, state)`: бой > сцена (`scene_mood`, если такая тема
+  есть в `index.themes`) > id локации > первый тег > `horror == "сильно"` (мрачная) > «исследование». Настроение сцены
+  ставит рассказчик запросом `scene_mood` (Ж3, BACKLOG 33): `romance` — по сюжету, независимо от `tone.romance`;
+  `ui.screen.sound_state` берёт его из `current_scene`.
   Варианты по тону -- в `index.yaml`, не в коде: `tone.horror_variants` (при `horror == "сильно"` выбранная `nature` -> `wilds`; теги «чаща», «тёмный лес», «топь» ведут в `wilds` сразу) и
-  `tone.romance_variants` (`romance == "откровенно"`: `romance` -> `romance_sensual`). Автотриггер романтики выберет вариант по тону этой же таблицей.
+  `tone.romance_variants` (`romance == "откровенно"`: `romance` -> `romance_sensual`). Вариант по тону применяется и к теме сцены.
 - `control`: `next_switch` (чистая: бой -- сразу, остальное -- не чаще `min_switch_s`), `SoundController(player, audio, cfg, prefs)` (`update(state)`, `command(arg)` --
   `/music`, `stop()`; `Lock`), `SilentSound(reason)` (простой режим, replay, mock), `make_sound(...)` -> (звук, строка ленты). Эмбиент привязан к теме
   (в бою его нет). Подавленная гистерезисом смена применяется на следующем шаге, таймера нет.

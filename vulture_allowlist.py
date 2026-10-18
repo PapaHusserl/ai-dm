@@ -42,13 +42,8 @@ realm  # unused variable (src/ai_dm/state/world.py:111)
 campaign_version  # unused variable (src/ai_dm/state/world.py:220)
 # Задел v11 (Ж0, решение пользователя 2026-10-17): убрать строку, когда поле начнут читать.
 family  # unused variable (src/ai_dm/state/hero.py:211, world.py:100) -- Ж1+
-knowledge  # unused variable (src/ai_dm/state/hero.py:213) -- Ж3
-KNOWLEDGE_KINDS  # unused variable (src/ai_dm/state/knowledge.py:4) -- Ж3
-KNOWLEDGE_SOURCES  # unused variable (src/ai_dm/state/knowledge.py:5) -- Ж3
-from_ref  # unused variable (src/ai_dm/state/knowledge.py:18) -- Ж3
 GOAL_KINDS  # unused variable (src/ai_dm/state/relations.py:12) -- Ж0 подшаг 2
 ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
-scene_mood  # unused variable (src/ai_dm/state/scene.py:32) -- Ж3
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
 pending_acts  # unused variable (src/ai_dm/state/world.py:225) -- BACKLOG 46

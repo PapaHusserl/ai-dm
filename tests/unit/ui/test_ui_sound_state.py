@@ -21,8 +21,8 @@ def world_of(*places, tone=None):
     )
 
 
-def make_app(world, combat=None):
-    session = SimpleNamespace(active_combat=combat)
+def make_app(world, combat=None, scene=None):
+    session = SimpleNamespace(active_combat=combat, current_scene=scene)
     return SimpleNamespace(bundle=SimpleNamespace(world=world, session=session))
 
 
@@ -130,3 +130,24 @@ def test_state_tags_are_a_tuple(hero_at):
     hero_at("cellar")
     state = screen.sound_state(make_app(world_of(place("cellar", tags=["подвал"]))))
     assert isinstance(state.tags, tuple)
+
+
+# Ж3: scene_mood из текущей сцены
+
+def test_state_scene_mood_comes_from_current_scene(hero_at):
+    hero_at("cellar")
+    scene = SimpleNamespace(scene_mood="romance")
+    state = screen.sound_state(make_app(world_of(place("cellar")), scene=scene))
+    assert state.scene_mood == "romance"
+
+
+def test_state_scene_mood_empty_without_scene(hero_at):
+    hero_at("cellar")
+    assert screen.sound_state(make_app(world_of(place("cellar")))).scene_mood == ""
+
+
+def test_state_scene_mood_empty_when_scene_has_none(hero_at):
+    hero_at("cellar")
+    scene = SimpleNamespace(scene_mood="")
+    state = screen.sound_state(make_app(world_of(place("cellar")), scene=scene))
+    assert state.scene_mood == ""

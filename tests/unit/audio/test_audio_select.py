@@ -167,3 +167,54 @@ def test_tone_theme_and_variant_helpers():
     assert tone_variant(idx, state(), "nature") == "nature"
     assert tone_variant(idx, state(romance="откровенно"), "romance") == "romance_sensual"
     assert tone_variant(idx, state(romance="откровенно"), "town") == "town"
+
+
+# Ж3: scene_mood -- уровень «сцена» между боем и локацией
+
+def test_scene_mood_wins_over_location_id():
+    assert pick_theme(index(), state(location_id="vault", scene_mood="romance")) == "romance"
+
+
+def test_scene_mood_wins_over_tags():
+    assert pick_theme(index(), state(tags=("таверна",), scene_mood="romance")) == "romance"
+
+
+def test_scene_mood_wins_over_tone():
+    assert pick_theme(index(), state(horror="сильно", scene_mood="romance")) == "romance"
+
+
+def test_combat_wins_over_scene_mood():
+    assert pick_theme(index(), state(in_combat=True, scene_mood="romance")) == "combat"
+
+
+def test_scene_mood_not_in_index_falls_to_location():
+    assert pick_theme(index(), state(location_id="vault", scene_mood="gloom")) == "dungeon"
+
+
+def test_scene_mood_none_word_falls_to_location():
+    assert pick_theme(index(), state(location_id="vault", scene_mood="none")) == "dungeon"
+
+
+def test_empty_scene_mood_keeps_old_choice():
+    assert pick_theme(index(), state(tags=("лес",), scene_mood="")) == "nature"
+
+
+def test_explicit_romance_turns_scene_mood_into_sensual():
+    st = state(tags=("город",), scene_mood="romance", romance="откровенно")
+    assert pick_theme(varied(), st) == "romance_sensual"
+
+
+def test_non_explicit_romance_keeps_scene_mood_theme():
+    st = state(tags=("город",), scene_mood="romance", romance="мягко")
+    assert pick_theme(varied(), st) == "romance"
+
+
+def test_strong_horror_variant_applies_to_scene_mood_theme():
+    idx = varied(horror_variants={"romance": "dark"})
+    assert pick_theme(idx, state(scene_mood="romance", horror="сильно")) == "dark"
+
+
+def test_scene_mood_defaults_to_empty():
+    from ai_dm.audio.select import SoundState
+
+    assert SoundState(None, (), False, "", "").scene_mood == ""

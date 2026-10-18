@@ -8,15 +8,20 @@
 #   * лимит событий в сцене (cfg.npc_memory.max_events_per_scene) -> rejected, report_tag
 #     "limit-exceeded", память не растёт;
 #   * change_attitude обновляет вес уже записанной за эту сцену памяти (refresh_weight).
+from functools import partial
+
 import pytest
 from protocol_kit import dump, make_bundle, make_ctx, req
 
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Invalid
-from ai_dm.protocol.handlers.world import shorten_memory_text
 from ai_dm.protocol.requests import NpcUpdate
 from ai_dm.protocol.schema import tool_defs
+from ai_dm.rules.knowledge import shorten_text
 from ai_dm.state.relations import MEMORY_KINDS, NPC_EVENT_TEXT_MAX
+
+# Ж3: общая обрезка вынесена в rules.knowledge.shorten_text(text, limit)
+shorten_memory_text = partial(shorten_text, limit=NPC_EVENT_TEXT_MAX)
 
 
 def remember_call(ctx, kind="helped", text="помог с долгом", **fields):

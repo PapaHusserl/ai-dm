@@ -198,3 +198,6 @@
 | Beast companion | Зверь-спутник | `beast_companion`, `HeroState.companions`, `companion_update`, `companion_due` | вне боя; вводит рассказчик запросом; в бою — этап 7 |
 | Pack Sense | Чутьё стаи | `pack_sense` | текст |
 | Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания |
+| Knowledge journal | Журнал знаний | `HeroState.knowledge`, `knowledge_note`, `/lore` | что герой узнал о людях, местах, богах, существах (Ж3) |
+| Scene mood | Настроение сцены | `SceneState.scene_mood`, `scene_mood` | `romance` по сюжету; выбирает музыку, не `Tone.mood` (Ж3) |
+| Bestiary | Бестиарий | `KnowledgeEntry.kind = creature` | записи об изученных существах в журнале знаний (Ж3) |

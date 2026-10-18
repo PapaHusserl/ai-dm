@@ -28,6 +28,7 @@ from ai_dm.persistence.migrations import MigrationContext, SaveTooNew
 from ai_dm.persistence.store import load_slot, save_auto, save_slot
 from ai_dm.reports.writer import trim_issues, write_report
 from ai_dm.rules.derived import companion_due
+from ai_dm.rules.knowledge import ensure_journal
 from ai_dm.rules.level_up import (
     begin_level_up,
     commit_level_up,
@@ -124,6 +125,7 @@ class GameApp:
             elif self.checked_adapter is not None:
                 adapter = self.checked_adapter
                 model = None
+        ensure_journal(bundle, settings.rules.knowledge)
         self.runner = TurnRunner(
             bundle, registry, settings.rules, settings.app, adapter, saves_root=self.saves_root,
             journal=self.journal, ledger=self.ledger, world_text=world_text, sleeper=sleeper,
@@ -461,6 +463,7 @@ class GameApp:
         pending_boundary = bundle.session.boundary_pending and hero_of(bundle).status != "dead"
         if not pending_boundary and (scene is None or scene.closed_reason is not None):
             start_scene(bundle)
+        ensure_journal(bundle, self.settings.rules.knowledge)
         self.runner.bundle = bundle
         self.pending = None
         if hero_of(bundle).pending_level is not None:

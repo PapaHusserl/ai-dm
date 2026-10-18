@@ -2,6 +2,7 @@ from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules import divine, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
+from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
 from ai_dm.rules.npc_memory import events_full, refresh_weight, remember
 from ai_dm.rules.results import Rejected
@@ -180,7 +181,7 @@ def change_memory(ctx, npc, request, decision):
     # вес новой записи -- потраченное за сцену отношение (звать после change_attitude)
     scene = ctx.scene
     text = request.memory_text or ""
-    short = shorten_memory_text(text)
+    short = shorten_text(text, NPC_EVENT_TEXT_MAX)
     event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
     remember(npc, scene, event, ctx.cfg.npc_memory)
     decision.log.append(f"{npc.name} запомнил: {request.memory_kind}")
@@ -194,15 +195,6 @@ def change_memory(ctx, npc, request, decision):
         if decision.status == "accepted":
             decision.status = "clamped"
             decision.report_tag = "text-shortened"
-
-
-def shorten_memory_text(text):
-    # по последнему пробелу до предела с «…» (итог <= предела); без пробела -- жёсткий срез
-    if len(text) <= NPC_EVENT_TEXT_MAX:
-        return text
-    head = text[: NPC_EVENT_TEXT_MAX - 1]
-    cut = head.rfind(" ")
-    return (head[:cut] if cut > 0 else head).rstrip() + "…"
 
 
 def change_follows(ctx, npc, request, decision):
@@ -397,6 +389,11 @@ def favor_change(ctx, request):
     )
     if isinstance(decision, Invalid) or decision.status == "rejected":
         return decision
+    note_favor(
+        hero, ctx.bundle.world.pantheon[request.god_id],
+        f"{decision.result['mood']} ({request.reason})", ctx.bundle.world.clock.now_s,
+        ctx.cfg.knowledge,
+    )
     hated = divine.tier(hero.favor[request.god_id]) == -3
     if hated and divine.add_servant_trigger(ctx.bundle.world, hero, request.god_id, ctx.cfg):
         decision.log.append("Бог пошлёт слугу охотиться на героя")
@@ -489,6 +486,7 @@ def reveal_secret(ctx, request):
             f"Секрет {npc.name} раскрывать ещё рано: условие не выполнено. Не раскрывай его.",
         )
     ctx.events.extend(done)
+    note_secret(ctx.hero, npc, secret, ctx.bundle.world.clock.now_s, ctx.cfg.knowledge)
     return Decision(
         status="accepted", result={"npc_id": npc.id, "secret_id": secret.id, "text": secret.text},
         log=[f"Секрет раскрыт: {npc.name}"],

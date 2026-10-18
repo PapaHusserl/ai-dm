@@ -28,7 +28,7 @@ class SceneState(BaseModel):
     # в сцене была ключевая сущность или изменился флаг основной линии
     touched_main: bool = False
     hero_initiated_combat: bool = False
-    # тема сцены для музыки ("" = нет); логика -- Ж3
+    # настроение сцены для музыки ("" = нет); ставит рассказчик запросом scene_mood
     scene_mood: str = ""
     closed_reason: (
         Literal["end_scene", "location_changed", "time_jump", "combat_ended", "turn_limit"] | None
