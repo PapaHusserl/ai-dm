@@ -109,4 +109,12 @@ def apply(ctx, request):
         outcome = HANDLERS[name](ctx, request)
     if not isinstance(outcome, Invalid) and outcome.report_tag is not None:
         ctx.marks.append(outcome.report_tag)
+    note_applied(ctx, request, outcome)
     return outcome
+
+
+def note_applied(ctx, request, outcome) -> None:
+    # запрос world с then_ref, который не отклонён: act этого кандидата уже частично исполнен
+    ref = getattr(request, "then_ref", None)
+    if ref and not isinstance(outcome, Invalid) and outcome.status != "rejected":
+        ctx.applied_refs.add(ref)

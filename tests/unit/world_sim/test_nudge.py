@@ -303,3 +303,165 @@ def test_flags_are_remembered_while_main_line_is_empty(registry, cfg):
     bundle.world.npcs["aldric"].opportunity[0].key = True
     bundle, _ = boundaries(bundle, registry, cfg, 1)
     assert nudge_of(bundle).scenes_off_main == 1
+
+
+# Ж2: verdict по событию (ref event:<id>) не получает пометку «герой не участвует»
+
+def event_verdict(owner_id="plague"):
+    from ai_dm.world_sim.candidates import Candidate, event_ref
+
+    return Candidate(
+        ref=event_ref(owner_id), kind="verdict", owner_kind="event", owner_id=owner_id,
+        owner_name="чума", item_id=owner_id, condition_text="чума отступила",
+    )
+
+
+def test_mark_not_participating_skips_event_candidate(registry, cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.state.world import GlobalEvent
+    from ai_dm.world_sim.nudge import mark_not_participating
+
+    bundle = away_bundle(registry, cfg)
+    bundle.world.events.append(GlobalEvent(id="plague", type="чума"))
+    check = SimpleNamespace(candidates=[event_verdict()])
+    mark_not_participating(bundle, check)
+    assert check.candidates[0].condition_text == "чума отступила"
+
+
+def test_mark_not_participating_still_marks_key_trigger_next_to_event(registry, cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.state.world import GlobalEvent
+    from ai_dm.world_sim.candidates import Candidate
+    from ai_dm.world_sim.nudge import NOT_PARTICIPATING, mark_not_participating
+
+    bundle = away_bundle(registry, cfg)
+    bundle.world.events.append(GlobalEvent(id="plague", type="чума"))
+    key = Candidate(
+        ref="trigger:aldric:steal_grail", kind="verdict", owner_kind="npc", owner_id="aldric",
+        owner_name="Олдрик", item_id="steal_grail", condition_text="украл",
+    )
+    check = SimpleNamespace(candidates=[event_verdict(), key])
+    mark_not_participating(bundle, check)
+    assert check.candidates[0].condition_text == "чума отступила"
+    assert check.candidates[1].condition_text.startswith(NOT_PARTICIPATING)
+
+
+# mark_not_participating: кого помечают, кого нет
+
+def cand(ref, owner_kind="npc", owner_id="aldric", item_id="steal_grail", kind="verdict"):
+    from ai_dm.world_sim.candidates import Candidate
+
+    return Candidate(
+        ref=ref, kind=kind, owner_kind=owner_kind, owner_id=owner_id, owner_name="x",
+        item_id=item_id, condition_text="условие",
+    )
+
+
+def marked(bundle, *candidates):
+    from types import SimpleNamespace
+
+    from ai_dm.world_sim.nudge import NOT_PARTICIPATING, mark_not_participating
+
+    check = SimpleNamespace(candidates=list(candidates))
+    mark_not_participating(bundle, check)
+    return [c.condition_text.startswith(NOT_PARTICIPATING) for c in check.candidates]
+
+
+def test_key_trigger_verdict_is_marked(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    assert marked(bundle, cand("trigger:aldric:steal_grail")) == [True]
+
+
+def test_mark_keeps_original_condition_text_after_prefix(registry, cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.world_sim.nudge import NOT_PARTICIPATING, mark_not_participating
+
+    bundle = away_bundle(registry, cfg)
+    check = SimpleNamespace(candidates=[cand("trigger:aldric:steal_grail")])
+    mark_not_participating(bundle, check)
+    assert check.candidates[0].condition_text == NOT_PARTICIPATING + "условие"
+
+
+def test_already_marked_candidate_is_not_marked_twice(registry, cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.world_sim.nudge import NOT_PARTICIPATING, mark_not_participating
+
+    bundle = away_bundle(registry, cfg)
+    first = cand("trigger:aldric:steal_grail")
+    first.condition_text = NOT_PARTICIPATING + "условие"
+    check = SimpleNamespace(candidates=[first])
+    mark_not_participating(bundle, check)
+    assert check.candidates[0].condition_text == NOT_PARTICIPATING + "условие"
+
+
+def test_secret_verdict_is_not_marked_even_with_key_trigger_of_same_id(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    assert marked(bundle, cand("secret:aldric:steal_grail")) == [False]
+
+
+def test_act_candidate_is_not_marked_and_does_not_stop_the_rest(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    act = cand("nudge:aldric:steal_grail", kind="act")
+    assert marked(bundle, act, cand("trigger:aldric:steal_grail")) == [False, True]
+
+
+def test_already_marked_candidate_does_not_stop_the_rest(registry, cfg):
+    from ai_dm.world_sim.nudge import NOT_PARTICIPATING
+
+    bundle = away_bundle(registry, cfg)
+    first = cand("trigger:aldric:steal_grail")
+    first.condition_text = NOT_PARTICIPATING + "условие"
+    second = cand("trigger:aldric:other", item_id="other")
+    bundle.world.npcs["aldric"].opportunity[0].id = "other"
+    assert marked(bundle, first, second)[1] is True
+
+
+def test_unknown_owner_is_skipped_without_error(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    ghost = cand("trigger:ghost:t", owner_id="ghost", item_id="t")
+    assert marked(bundle, ghost, cand("trigger:aldric:steal_grail")) == [False, True]
+
+
+def test_non_key_owner_is_not_marked_and_does_not_stop_the_rest(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    bundle.world.npcs["brann"].key = False
+    bundle.world.npcs["brann"].opportunity[0].key = True
+    brann = cand("trigger:brann:brann_trust", owner_id="brann", item_id="brann_trust")
+    assert marked(bundle, brann, cand("trigger:aldric:steal_grail")) == [False, True]
+
+
+def test_owner_without_key_attribute_counts_as_key(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    bundle.world.factions["guild"].opportunity[0].key = True
+    guild = cand("trigger:guild:g", owner_kind="faction", owner_id="guild", item_id="guild_hunt")
+    assert marked(bundle, guild) == [True]
+
+
+def test_candidate_without_trigger_is_skipped_and_does_not_stop_the_rest(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    broken = cand("trigger:aldric:nope", item_id="nope")
+    assert marked(bundle, broken, cand("trigger:aldric:steal_grail")) == [False, True]
+
+
+def test_non_key_trigger_of_key_owner_is_not_marked(registry, cfg):
+    bundle = away_bundle(registry, cfg)
+    bundle.world.npcs["aldric"].opportunity[0].key = False
+    assert marked(bundle, cand("trigger:aldric:steal_grail")) == [False]
+
+
+def test_event_verdict_reaches_world_unmarked_after_stage_3(registry, cfg):
+    from ai_dm.state.world import GlobalEvent
+
+    bundle = away_bundle(registry, cfg)
+    bundle.world.events.append(
+        GlobalEvent(id="plague", type="чума", ends_when={"narrative": "чума отступила"})
+    )
+    world = FakeWorld()
+    boundaries(bundle, registry, cfg, 3 * EVERY, world)
+    texts = [c.condition_text for calls in world.calls for c in calls if c.ref == "event:plague"]
+    assert texts
+    assert set(texts) == {"чума отступила"}

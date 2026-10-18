@@ -1,6 +1,6 @@
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import allowed
-from ai_dm.rules import divine, uniqueness
+from ai_dm.rules import divine, goals, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
@@ -18,6 +18,8 @@ from ai_dm.state.world import NPC, Connection, DangerMark, GlobalEvent, Location
 MASTER_DEATH_CAUSES = ("goal", "hazard")
 # события, которые возникают только из сработавшего триггера (ТЗ 4.1.2)
 CAUSED_EVENT_TYPES = ("war", "plague")
+# поля цели в npc_update: первое -- вид, остальные имеют смысл только с ним
+GOAL_FIELDS = ("goal_kind", "goal_target", "goal_text", "goal_status")
 
 
 def rejected(reason, signal, report_tag=None):
@@ -251,9 +253,72 @@ def change_status(ctx, npc, request, decision):
         apply_events(world, done)
         ctx.events.extend(done)
         decision.log.append(f"{npc_label(npc)}: {request.status} ({request.cause})")
+        if request.status == "dead" and request.by == ctx.hero.id:
+            goals.on_npc_killed(ctx.bundle, ctx.hero, npc, ctx.cfg)
     else:
         decision.log.append(f"{npc_label(npc)}: уже мёртв, ничего не изменилось")
     decision.result["status"] = npc.status
+
+
+def goal_problem(ctx, npc, request):
+    # Invalid, если с целью что-то не так: поля без вида, чужая мишень, повтор, нет цели к закрытию
+    if request.goal_kind is None:
+        return goal_fields_problem(request)
+    target = goal_target_of(ctx, request)
+    if target not in ctx.bundle.world.npcs and all(h.id != target for h in ctx.bundle.heroes):
+        return Invalid(
+            code="unknown_goal_target",
+            message=f"нет мишени {target!r}; goal_target — id героя или NPC"
+            + allowed(ctx.bundle.world.npcs),
+        )
+    return goal_state_problem(npc, request, target)
+
+
+def goal_target_of(ctx, request) -> str:
+    # мишень цели; пусто = текущий герой
+    return request.goal_target or ctx.hero.id
+
+
+def goal_fields_problem(request):
+    if nothing_to_change(request, *GOAL_FIELDS[1:]):
+        return None
+    return Invalid(
+        code="goal_fields_without_kind",
+        message="goal_target, goal_text и goal_status нужны только с goal_kind",
+    )
+
+
+def goal_state_problem(npc, request, target):
+    # постановка цели мёртвому (или уходящему в этом же запросе) NPC, повторной цели
+    # или закрытие несуществующей; закрытие мёртвому разрешено
+    kind = request.goal_kind
+    active = goals.find_active(npc, kind, target) is not None
+    adding = request.goal_status is None
+    if adding and request.status is not None:
+        return Invalid(
+            code="goal_kind_with_status", message="постановка цели и status нельзя в одном запросе"
+        )
+    if adding and npc.status != "alive":
+        return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: цель не ставится")
+    if adding and active:
+        return Invalid(code="goal_exists", message=f"цель {kind} на {target} у NPC уже активна")
+    if not adding and not active:
+        return Invalid(code="no_such_goal", message=f"нет активной цели {kind} на {target}")
+    return None
+
+
+def change_goal(ctx, npc, request, decision):
+    # поставить цель (мишень NPC -- цель на NPC) или закрыть активную: done | dropped
+    world = ctx.bundle.world
+    kind = request.goal_kind
+    target = goal_target_of(ctx, request)
+    if request.goal_status is not None:
+        goals.close_goal(npc, kind, target, request.goal_status)
+        decision.log.append(f"{npc_label(npc)}: цель {kind} — {request.goal_status}")
+        return
+    add = goals.add_npc_goal if target in world.npcs else goals.add_goal
+    add(npc, kind, target, request.goal_text or goals.NARRATIVE[kind], world.clock.now_s)
+    decision.log.append(f"{npc_label(npc)}: новая цель {kind}")
 
 
 def nothing_to_change(request, *names) -> bool:
@@ -264,7 +329,7 @@ def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
-        "memory_kind", "memory_text", "name",
+        "memory_kind", "memory_text", "name", *GOAL_FIELDS,
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -275,8 +340,14 @@ def update_problem(ctx, npc, request):
         )
     return (
         name_problem(ctx, npc, request) or memory_problem(ctx, npc, request)
-        or death_problem(ctx, npc, request) or merchant_update_problem(ctx, npc, request)
+        or death_problem(ctx, npc, request) or merchant_goal_problem(ctx, npc, request)
     )
+
+
+def merchant_goal_problem(ctx, npc, request):
+    # отдельная функция: пятый операнд цепочки в update_problem даёт smell «Complex binary
+    # expression»
+    return merchant_update_problem(ctx, npc, request) or goal_problem(ctx, npc, request)
 
 
 def name_problem(ctx, npc, request):
@@ -356,6 +427,8 @@ def npc_update(ctx, request):
         change_attitude(ctx, npc, request.attitude_delta, decision)
     if request.memory_kind is not None:
         change_memory(ctx, npc, request, decision)
+    if request.goal_kind is not None:
+        change_goal(ctx, npc, request, decision)
     if request.status is not None:
         change_status(ctx, npc, request, decision)
     if request.trade_kind is not None:

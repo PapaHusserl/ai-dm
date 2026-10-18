@@ -3,12 +3,15 @@ from ai_dm.core.clock import DAY
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers import checks
 from ai_dm.protocol.handlers.world import (
+    GOAL_FIELDS,
     change_attitude,
     change_follows,
+    change_goal,
     change_identity,
     change_status,
     death_refused,
     favor_change_for,
+    goal_problem,
     nothing_to_change,
     rejected,
 )
@@ -99,6 +102,18 @@ def saving_throw(ctx, request):
     return checks.roll_decision(ctx, result, npc.id)
 
 
+def basic_problem(ctx, npc, request):
+    # Invalid для пустого запроса, не живого NPC, идущего с героем, и неверной цели, иначе None
+    if nothing_to_change(
+        request, "attitude_delta", "status", "location_id", "follows", "gender", "pronouns",
+        *GOAL_FIELDS,
+    ):
+        return Invalid(code="empty_update", message="в npc_update нечего менять")
+    if request.follows == "hero" and npc.status != "alive":
+        return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не идёт с героем")
+    return goal_problem(ctx, npc, request)
+
+
 def npc_update(ctx, request):
     world = ctx.bundle.world
     invalid = check_then_ref(ctx, request.then_ref)
@@ -109,12 +124,9 @@ def npc_update(ctx, request):
         return Invalid(
             code="unknown_npc", message=f"нет NPC {request.npc_id!r}" + allowed(world.npcs)
         )
-    if nothing_to_change(
-        request, "attitude_delta", "status", "location_id", "follows", "gender", "pronouns"
-    ):
-        return Invalid(code="empty_update", message="в npc_update нечего менять")
-    if request.follows == "hero" and npc.status != "alive":
-        return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не идёт с героем")
+    invalid = basic_problem(ctx, npc, request)
+    if invalid is not None:
+        return invalid
     if request.location_id is not None:
         if request.location_id not in world.locations:
             return Invalid(
@@ -141,6 +153,8 @@ def npc_update(ctx, request):
     change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)
+    if request.goal_kind is not None:
+        change_goal(ctx, npc, request, decision)
     if request.status is not None:
         change_status(ctx, npc, request, decision)
     return decision

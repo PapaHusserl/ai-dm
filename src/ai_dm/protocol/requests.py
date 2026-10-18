@@ -6,7 +6,7 @@ from ai_dm.content.models.common import Ability, DcCategory, Skill
 from ai_dm.state.combat import ImproviseEffect, Intent
 from ai_dm.state.gender import Gender
 from ai_dm.state.knowledge import KNOWLEDGE_KINDS, KNOWLEDGE_SOURCES
-from ai_dm.state.relations import MEMORY_KINDS
+from ai_dm.state.relations import GOAL_KINDS, MEMORY_KINDS
 from ai_dm.state.world import Tone
 
 # strict-схема без union: необязательные поля обязательны для модели и имеют нейтральное значение
@@ -16,6 +16,7 @@ SkillOrNone = Literal[(*get_args(Skill), "none")]
 GenderOrNone = Literal[(*get_args(Gender), "none")]
 GenderUpdate = Literal[(*get_args(Gender), "none", "unset")]
 MemoryKindOrNone = Literal[(*MEMORY_KINDS, "none")]
+GoalKindOrNone = Literal[(*GOAL_KINDS, "none")]
 ImproviseEffectOrNone = Literal[(*get_args(ImproviseEffect), "none")]
 DcCategoryOrNone = Literal[(*get_args(DcCategory), "none")]
 ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
@@ -496,9 +497,21 @@ class NpcUpdateBase(Request):
     pronouns: str = Field(
         "", description="Местоимения/обращение NPC; пусто = не менять; - = сбросить."
     )
+    goal_kind: GoalKindOrNone = Field(
+        "none", description="Долгая цель NPC: поставить или (с goal_status) закрыть; none = нет."
+    )
+    goal_target: str = Field(
+        "", description="Id героя или NPC, на кого направлена цель; пусто = герой."
+    )
+    goal_text: str = Field("", description="Суть цели при постановке; пусто = типовой текст.")
+    goal_status: Literal["none", "done", "dropped"] = Field(
+        "none", description="Закрыть активную цель goal_kind/goal_target: done или dropped; "
+        "none = поставить цель."
+    )
     NEUTRAL: ClassVar[dict] = {
         "attitude_delta": 0, "status": "none", "cause": "none", "evidence_ref": "", "by": "",
-        "text": "", "follows": "keep", "gender": "none", "pronouns": "",
+        "text": "", "follows": "keep", "gender": "none", "pronouns": "", "goal_kind": "none",
+        "goal_target": "", "goal_text": "", "goal_status": "none",
     }
 
 

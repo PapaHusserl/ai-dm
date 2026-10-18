@@ -152,14 +152,26 @@ def on_kill(bundle, hero, part, state, cfg) -> list:
     # Убийца другой (напарник, иной участник) -- мести нет; смерть без убийцы -- на счёт героя
     if part.last_hit_by not in (None, hero.id):
         return []
-    now_s = bundle.world.clock.now_s
-    scene = bundle.session.current_scene
     npc = bundle.world.npcs.get(part.ref)
     name = shown_name(npc) if npc is not None else participant_name(state, {}, part.ref)
     fighters = {p.ref for p in state.participants}
+    return avenge(bundle, hero, (part.ref, name, [part.group_id], fighters), cfg)
+
+
+def on_npc_killed(bundle, hero, npc, cfg) -> list:
+    # герой убил NPC мира вне боя (npc_update status=dead by=герой): те же мстители
+    victim = (npc.id, shown_name(npc), npc.groups, set())
+    return avenge(bundle, hero, victim, cfg)
+
+
+def avenge(bundle, hero, victim, cfg) -> list:
+    # victim: (ref, имя, группы, участники боя); создаёт цели и память мстителям
+    ref, name, groups, fighters = victim
+    now_s = bundle.world.clock.now_s
+    scene = bundle.session.current_scene
     text = f"мстит герою за гибель: {name}"
     created = []
-    for npc in avengers(bundle.world, hero, part.ref, [part.group_id], fighters):
+    for npc in avengers(bundle.world, hero, ref, groups, fighters):
         if add_goal(npc, "revenge", hero.id, text, now_s) is None:
             continue
         created.append(npc)

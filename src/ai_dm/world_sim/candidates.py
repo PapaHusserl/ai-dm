@@ -2,10 +2,10 @@ from pydantic import BaseModel, Field
 
 from ai_dm.rules import goals
 from ai_dm.rules.secrets import hidden_secrets
-from ai_dm.rules.triggers_eval import Truth, evaluate, is_ready
+from ai_dm.rules.triggers_eval import Truth, evaluate, event_active, is_ready
 from ai_dm.state.triggers import Condition
 
-OWNER_RANK = {"god": 0, "faction": 1, "npc": 2, "hero": 3}
+OWNER_RANK = {"god": 0, "faction": 1, "npc": 2, "hero": 3, "event": 4}
 
 
 class Candidate(BaseModel):
@@ -87,9 +87,36 @@ def sort_key(candidate):
     return (group, OWNER_RANK[candidate.owner_kind], candidate.owner_id, candidate.item_id)
 
 
+def event_ref(event_id) -> str:
+    return f"event:{event_id}"
+
+
+def event_candidates(bundle) -> list[Candidate]:
+    # активные события, у которых структурная часть ends_when выполнена, а нарративный остаток нет
+    world = bundle.world
+    now_s = world.clock.now_s
+    hero = current_hero(bundle)
+    result = []
+    for event in world.events:
+        if event.ends_when is None or not event_active(event, now_s):
+            continue
+        ev = evaluate(event.ends_when, world, hero)
+        if ev.truth != Truth.NEEDS_NARRATIVE:
+            continue
+        result.append(
+            Candidate(
+                ref=event_ref(event.id), kind="verdict", owner_kind="event", owner_id=event.id,
+                owner_name=event.type, item_id=event.id, condition_text="; ".join(ev.narrative),
+                then="событие заканчивается", residual=ev.residual,
+            )
+        )
+    return result
+
+
 def verdict_candidates(bundle, owner_list=None, skip_goals=False) -> list[Candidate]:
     # чистая функция: триггеры с выполненной структурной частью и нарративным остатком,
-    # затем секреты NPC закрытой сцены; состояние не меняет; skip_goals -- без триггеров целей
+    # затем секреты NPC закрытой сцены и события с ends_when; состояние не меняет;
+    # skip_goals -- без триггеров целей
     world = bundle.world
     now_s = world.clock.now_s
     result = []
@@ -125,4 +152,4 @@ def verdict_candidates(bundle, owner_list=None, skip_goals=False) -> list[Candid
                     condition_text="; ".join(ev.narrative), residual=ev.residual,
                 )
             )
-    return sorted(result, key=sort_key)
+    return sorted(result + event_candidates(bundle), key=sort_key)

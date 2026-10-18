@@ -505,6 +505,144 @@ def test_on_kill_by_another_hero_participant_or_monster_does_nothing(registry, k
     assert mate.memory == []
 
 
+# on_kill: жертва -- NPC мира (имя как его видит игрок)
+
+def kill_world_npc(bundle, victim, groups=("goblins",), fighters=()):
+    hero = bundle.heroes[0]
+    part = Participant(
+        ref=victim.id, side="enemies", group_id=next(iter(groups), ""), status="dead",
+        name="Гоблин", last_hit_by=hero.id,
+    )
+    others = [Participant(ref=ref, side="enemies", group_id="goblins") for ref in fighters]
+    state = SimpleNamespace(participants=[part, *others])
+    return on_kill(bundle, hero, part, state, CFG)
+
+
+def hidden_victim(**fields):
+    return make_npc(
+        "victim", name="Мурк", named=True, origin="engine",
+        combat={"monster_id": "goblin_warrior", "label": "Воин-гоблин 1"}, **fields,
+    )
+
+
+def test_on_kill_names_world_victim_by_shown_name(registry):
+    mate = make_npc("mate", groups=["goblins"])
+    bundle = world_bundle(registry, hidden_victim(), mate)
+    kill_world_npc(bundle, bundle.world.npcs["victim"])
+    assert mate.goals[0].text == "мстит герою за гибель: Воин-гоблин 1"
+    assert "Мурк" not in mate.memory[0].events[0].text
+
+
+def test_on_kill_names_world_victim_by_known_name_once_opened(registry):
+    mate = make_npc("mate", groups=["goblins"])
+    bundle = world_bundle(registry, hidden_victim(known_name="Мурк"), mate)
+    kill_world_npc(bundle, bundle.world.npcs["victim"])
+    assert mate.goals[0].text == "мстит герою за гибель: Мурк"
+
+
+# on_npc_killed и avenge: герой убил NPC мира вне боя
+
+def killed(bundle, victim_id="victim"):
+    from ai_dm.rules.goals import on_npc_killed
+
+    return on_npc_killed(bundle, bundle.heroes[0], bundle.world.npcs[victim_id], CFG)
+
+
+def test_on_npc_killed_gives_revenge_to_kin(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim", name="Олдрик"), kin, make_npc("stranger"))
+    now_s = bundle.world.clock.now_s
+    assert [n.id for n in killed(bundle)] == ["son"]
+    [goal] = kin.goals
+    assert (goal.kind, goal.target, goal.since_s) == ("revenge", bundle.heroes[0].id, now_s)
+    assert goal.text == "мстит герою за гибель: Олдрик"
+    assert world_goals(bundle, "stranger") == []
+
+
+def test_on_npc_killed_gives_revenge_to_squad_by_victim_groups(registry):
+    mate = make_npc("mate", groups=["clan"], attitude=-5)
+    friend = make_npc("friend", groups=["clan"], attitude=10)
+    other = make_npc("other", groups=["wolves"])
+    bundle = world_bundle(registry, make_npc("victim", groups=["clan"]), mate, friend, other)
+    assert [n.id for n in killed(bundle)] == ["mate"]
+
+
+def test_on_npc_killed_victim_without_groups_has_no_squad(registry):
+    bundle = world_bundle(registry, make_npc("victim"), make_npc("n", groups=["clan"]))
+    assert killed(bundle) == []
+
+
+def test_on_npc_killed_victim_himself_never_avenges(registry):
+    bundle = world_bundle(registry, make_npc("victim", groups=["clan"]))
+    assert killed(bundle) == []
+
+
+def test_on_npc_killed_dead_squad_member_does_not_avenge(registry):
+    dead = make_npc("d", groups=["clan"], status="dead")
+    bundle = world_bundle(registry, make_npc("victim", groups=["clan"]), dead)
+    assert killed(bundle) == []
+
+
+def test_on_npc_killed_names_victim_by_shown_name(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, hidden_victim(), kin)
+    killed(bundle)
+    assert kin.goals[0].text == "мстит герою за гибель: Воин-гоблин 1"
+
+
+def test_on_npc_killed_writes_kin_killed_memory(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim", name="Олдрик"), kin)
+    killed(bundle)
+    [event] = [e for m in kin.memory for e in m.events]
+    assert event.kind == "kin_killed"
+    assert event.text == "герой убил: Олдрик"
+    assert event.turn_seq == bundle.session.turn_seq
+    assert kin.memory[0].scene_id == bundle.session.current_scene.id
+
+
+def test_on_npc_killed_memory_text_is_cut_to_limit(registry):
+    from ai_dm.state.relations import NPC_EVENT_TEXT_MAX
+
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim", name="Я" * 300), kin)
+    killed(bundle)
+    assert len(kin.memory[0].events[0].text) == NPC_EVENT_TEXT_MAX
+
+
+def test_on_npc_killed_without_scene_gives_goal_but_no_memory(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim"), kin)
+    bundle.session.current_scene = None
+    assert [n.id for n in killed(bundle)] == ["son"]
+    assert kin.memory == []
+
+
+def test_on_npc_killed_skips_npc_with_same_active_revenge(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim"), kin)
+    add_goal(kin, "revenge", bundle.heroes[0].id, "старое", 0)
+    assert killed(bundle) == []
+    assert len(kin.goals) == 1
+    assert kin.memory == []
+
+
+def test_on_npc_killed_creates_goal_companion(registry):
+    kin = make_npc("son", family=[FamilyLink(kind="parent", ref="victim", ref_kind="npc")])
+    bundle = world_bundle(registry, make_npc("victim"), kin)
+    killed(bundle)
+    assert companion_of(kin, "revenge", bundle.heroes[0].id).state == "active"
+
+
+def test_on_npc_killed_returns_list_of_new_avengers_only(registry):
+    link = FamilyLink(kind="parent", ref="victim", ref_kind="npc")
+    old = make_npc("a_old", family=[link])
+    new = make_npc("b_new", family=[link])
+    bundle = world_bundle(registry, make_npc("victim"), old, new)
+    add_goal(old, "revenge", bundle.heroes[0].id, "старое", 0)
+    assert [n.id for n in killed(bundle)] == ["b_new"]
+
+
 # skipped / put_goal
 
 def test_skipped_only_for_goal_trigger_when_not_due():

@@ -14,6 +14,8 @@
 #   настроение сцены»; explore.total 18458 -> 19462; 20050 = 19462 + 3 %.
 #   Ж1 коммит 2 (2026-10-18): поле name в npc_update и правило о выживших; замер 19736, порог
 #   20050 не менялся.
+#   Ж2 коммит 2 (2026-10-18): поля goal_* в npc_update, правило «Цели NPC»; explore.total
+#   19736 -> 20344; 20960 = 20344 + 3 %.
 import json
 from importlib import resources
 
@@ -27,7 +29,7 @@ from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
 # Ж3 п.9: замер explore.total 19462 + 3 % (до этого Ж0 п.18: 18185 -> 18700).
-STATIC_MAX = 20050
+STATIC_MAX = 20960
 
 MODES = sorted(MODE_TOOLS)
 

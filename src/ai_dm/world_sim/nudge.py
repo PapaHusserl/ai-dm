@@ -133,7 +133,7 @@ def apply_stage(bundle, check, first) -> None:
 def mark_not_participating(bundle, check) -> None:
     # мир не ждёт героя: ключевые триггеры с нарративной частью уходят в world с пометкой
     for candidate in check.candidates:
-        if candidate.kind != "verdict" or candidate.ref.startswith("secret:"):
+        if candidate.kind != "verdict" or candidate.ref.startswith(("secret:", "event:")):
             continue
         if candidate.condition_text.startswith(NOT_PARTICIPATING):
             continue

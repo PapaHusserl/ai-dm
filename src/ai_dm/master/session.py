@@ -125,6 +125,8 @@ class TurnFailed(Exception):
         self.reason = reason
         self.report_tags = report_tags or []
         self.detail = detail
+        # роль world: then_ref запросов, успевших примениться до сбоя (ставит WorldSession.run)
+        self.applied_refs = frozenset()
 
 
 def soft_failure(error) -> bool:

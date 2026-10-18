@@ -40,6 +40,8 @@ class TurnContext:
         self.verdict_refs = []
         self.verdicts = None
         self.notice_ids = []
+        # then_ref запросов world, по которым что-то применилось
+        self.applied_refs = set()
         # роль summarizer: принятая выжимка (None -- ещё нет), название, предел длины
         self.summary_text = None
         self.summary_title = ""

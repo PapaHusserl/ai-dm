@@ -46,9 +46,6 @@ GOAL_KINDS  # unused variable (src/ai_dm/state/relations.py:12) -- Ж0 подш�
 ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
-pending_acts  # unused variable (src/ai_dm/state/world.py:225) -- BACKLOG 46
-# Ж2 коммит 1 (согласие проектировщика 2026-10-18): цель NPC на NPC, читатель — goal_* в коммите 2; снять там.
-add_npc_goal  # unused function (src/ai_dm/rules/goals.py)
 # API Textual: вызывается фреймворком (src/ai_dm/ui/tui/__init__.py).
 ENABLE_COMMAND_PALETTE  # unused variable
 compose  # unused method

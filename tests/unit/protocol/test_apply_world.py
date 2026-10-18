@@ -407,6 +407,40 @@ def test_killing_dead_npc_again_is_not_a_second_death(registry, cfg):
     assert [e.type for e in ctx.events].count("npc_died") == 1
 
 
+def test_death_text_goes_to_death_record(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    kill(ctx, cause="goal", evidence_ref=ref, text="упал с башни")
+    assert ctx.bundle.world.npcs["aldric"].death.text == "упал с башни"
+
+
+def test_death_without_text_has_empty_record_text(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    kill(ctx, cause="goal", evidence_ref=ref)
+    assert ctx.bundle.world.npcs["aldric"].death.text == ""
+
+
+def test_death_result_carries_new_status(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    assert kill(ctx, cause="goal", evidence_ref=ref).result == {"status": "dead"}
+
+
+def test_gone_result_carries_new_status(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    assert kill(ctx, status="gone", cause="goal", evidence_ref=ref).result == {"status": "gone"}
+
+
+def test_killing_dead_npc_again_logs_nothing_changed(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1, 1]))
+    kill(ctx, cause="goal", evidence_ref=roll_ref(ctx))
+    again = kill(ctx, cause="goal", evidence_ref=roll_ref(ctx))
+    assert again.log == ["Олдрик: уже мёртв, ничего не изменилось"]
+    assert again.result == {"status": "dead"}
+
+
 # offer_choices / end_scene / end_chapter / unsupported_action
 
 @pytest.mark.parametrize("choices", [["Войти", "Уйти"], ["Войти", "Уйти", "Ждать"]])

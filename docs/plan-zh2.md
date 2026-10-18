@@ -32,6 +32,14 @@ ROADMAP «Ж2» (BACKLOG 9, 10, 20 — часть о целях и мстите�
   схемы); смерть без убийцы (взрыв при смерти, окружение) засчитывается герою; старые триггеры `debt_<hero>` в сейвах
   остаются как есть, без миграции (п. 6 ревью); В2 (а) — провал спасброска от hazard = +1 истощение; В3 (а) — смена бога отклоняется
   только при `unknown_god`/`same_deity`, старый бог не трогается.
+- 2026-10-18, проектировщик (ревью и аудит коммита 2, все — по рекомендации): 1А — hazard в тике бросают все активные
+  герои в зоне; 2А — при `affects` без «все» герой hazard не бросает (как множитель смертности); 3А — не больше одного
+  hazard от события на героя в день (тик и запрос рассказчика); 4А — постановка цели мёртвому NPC отклоняется
+  `npc_not_alive`, закрытие разрешено; 5А — закадровая смерть с `by=<герой>` даёт мстителей; 6А — пустой `goal_target`
+  = текущий герой. Уточнение 3А (2026-10-19, вариант Б): ограничение «раз в день» только внутри тика; запрос урона
+  рассказчика с событием не связан и не ограничивается.
+- 2026-10-19, проектировщик (повторный аудит коммита 2, R1): вариант Б — при мягком сбое world откладываются только
+  act, по чьему `then_ref` не прошёл ни один запрос (без потерь и дублей по остальным).
 
 ## Груминг
 
@@ -204,7 +212,9 @@ glossary; карточки done/ 9, 46, 85, 86; BACKLOG 10 и 20 остаютс�
 ### 4. mutmut
 
 `ai_dm.rules.goals:*`, `rules.survivors:remember_fight`, `combat.defeat:do_debt`, `game.turn:TurnRunner.end_fight`,
-`world_sim.triggers:check`, `world_sim.candidates:{verdict_candidates,sort_key,event_candidates,stash_acts,take_acts}`,
+`world_sim.triggers:check`, `world_sim.candidates:{verdict_candidates,sort_key,event_ref,event_candidates}`,
+`world_sim.pending:{load_acts,stash_acts,stash_unapplied,take_acts,owner_present}` (коммит 2: вынесено из candidates),
+`protocol.apply:{apply,note_applied}`, `master.world:WorldSession.run`, `master.session:TurnFailed.__init__`,
 `world_sim.verdicts:{apply_verdicts,find_owner}`, `world_sim.nudge:mark_not_participating`, `world_sim.tick:tick_days`,
 `world_sim.hazard:*`, `game.boundary:{check_triggers,call_world}`, `master.relevance:npc_reasons`,
 `master.prompt:PromptBuilder.divine_data`, `protocol.handlers.world:{name_problem,update_problem,npc_update,
@@ -231,6 +241,12 @@ L+ ≈ 1,7–1,9 млн ток.: kaban 0,55, doeba 0,75, mama 0,2, svekrov 0,08,
 - Коммит 1, кабан-свекровь (2026-10-18): чисто, сверх плана ничего; тексты целей (`GRATITUDE_TEXT`, `REVENGE_TEXT`,
   `NARRATIVE`) — служебные, оставить. Замечание: F2 «убитого героем» vs код «любой мёртвый враг» — вопрос проектировщику.
   Шапка ROADMAP про v12 «выбор за проектировщиком» устарела — архитектору.
+- Коммит 2, кабан-свекровь (2026-10-18): сверх плана ничего; вопросы — hazard всем героям, `affects` без героя, цель
+  мёртвому NPC; вмешательство бога при смерти от hazard — общее правило ТЗ 4.2.
+- Коммит 2, мама-кабан (2026-10-18): нужны правки — R1 повтор act при мягком сбое после частичного применения;
+  R2 двойной hazard за день; R3 закадровая смерть и мстители; R4 пустой `debt_scene` у hazard без сцены; FUNCS mutmut —
+  `world_sim.pending`; `goal_target or hero.id` дважды; `goal_fields_problem` раньше `empty_update`; цель применяется
+  раньше `status=dead`; стиль — `merchant_goal_problem`, комментарий verdicts.py:38, `event.type` в хронике hazard.
 - Коммит 1, мама-кабан (2026-10-18): нужны правки — smells 204 (п. 1), F2 убийца (п. 2), имя без номера (п. 3),
   `mark_fired` в `check` не срабатывает (п. 4, «если не хватит smells»), 86400 (п. 5), старые `debt_<hero>` (п. 6).
 
@@ -243,3 +259,14 @@ L+ ≈ 1,7–1,9 млн ток.: kaban 0,55, doeba 0,75, mama 0,2, svekrov 0,08,
   П. 2 — по решению проектировщика (см. «Решения»): `downed.kill_monster` пишет `last_hit_by = attacker_ref`;
   `goals.on_kill` выходит, если `last_hit_by` не `None` и не герой; `end_fight` обрабатывает одного героя, неоднозначности
   нет. smells 200/200, схема v12 не менялась.
+- Коммит 2 (кабан, 2026-10-18): R1 — отката у `world.run` нет; `call_world` снимает дамп мира, `pending.stash_if_unchanged`
+  откладывает act только при неизменённом мире (при частичном применении act теряются, дублей нет); 3А — по решению
+  проектировщика (Б) код не менялся; 4А — `goal_state_problem` даёт `npc_not_alive` при постановке цели мёртвому/ушедшему
+  или при `status` в том же запросе; 5А/R3 — как есть; R4 — пустой `debt_scene` безопасен; `goal_target_of`;
+  `GOAL_FIELDS` в `nothing_to_change` — `goal_fields_without_kind` раньше `empty_update`; `merchant_goal_problem`
+  оставлена ради smells (комментарий); комментарий verdicts.py уточнён. smells 200/200.
+- Коммит 2, вариант Б по R1 (кабан, 2026-10-19): `TurnContext.applied_refs`, `protocol.apply.note_applied`,
+  `TurnFailed.applied_refs` (проброс из `WorldSession.run`), `pending.stash_unapplied` вместо `stash_if_unchanged`, дамп
+  мира удалён; цель вместе со `status` — отказ `goal_kind_with_status`. Повторное ревью и аудит — можно мержить.
+  Известное ограничение (в «Итог»): act, исполненный через `set_flag`/`world_notice` без `then_ref`, при сбое world
+  повторится на следующей границе (для `world_notice` — повторная заметка).

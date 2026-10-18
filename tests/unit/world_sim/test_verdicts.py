@@ -72,6 +72,103 @@ def test_denied_goal_verdict_keeps_goal_active(registry, cfg):
     assert bundle.world.npcs["aldric"].goals[0].status == "active"
 
 
+# Ж2 (коммит 2): вердикт по событию (event:<id>) -- holds=true заканчивает событие
+
+def event_candidate(bundle, ends_at_s=None):
+    from ai_dm.state.world import GlobalEvent
+
+    bundle.world.events.append(
+        GlobalEvent(id="plague", type="чума", ends_at_s=ends_at_s, ends_when={"narrative": "x"})
+    )
+    return candidate("event:plague", "event", "plague", "plague")
+
+
+def event_of(bundle):
+    return next(e for e in bundle.world.events if e.id == "plague")
+
+
+def test_find_owner_returns_event_by_id(registry, cfg):
+    from ai_dm.world_sim.verdicts import find_owner
+
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle)
+    assert find_owner(bundle, cand) is event_of(bundle)
+
+
+def test_find_owner_of_unknown_event_is_none(registry, cfg):
+    from ai_dm.world_sim.verdicts import find_owner
+
+    bundle = mini_bundle(registry, cfg)
+    assert find_owner(bundle, candidate("event:ghost", "event", "ghost", "ghost")) is None
+
+
+def test_find_owner_of_unknown_hero_is_none(registry, cfg):
+    from ai_dm.world_sim.verdicts import find_owner
+
+    bundle = mini_bundle(registry, cfg)
+    assert find_owner(bundle, candidate("trigger:ghost:t", "hero", "ghost", "t")) is None
+
+
+def test_find_owner_returns_hero_by_id(registry, cfg):
+    from ai_dm.world_sim.verdicts import find_owner
+
+    bundle = mini_bundle(registry, cfg)
+    hero = bundle.heroes[0]
+    assert find_owner(bundle, candidate("trigger:h:t", "hero", hero.id, "t")) is hero
+
+
+def test_find_owner_event_id_is_not_confused_with_hero_or_npc(registry, cfg):
+    from ai_dm.world_sim.verdicts import find_owner
+
+    bundle = mini_bundle(registry, cfg)
+    event_candidate(bundle)
+    assert find_owner(bundle, candidate("event:aldric", "event", "aldric", "aldric")) is None
+
+
+def test_confirmed_event_verdict_ends_event_now(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle)
+    assert apply(bundle, [cand], {cand.ref: True}) == ["event:plague"]
+    assert event_of(bundle).ends_at_s == bundle.world.clock.now_s
+
+
+def test_confirmed_event_verdict_overrides_later_end(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle, ends_at_s=bundle.world.clock.now_s + 10**6)
+    apply(bundle, [cand], {cand.ref: True})
+    assert event_of(bundle).ends_at_s == bundle.world.clock.now_s
+
+
+def test_denied_event_verdict_keeps_event_running(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle)
+    assert apply(bundle, [cand], {cand.ref: False}) == []
+    assert event_of(bundle).ends_at_s is None
+
+
+def test_missing_event_verdict_keeps_event_running(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle)
+    assert apply(bundle, [cand], {}) == []
+    assert event_of(bundle).ends_at_s is None
+
+
+def test_event_verdict_fires_no_trigger_and_writes_no_chronicle(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    cand = event_candidate(bundle)
+    before = len(bundle.chronicle.entries)
+    apply(bundle, [cand], {cand.ref: True})
+    assert bundle.world.fired == []
+    assert len(bundle.chronicle.entries) == before
+
+
+def test_unknown_event_verdict_is_skipped_and_next_one_applies(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    ghost = candidate("event:ghost", "event", "ghost", "ghost")
+    cand = event_candidate(bundle)
+    assert apply(bundle, [ghost, cand], {ghost.ref: True, cand.ref: True}) == [cand.ref]
+
+
 def test_confirmed_ordinary_verdict_does_not_touch_goals(registry, cfg):
     bundle = mini_bundle(registry, cfg)
     goal_candidate(bundle)

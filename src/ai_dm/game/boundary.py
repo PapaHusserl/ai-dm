@@ -6,7 +6,7 @@ from ai_dm.master.session import TurnFailed, soft_failure
 from ai_dm.persistence.store import save_auto
 from ai_dm.state.memory import ChapterSummary, SceneSummary
 from ai_dm.state.session import ChapterState
-from ai_dm.world_sim import nudge, tick, triggers, verdicts
+from ai_dm.world_sim import nudge, pending, tick, triggers, verdicts
 
 # метка репорта: выжимка пришла не от первичной модели summarizer (до #22 -- refusal_fallback)
 BACKUP_TAG = "summarizer_backup"
@@ -117,7 +117,8 @@ def call_world(work, cfg, registry, check, world, run_id, result) -> None:
     # мягкий сбой world (отказ, невалидные ответы, сеть) -- пропуск: граница идёт дальше
     if world is None:
         return
-    candidates = list(check.candidates)
+    # отложенные act прошлых границ (BACKLOG 46) идут в этот вызов вместе с новыми
+    candidates = pending.take_acts(work, check.candidates)
     sim = work.world.sim
     day = work.world.clock.now_s // DAY
     calls_today = sim.world_calls_today if sim.world_calls_day == day else 0
@@ -135,7 +136,9 @@ def call_world(work, cfg, registry, check, world, run_id, result) -> None:
     except TurnFailed as error:
         if not soft_failure(error):
             raise
-        # мягкий сбой: world на этой границе пропущен; причина -- в записи журнала
+        # мягкий сбой: world на этой границе пропущен; причина -- в записи журнала;
+        # сработавшие act ждут следующей границы, если по ним ничего не применилось (откатов нет)
+        pending.stash_unapplied(work, candidates, error.applied_refs)
         result.report_tags.append("world_skipped")
         return
     verdicts.apply_verdicts(work, candidates, ctx.verdicts or {})

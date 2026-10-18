@@ -46,20 +46,23 @@ def location_chain(world, location_id) -> list[str]:
     return chain
 
 
+def affected(event, chain, groups) -> bool:
+    # существо (цепочка его локаций и группы) в регионе и группе риска события
+    in_region = not event.regions or any(region in chain for region in event.regions)
+    in_group = (
+        not event.affects or "все" in event.affects
+        or any(group in event.affects for group in groups)
+    )
+    return in_region and in_group
+
+
 def multiplier(world, kind, creature, at) -> int:
     # максимум mortality_multiplier активных событий, в регионе и группе риска которых существо
     chain = location_chain(world, creature.location_id)
     groups = creature.groups if kind == "npc" else []
     result = 1
     for event in world.events:
-        if not event_active(event, at):
-            continue
-        in_region = not event.regions or any(region in chain for region in event.regions)
-        in_group = (
-            not event.affects or "все" in event.affects
-            or any(group in event.affects for group in groups)
-        )
-        if in_region and in_group:
+        if event_active(event, at) and affected(event, chain, groups):
             result = max(result, event.mortality_multiplier)
     return result
 

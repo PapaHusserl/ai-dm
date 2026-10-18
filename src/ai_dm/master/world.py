@@ -6,7 +6,7 @@ from ai_dm.core.rng import Rng
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
 from ai_dm.master.prompt import dump, identity_data
 from ai_dm.master.relevance import relevant_npcs
-from ai_dm.master.session import MasterSession
+from ai_dm.master.session import MasterSession, TurnFailed
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.schema import tool_set
@@ -161,6 +161,10 @@ class WorldSession:
             sleeper=self.sleeper, now=self.now, role="world", call_numbers=self.call_numbers,
             builder=WorldPromptBuilder(self.app_cfg, candidates, model=self.model),
         )
-        session.run(ctx, "", apply, "world", run_id=run_id)
+        try:
+            session.run(ctx, "", apply, "world", run_id=run_id)
+        except TurnFailed as error:
+            error.applied_refs = frozenset(ctx.applied_refs)
+            raise
         bundle.world.rng = rng.state
         return ctx

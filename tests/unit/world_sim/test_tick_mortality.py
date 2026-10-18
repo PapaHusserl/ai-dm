@@ -266,6 +266,84 @@ def test_jump_within_max_tick_days_has_no_summary_line(registry, cfg):
     assert not any("без подробностей" in e.text for e in bundle.chronicle.entries)
 
 
+# mortality.affected(event, chain, groups): регион и группа риска (общая часть с hazard, Ж2)
+
+def ev(**fields):
+    from ai_dm.state.world import GlobalEvent
+
+    return GlobalEvent(id="e", type="чума", **fields)
+
+
+def affected(event, chain, groups):
+    from ai_dm.world_sim.mortality import affected as fn
+
+    return fn(event, chain, groups)
+
+
+def test_affected_event_without_regions_and_affects_covers_everyone():
+    assert affected(ev(), ["town"], []) is True
+
+
+def test_affected_region_must_be_in_chain():
+    assert affected(ev(regions=["town"]), ["tavern", "town"], []) is True
+    assert affected(ev(regions=["town"]), ["cellar"], []) is False
+
+
+def test_affected_any_of_regions_is_enough():
+    assert affected(ev(regions=["a", "town"]), ["town"], []) is True
+
+
+def test_affected_empty_chain_is_outside_regions():
+    assert affected(ev(regions=["town"]), [], []) is False
+
+
+def test_affected_group_must_match():
+    assert affected(ev(affects=["торговцы"]), [], ["торговцы"]) is True
+    assert affected(ev(affects=["торговцы"]), [], ["воины"]) is False
+    assert affected(ev(affects=["торговцы"]), [], []) is False
+
+
+def test_affected_all_word_covers_creature_without_groups():
+    assert affected(ev(affects=["все"]), [], []) is True
+
+
+def test_affected_needs_both_region_and_group():
+    event = ev(regions=["town"], affects=["торговцы"])
+    assert affected(event, ["town"], ["торговцы"]) is True
+    assert affected(event, ["town"], ["воины"]) is False
+    assert affected(event, ["cellar"], ["торговцы"]) is False
+
+
+def test_multiplier_takes_maximum_over_affecting_active_events(registry, cfg):
+    from ai_dm.state.world import GlobalEvent
+    from ai_dm.world_sim.mortality import multiplier
+
+    bundle = bundle_of(registry, cfg)
+    npc = bundle.world.npcs["aldric"]
+    bundle.world.events += [
+        GlobalEvent(id="a", type="чума", mortality_multiplier=3),
+        GlobalEvent(id="b", type="война", mortality_multiplier=7),
+        GlobalEvent(id="c", type="голод", mortality_multiplier=50, regions=["nowhere"]),
+        GlobalEvent(id="d", type="мор", mortality_multiplier=60, ends_at_s=1),
+        GlobalEvent(id="e", type="гроза", mortality_multiplier=70, affects=["торговцы"]),
+    ]
+    assert multiplier(bundle.world, "npc", npc, bundle.world.clock.now_s) == 7
+
+
+def test_multiplier_hero_ignores_group_filter(registry, cfg):
+    from ai_dm.state.world import GlobalEvent
+    from ai_dm.world_sim.mortality import multiplier
+
+    bundle = bundle_of(registry, cfg)
+    bundle.world.events.append(
+        GlobalEvent(id="e", type="гроза", mortality_multiplier=9, affects=["торговцы"])
+    )
+    hero = bundle.heroes[0]
+    assert multiplier(bundle.world, "hero", hero, bundle.world.clock.now_s) == 1
+    bundle.world.events[-1].affects = ["все"]
+    assert multiplier(bundle.world, "hero", hero, bundle.world.clock.now_s) == 9
+
+
 def test_jump_of_max_tick_days_is_allowed(registry, cfg):
     bundle = bundle_of(registry, cfg)
     run_tick(bundle, QueueRng(default="high"), registry, cfg, days=cfg.world.max_tick_days)

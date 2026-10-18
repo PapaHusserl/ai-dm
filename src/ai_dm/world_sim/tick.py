@@ -1,6 +1,6 @@
 from ai_dm.core.clock import DAY, GameClock
 from ai_dm.state.memory import add_entry
-from ai_dm.world_sim import aging, events, mortality
+from ai_dm.world_sim import aging, events, hazard, mortality
 
 
 def at_day(world, day) -> GameClock:
@@ -9,8 +9,8 @@ def at_day(world, day) -> GameClock:
 
 def tick_days(bundle, rng, cfg, registry) -> list:
     # шаг мира -- игровой день (ТЗ 4.1): от sim.last_day + 1 до текущего дня включительно;
-    # на день: смертность, истечение событий, смена сезона (природное событие), смена года
-    # (старость)
+    # на день: смертность, hazard событий (герою), истечение событий, смена сезона (природное
+    # событие), смена года (старость)
     world = bundle.world
     sim = world.sim
     if sim.last_season == "" and sim.last_year == 0:
@@ -33,6 +33,7 @@ def tick_days(bundle, rng, cfg, registry) -> list:
     for day in range(first, today + 1):
         at = day * DAY
         result += mortality.roll_day(bundle, rng, at)
+        result += hazard.roll_hazards(bundle, rng, cfg, registry, at)
         result += events.close_events(bundle, at)
         season = at_day(world, day).season()
         if season != sim.last_season:

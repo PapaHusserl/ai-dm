@@ -13,6 +13,8 @@ def find_owner(bundle, candidate):
         return world.factions.get(candidate.owner_id)
     if candidate.owner_kind == "npc":
         return world.npcs.get(candidate.owner_id)
+    if candidate.owner_kind == "event":
+        return next((e for e in world.events if e.id == candidate.owner_id), None)
     return next((h for h in bundle.heroes if h.id == candidate.owner_id), None)
 
 
@@ -33,6 +35,9 @@ def apply_verdicts(bundle, candidates, verdicts) -> list[str]:
             if secret is None:
                 continue
             secret.narrative_ok = True
+        elif candidate.owner_kind == "event":
+            # событие заканчивается; запись в хронику сделает тик следующего дня (close_events)
+            owner.ends_at_s = now_s
         else:
             trigger = next((t for t in owner.opportunity if t.id == candidate.item_id), None)
             if trigger is None:
