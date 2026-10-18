@@ -1,11 +1,12 @@
 from typing import NamedTuple
 
 from ai_dm.combat.engine import participant_name
+from ai_dm.rules.goals import add_goal
 from ai_dm.rules.knowledge import MET, fact, is_near, mentions, remember_fact, rename_met
 from ai_dm.rules.npc_memory import remember
 from ai_dm.rules.npc_names import name_hidden, shown_name
 from ai_dm.rules.uniqueness import id_taken
-from ai_dm.state.relations import NpcEvent, NpcGoal
+from ai_dm.state.relations import NpcEvent
 from ai_dm.state.world import NPC
 
 # исходы боя, после которых выжившие остаются в мире
@@ -20,6 +21,8 @@ MEMORY = {
 
 
 LIFE_DEBT_TEXT = "обязан герою жизнью: перешёл на его сторону в бою"
+GRATITUDE_TEXT = "благодарен герою: тот пощадил его в бою"
+REVENGE_TEXT = "хочет отомстить герою за поражение в бою"
 
 
 class Survivor(NamedTuple):
@@ -109,6 +112,10 @@ def start_attitude(config, kind) -> int:
     return by_kind[kind]
 
 
+def vengeful(npc, cfg) -> bool:
+    return npc.attitude <= cfg.survivors.revenge_attitude_max
+
+
 def remember_fight(bundle, hero, npc, survivor, cfg) -> None:
     # события боя пишет движок (пересмотр Q7 Ж0); нет сцены -- без памяти
     scene = bundle.session.current_scene
@@ -116,11 +123,13 @@ def remember_fight(bundle, hero, npc, survivor, cfg) -> None:
         kind, text = MEMORY[survivor.kind]
         event = NpcEvent(kind=kind, turn_seq=bundle.session.turn_seq, text=text)
         remember(npc, scene, event, cfg.npc_memory)
+    now_s = bundle.world.clock.now_s
     if survivor.kind == "defected":
-        goal = NpcGoal(
-            kind="life_debt", target=hero.id, text=LIFE_DEBT_TEXT, since_s=bundle.world.clock.now_s
-        )
-        npc.goals.append(goal)
+        add_goal(npc, "life_debt", hero.id, LIFE_DEBT_TEXT, now_s)
+    elif survivor.kind == "spared":
+        add_goal(npc, "gratitude", hero.id, GRATITUDE_TEXT, now_s)
+    elif survivor.kind in ("fled", "surrendered") and vengeful(npc, cfg):
+        add_goal(npc, "revenge", hero.id, REVENGE_TEXT, now_s)
 
 
 def materialize(bundle, hero, survivors, cfg) -> list[NPC]:

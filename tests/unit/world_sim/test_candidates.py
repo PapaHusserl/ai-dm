@@ -7,6 +7,54 @@ def candidate_of(result, *parts):
     return next(c for c in result.candidates if all(p in field(c, "ref") for p in parts))
 
 
+def goal_bundle(registry, cfg):
+    from ai_dm.rules.goals import add_goal
+
+    bundle = mini_bundle(registry, cfg)
+    add_goal(bundle.world.npcs["aldric"], "revenge", bundle.heroes[0].id, "мстит", 0)
+    return bundle
+
+
+def test_verdict_candidates_include_goal_trigger_by_default(registry, cfg):
+    from ai_dm.world_sim.candidates import verdict_candidates
+
+    refs = [c.ref for c in verdict_candidates(goal_bundle(registry, cfg))]
+    assert has_ref(refs, "aldric", "goal:revenge:")
+
+
+def test_verdict_candidates_skip_goals_hides_only_goal_triggers(registry, cfg):
+    from ai_dm.world_sim.candidates import verdict_candidates
+
+    bundle = goal_bundle(registry, cfg)
+    bundle.world.flags["met_brann"] = True
+    refs = [c.ref for c in verdict_candidates(bundle, skip_goals=True)]
+    assert not has_ref(refs, "goal:revenge:")
+    assert has_ref(refs, "brann", "brann_trust")
+
+
+def test_skipped_goal_trigger_before_ordinary_one_does_not_hide_it(registry, cfg):
+    from ai_dm.rules.goals import add_goal
+    from ai_dm.world_sim.candidates import verdict_candidates
+
+    bundle = mini_bundle(registry, cfg)
+    brann = bundle.world.npcs["brann"]
+    add_goal(brann, "revenge", bundle.heroes[0].id, "мстит", 0)
+    brann.opportunity.reverse()
+    assert brann.opportunity[0].id.startswith("goal:")
+    bundle.world.flags["met_brann"] = True
+    refs = [c.ref for c in verdict_candidates(bundle, skip_goals=True)]
+    assert has_ref(refs, "brann", "brann_trust")
+
+
+def test_verdict_candidates_do_not_change_state(registry, cfg):
+    from ai_dm.world_sim.candidates import verdict_candidates
+
+    bundle = goal_bundle(registry, cfg)
+    before = bundle.model_dump_json()
+    verdict_candidates(bundle, skip_goals=False)
+    assert bundle.model_dump_json() == before
+
+
 def test_mixed_condition_without_flag_is_not_candidate(registry, cfg):
     bundle = mini_bundle(registry, cfg)
     result = run_check(bundle)

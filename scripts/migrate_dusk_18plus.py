@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 WORLD_ID = "dusk_academy-d3de6c57"
-SCHEMA_VERSIONS = (9, 10, 11)
+SCHEMA_VERSIONS = (9, 10, 11, 12)
 MARKER = "(18+)"
 TEXT_REPLACEMENTS = [
     (

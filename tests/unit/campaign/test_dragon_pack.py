@@ -311,18 +311,18 @@ def omen_ready_bundle(cfg, flag_seen):
     return bundle
 
 
-def omen_fired(bundle):
+def omen_fired(bundle, cfg):
     from ai_dm.world_sim.triggers import check
 
-    return any("omen_for_the_living" in ref for ref in check(bundle).fired)
+    return any("omen_for_the_living" in ref for ref in check(bundle, cfg).fired)
 
 
 def test_dragon_selune_omen_does_not_fire_after_flag(cfg):
-    assert not omen_fired(omen_ready_bundle(cfg, True))
+    assert not omen_fired(omen_ready_bundle(cfg, True), cfg)
 
 
 def test_dragon_selune_omen_fires_before_flag(cfg):
-    assert omen_fired(omen_ready_bundle(cfg, False))
+    assert omen_fired(omen_ready_bundle(cfg, False), cfg)
 
 
 def test_dragon_captain_guards_the_villages_not_the_party():

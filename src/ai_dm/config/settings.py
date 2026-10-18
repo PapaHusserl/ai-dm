@@ -79,6 +79,8 @@ class SurvivorsConfig(BaseModel):
     surrendered: int = Field(default=0, ge=-100, le=100)
     spared: int = Field(default=20, ge=-100, le=100)
     fled: int = Field(default=-40, ge=-100, le=100)
+    # бежавший или сдавшийся с отношением не выше этого порога становится мстителем (Ж2)
+    revenge_attitude_max: int = Field(default=-40, ge=-100, le=100)
 
 
 class DisarmConfig(BaseModel):
@@ -323,6 +325,8 @@ class WorldConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mortality_presets: dict[str, int]
     max_tick_days: int = 400
+    # как часто (в игровых днях) проверяются триггеры целей NPC (Ж2)
+    goals_check_every_days: int = Field(default=1, ge=1)
     aging: AgingConfig = AgingConfig()
     # множитель смертности событий от модели по event_type; прочие типы -- 1
     event_multipliers: dict[str, int] = {"plague": 20, "war": 5, "famine": 5}

@@ -251,3 +251,142 @@ def test_name_of_survivor_elsewhere_is_not_opened_by_narration(registry, cfg, tm
     rig = name_rig(registry, cfg, tmp_path, "Кто-то вспомнил Мурк.", location_id="forest")
     rig.runner.play("Слушаю")
     assert rig.runner.bundle.world.npcs["goblin_warrior_1"].known_name is None
+
+
+# Ж2 (docs/plan-zh2.md, F2 в бою): end_fight до materialize зовёт on_kill по убитым врагам --
+# родня (FamilyLink.ref = убитый) и отряд (общая группа, отношение <= 0, не идёт с героем)
+# получают цель revenge и память kin_killed
+
+def add_mate(rig, npc_id="mate", **fields):
+    npc = NPC(**{"id": npc_id, "name": npc_id, "means": ["m"], "groups": ["goblins"], **fields})
+    rig.runner.bundle.world.npcs[npc_id] = npc
+    return npc
+
+
+def revenge_of(npc):
+    return [g for g in npc.goals if g.kind == "revenge"]
+
+
+@pytest.mark.parametrize("fold", [True, False])
+def test_squad_mate_of_killed_enemy_gets_revenge_on_both_paths(registry, cfg, tmp_path, fold):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"}, fold=fold)
+    [goal] = revenge_of(mate)
+    assert (goal.target, goal.status) == ("hero", "active")
+    assert [t.id for t in mate.opportunity] == ["goal:revenge:hero"]
+
+
+def test_revenge_goal_text_names_the_killed(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    finish(rig, "victory", {"g1": "dead", "g2": "down"})
+    [goal] = revenge_of(mate)
+    assert goal.text.endswith("Воин-гоблин 1")
+
+
+def test_kin_killed_memory_is_written_for_the_avenger(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    finish(rig, "victory", {"g1": "dead", "g2": "down"})
+    kinds = [e.kind for m in mate.memory for e in m.events]
+    assert kinds == ["kin_killed"]
+
+
+def test_every_killed_enemy_is_avenged_but_goal_is_one(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert len(revenge_of(mate)) == 1
+    assert len(mate.opportunity) == 1
+
+
+def test_kin_of_killed_enemy_gets_revenge(registry, cfg, tmp_path):
+    from ai_dm.state.relations import FamilyLink
+
+    rig = fight_rig(registry, cfg, tmp_path)
+    link = FamilyLink(kind="parent", ref="g1", ref_kind="npc")
+    kin = add_mate(rig, "son", groups=[], family=[link])
+    finish(rig, "victory", {"g1": "dead", "g2": "down"})
+    assert len(revenge_of(kin)) == 1
+
+
+def test_no_revenge_when_nobody_died(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    finish(rig, "victory", {"g1": "down", "g2": "down"})
+    assert mate.goals == []
+    assert mate.memory == []
+
+
+def test_follower_of_hero_does_not_avenge(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig, follows=rig.runner.bundle.heroes[0].id)
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert mate.goals == []
+
+
+def test_friendly_squad_mate_does_not_avenge(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig, attitude=30)
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert mate.goals == []
+
+
+def test_other_group_npc_does_not_avenge(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    stranger = add_mate(rig, "wolf", groups=["wolves"])
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert stranger.goals == []
+
+
+def test_dead_npc_does_not_avenge(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    ghost = add_mate(rig, "ghost", status="dead")
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert ghost.goals == []
+
+
+def test_survivor_of_the_same_fight_is_not_an_avenger(registry, cfg, tmp_path):
+    # выжившие в мир попадают после on_kill: мстителем за павшего они не становятся
+    rig = fight_rig(registry, cfg, tmp_path)
+    bundle = finish(rig, "victory", {"g1": "dead", "g2": "fled"})
+    [fled] = survivors(bundle).values()
+    assert [g.kind for g in fled.goals] == ["revenge"]
+    assert "за поражение в бою" in fled.goals[0].text
+
+
+def kill_by(rig, killers, names):
+    # killers: ref -> id убийцы (last_hit_by); names: ref -> имя участника
+    for ref, killer in killers.items():
+        part_of(rig, ref).last_hit_by = killer
+        part_of(rig, ref).name = names[ref]
+
+
+def test_only_the_kill_by_the_hero_is_avenged(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    kill_by(rig, {"g1": "hero", "g2": "hero2"}, {"g1": "Убитый героем", "g2": "Убитый напарником"})
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    [goal] = revenge_of(mate)
+    assert goal.text.endswith("Убитый героем")
+    assert "Убитый напарником" not in goal.text
+    assert [e.text for m in mate.memory for e in m.events] == ["герой убил: Убитый героем"]
+
+
+def test_kill_by_another_hero_alone_gives_no_revenge(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    kill_by(rig, {"g1": "hero2", "g2": "hero2"}, {"g1": "А", "g2": "Б"})
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert mate.goals == []
+    assert mate.memory == []
+
+
+def test_kill_without_killer_is_counted_for_the_hero(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig)
+    kill_by(rig, {"g1": None, "g2": "hero2"}, {"g1": "Взорвавшийся", "g2": "Б"})
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    [goal] = revenge_of(mate)
+    assert goal.text.endswith("Взорвавшийся")

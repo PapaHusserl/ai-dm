@@ -16,6 +16,7 @@ from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.decision import Decision
 from ai_dm.reports.capture import TurnCapture
 from ai_dm.rules.custom_items import world_registry
+from ai_dm.rules.goals import on_kill
 from ai_dm.rules.knowledge import note_combat, note_presence
 from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.rules.survivors import classify, materialize, reveal_names
@@ -542,9 +543,17 @@ class TurnRunner:
         result.combat_outcome = combat_flow.finish_combat(work, self.registry)
         turned = [s.part.ref for s in survivors if s.kind == "defected"]
         note_combat(hero, work.world, state, self.registry, self.cfg.knowledge, turned)
+        self.avenge_killed(work, hero, state)
         materialize(work, hero, survivors, self.cfg)
         if fold:
             combat_fold.fold_fight(work, state, self.registry)
+
+    def avenge_killed(self, work, hero, state) -> None:
+        # убитые героем враги боя: их родня и отряд (живые NPC вне боя) получают цель мести;
+        # выжившие ещё не в мире -- зовётся до materialize
+        for part in state.participants:
+            if part.side == "enemies" and part.status == "dead":
+                on_kill(work, hero, part, state, self.cfg)
 
     def narrate_combat(self, work, rng, said, log_lines, session, run_id, result) -> str:
         ctx = TurnContext(

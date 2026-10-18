@@ -5,7 +5,7 @@
 #
 # КОНТРАКТ (STAGE3-PLAN A6, A4 «Кандидаты», П3). Где план не даёт имён, они выбраны здесь --
 # это ТРЕБОВАНИЕ к реализации:
-#   ai_dm.world_sim.triggers.check(bundle) -> CheckResult  (меняет бандл: fire + world.fired +
+#   ai_dm.world_sim.triggers.check(bundle, cfg) -> CheckResult  (меняет бандл: fire + world.fired +
 #       хроника). Время -- bundle.world.clock.now_s, герой -- bundle с current_hero_id.
 #     CheckResult.fired: list[str] -- ref сработавших на этой проверке триггеров (ref содержит id
 #       владельца и id триггера); CheckResult.candidates: list -- кандидаты для роли world.
@@ -43,10 +43,12 @@ def mini_bundle(registry, cfg, seed=1):
     )
 
 
-def run_check(bundle):
+def run_check(bundle, cfg=None):
+    # cfg по умолчанию -- defaults.toml (check читает [world] goals_check_every_days)
+    from ai_dm.config.settings import load_rules_config
     from ai_dm.world_sim.triggers import check
 
-    return check(bundle)
+    return check(bundle, cfg or load_rules_config())
 
 
 def field(candidate, name):

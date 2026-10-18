@@ -12,8 +12,9 @@ from ai_dm.persistence.migrations.m0008_v7_to_v8 import migrate_v7_to_v8
 from ai_dm.persistence.migrations.m0009_v8_to_v9 import migrate_v8_to_v9
 from ai_dm.persistence.migrations.m0010_v9_to_v10 import migrate_v9_to_v10
 from ai_dm.persistence.migrations.m0011_v10_to_v11 import migrate_v10_to_v11
+from ai_dm.persistence.migrations.m0012_v11_to_v12 import migrate_v11_to_v12
 
-CURRENT_SCHEMA_VERSION = 11
+CURRENT_SCHEMA_VERSION = 12
 
 # {from_version: fn(bundle_dict, context) -> bundle_dict}
 MIGRATIONS = {
@@ -28,6 +29,7 @@ MIGRATIONS = {
     8: migrate_v8_to_v9,
     9: migrate_v9_to_v10,
     10: migrate_v10_to_v11,
+    11: migrate_v11_to_v12,
 }
 
 @dataclass

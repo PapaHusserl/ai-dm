@@ -109,7 +109,7 @@ def tick_days(work, cfg, registry) -> None:
 
 def check_triggers(work, cfg, registry):
     # структурные триггеры: сработавшие и кандидаты для world
-    return triggers.check(work)
+    return triggers.check(work, cfg)
 
 
 def call_world(work, cfg, registry, check, world, run_id, result) -> None:

@@ -1,3 +1,4 @@
+from ai_dm.rules import goals
 from ai_dm.rules.triggers_eval import is_ready
 
 
@@ -53,7 +54,7 @@ def npc_reasons(bundle, nearby_ids=()) -> dict[str, set[str]]:
     text = mentions(bundle)
     result = {}
     for npc in bundle.world.npcs.values():
-        if not npc.named or npc.status != "alive":
+        if not (npc.named or goals.has_active_goal(npc)) or npc.status != "alive":
             continue
         reasons = npc_reason_set(bundle, npc, location_id, text, nearby_ids)
         if reasons:

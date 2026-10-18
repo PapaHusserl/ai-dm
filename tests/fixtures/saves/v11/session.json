@@ -1,0 +1,31 @@
+{
+  "current_scene": {
+    "id": "scene_2",
+    "started_at_s": 3636,
+    "player_turns": 2,
+    "location_id": "lame_goose",
+    "attitude_spent": {},
+    "consumables_given": 0,
+    "consumables_used": 0,
+    "custom_created": 0,
+    "trades": 0,
+    "merchants_created": 0,
+    "summary": "",
+    "title": "",
+    "favor_spent": {},
+    "touched_main": false,
+    "hero_initiated_combat": false,
+    "closed_reason": null,
+    "scene_mood": ""
+  },
+  "current_chapter": null,
+  "boundary_pending": false,
+  "active_combat": null,
+  "pending_decision": null,
+  "turn_seq": 3,
+  "offered_choices": [
+    "Заговорить с Миррой",
+    "Спросить Гарта о подвале"
+  ],
+  "last_combat": null
+}

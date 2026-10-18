@@ -73,6 +73,7 @@ def monster_damaged(engine, ref, dealt, attacker_ref, nonlethal) -> list[DomainE
 def kill_monster(engine, ref, attacker_ref) -> list[DomainEvent]:
     p = engine.part(ref)
     p.status = "dead"
+    p.last_hit_by = attacker_ref
     end_concentration(engine.creature(ref))
     engine.log(f"  {engine.name(ref)} убит")
     cause = death_cause(attacker_ref)

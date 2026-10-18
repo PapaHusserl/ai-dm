@@ -633,3 +633,12 @@ updated: 2026-10-18
 (разбор мутантов Ж1 коммит 2, 2026-10-18) На строках до партии: `PromptBuilder.state_data` 101,
 `merchant_update_problem` 13, `npc_update` 9 (`make_merchant`, `trade_kind`), `death_problem` 6, `memory_problem` 5
 (часть — тексты сообщений). Добить при касании функций.
+
+## 88. Выжившие мутанты на старых строках после Ж2 коммита 1
+status: idea
+priority: low
+updated: 2026-10-18
+
+(разбор мутантов Ж2 коммит 1, 2026-10-18) На строках до партии, 29: `world_sim.candidates.verdict_candidates` 13,
+`world_sim.verdicts.apply_verdicts` 9, `combat.defeat.do_debt` 2 (`"applied"`), `protocol.handlers.world.name_problem` 2
+(текст), `combat.downed.kill_monster` 1 (текст `ValueError`), `master.relevance.npc_reasons` 1. Добить при касании функций.

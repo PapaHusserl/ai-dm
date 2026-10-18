@@ -191,9 +191,10 @@ def test_v8_fingerprint_is_kept_as_history_with_scalar_class():
 # Ж0 подшаг 1: CURRENT_SCHEMA_VERSION = 11, отпечаток save_v11.schema.json (память/цели NPC,
 # known_name, family, services, KnowledgeEntry, scene_mood, pending_acts). save_v10 -- история.
 
-def test_v11_is_current_and_fingerprint_exists():
-    assert CURRENT_SCHEMA_VERSION == 11
+def test_v11_fingerprint_exists_and_v12_is_current():
+    assert CURRENT_SCHEMA_VERSION == 12
     assert fingerprint_path(11).is_file()
+    assert fingerprint_path(12).is_file()
 
 
 def test_v11_schema_knows_new_models():

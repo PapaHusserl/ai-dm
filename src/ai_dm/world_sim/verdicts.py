@@ -1,3 +1,4 @@
+from ai_dm.rules import goals
 from ai_dm.rules.triggers_eval import fire
 from ai_dm.state.world import FiredTrigger
 from ai_dm.world_sim.chronicle import add_entry
@@ -37,6 +38,7 @@ def apply_verdicts(bundle, candidates, verdicts) -> list[str]:
             if trigger is None:
                 continue
             fire(trigger, now_s)
+            goals.mark_fired(owner, trigger)
             bundle.world.fired.append(FiredTrigger(ref=candidate.ref, at_s=now_s))
             add_entry(bundle, "trigger", f"{owner.name}: {trigger.then}", [candidate.ref])
         confirmed.append(candidate.ref)

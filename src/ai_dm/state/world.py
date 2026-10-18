@@ -223,6 +223,8 @@ class WorldSim(BaseModel):
     god_checked_s: dict[str, int] = Field(default_factory=dict)
     # действия мира, отложенные до границы (46)
     pending_acts: list[str] = Field(default_factory=list)
+    # время (с) последней проверки триггеров целей NPC; None -- ещё не проверялись (Ж2)
+    goals_checked_s: int | None = None
 
 
 class DangerMark(BaseModel):

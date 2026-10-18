@@ -21,8 +21,8 @@
 #                   случаях scar_text добавляется в hero.scars; ни одного или оба -> Rejected
 #     exhaustion -- creature.exhaustion + 1 (причина "defeat")
 #     debt       -- флаг debt:<hero.id> = кредитор (params.debt_to, иначе лидер defeat_group_id),
-#                   у именованного NPC-кредитора (named=True) в opportunity триггер
-#                   id "debt_<hero.id>"
+#                   у NPC-кредитора цель debt (rules.goals.add_goal) и триггер-спутник
+#                   id "goal:debt:<hero.id>" (Ж2; старого "debt_<hero.id>" нет)
 import pytest
 from combat_kit import ScriptedRng, down_hero, make_engine, make_fighter, mon
 
@@ -243,14 +243,45 @@ def test_debt_sets_a_flag_and_a_trigger_on_the_leader(registry, cfg):
     apply(engine, hero, registry, cfg, ["debt"], DefeatParams(debt_text="Принести вождю золото"))
     assert engine.world.flags["debt:hero"] == "goblin_1"
     triggers = engine.world.npcs["goblin_1"].opportunity
-    assert [t.id for t in triggers] == ["debt_hero"]
+    assert [t.id for t in triggers] == ["goal:debt:hero"]
+
+
+def test_debt_creates_debt_goal_with_text_on_the_creditor(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    apply(engine, hero, registry, cfg, ["debt"], DefeatParams(debt_text="Принести вождю золото"))
+    [goal] = engine.world.npcs["goblin_1"].goals
+    assert (goal.kind, goal.target, goal.text, goal.status) == (
+        "debt", "hero", "Принести вождю золото", "active",
+    )
+    assert goal.since_s == engine.world.clock.now_s
+
+
+def test_debt_goal_has_default_text_with_hero_name(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    apply(engine, hero, registry, cfg, ["debt"])
+    [goal] = engine.world.npcs["goblin_1"].goals
+    assert hero.name in goal.text
+
+
+def test_debt_does_not_create_the_old_debt_trigger(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    apply(engine, hero, registry, cfg, ["debt"])
+    ids = [t.id for npc in engine.world.npcs.values() for t in npc.opportunity]
+    assert "debt_hero" not in ids
+
+
+def test_debt_goal_is_only_on_the_creditor(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    apply(engine, hero, registry, cfg, ["debt"])
+    assert engine.world.npcs["goblin_2"].goals == []
+    assert engine.world.npcs["goblin_2"].opportunity == []
 
 
 def test_debt_to_a_chosen_creditor(registry, cfg):
     engine, hero = defeated(registry, cfg)
     apply(engine, hero, registry, cfg, ["debt"], DefeatParams(debt_to="goblin_2"))
     assert engine.world.flags["debt:hero"] == "goblin_2"
-    assert [t.id for t in engine.world.npcs["goblin_2"].opportunity] == ["debt_hero"]
+    assert [t.id for t in engine.world.npcs["goblin_2"].opportunity] == ["goal:debt:hero"]
 
 
 # две последствия, порядок, события

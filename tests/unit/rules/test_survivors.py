@@ -404,10 +404,88 @@ def test_defected_gets_spared_event_and_life_debt(registry, cfg):
     )
 
 
-def test_non_defected_get_no_goal(registry, cfg):
-    for status in ("down", "surrendered", "fled"):
-        _, npc = remembered(registry, cfg, status=status)
-        assert npc.goals == []
+def test_surrendered_with_zero_attitude_gets_no_goal(registry, cfg):
+    _, npc = remembered(registry, cfg, status="surrendered")
+    assert npc.goals == []
+
+
+# Ж2 (docs/plan-zh2.md, п. 0.2 F1, F3): цели выживших через add_goal --
+# revenge / gratitude / life_debt
+
+def tuned(cfg, **survivors):
+    copy = cfg.model_copy(deep=True)
+    for key, value in survivors.items():
+        setattr(copy.survivors, key, value)
+    return copy
+
+
+def test_fled_with_default_attitude_gets_revenge_goal(registry, cfg):
+    bundle, npc = remembered(registry, cfg, status="fled")
+    [goal] = npc.goals
+    assert (goal.kind, goal.target, goal.status) == ("revenge", "hero", "active")
+    assert goal.since_s == bundle.world.clock.now_s
+    assert goal.text
+
+
+def test_revenge_goal_has_companion_trigger(registry, cfg):
+    _, npc = remembered(registry, cfg, status="fled")
+    assert [t.id for t in npc.opportunity] == ["goal:revenge:hero"]
+
+
+def test_fled_above_threshold_gets_no_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-39), status="fled")
+    assert npc.goals == []
+    assert npc.opportunity == []
+
+
+def test_revenge_threshold_comes_from_config(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, revenge_attitude_max=-41), status="fled")
+    assert npc.goals == []
+
+
+def test_fled_with_attitude_exactly_at_threshold_gets_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-10, revenge_attitude_max=-10), status="fled")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
+def test_surrendered_hostile_by_config_gets_revenge(registry, cfg):
+    custom = tuned(cfg, surrendered=-50)
+    _, npc = remembered(registry, custom, status="surrendered")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
+def test_surrendered_at_zero_with_raised_threshold_gets_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, revenge_attitude_max=0), status="surrendered")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
+def test_revenge_goal_does_not_need_a_scene(registry, cfg):
+    _, npc = remembered(registry, cfg, status="fled", scene=False)
+    assert [g.kind for g in npc.goals] == ["revenge"]
+    assert npc.memory == []
+
+
+def test_spared_gets_gratitude_goal_with_companion(registry, cfg):
+    bundle, npc = remembered(registry, cfg)
+    [goal] = npc.goals
+    assert (goal.kind, goal.target, goal.since_s) == ("gratitude", "hero", bundle.world.clock.now_s)
+    assert [t.id for t in npc.opportunity] == ["goal:gratitude:hero"]
+
+
+def test_defected_life_debt_has_companion_trigger(registry, cfg):
+    _, npc = remembered(registry, cfg, status="active", flags=[("g1", "parley_defected")])
+    assert [t.id for t in npc.opportunity] == ["goal:life_debt:hero"]
+    assert npc.opportunity[0].then == LIFE_DEBT_TEXT
+
+
+def test_defected_gets_no_revenge_or_gratitude(registry, cfg):
+    _, npc = remembered(registry, cfg, status="active", flags=[("g1", "parley_defected")])
+    assert [g.kind for g in npc.goals] == ["life_debt"]
+
+
+def test_spared_gets_no_revenge_even_with_hostile_attitude(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, spared=-90))
+    assert [g.kind for g in npc.goals] == ["gratitude"]
 
 
 def test_event_belongs_to_current_scene_and_turn(registry, cfg):

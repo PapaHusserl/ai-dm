@@ -169,7 +169,15 @@ def test_v11_save_is_accepted_and_patched(tmp_path):
     assert "18+" in world_of(slot)["tone"]["notes"]
 
 
-@pytest.mark.parametrize("version", [8, 12])
+def test_v12_save_is_accepted_and_patched(tmp_path):
+    slot = make_slot(tmp_path, version=12)
+    result = run(slot)
+    assert result.returncode == 0
+    assert "18+" in world_of(slot)["lore"]["world_text"]
+    assert "18+" in world_of(slot)["tone"]["notes"]
+
+
+@pytest.mark.parametrize("version", [8, 13])
 def test_refuses_unsupported_version_without_writing(tmp_path, version):
     slot = make_slot(tmp_path, version=version)
     state = snapshot(tmp_path)

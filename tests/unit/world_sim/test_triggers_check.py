@@ -198,3 +198,239 @@ def test_check_is_deterministic(registry, cfg):
         bundle.world.flags.update({"grail_seen": True, "alarm": True})
         run_check(bundle)
     assert first.model_dump_json() == second.model_dump_json()
+
+
+def test_fire_trigger_fires_records_and_returns_ref_and_act(registry, cfg):
+    from ai_dm.world_sim.triggers import fire_trigger
+
+    bundle = mini_bundle(registry, cfg)
+    owner = bundle.world.npcs["aldric"]
+    trigger = next(t for t in owner.opportunity if t.id == "steal_grail")
+    before = len(bundle.chronicle.entries)
+    ref, act = fire_trigger(bundle, "npc", owner, trigger)
+    assert "steal_grail" in ref
+    assert (field(act, "kind"), field(act, "ref"), field(act, "then")) == (
+        "act", ref, "Олдрик крадёт чашу",
+    )
+    assert trigger.fired_count == 1
+    assert [f.ref for f in bundle.world.fired] == [ref]
+    assert [e.kind for e in bundle.chronicle.entries[before:]] == ["trigger"]
+
+
+def test_fire_trigger_chronicle_entry_refers_to_trigger_ref(registry, cfg):
+    from ai_dm.world_sim.triggers import fire_trigger
+
+    bundle = mini_bundle(registry, cfg)
+    owner = bundle.world.npcs["aldric"]
+    trigger = next(t for t in owner.opportunity if t.id == "steal_grail")
+    before = len(bundle.chronicle.entries)
+    ref, _ = fire_trigger(bundle, "npc", owner, trigger)
+    assert bundle.chronicle.entries[before].refs == [ref]
+
+
+def test_skipped_goal_trigger_before_ordinary_one_does_not_stop_it_firing(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    aldric = bundle.world.npcs["aldric"]
+    aldric.opportunity.reverse()
+    assert aldric.opportunity[0].id == goal_ref(bundle)
+    bundle.world.flags["grail_seen"] = True
+    bundle.world.clock.now_s += 60
+    assert has_ref(run_check(bundle, cfg).fired, "aldric", "steal_grail")
+
+
+def test_fire_trigger_closes_goal_of_goal_trigger(registry, cfg):
+    from ai_dm.world_sim.triggers import fire_trigger
+
+    bundle = goal_bundle(registry, cfg)
+    owner = bundle.world.npcs["aldric"]
+    trigger = next(t for t in owner.opportunity if t.id == goal_ref(bundle))
+    fire_trigger(bundle, "npc", owner, trigger)
+    assert owner.goals[0].status == "done"
+
+
+def test_fire_trigger_of_ordinary_trigger_leaves_goals_alone(registry, cfg):
+    from ai_dm.world_sim.triggers import fire_trigger
+
+    bundle = goal_bundle(registry, cfg)
+    owner = bundle.world.npcs["aldric"]
+    trigger = next(t for t in owner.opportunity if t.id == "steal_grail")
+    fire_trigger(bundle, "npc", owner, trigger)
+    assert owner.goals[0].status == "active"
+
+
+# Ж2 (docs/plan-zh2.md, пп. 0.3, 0.4): триггеры целей NPC -- редкая проверка (goals_checked_s,
+# [world] goals_check_every_days), закрытие цели по fire, sweep в начале check.
+
+def goal_bundle(registry, cfg, owner="aldric"):
+    from ai_dm.rules.goals import add_goal
+
+    bundle = mini_bundle(registry, cfg)
+    add_goal(bundle.world.npcs[owner], "revenge", bundle.heroes[0].id, "мстит", 0)
+    return bundle
+
+
+def goal_ref(bundle):
+    return f"goal:revenge:{bundle.heroes[0].id}"
+
+
+def make_structural(bundle, owner="aldric"):
+    # условие спутника без нарративной части: триггер срабатывает самим check
+    from ai_dm.state.triggers import Trigger
+
+    npc = bundle.world.npcs[owner]
+    npc.opportunity = [
+        Trigger(id=goal_ref(bundle), **{"if": {"flag": "go"}}, then="мститель пришёл", once=True)
+    ]
+
+
+def at(cfg, days):
+    copy = cfg.model_copy(deep=True)
+    copy.world.goals_check_every_days = days
+    return copy
+
+
+def test_goal_trigger_is_verdict_candidate_on_first_check(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    result = run_check(bundle, cfg)
+    assert has_ref(refs_of(result, "verdict"), "aldric", goal_ref(bundle))
+
+
+def test_check_sets_goals_checked_s_to_now(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    bundle.world.clock.now_s = 5 * DAY
+    run_check(bundle, cfg)
+    assert bundle.world.sim.goals_checked_s == 5 * DAY
+
+
+def test_check_without_any_goals_still_marks_the_check(registry, cfg):
+    bundle = mini_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    assert bundle.world.sim.goals_checked_s == bundle.world.clock.now_s
+
+
+def test_second_boundary_the_same_day_skips_goal_triggers(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    bundle.world.clock.now_s += 3600
+    result = run_check(bundle, cfg)
+    assert not has_ref(refs_of(result), goal_ref(bundle))
+
+
+def test_skipped_check_does_not_move_goals_checked_s(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    first = bundle.world.sim.goals_checked_s
+    bundle.world.clock.now_s += DAY - 1
+    run_check(bundle, cfg)
+    assert bundle.world.sim.goals_checked_s == first
+
+
+def test_goal_trigger_is_checked_again_after_a_day(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    bundle.world.clock.now_s += DAY
+    result = run_check(bundle, cfg)
+    assert has_ref(refs_of(result, "verdict"), goal_ref(bundle))
+    assert bundle.world.sim.goals_checked_s == bundle.world.clock.now_s
+
+
+def test_check_every_days_comes_from_config(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    three = at(cfg, 3)
+    run_check(bundle, three)
+    bundle.world.clock.now_s += 2 * DAY
+    assert not has_ref(refs_of(run_check(bundle, three)), goal_ref(bundle))
+    bundle.world.clock.now_s += DAY
+    assert has_ref(refs_of(run_check(bundle, three)), goal_ref(bundle))
+
+
+def test_ordinary_triggers_are_checked_every_boundary(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    bundle.world.flags["grail_seen"] = True
+    bundle.world.clock.now_s += 60
+    assert has_ref(run_check(bundle, cfg).fired, "aldric", "steal_grail")
+
+
+def test_ordinary_verdict_candidate_stays_when_goals_are_not_due(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    bundle.world.flags["met_brann"] = True
+    result = run_check(bundle, cfg)
+    assert has_ref(refs_of(result, "verdict"), "brann", "brann_trust")
+
+
+def test_structural_goal_trigger_fires_and_goal_becomes_done(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    make_structural(bundle)
+    bundle.world.flags["go"] = True
+    result = run_check(bundle, cfg)
+    assert has_ref(result.fired, "aldric", goal_ref(bundle))
+    [goal] = bundle.world.npcs["aldric"].goals
+    assert goal.status == "done"
+    assert has_ref(refs_of(result, "act"), "aldric", goal_ref(bundle))
+
+
+def test_structural_goal_trigger_does_not_fire_when_goals_not_due(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    make_structural(bundle)
+    run_check(bundle, cfg)
+    bundle.world.flags["go"] = True
+    bundle.world.clock.now_s += 60
+    result = run_check(bundle, cfg)
+    assert result.fired == []
+    assert bundle.world.npcs["aldric"].goals[0].status == "active"
+
+
+def test_fired_goal_trigger_is_not_a_candidate_next_time(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    make_structural(bundle)
+    bundle.world.flags["go"] = True
+    run_check(bundle, cfg)
+    bundle.world.clock.now_s += DAY
+    result = run_check(bundle, cfg)
+    assert result.fired == []
+    assert not has_ref(refs_of(result), goal_ref(bundle))
+
+
+def test_ordinary_trigger_fire_does_not_close_goals(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    bundle.world.flags["grail_seen"] = True
+    run_check(bundle, cfg)
+    assert bundle.world.npcs["aldric"].goals[0].status == "active"
+
+
+def test_check_drops_goal_when_hero_is_dead(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    bundle.heroes[0].status = "dead"
+    result = run_check(bundle, cfg)
+    assert bundle.world.npcs["aldric"].goals[0].status == "dropped"
+    assert not has_ref(refs_of(result), goal_ref(bundle))
+
+
+def test_check_drops_goal_even_when_goals_are_not_due(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    run_check(bundle, cfg)
+    bundle.heroes[0].status = "dead"
+    bundle.world.clock.now_s += 60
+    run_check(bundle, cfg)
+    assert bundle.world.npcs["aldric"].goals[0].status == "dropped"
+
+
+def test_check_drops_goal_of_dead_carrier(registry, cfg):
+    bundle = goal_bundle(registry, cfg)
+    bundle.world.npcs["aldric"].status = "dead"
+    run_check(bundle, cfg)
+    assert bundle.world.npcs["aldric"].goals[0].status == "dropped"
+
+
+def test_goal_trigger_is_not_a_candidate_for_a_dead_target_npc(registry, cfg):
+    from ai_dm.rules.goals import add_npc_goal
+
+    bundle = mini_bundle(registry, cfg)
+    add_npc_goal(bundle.world.npcs["aldric"], "love", "mara", "x", 0)
+    bundle.world.npcs["mara"].status = "dead"
+    result = run_check(bundle, cfg)
+    assert not has_ref(refs_of(result), "goal:love:mara")
+    assert bundle.world.npcs["aldric"].goals[0].status == "dropped"

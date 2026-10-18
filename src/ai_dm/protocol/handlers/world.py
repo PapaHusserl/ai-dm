@@ -5,7 +5,7 @@ from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
 from ai_dm.rules.npc_memory import events_full, refresh_weight, remember
-from ai_dm.rules.npc_names import shown_name
+from ai_dm.rules.npc_names import looks_like_kind, shown_name
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
 from ai_dm.rules.trade import DAY_S
@@ -288,6 +288,16 @@ def name_problem(ctx, npc, request):
     name = request.name.strip()
     if not name:
         return Invalid(code="empty_name", message="имя пустое")
+    return rejected_name(ctx, npc, name)
+
+
+def rejected_name(ctx, npc, name):
+    # имя совпадает с видом существа или занято -- отказ; иначе None
+    if looks_like_kind(ctx.registry, npc, name):
+        return rejected(
+            f"имя {name!r} совпадает с видом существа",
+            f"Имя не назначено: {name!r} — название вида, а не имя. Придумай личное имя.",
+        )
     if uniqueness.name_conflict(ctx.bundle.world, ctx.bundle.heroes, name):
         return rejected(
             f"имя {name!r} уже занято",

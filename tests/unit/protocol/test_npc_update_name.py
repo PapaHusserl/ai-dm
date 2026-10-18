@@ -6,6 +6,7 @@
 #     фракция, герой) -> rejected, ничего не меняется (отношение тоже);
 #   * все строки лога и тексты для игрока зовут NPC через npc_label (shown_name): настоящее имя
 #     скрытого выжившего в логах не появляется.
+import pytest
 from protocol_kit import make_bundle, make_ctx, req
 
 from ai_dm.protocol.apply import apply
@@ -209,6 +210,62 @@ def test_name_of_faction_is_rejected(registry, cfg):
 def test_name_of_hero_is_rejected(registry, cfg):
     ctx = ctx_with_survivor(registry, cfg)
     assert rename(ctx, name=ctx.bundle.heroes[0].name).status == "rejected"
+
+
+@pytest.mark.parametrize("name", [LABEL, "Воин-гоблин", "  воин-гоблин 1 ", "Кабан"])
+def test_kind_as_name_is_rejected(registry, cfg, name):
+    ctx = ctx_with_survivor(registry, cfg)
+    decision = rename(ctx, name=name)
+    assert isinstance(decision, Decision)
+    assert decision.status == "rejected"
+    assert (survivor(ctx).name, survivor(ctx).named) == (LABEL, False)
+
+
+def test_kind_as_name_signals_master_to_pick_personal_name(registry, cfg):
+    ctx = ctx_with_survivor(registry, cfg)
+    decision = rename(ctx, name=LABEL)
+    assert LABEL in decision.signal_to_master
+    assert "личное имя" in decision.signal_to_master
+
+
+def test_kind_as_name_changes_nothing_else(registry, cfg):
+    ctx = ctx_with_survivor(registry, cfg)
+    before = ctx.bundle.model_dump_json()
+    rename(ctx, name=LABEL, attitude_delta=5, memory_kind="helped", memory_text="помог")
+    assert ctx.bundle.model_dump_json() == before
+
+
+def test_kind_as_name_is_checked_before_name_conflict(registry, cfg):
+    ctx = ctx_with_survivor(registry, cfg)
+    ctx.bundle.world.npcs["thug"] = NPC(id="thug", name=LABEL, named=True, means=["x"])
+    decision = rename(ctx, name=LABEL)
+    assert decision.status == "rejected"
+    assert "личное имя" in decision.signal_to_master
+
+
+def test_personal_name_with_kind_word_is_accepted(registry, cfg):
+    ctx = ctx_with_survivor(registry, cfg)
+    assert rename(ctx, name="Мурк Кабан").status == "accepted"
+
+
+def test_rejected_name_helper_returns_none_for_free_personal_name(registry, cfg):
+    from ai_dm.protocol.handlers.world import rejected_name
+
+    ctx = ctx_with_survivor(registry, cfg)
+    assert rejected_name(ctx, survivor(ctx), SECRET_NAME) is None
+
+
+def test_rejected_name_helper_rejects_kind_and_taken_names(registry, cfg):
+    from ai_dm.protocol.handlers.world import rejected_name
+
+    ctx = ctx_with_survivor(registry, cfg)
+    assert rejected_name(ctx, survivor(ctx), LABEL).status == "rejected"
+    assert rejected_name(ctx, survivor(ctx), "Олдрик").status == "rejected"
+
+
+def test_empty_name_is_invalid_not_rejected(registry, cfg):
+    ctx = ctx_with_survivor(registry, cfg)
+    assert isinstance(rename(ctx, name="   "), Invalid)
 
 
 def test_rejected_name_signals_master_to_pick_another(registry, cfg):

@@ -235,5 +235,5 @@ def test_companion_survives_save_and_load(registry, cfg, tmp_path):
     join(ctx)
     save_auto(tmp_path, bundle, saved_at=SAVED_AT, cfg=settings().rules)
     loaded = load_slot(tmp_path, bundle.world.world_id, "auto")
-    assert loaded.manifest.schema_version == CURRENT_SCHEMA_VERSION == 11
+    assert loaded.manifest.schema_version == CURRENT_SCHEMA_VERSION == 12
     assert loaded.heroes[0].companions == [wolf()]

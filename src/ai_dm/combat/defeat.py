@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from ai_dm.content.models.common import Ability, Skill
 from ai_dm.core.dice import roll_dice
 from ai_dm.core.events import DomainEvent
-from ai_dm.rules import divine
+from ai_dm.rules import divine, goals
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.custom_items import hand_over
 from ai_dm.rules.exhaustion import add_exhaustion
@@ -14,7 +14,6 @@ from ai_dm.rules.inventory import pick_valuables, remove_item
 from ai_dm.rules.results import Rejected
 from ai_dm.state.creature import DeathSaves
 from ai_dm.state.hero import Equipped
-from ai_dm.state.triggers import Trigger
 from ai_dm.state.world import ItemHolder
 
 CONSEQUENCES = ("capture", "rob", "left_to_die", "scar", "exhaustion", "debt")
@@ -171,10 +170,7 @@ def do_debt(state, params, world, hero, registry, cfg, rng):
     npc = world.npcs.get(creditor)
     if npc is not None:
         text = params.debt_text or f"{hero.name} должен услугу"
-        trigger = Trigger.model_validate(
-            {"id": f"debt_{hero.id}", "if": {"narrative": text}, "then": text}
-        )
-        npc.opportunity.append(trigger)
+        goals.add_goal(npc, "debt", hero.id, text, world.clock.now_s)
     return "applied", []
 
 

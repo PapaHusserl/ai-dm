@@ -518,3 +518,69 @@ def test_nearby_locations_of_isolated_place_is_only_itself(registry):
     assert nearby_locations(world, world.locations["goblin_den"]) == [
         {"id": "goblin_den", "name": "Логово", "distance_m": 0}
     ]
+
+
+# Ж2 (п. 0.10, BACKLOG 85): безымянный NPC с активной целью релевантен, как именованный
+
+def avenger(bundle, npc_id="goblin_1", **fields):
+    from ai_dm.rules.goals import add_goal
+
+    add_npc(bundle, npc_id, name="Гоблин 1", named=False, **fields)
+    add_goal(bundle.world.npcs[npc_id], "revenge", bundle.heroes[0].id, "мстит", 0)
+
+
+def test_unnamed_npc_with_active_goal_is_relevant_here(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    avenger(bundle, location_id="vale")
+    assert npc_reasons(bundle)["goblin_1"] == {"here", "active"}
+    assert "goblin_1" in relevant_npcs(bundle)
+
+
+def test_unnamed_npc_with_active_goal_elsewhere_is_relevant(registry):
+    bundle = make_bundle(registry)
+    avenger(bundle, location_id="goblin_den")
+    assert "goblin_1" in relevant_npcs(bundle)
+
+
+def test_unnamed_npc_without_goal_is_not_relevant(registry):
+    bundle = make_bundle(registry)
+    add_npc(bundle, "goblin_1", name="Гоблин 1", named=False, location_id="vale")
+    assert "goblin_1" not in relevant_npcs(bundle)
+
+
+def test_unnamed_npc_with_closed_goal_is_not_relevant(registry):
+    from ai_dm.rules.goals import close_goal
+
+    bundle = make_bundle(registry)
+    avenger(bundle, location_id="vale")
+    close_goal(bundle.world.npcs["goblin_1"], "revenge", bundle.heroes[0].id, "done")
+    assert "goblin_1" not in relevant_npcs(bundle)
+
+
+def test_dead_unnamed_npc_with_goal_is_not_relevant(registry):
+    bundle = make_bundle(registry)
+    avenger(bundle, location_id="vale", status="dead")
+    assert "goblin_1" not in relevant_npcs(bundle)
+
+
+def test_unnamed_avenger_is_in_known_npcs_of_the_prompt(registry, cfg):
+    bundle = make_bundle(registry)
+    avenger(bundle, location_id="vale")
+    items = data_of(build(make_ctx(registry, cfg, bundle=bundle)))["known_npcs"]
+    assert "goblin_1" in [n["id"] for n in items]
+
+
+def test_unnamed_npc_without_goal_is_not_in_known_npcs(registry, cfg):
+    bundle = make_bundle(registry)
+    add_npc(bundle, "goblin_1", name="Гоблин 1", named=False, location_id="vale")
+    items = data_of(build(make_ctx(registry, cfg, bundle=bundle)))["known_npcs"]
+    assert "goblin_1" not in [n["id"] for n in items]
+
+
+def test_irrelevant_unnamed_npc_before_avenger_does_not_hide_him(registry):
+    bundle = make_bundle(registry)
+    add_npc(bundle, "plain", name="Простой", named=False, location_id="vale")
+    avenger(bundle, location_id="vale")
+    assert "goblin_1" in relevant_npcs(bundle)

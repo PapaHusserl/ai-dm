@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from ai_dm.rules import goals
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.triggers_eval import Truth, evaluate, is_ready
 from ai_dm.state.triggers import Condition
@@ -86,9 +87,9 @@ def sort_key(candidate):
     return (group, OWNER_RANK[candidate.owner_kind], candidate.owner_id, candidate.item_id)
 
 
-def verdict_candidates(bundle, owner_list=None) -> list[Candidate]:
+def verdict_candidates(bundle, owner_list=None, skip_goals=False) -> list[Candidate]:
     # чистая функция: триггеры с выполненной структурной частью и нарративным остатком,
-    # затем секреты NPC закрытой сцены; состояние не меняет
+    # затем секреты NPC закрытой сцены; состояние не меняет; skip_goals -- без триггеров целей
     world = bundle.world
     now_s = world.clock.now_s
     result = []
@@ -96,7 +97,7 @@ def verdict_candidates(bundle, owner_list=None) -> list[Candidate]:
         owner_list = owners(bundle)
     for kind, owner, hero in owner_list:
         for trigger in owner.opportunity:
-            if not is_ready(trigger, now_s):
+            if goals.skipped(trigger, not skip_goals) or not is_ready(trigger, now_s):
                 continue
             ev = evaluate(trigger.if_, world, hero)
             if ev.truth != Truth.NEEDS_NARRATIVE:

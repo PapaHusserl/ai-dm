@@ -586,6 +586,69 @@ def test_blow_on_a_lying_hero_sets_the_group_when_there_was_none(registry, cfg):
     assert engine.state.defeat_group_id == "goblins"
 
 
+# Ж2: kill_monster пишет last_hit_by = attacker_ref (по нему on_kill решает, чья это смерть)
+
+def monsters_engine(registry, cfg, named=False):
+    return make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall", named=named),
+                  mon("goblin_2", "goblin_warrior", "hall")],
+    )
+
+
+def test_kill_monster_records_hero_as_last_hit_by(registry, cfg):
+    from ai_dm.combat.downed import kill_monster
+
+    engine = monsters_engine(registry, cfg)
+    kill_monster(engine, "goblin_1", "hero")
+    assert part(engine, "goblin_1").status == "dead"
+    assert part(engine, "goblin_1").last_hit_by == "hero"
+
+
+def test_kill_monster_without_attacker_records_none(registry, cfg):
+    from ai_dm.combat.downed import kill_monster
+
+    engine = monsters_engine(registry, cfg)
+    kill_monster(engine, "goblin_1", None)
+    assert part(engine, "goblin_1").last_hit_by is None
+
+
+def test_kill_monster_without_attacker_overwrites_earlier_hit(registry, cfg):
+    from ai_dm.combat.downed import kill_monster
+
+    engine = monsters_engine(registry, cfg)
+    part(engine, "goblin_1").last_hit_by = "hero"
+    kill_monster(engine, "goblin_1", None)
+    assert part(engine, "goblin_1").last_hit_by is None
+
+
+def test_kill_monster_by_world_npc_records_that_npc(registry, cfg):
+    from ai_dm.combat.downed import kill_monster
+
+    engine = monsters_engine(registry, cfg)
+    kill_monster(engine, "goblin_1", "goblin_2")
+    assert part(engine, "goblin_1").last_hit_by == "goblin_2"
+
+
+def test_kill_monster_records_attacker_for_named_npc_too(registry, cfg):
+    from ai_dm.combat.downed import kill_monster
+
+    engine = monsters_engine(registry, cfg, named=True)
+    kill_monster(engine, "goblin_1", "hero")
+    assert part(engine, "goblin_1").last_hit_by == "hero"
+
+
+def test_real_blow_that_kills_records_the_hero(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(d20=[15], d8=[4]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    set_hp(engine, "goblin_1", 3)
+    engine.perform("hero", "attack:longsword:goblin_1")
+    assert part(engine, "goblin_1").status == "dead"
+    assert part(engine, "goblin_1").last_hit_by == "hero"
+
+
 # смерть именованного NPC, уже мёртвого в мире (ревью партии 5, п. 8)
 
 def test_kill_of_an_npc_the_world_already_buried_is_a_program_error(registry, cfg):
