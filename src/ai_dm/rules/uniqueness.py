@@ -18,15 +18,19 @@ def check_npc(world, npc, heroes) -> list[str]:
     conflicts = []
     if id_taken(world, heroes, npc.id):
         conflicts.append(f"id {npc.id!r} уже занят (NPC, фракция, бог, локация или герой)")
-    if npc.named:
-        name = norm(npc.name)
-        taken = [other.name for other in world.npcs.values() if other.named]
-        taken += [god.name for god in world.pantheon.values()]
-        taken += [faction.name for faction in world.factions.values()]
-        taken += [hero.name for hero in heroes]
-        if any(norm(other) == name for other in taken):
-            conflicts.append(f"имя {npc.name!r} уже занято (NPC, бог, фракция или герой)")
+    if npc.named and name_conflict(world, heroes, npc.name):
+        conflicts.append(f"имя {npc.name!r} уже занято (NPC, бог, фракция или герой)")
     return conflicts
+
+
+def name_conflict(world, heroes, new_name) -> bool:
+    # имя совпадает с именем именованного NPC, бога, фракции или героя (без регистра)
+    name = norm(new_name)
+    taken = [other.name for other in world.npcs.values() if other.named]
+    taken += [god.name for god in world.pantheon.values()]
+    taken += [faction.name for faction in world.factions.values()]
+    taken += [hero.name for hero in heroes]
+    return any(norm(other) == name for other in taken)
 
 
 def check_location(world, location, heroes) -> list[str]:

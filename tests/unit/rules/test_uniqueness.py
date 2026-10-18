@@ -261,3 +261,62 @@ def test_name_taken_accepts_any_iterable():
     from ai_dm.rules.uniqueness import name_taken
 
     assert name_taken("Олдрик", (n for n in ["Олдрик"])) is True
+
+
+# Ж1: name_conflict(world, heroes, new_name) -- имя занято именованным NPC, богом, фракцией, героем
+
+def conflict(name):
+    from ai_dm.rules.uniqueness import name_conflict
+
+    return name_conflict(make_world(), HEROES, name)
+
+
+def test_free_name_is_not_a_conflict():
+    assert conflict("Мурк") is False
+
+
+def test_name_of_named_npc_is_a_conflict():
+    assert conflict("Олдрик") is True
+
+
+def test_name_conflict_ignores_case_and_edge_spaces():
+    assert conflict("  олдрик ") is True
+
+
+def test_name_of_unnamed_npc_is_not_a_conflict():
+    assert conflict("Стражник") is False
+
+
+def test_name_of_god_is_a_conflict():
+    assert conflict("Моррах") is True
+
+
+def test_name_of_faction_is_a_conflict():
+    assert conflict("Гильдия воров") is True
+
+
+def test_name_of_hero_is_a_conflict():
+    assert conflict("Арн") is True
+
+
+def test_name_of_location_is_not_a_conflict():
+    assert conflict("Вейл") is False
+
+
+def test_name_conflict_does_not_change_world():
+    world = make_world()
+    before = world.model_dump_json()
+    from ai_dm.rules.uniqueness import name_conflict
+
+    name_conflict(world, HEROES, "Олдрик")
+    assert world.model_dump_json() == before
+
+
+def test_check_npc_still_reports_name_conflict_text():
+    [text] = check_npc(make_world(), make_npc("aldric_2", "Моррах"), HEROES)
+    assert "Моррах" in text
+    assert "уже занято" in text
+
+
+def test_check_npc_unnamed_duplicate_name_is_ok():
+    assert check_npc(make_world(), make_npc("g2", "Олдрик", named=False), HEROES) == []

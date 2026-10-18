@@ -19,6 +19,7 @@ from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.knowledge import prompt_entries
 from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
+from ai_dm.rules.npc_names import name_hidden
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.trade import (
     category_models,
@@ -49,6 +50,19 @@ def identity_data(who):
         data["gender"] = who.gender
     if who.pronouns:
         data["pronouns"] = who.pronouns
+    return data
+
+
+def survivor_data(npc):
+    # выживший боя: вид существа; unnamed -- имени ещё нет (дай его npc_update), name_hidden --
+    # игрок имени ещё не слышал (зови по виду); у прочих NPC ключей нет
+    if npc.origin != "engine":
+        return {}
+    data = {"kind": (npc.combat or {}).get("monster_id")}
+    if not npc.named:
+        data["unnamed"] = True
+    if name_hidden(npc):
+        data["name_hidden"] = True
     return data
 
 
@@ -469,6 +483,7 @@ class PromptBuilder:
                     if npc.follows == hero.id:
                         item["follows"] = hero.id
                     item.update(identity_data(npc))
+                    item.update(survivor_data(npc))
                     if npc.trade is not None:
                         item["merchant"] = npc.trade.kind
                     item.update(npc_memory_data(npc))
@@ -479,6 +494,7 @@ class PromptBuilder:
             n = world.npcs[npc_id]
             item = {"id": n.id, "name": n.name, "location_id": n.location_id, "key": n.key}
             item.update(identity_data(n))
+            item.update(survivor_data(n))
             if n.follows == hero.id:
                 item["follows"] = hero.id
             item.update(npc_memory_data(n, short=True))

@@ -5,6 +5,7 @@ from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
 from ai_dm.rules.npc_memory import events_full, refresh_weight, remember
+from ai_dm.rules.npc_names import shown_name
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
 from ai_dm.rules.trade import DAY_S
@@ -164,7 +165,7 @@ def change_attitude(ctx, npc, delta, decision):
     applied = npc.attitude - before
     spent[npc.id] = spent.get(npc.id, 0) + abs(applied)
     decision.result["attitude"] = npc.attitude
-    decision.log.append(f"Отношение {npc.name}: {applied:+d} (теперь {npc.attitude})")
+    decision.log.append(f"Отношение {npc_label(npc)}: {applied:+d} (теперь {npc.attitude})")
     if ctx.scene is not None:
         refresh_weight(npc, ctx.scene)
     if abs(applied) < abs(delta):
@@ -184,10 +185,10 @@ def change_memory(ctx, npc, request, decision):
     short = shorten_text(text, NPC_EVENT_TEXT_MAX)
     event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
     remember(npc, scene, event, ctx.cfg.npc_memory)
-    decision.log.append(f"{npc.name} запомнил: {request.memory_kind}")
+    decision.log.append(f"{npc_label(npc)} запомнил: {request.memory_kind}")
     if short != text:
         note = f"текст укорочен до {NPC_EVENT_TEXT_MAX}"
-        decision.log.append(f"{npc.name}: {note}")
+        decision.log.append(f"{npc_label(npc)}: {note}")
         decision.reason = f"{decision.reason}; {note}" if decision.reason else note
         decision.signal_to_master = (
             f"{decision.signal_to_master} " if decision.signal_to_master else ""
@@ -201,11 +202,23 @@ def change_follows(ctx, npc, request, decision):
     # hero -- NPC идёт с героем, none -- отстал; живой NPC обязателен для присоединения
     if request.follows == "hero":
         npc.follows = ctx.hero.id
-        decision.log.append(f"{npc.name} идёт с героем")
+        decision.log.append(f"{npc_label(npc)} идёт с героем")
     else:
         npc.follows = None
-        decision.log.append(f"{npc.name} остаётся (не идёт с героем)")
+        decision.log.append(f"{npc_label(npc)} остаётся (не идёт с героем)")
     decision.result["follows"] = npc.follows
+
+
+def npc_label(npc) -> str:
+    # имя NPC для логов и сообщений игроку: настоящее имя выжившего боя до знакомства не светится
+    return shown_name(npc)
+
+
+def change_name(npc, request, decision):
+    # рассказчик дал безымянному выжившему имя; игроку оно откроется, когда прозвучит в тексте
+    npc.name = request.name.strip()
+    npc.named = True
+    decision.log.append(f"{npc_label(npc)}: получил имя")
 
 
 def change_identity(npc, request, decision):
@@ -214,10 +227,10 @@ def change_identity(npc, request, decision):
     if request.gender is not None:
         npc.gender = None if request.gender == "unset" else request.gender
         word = "не задан" if npc.gender is None else GENDER_WORDS[npc.gender]
-        decision.log.append(f"{npc.name}: пол {word}")
+        decision.log.append(f"{npc_label(npc)}: пол {word}")
     if request.pronouns is not None:
         npc.pronouns = "" if request.pronouns == "-" else request.pronouns
-        decision.log.append(f"{npc.name}: местоимения {npc.pronouns or 'не заданы'}")
+        decision.log.append(f"{npc_label(npc)}: местоимения {npc.pronouns or 'не заданы'}")
 
 
 def death_refused(ctx, npc, request) -> bool:
@@ -237,9 +250,9 @@ def change_status(ctx, npc, request, decision):
         ctx.used_rolls.add(request.evidence_ref)
         apply_events(world, done)
         ctx.events.extend(done)
-        decision.log.append(f"{npc.name}: {request.status} ({request.cause})")
+        decision.log.append(f"{npc_label(npc)}: {request.status} ({request.cause})")
     else:
-        decision.log.append(f"{npc.name}: уже мёртв, ничего не изменилось")
+        decision.log.append(f"{npc_label(npc)}: уже мёртв, ничего не изменилось")
     decision.result["status"] = npc.status
 
 
@@ -251,19 +264,37 @@ def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
-        "memory_kind", "memory_text",
+        "memory_kind", "memory_text", "name",
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
-        return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не идёт с героем")
+        return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: не идёт с героем")
     if request.trade_kind is not None and request.status is not None:
         return Invalid(
             code="trade_kind_with_status", message="trade_kind и status нельзя в одном запросе"
         )
     return (
-        memory_problem(ctx, npc, request) or death_problem(ctx, npc, request)
-        or merchant_update_problem(ctx, npc, request)
+        name_problem(ctx, npc, request) or memory_problem(ctx, npc, request)
+        or death_problem(ctx, npc, request) or merchant_update_problem(ctx, npc, request)
     )
+
+
+def name_problem(ctx, npc, request):
+    # имя назначается один раз и только безымянному выжившему боя
+    if request.name is None:
+        return None
+    if npc.origin != "engine" or npc.named:
+        return Invalid(code="name_locked", message=f"{npc_label(npc)}: имя не меняется")
+    name = request.name.strip()
+    if not name:
+        return Invalid(code="empty_name", message="имя пустое")
+    if uniqueness.name_conflict(ctx.bundle.world, ctx.bundle.heroes, name):
+        return rejected(
+            f"имя {name!r} уже занято",
+            f"Имя не назначено: {name!r} уже занято (NPC, бог, фракция или герой). "
+            "Придумай другое имя.",
+        )
+    return None
 
 
 def memory_problem(ctx, npc, request):
@@ -278,7 +309,7 @@ def memory_problem(ctx, npc, request):
     # до любых изменений: отношение тоже не применяется
     return rejected(
         f"в сцене уже {ctx.cfg.npc_memory.max_events_per_scene} событий памяти",
-        f"{npc.name} больше не запомнит в этой сцене: лимит событий памяти. Опиши по факту.",
+        f"{npc_label(npc)} больше не запомнит в этой сцене: лимит событий памяти. Опиши по факту.",
         report_tag="limit-exceeded",
     )
 
@@ -289,7 +320,7 @@ def death_problem(ctx, npc, request):
     # до любых изменений: отношение тоже не применяется
     return rejected(
         "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого хода",
-        f"{npc.name} остаётся жив: смерть или уход без причины goal/hazard и "
+        f"{npc_label(npc)} остаётся жив: смерть или уход без причины goal/hazard и "
         "evidence_ref на не потраченный бросок этого хода не принимаются. Опиши иначе.",
         report_tag="invalid-death",
     )
@@ -308,6 +339,8 @@ def npc_update(ctx, request):
     decision = Decision(status="accepted")
     if request.follows is not None:
         change_follows(ctx, npc, request, decision)
+    if request.name is not None:
+        change_name(npc, request, decision)
     change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)
@@ -317,7 +350,7 @@ def npc_update(ctx, request):
         change_status(ctx, npc, request, decision)
     if request.trade_kind is not None:
         make_merchant(ctx, npc, request.trade_kind)
-        decision.log.append(f"{npc.name} торгует: {request.trade_kind}")
+        decision.log.append(f"{npc_label(npc)} торгует: {request.trade_kind}")
         decision.result["trade_kind"] = request.trade_kind
     return decision
 
@@ -327,10 +360,11 @@ def merchant_update_problem(ctx, npc, request):
     if kind is None:
         return None
     if npc.status != "alive":
-        return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не торгует")
+        return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: не торгует")
     if npc.trade is not None:
         return rejected(
-            f"{npc.name} уже торговец", f"{npc.name} уже торгует: тип торговца не меняется."
+            f"{npc_label(npc)} уже торговец",
+            f"{npc_label(npc)} уже торгует: тип торговца не меняется.",
         )
     return new_merchant_problem(ctx, kind, npc.key)
 

@@ -514,8 +514,13 @@ class NpcUpdate(NpcUpdateBase):
     memory_text: str = Field(
         "", description="Коротко, что сделал герой (до 120 знаков); только вместе с memory_kind."
     )
+    name: str = Field(
+        "", description="Настоящее имя безымянного выжившего боя (в состоянии unnamed); "
+        "один раз; пусто = не менять."
+    )
     NEUTRAL: ClassVar[dict] = {
         **NpcUpdateBase.NEUTRAL, "trade_kind": "none", "memory_kind": "none", "memory_text": "",
+        "name": "",
     }
 
 
