@@ -602,6 +602,14 @@ class Pray(Request):
     god_id: str = Field(description="Id бога, которому молится герой.")
 
 
+class ChangeDeity(Request):
+    """Герой сменил бога после сделки или квеста: новому богу +1 благосклонности."""
+
+    type: Literal["change_deity"]
+    god_id: str = Field(description="Id нового бога.")
+    reason: str = Field(description="Короткая причина смены бога.")
+
+
 class RevealSecret(Request):
     """Раскрыть секрет NPC."""
 
@@ -1006,6 +1014,7 @@ REQUEST_MODELS = {
     "npc_update": NpcUpdate,
     "favor_change": FavorChange,
     "pray": Pray,
+    "change_deity": ChangeDeity,
     "companion_update": CompanionUpdate,
     "reveal_secret": RevealSecret,
     "knowledge_note": KnowledgeNote,
@@ -1060,8 +1069,8 @@ MasterRequest = Annotated[
     | AwardXp
     | AdvanceTime | Rest
     | WarnDanger
-    | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | CompanionUpdate
-    | RevealSecret | KnowledgeNote | SceneMood | EventStart | EventEnd
+    | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | ChangeDeity
+    | CompanionUpdate | RevealSecret | KnowledgeNote | SceneMood | EventStart | EventEnd
     | OfferChoices | EndScene | EndChapter | AfterlifeAction | UnsupportedAction,
     Field(discriminator="type"),
 ]

@@ -39,6 +39,7 @@ HANDLERS = {
     "npc_update": world.npc_update,
     "favor_change": world.favor_change,
     "pray": world.pray,
+    "change_deity": world.change_deity,
     "companion_update": hero.companion_update,
     "offer_choices": world.offer_choices,
     "end_scene": world.end_scene,

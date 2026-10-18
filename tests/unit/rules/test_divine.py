@@ -2,8 +2,9 @@
 #   tier(favor: int) -> int  -- -3..3: favor // 3 к нулю (|favor| < 3 -> 0, 3..5 -> 1, 6..8 -> 2,
 #     9..10 -> 3,
 #       зеркально для отрицательных)
-#   change_deity(hero, god_id) -> None -- hero.deity_id = god_id; благосклонность нового бога
-#       становится 1 (стартовая +1), прочие не трогаются
+#   change_deity(hero, god_id) -> int -- hero.deity_id = god_id; новый бог без ключа в favor
+#       получает 1 (возврат 1); бог с ключом (в т.ч. 0) не меняется (возврат 0);
+#       прежний бог получает ключ favor (0, если не было), его значение не трогается
 #   approx_label(favor: int) -> str -- «благосклонна» (>= 3) / «равнодушна» (-2..2) / «гневается»
 #     (<= -3)
 # Жрец (источник cast_checks): default_cast_check_registry().check(hero, spell_id, registry) -> list
@@ -91,6 +92,61 @@ def test_change_deity_keeps_old_favor():
     hero = make_priest(favor=-4)
     change_deity(hero, "morrah")
     assert hero.favor["selune"] == -4
+
+
+def test_change_deity_returns_plus_one_for_new_god():
+    from ai_dm.rules.divine import change_deity
+
+    assert change_deity(make_priest(favor=-4), "morrah") == 1
+
+
+def test_change_deity_back_to_known_god_returns_zero_and_keeps_favor():
+    from ai_dm.rules.divine import change_deity
+
+    hero = make_priest(favor=-4)
+    hero.favor["morrah"] = 5
+    assert change_deity(hero, "morrah") == 0
+    assert hero.favor["morrah"] == 5
+    assert hero.deity_id == "morrah"
+
+
+def test_change_deity_to_god_with_zero_key_gives_no_bonus():
+    from ai_dm.rules.divine import change_deity
+
+    hero = make_priest(favor=-4)
+    hero.favor["morrah"] = 0
+    assert change_deity(hero, "morrah") == 0
+    assert hero.favor["morrah"] == 0
+
+
+def test_change_deity_old_god_without_key_gets_zero():
+    from ai_dm.rules.divine import change_deity
+
+    hero = make_priest()
+    hero.favor.pop("selune", None)
+    change_deity(hero, "morrah")
+    assert hero.favor["selune"] == 0
+
+
+def test_change_deity_round_trip_gives_plus_one_only_once():
+    from ai_dm.rules.divine import change_deity
+
+    hero = make_priest()
+    hero.favor.pop("selune", None)
+    change_deity(hero, "morrah")
+    assert change_deity(hero, "selune") == 0
+    assert hero.favor["selune"] == 0
+    assert change_deity(hero, "morrah") == 0
+    assert hero.favor["morrah"] == 1
+
+
+def test_change_deity_from_no_god_adds_no_phantom_key():
+    from ai_dm.rules.divine import change_deity
+
+    hero = make_priest(deity=None)
+    before = set(hero.favor)
+    change_deity(hero, "morrah")
+    assert set(hero.favor) == before | {"morrah"}
 
 
 # жрец: проверки перед сотворением

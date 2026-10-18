@@ -552,6 +552,27 @@ def pray(ctx, request):
     )
 
 
+def change_deity(ctx, request):
+    hero = ctx.hero
+    world = ctx.bundle.world
+    if request.god_id not in world.pantheon:
+        return Invalid(
+            code="unknown_god",
+            message=f"нет бога {request.god_id!r}" + allowed(world.pantheon),
+        )
+    god = world.pantheon[request.god_id]
+    if hero.deity_id == request.god_id:
+        return Invalid(code="same_deity", message=f"{god.name} уже бог героя")
+    applied = divine.change_deity(hero, request.god_id)
+    bonus = f", благосклонность {applied:+d}" if applied else ""
+    text = f"Герой сменил бога: теперь {god.name} ({request.reason}{bonus})"
+    add_entry(ctx.bundle, "favor", text, [hero.id, god.id])
+    note_favor(
+        hero, god, f"новый бог героя ({request.reason})", world.clock.now_s, ctx.cfg.knowledge
+    )
+    return Decision(status="accepted", result={"god_id": god.id}, log=[text])
+
+
 def offer_choices(ctx, request):
     if not 2 <= len(request.choices) <= 3:
         return Invalid(code="choices_count", message="нужно два или три варианта")

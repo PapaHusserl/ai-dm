@@ -278,9 +278,9 @@ def test_unknown_mode_is_error():
         tool_set("flying")
 
 
-def test_visible_set_has_35_tools_from_plan():
+def test_visible_set_has_36_tools_from_plan():
     names = [t["name"] for t in tool_defs(VISIBLE_TYPES)]
-    assert len(names) == 35
+    assert len(names) == 36
     assert names == sorted(VISIBLE_TYPES)
     assert "npc_action" not in names
     for hidden in HIDDEN_TYPES:

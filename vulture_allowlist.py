@@ -81,7 +81,6 @@ Controller  # unused class (combat/controllers.py, протокол контро
 ScriptedController  # unused class (combat/controllers.py)
 ModelAdapter  # unused class (llm/adapter.py, протокол адаптера)
 spread_morale  # unused variable (поле конфига [parley])
-change_deity  # unused function (rules/divine.py, блок Ж2)
 level_for_xp  # unused function (rules/progression.py, блок К0)
 proficiency_bonus  # unused function (rules/progression.py, блок К0)
 ranger_choices  # unused function (game/starter.py, пресет Грея для kit-ов тестов)

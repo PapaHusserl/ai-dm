@@ -239,7 +239,14 @@ def locked_slot_pool(hero) -> str | None:
     return f"spell_slot:{max(circles)}"
 
 
-def change_deity(hero, god_id) -> None:
-    # смена бога: стартовая благосклонность у нового +1
+def change_deity(hero, god_id) -> int:
+    # смена бога: +1 только богу, с которым у героя ещё не было счёта (нет ключа в favor);
+    # прежний бог запоминается ключом, возврат к нему без прибавки. Возвращает фактический сдвиг
+    if hero.deity_id is not None:
+        hero.favor.setdefault(hero.deity_id, 0)
+    before = hero.favor.get(god_id)
     hero.deity_id = god_id
-    hero.favor[god_id] = min(FAVOR_MAX, hero.favor.get(god_id, 0) + 1)
+    if before is not None:
+        return 0
+    hero.favor[god_id] = 1
+    return 1

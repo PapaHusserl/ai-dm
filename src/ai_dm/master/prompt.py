@@ -370,7 +370,10 @@ class PromptBuilder:
             gods.append(item)
             if divine.can_pray(hero, god_id, world.clock.now_s):
                 can_pray.append(god_id)
-        return {"gods": gods, "can_pray": can_pray, "debts": list(hero.divine.debts)}
+        return {
+            "gods": gods, "can_pray": can_pray, "debts": list(hero.divine.debts),
+            "deity": hero.deity_id,
+        }
 
     def sheet_data(self, hero, registry):
         # класс, подкласс, текстовые и выбранные умения, заклинания, ячейки, спутник

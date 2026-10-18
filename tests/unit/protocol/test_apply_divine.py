@@ -28,7 +28,7 @@ from protocol_kit import ScriptedRng, combat_request, make_bundle, make_ctx, req
 
 from ai_dm.core.clock import DAY
 from ai_dm.protocol.apply import apply
-from ai_dm.protocol.decision import Decision
+from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.state.scene import SceneState
 from ai_dm.state.session import ChapterState
 from ai_dm.state.world import God
@@ -478,6 +478,137 @@ def test_season_power_clamps_to_hundred(registry, cfg):
 def test_season_power_clamps_to_zero(registry, cfg):
     ctx = season_intervention(registry, cfg, WINTER_DAY, 1, {"зима": -90})
     assert ctx.hero.status == "dead"
+
+
+# Ж2 коммит 3: change_deity -- смена бога; отказы unknown_god / same_deity, +1 новому,
+# хроника, журнал
+
+def deity_ctx(registry, cfg, deity="selune"):
+    ctx = make_divine_ctx(registry, cfg, DiceRng(), favor=4)
+    ctx.hero.deity_id = deity
+    return ctx
+
+
+def change(ctx, god_id="morrah", reason="сделка с жрецом"):
+    return apply(ctx, req("change_deity", god_id=god_id, reason=reason))
+
+
+def test_change_deity_unknown_god_is_invalid(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    d = change(ctx, "nobody")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_god"
+    assert ctx.hero.deity_id == "selune"
+
+
+def test_change_deity_same_god_is_invalid(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    d = change(ctx, "selune")
+    assert isinstance(d, Invalid)
+    assert d.code == "same_deity"
+    assert ctx.hero.favor["selune"] == 4
+
+
+def test_change_deity_sets_new_god(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    d = change(ctx)
+    assert isinstance(d, Decision)
+    assert d.status == "accepted"
+    assert ctx.hero.deity_id == "morrah"
+
+
+def test_change_deity_gives_plus_one_to_new_god_without_key(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx)
+    assert ctx.hero.favor["morrah"] == 1
+
+
+def test_change_deity_to_god_with_favor_key_gives_no_bonus(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    ctx.hero.favor["morrah"] = 2
+    d = change(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.favor["morrah"] == 2
+    assert "благосклонность" not in d.log[0]
+
+
+def test_change_deity_back_to_previous_god_has_no_bonus_text(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx)
+    d = change(ctx, "selune")
+    assert d.status == "accepted"
+    assert ctx.hero.deity_id == "selune"
+    assert ctx.hero.favor["selune"] == 4
+    assert d.log[0] == "Герой сменил бога: теперь Селунэ (сделка с жрецом)"
+    assert ctx.bundle.chronicle.entries[-1].text == d.log[0]
+
+
+def test_change_deity_old_god_without_key_gets_zero(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    ctx.hero.favor.pop("selune")
+    change(ctx)
+    assert ctx.hero.favor["selune"] == 0
+
+
+def test_change_deity_text_mentions_bonus_when_given(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    d = change(ctx)
+    assert "благосклонность +1" in d.log[0]
+    assert "благосклонность +1" in ctx.bundle.chronicle.entries[0].text
+
+
+def test_change_deity_leaves_old_god_favor(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx)
+    assert ctx.hero.favor["selune"] == 4
+
+
+def test_change_deity_result_has_god_id(registry, cfg):
+    d = change(deity_ctx(registry, cfg))
+    assert d.result == {"god_id": "morrah"}
+
+
+def test_change_deity_log_names_new_god_and_reason(registry, cfg):
+    d = change(deity_ctx(registry, cfg))
+    assert len(d.log) == 1
+    assert "Моррах" in d.log[0]
+    assert "сделка с жрецом" in d.log[0]
+
+
+def test_change_deity_writes_favor_chronicle_entry(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx)
+    entries = [e for e in ctx.bundle.chronicle.entries if e.kind == "favor"]
+    assert len(entries) == 1
+    assert entries[0].refs == [ctx.hero.id, "morrah"]
+    assert "Моррах" in entries[0].text
+    assert "сделка с жрецом" in entries[0].text
+    assert entries[0].at_s == ctx.bundle.world.clock.now_s
+
+
+def test_change_deity_notes_god_in_hero_journal(registry, cfg):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx)
+    facts = [e for e in ctx.hero.knowledge if e.kind == "god" and e.ref == "morrah"]
+    assert len(facts) == 1
+    assert "Моррах" in facts[0].text
+    assert "сделка с жрецом" in facts[0].text
+
+
+@pytest.mark.parametrize("god_id", ["nobody", "selune"])
+def test_rejected_change_deity_leaves_no_chronicle_or_journal(registry, cfg, god_id):
+    ctx = deity_ctx(registry, cfg)
+    change(ctx, god_id)
+    assert ctx.bundle.chronicle.entries == []
+    assert [e for e in ctx.hero.knowledge if e.kind == "god"] == []
+
+
+def test_change_deity_works_for_hero_without_deity(registry, cfg):
+    ctx = deity_ctx(registry, cfg, deity=None)
+    d = change(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.deity_id == "morrah"
+    assert ctx.hero.favor["morrah"] == 1
 
 
 def test_without_season_power_chance_is_as_before(registry, cfg):

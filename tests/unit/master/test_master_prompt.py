@@ -582,3 +582,21 @@ def test_system_1_scope_is_stable_between_builds(registry, cfg):
     reg = scoped(registry, ["wolf", "boar"])
     first = build(make_ctx(reg, cfg)).system[1].text
     assert build(make_ctx(reg, cfg)).system[1].text == first
+
+
+# Ж2 коммит 3: divine.deity -- текущий бог героя
+
+def divine_of(registry, cfg, deity):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.deity_id = deity
+    return data_of(build(ctx))["divine"]
+
+
+def test_divine_data_has_current_deity(registry, cfg):
+    assert divine_of(registry, cfg, "morrah")["deity"] == "morrah"
+
+
+def test_divine_data_deity_is_none_for_hero_without_god(registry, cfg):
+    divine = divine_of(registry, cfg, None)
+    assert "deity" in divine
+    assert divine["deity"] is None
