@@ -1,5 +1,6 @@
 import re
 
+from ai_dm.rules.npc_names import name_hidden, shown_name
 from ai_dm.state.knowledge import KNOWLEDGE_KINDS, KNOWLEDGE_TEXT_MAX, KnowledgeEntry
 
 # тексты записей движка: по префиксу их узнают и промпт (не показывает), и тесты
@@ -79,9 +80,13 @@ def shorten_text(text, limit) -> str:
     return (head[:cut] if cut > 0 else head).rstrip() + "…"
 
 
+def is_near(npc, hero) -> bool:
+    return npc.status == "alive" and (npc.location_id == hero.location_id or npc.follows == hero.id)
+
+
 def note_presence(hero, world, text, cfg) -> list[str]:
     # первое посещение локации героя и первая встреча NPC (живой, в локации героя или идущий с ним,
-    # имя в тексте хода); возвращает строки лога
+    # имя в тексте хода; скрытое имя по тексту не ищется); возвращает строки лога
     now_s = world.clock.now_s
     low = text.lower()
     log = []
@@ -90,8 +95,7 @@ def note_presence(hero, world, text, cfg) -> list[str]:
         remember_fact(hero, fact("location", place.id, VISITED + place.name, "seen", now_s), cfg)
         log.append(f"Журнал: место {place.name}")
     for npc in sorted(world.npcs.values(), key=lambda n: n.id):
-        near = npc.location_id == hero.location_id or npc.follows == hero.id
-        if npc.status != "alive" or not near or not mentions(npc.name.lower(), low):
+        if name_hidden(npc) or not is_near(npc, hero) or not mentions(npc.name.lower(), low):
             continue
         if not has_entry(hero, "npc", npc.id, MET):
             remember_fact(hero, fact("npc", npc.id, MET + npc.name, "seen", now_s), cfg)
@@ -99,11 +103,21 @@ def note_presence(hero, world, text, cfg) -> list[str]:
     return log
 
 
-def note_combat(hero, world, state, registry, cfg) -> None:
-    # бестиарий: безымянные враги боя (не NPC мира); state -- завершённый бой
+def rename_met(hero, npc) -> None:
+    # запись о знакомстве получает имя, под которым NPC известен герою
+    for entry in entries_for(hero, "npc", npc.id):
+        if entry.text.startswith(MET):
+            entry.text = MET + shown_name(npc)
+
+
+def note_combat(hero, world, state, registry, cfg, defected=()) -> None:
+    # бестиарий: безымянные враги боя (не NPC мира) и перебежчики (refs в defected);
+    # state -- завершённый бой
     word = FIGHT_WORDS.get(state.outcome, FIGHT_LOST)
     for p in state.participants:
-        if p.side != "enemies" or p.monster_id is None or p.ref in world.npcs:
+        if p.monster_id is None or p.ref in world.npcs:
+            continue
+        if p.side != "enemies" and p.ref not in defected:
             continue
         text = f"{FOUGHT}{registry.get('monster', p.monster_id).name} — {word}"
         remember_fact(hero, fact("creature", p.monster_id, text, "seen", world.clock.now_s), cfg)
@@ -132,7 +146,7 @@ def mentioned_text(bundle) -> str:
 def is_met(npc, hero_id, text) -> bool:
     signs = (
         npc.known_to_player, npc.memory, npc.follows == hero_id, npc.attitude != 0,
-        npc.named and mentions(npc.name.lower(), text),
+        npc.named and mentions(shown_name(npc).lower(), text),
     )
     return any(signs)
 
@@ -153,7 +167,7 @@ def backfill(bundle, cfg) -> int:
     added = 0
     for npc_id in met_npc_ids(bundle):
         npc = world.npcs[npc_id]
-        added += remember_fact(hero, fact("npc", npc.id, MET + npc.name, "seen", at_s), cfg)
+        added += remember_fact(hero, fact("npc", npc.id, MET + shown_name(npc), "seen", at_s), cfg)
         for secret in npc.secrets:
             if secret.id in npc.known_to_player:
                 added += remember_fact(

@@ -468,6 +468,30 @@ def test_defect_moves_the_target_to_the_heroes(registry, cfg):
     assert (p.side, p.group_id, p.status) == ("heroes", "party", "active")
 
 
+def defect_flag_of(engine, ref):
+    return [e for e in part(engine, ref).creature.active_effects if e.id == "parley_defected"]
+
+
+def test_defect_flag_keeps_original_group_in_params(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[19, 19]), goblins=2)
+    talk(engine, outcome="defect")
+    [flag] = defect_flag_of(engine, "goblin_1")
+    assert flag.params == {"group": "goblins"}
+
+
+def test_defect_flag_source_is_the_speaker_and_kind_is_flag(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[19, 19]), goblins=2)
+    talk(engine, outcome="defect")
+    [flag] = defect_flag_of(engine, "goblin_1")
+    assert (flag.source, flag.kind) == ("hero", "flag")
+
+
+def test_failed_defect_leaves_no_flag(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[18, 18]), goblins=2)
+    talk(engine, outcome="defect")
+    assert defect_flag_of(engine, "goblin_1") == []
+
+
 def test_defect_succeeds_exactly_on_the_dc(registry, cfg):
     # 19 + 1 = 20 = СЛ 15 + 5
     engine = duel(registry, cfg, ScriptedRng(d20=[19, 19]), goblins=2)

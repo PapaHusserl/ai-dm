@@ -425,3 +425,66 @@ def test_box_lines_long_enemy_name_shows_hp():
     body = lines[1]
     assert len(body) == 26
     assert body.endswith("… 11/11│")
+
+
+# Ж1 (docs/plan-zh1.md, п. 0.9): имя выжившего с неоткрытым именем на карте -- вид существа
+
+def survivor_fight(registry, cfg, **npc_fields):
+    import game_kit  # noqa: F401  (путь к master_kit)
+    from master_kit import combat_ctx
+
+    from ai_dm.state.world import NPC
+
+    bundle = combat_ctx(registry, cfg).bundle
+    state = bundle.session.active_combat
+    fields = {
+        "id": "g1", "name": "Гракх", "means": ["бой"], "origin": "engine",
+        "location_id": "vale", "combat": {"label": "Воин-гоблин 1"},
+    }
+    bundle.world.npcs["g1"] = NPC(**{**fields, **npc_fields})
+    [p for p in state.participants if p.ref == "g1"][0].name = ""
+    return bundle, state, bundle.heroes[0]
+
+
+def test_part_name_hides_real_name_of_survivor(registry, cfg):
+    from ai_dm.game.battle_map import part_name
+
+    bundle, state, hero = survivor_fight(registry, cfg)
+    assert part_name(state, bundle.world, hero, "g1") == "Воин-гоблин 1"
+
+
+def test_part_name_nameless_participant_outside_world_shows_ref(registry, cfg):
+    from ai_dm.game.battle_map import part_name
+
+    bundle, state, hero = survivor_fight(registry, cfg)
+    del bundle.world.npcs["g1"]
+    assert part_name(state, bundle.world, hero, "g1") == "g1"
+
+
+def test_part_name_shows_known_name_of_survivor(registry, cfg):
+    from ai_dm.game.battle_map import part_name
+
+    bundle, state, hero = survivor_fight(registry, cfg, known_name="Гракх")
+    assert part_name(state, bundle.world, hero, "g1") == "Гракх"
+
+
+def test_part_name_pack_npc_shows_real_name(registry, cfg):
+    from ai_dm.game.battle_map import part_name
+
+    bundle, state, hero = survivor_fight(registry, cfg, origin="pack")
+    assert part_name(state, bundle.world, hero, "g1") == "Гракх"
+
+
+def test_members_follower_survivor_is_listed_by_label(registry, cfg):
+    from ai_dm.game.battle_map import members
+
+    bundle, state, hero = survivor_fight(registry, cfg, location_id="forest", follows="hero")
+    # зона героя -- door; идущий с героем показывается значком ○
+    assert "○ Воин-гоблин 1" in members(state, bundle.world, hero, "door")
+
+
+def test_members_follower_with_known_name_is_listed_by_it(registry, cfg):
+    from ai_dm.game.battle_map import members
+
+    bundle, state, hero = survivor_fight(registry, cfg, follows="hero", known_name="Гракх")
+    assert "○ Гракх" in members(state, bundle.world, hero, "door")

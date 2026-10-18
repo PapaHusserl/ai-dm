@@ -514,3 +514,125 @@ def test_limit_percent_is_whole_number_rounded_down(registry, tmp_path):
     app = percent_app(registry, tmp_path, 3, 0)
     spend(app, 1_000)
     assert limit_percent(app) == 33
+
+
+# turn_blocks, gains_block (Ж1: reply_blocks разбит на части, поведение прежнее)
+
+def test_turn_blocks_roll_and_note_lines_in_order(registry, tmp_path):
+    from ai_dm.ui.screen import turn_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    turn = turn_with(lines=["Бросок: 15", "Тихо"], rolls=["Бросок: 15"])
+    blocks = turn_blocks(app, turn)
+    assert [(b.kind, b.text, b.combat) for b in blocks] == [
+        ("roll", "Бросок: 15", False), ("note", "Тихо", False),
+    ]
+
+
+def test_turn_blocks_skip_service_lines(registry, tmp_path):
+    from ai_dm.ui.screen import turn_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    turn = turn_with(lines=["Действие игрока: удар", "Варианты ответа предложены", "Тихо"])
+    assert texts(turn_blocks(app, turn), "note") == ["Тихо"]
+
+
+def test_turn_blocks_log_goes_after_lines_as_combat_blocks(registry, tmp_path):
+    from ai_dm.ui.screen import turn_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    turn = turn_with(lines=["Удар", "Тихо"], log=["Удар"])
+    blocks = turn_blocks(app, turn)
+    assert [(b.text, b.combat) for b in blocks] == [("Тихо", False), ("Удар", True)]
+
+
+def test_turn_blocks_rolls_in_fight_are_combat_blocks(registry, tmp_path):
+    from ai_dm.ui.screen import turn_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    turn = turn_with(lines=["Бросок: 15"], rolls=["Бросок: 15"], log=["Лог боя"])
+    assert turn_blocks(app, turn)[0].combat is True
+
+
+def test_turn_blocks_skip_service_lines_in_log(registry, tmp_path):
+    from ai_dm.ui.screen import turn_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    turn = turn_with(log=["Действие игрока: удар", "Гоблин падает"])
+    assert texts(turn_blocks(app, turn), "note") == ["Гоблин падает"]
+
+
+def test_gains_block_without_victory_and_snapshot_is_empty(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block
+
+    app = text_app(registry, tmp_path, [text_step()])
+    assert gains_block(app, False, 0, None) == []
+
+
+def test_gains_block_victory_shows_xp_difference(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block
+
+    app = text_app(registry, tmp_path, [text_step()])
+    hero_of(app.bundle).sheet.xp = 150
+    [block] = gains_block(app, True, 100, None)
+    assert (block.kind, block.text, block.items) == ("gains", "Получено опыта: 50", ())
+
+
+def test_gains_block_items_come_from_snapshot(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block, loot_snapshot
+
+    app = text_app(registry, tmp_path, [text_step()])
+    before = loot_snapshot(app)
+    hero_of(app.bundle).money_cp += 100
+    [block] = gains_block(app, False, 0, before)
+    assert block.text == ""
+    assert block.items == ("Деньги: +1 зм",)
+
+
+def test_gains_block_victory_does_not_duplicate_xp_in_items(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block, loot_snapshot
+
+    app = text_app(registry, tmp_path, [text_step()])
+    before = loot_snapshot(app)
+    hero_of(app.bundle).sheet.xp += 40
+    [block] = gains_block(app, True, before[0], before)
+    assert block.text == "Получено опыта: 40"
+    assert block.items == ()
+
+
+def test_gains_block_no_changes_with_snapshot_is_empty(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block, loot_snapshot
+
+    app = text_app(registry, tmp_path, [text_step()])
+    assert gains_block(app, False, 0, loot_snapshot(app)) == []
+
+
+def test_gains_block_without_victory_keeps_xp_in_items(registry, tmp_path):
+    from ai_dm.ui.screen import gains_block, loot_snapshot
+
+    app = text_app(registry, tmp_path, [text_step()])
+    before = loot_snapshot(app)
+    hero_of(app.bundle).sheet.xp += 40
+    [block] = gains_block(app, False, before[0], before)
+    assert block.items == ("Опыт: +40",)
+
+
+def test_reply_blocks_snapshot_without_victory_gives_gains_items(registry, tmp_path):
+    from ai_dm.ui.screen import loot_snapshot, reply_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    before = loot_snapshot(app)
+    hero_of(app.bundle).money_cp += 100
+    blocks = reply_blocks(app, Reply(lines=["Тихо"]), 0, before)
+    assert [b.items for b in blocks if b.kind == "gains"] == [("Деньги: +1 зм",)]
+
+
+def test_reply_blocks_victory_with_snapshot_passes_it_to_gains(registry, tmp_path):
+    from ai_dm.ui.screen import loot_snapshot, reply_blocks
+
+    app = text_app(registry, tmp_path, [text_step()])
+    before = loot_snapshot(app)
+    hero_of(app.bundle).money_cp += 100
+    reply = Reply(turn=turn_with(combat_outcome="victory"))
+    blocks = reply_blocks(app, reply, before[0], before)
+    assert [b.items for b in blocks if b.kind == "gains"] == [("Деньги: +1 зм",)]

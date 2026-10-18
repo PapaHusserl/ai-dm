@@ -8,6 +8,7 @@ from ai_dm.master.session import MasterSession, TurnFailed, soft_failure
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.schema import tool_set
+from ai_dm.rules.npc_names import shown_name
 
 
 def scene_turns(bundle, scene):
@@ -100,10 +101,11 @@ class SummarizerPromptBuilder:
             if not n.named:
                 continue
             here = scene.location_id is not None and n.location_id == scene.location_id
-            said = n.name != "" and n.name.lower() in text
+            shown = shown_name(n)
+            said = shown != "" and shown.lower() in text
             with_hero = n.follows is not None and n.follows == bundle.manifest.current_hero_id
             if n.known_to_player or here or said or with_hero:
-                npcs.append({"id": n.id, "name": n.name})
+                npcs.append({"id": n.id, "name": shown})
         # посещённые локации и локация сцены
         locations = [
             {"id": p.id, "name": p.name}

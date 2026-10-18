@@ -72,6 +72,15 @@ class ParleyConfig(BaseModel):
     spread_morale: bool = False
 
 
+class SurvivorsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # начальное отношение к герою выжившего по исходу: перебежчик, сдавшийся, пощажённый, бежавший
+    defected: int = Field(default=40, ge=-100, le=100)
+    surrendered: int = Field(default=0, ge=-100, le=100)
+    spared: int = Field(default=20, ge=-100, le=100)
+    fled: int = Field(default=-40, ge=-100, le=100)
+
+
 class DisarmConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # типы существ, у которых остаётся безоружный удар, когда оружие отобрано
@@ -332,6 +341,7 @@ class RulesConfig(BaseModel):
     knowledge: KnowledgeConfig = KnowledgeConfig()
     favor: FavorConfig = FavorConfig()
     parley: ParleyConfig = ParleyConfig()
+    survivors: SurvivorsConfig = SurvivorsConfig()
     disarm: DisarmConfig = DisarmConfig()
     limits: LimitsConfig
     custom_items: CustomItemsConfig = CustomItemsConfig()

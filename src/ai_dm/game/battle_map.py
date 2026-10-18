@@ -2,6 +2,7 @@ import re
 import textwrap
 
 from ai_dm.combat.stealth import hidden_condition
+from ai_dm.rules.npc_names import shown_name
 
 WIDTH = 80
 
@@ -48,7 +49,7 @@ def part_name(state, world, hero, ref):
     part = [p for p in state.participants if p.ref == ref][0]
     if part.name == "":
         npc = world.npcs.get(ref)
-        return ref if npc is None else npc.name
+        return ref if npc is None else shown_name(npc)
     same = [p.ref for p in state.participants if p.name == part.name and p.ref != hero.id]
     if len(same) > 1:
         return f"{part.name} {same.index(ref) + 1}"
@@ -89,7 +90,7 @@ def members(state, world, hero, zone_id):
     if zone_id == hero_zone:
         for npc in sorted(world.npcs.values(), key=lambda n: n.id):
             if npc.status == "alive" and npc.follows == hero.id:
-                lines.append(f"○ {npc.name}")
+                lines.append(f"○ {shown_name(npc)}")
     return lines
 
 

@@ -231,19 +231,36 @@ def gains_lines(app, before, with_xp=True):
     return lines
 
 
+def turn_blocks(app, turn):
+    # в бою (и на ходе, закончившем бой) броски идут в лог боя, а не в ленту
+    blocks = []
+    in_fight = bool(turn.log) or app.bundle.session.active_combat is not None
+    for line in turn.lines:
+        if line in turn.log or line.startswith(SERVICE_PREFIXES):
+            continue
+        blocks.append(turn_line_block(line, turn, in_fight and line in turn.rolls))
+    for line in turn.log:
+        if not line.startswith(SERVICE_PREFIXES):
+            blocks.append(turn_line_block(line, turn, True))
+    return blocks
+
+
+def gains_block(app, victory, xp_before, before):
+    text = ""
+    if victory:
+        text = f"Получено опыта: {hero_of(app.bundle).sheet.xp - xp_before}"
+    items = ()
+    if before is not None:
+        # при победе опыт уже в text, в items его не дублируем
+        items = tuple(gains_lines(app, before, not victory))
+    return [Block("gains", text=text, items=items)] if text or items else []
+
+
 def reply_blocks(app, reply, xp_before, before=None):
     blocks = []
     turn = reply.turn
     if turn is not None:
-        # в бою (и на ходе, закончившем бой) броски идут в лог боя, а не в ленту
-        in_fight = bool(turn.log) or app.bundle.session.active_combat is not None
-        for line in turn.lines:
-            if line in turn.log or line.startswith(SERVICE_PREFIXES):
-                continue
-            blocks.append(turn_line_block(line, turn, in_fight and line in turn.rolls))
-        for line in turn.log:
-            if not line.startswith(SERVICE_PREFIXES):
-                blocks.append(turn_line_block(line, turn, True))
+        blocks += turn_blocks(app, turn)
     if reply.narration:
         blocks.append(Block("narration", text=reply.narration))
     if turn is not None:
@@ -259,13 +276,5 @@ def reply_blocks(app, reply, xp_before, before=None):
     if victory:
         blocks.append(note_block("Бой окончен: победа!"))
     if victory or before is not None:
-        text = ""
-        if victory:
-            text = f"Получено опыта: {hero_of(app.bundle).sheet.xp - xp_before}"
-        items = ()
-        if before is not None:
-            # при победе опыт уже в text, в items его не дублируем
-            items = tuple(gains_lines(app, before, not victory))
-        if text or items:
-            blocks.append(Block("gains", text=text, items=items))
+        blocks += gains_block(app, victory, xp_before, before)
     return blocks

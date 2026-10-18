@@ -143,6 +143,59 @@ def test_start_combat_non_key_named_npc_is_engine_controlled(registry, cfg):
     assert participant(ctx, "aldric").creature is None
 
 
+# Ж1 (docs/plan-zh1.md, п. 0.9): имя участника боя из NPC мира -- shown_name (вид, пока имя скрыто)
+
+def survivor_in_fight(registry, cfg, **fields):
+    from ai_dm.state.world import NPC
+
+    bundle = make_bundle(registry)
+    data = {
+        "id": "goblin_warrior_1", "name": "Гракх", "means": ["бой"], "origin": "engine",
+        "location_id": "vale", "combat": {"monster_id": "goblin_warrior", "label": "Воин-гоблин 1"},
+    }
+    bundle.world.npcs["goblin_warrior_1"] = NPC(**{**data, **fields})
+    request = combat_request(
+        enemies=[{
+            "ref": "goblin_warrior_1", "monster_id": "goblin_warrior", "zone": "hall",
+            "group": "goblins",
+        }],
+        groups=[{"id": "goblins", "leader": "goblin_warrior_1", "intent": "kill"}],
+    )
+    ctx, d = start(registry, cfg, request, bundle=bundle)
+    assert d.status == "accepted"
+    return participant(ctx, "goblin_warrior_1")
+
+
+def test_start_combat_hidden_survivor_is_named_by_label(registry, cfg):
+    assert survivor_in_fight(registry, cfg).name == "Воин-гоблин 1"
+
+
+def test_start_combat_survivor_with_known_name_is_named_by_it(registry, cfg):
+    assert survivor_in_fight(registry, cfg, known_name="Гракх").name == "Гракх"
+
+
+def test_start_combat_pack_npc_keeps_real_name(registry, cfg):
+    assert survivor_in_fight(registry, cfg, origin="pack").name == "Гракх"
+
+
+def test_start_combat_explicit_name_beats_hidden_label(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    bundle = make_bundle(registry)
+    bundle.world.npcs["g1"] = NPC(
+        id="g1", name="Гракх", means=["бой"], origin="engine", combat={"label": "Воин-гоблин 1"},
+    )
+    request = combat_request(
+        enemies=[{
+            "ref": "g1", "monster_id": "goblin_warrior", "zone": "hall", "group": "goblins",
+            "name": "Вожак",
+        }],
+        groups=[{"id": "goblins", "leader": "g1", "intent": "kill"}],
+    )
+    ctx, _ = start(registry, cfg, request, bundle=bundle)
+    assert participant(ctx, "g1").name == "Вожак"
+
+
 def test_start_combat_sets_no_flags_by_itself(registry, cfg):
     ctx, _ = start(registry, cfg)
     assert not [k for k in ctx.bundle.world.flags if k.startswith("combat_ended:")]

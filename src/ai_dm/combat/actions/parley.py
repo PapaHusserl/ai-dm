@@ -236,14 +236,14 @@ def apply_flee(engine, ref, target) -> list[DomainEvent]:
 
 def apply_defect(engine, ref, target) -> list[DomainEvent]:
     p = engine.part(target)
+    # исходная группа остаётся в метке: по ней перебежчик станет NPC мира
+    flag = ActiveEffect(id="parley_defected", source=ref, kind="flag", params={"group": p.group_id})
     p.side = "heroes"
     p.controller = "engine"
     p.group_id = engine.part(ref).group_id
     p.intent = None
     engine.controllers[target] = EngineTactics(engine)
-    engine.creature(target).active_effects.append(
-        ActiveEffect(id="parley_defected", source=ref, kind="flag")
-    )
+    engine.creature(target).active_effects.append(flag)
     engine.log(f"  {engine.name(target)} переходит на вашу сторону")
     return [DomainEvent(type="participant_defected", data={"id": target})]
 

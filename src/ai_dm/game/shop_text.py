@@ -6,6 +6,7 @@ from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 from ai_dm.rules.money import format_cp
+from ai_dm.rules.npc_names import shown_name
 
 SHOP_ROWS_MAX = 40
 NO_MERCHANT = "Здесь никто не торгует"
@@ -94,11 +95,11 @@ def shop_lines(hero, world, registry, cfg):
         if lines:
             lines.append("")
         if trade_rules.refuses(npc.attitude, cfg):
-            lines.append(f"{npc.name} отказывается торговать")
+            lines.append(f"{shown_name(npc)} отказывается торговать")
             continue
         now_s = world.clock.now_s
         purse = format_cp(trade_rules.purse_now(npc.trade, now_s, cfg))
-        head = f"{npc.name} ({npc.trade.kind}) — кошелёк торговца: {purse}"
+        head = f"{shown_name(npc)} ({npc.trade.kind}) — кошелёк торговца: {purse}"
         haggle = trade_rules.haggle_state(npc.trade, now_s).get("haggle")
         if haggle:
             sign = "−" if haggle["percent"] < 0 else "+"

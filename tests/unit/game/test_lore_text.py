@@ -23,7 +23,7 @@ from ai_dm.game.lore_text import (
     lore_lines,
 )
 from ai_dm.state.knowledge import KNOWLEDGE_KINDS, KNOWLEDGE_SOURCES, KnowledgeEntry
-from ai_dm.state.world import Faction, God
+from ai_dm.state.world import NPC, Faction, God
 
 
 def entry(text="факт", kind="npc", ref="aldric", source="seen", at_s=0, from_ref=None):
@@ -309,3 +309,42 @@ def test_lore_lines_creature_uses_bestiary_title(bundle, registry):
     fill(bundle, entry("Бой: Воин-гоблин — победа", kind="creature", ref="goblin_warrior"))
     lines = lore_lines(hero_of(bundle), bundle.world, registry, "")
     assert lines[:2] == [f"{KIND_TITLES['creature']}:", "  Воин-гоблин — 1 зап."]
+
+
+# Ж1 (docs/plan-zh1.md, п. 0.9): выживший со скрытым именем показывается видом, имя не течёт
+
+def add_survivor(bundle, **fields):
+    data = {
+        "id": "goblin_warrior_1", "name": "Гракх", "means": ["бой"], "origin": "engine",
+        "combat": {"monster_id": "goblin_warrior", "label": "Воин-гоблин 1"},
+    }
+    bundle.world.npcs["goblin_warrior_1"] = NPC(**{**data, **fields})
+
+
+def test_entity_name_hidden_survivor_is_label(bundle, registry):
+    add_survivor(bundle)
+    assert entity_name("npc", "goblin_warrior_1", bundle.world, registry) == "Воин-гоблин 1"
+
+
+def test_entity_name_survivor_with_known_name(bundle, registry):
+    add_survivor(bundle, known_name="Гракх")
+    assert entity_name("npc", "goblin_warrior_1", bundle.world, registry) == "Гракх"
+
+
+def test_entity_name_non_npc_kind_keeps_object_name(bundle, registry):
+    assert entity_name("location", "forest", bundle.world, registry) == "Лес"
+
+
+def test_entry_line_teller_hidden_survivor_is_label(bundle):
+    add_survivor(bundle)
+    line = entry_line(entry(source="told", from_ref="goblin_warrior_1"), bundle.world)
+    assert f"({SOURCE_WORDS['told']}: Воин-гоблин 1, " in line
+    assert "Гракх" not in line
+
+
+def test_lore_overview_never_shows_hidden_name(bundle, registry):
+    add_survivor(bundle)
+    fill(bundle, entry("Знакомство: Воин-гоблин 1", ref="goblin_warrior_1"))
+    text = "\n".join(lore_lines(hero_of(bundle), bundle.world, registry, ""))
+    assert "Воин-гоблин 1 — 1 зап." in text
+    assert "Гракх" not in text

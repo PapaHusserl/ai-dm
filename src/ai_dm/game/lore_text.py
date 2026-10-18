@@ -1,4 +1,5 @@
 from ai_dm.protocol.handlers.knowledge import WORLD_REFS
+from ai_dm.rules.npc_names import shown_name
 from ai_dm.state.knowledge import KNOWLEDGE_KINDS
 
 LORE_EMPTY = "Журнал пуст: герой ещё ничего не узнал."
@@ -17,7 +18,9 @@ def entity_name(kind, ref, world, registry) -> str:
     # имя сущности журнала; ситуация и неизвестный id -- сам ref
     if kind in WORLD_REFS:
         obj = getattr(world, WORLD_REFS[kind]).get(ref)
-        return ref if obj is None else obj.name
+        if obj is None:
+            return ref
+        return shown_name(obj) if kind == "npc" else obj.name
     if kind == "creature" and registry.has("monster", ref):
         return registry.get("monster", ref).name
     return ref
@@ -59,7 +62,7 @@ def entry_line(entry, world) -> str:
     who = SOURCE_WORDS.get(entry.source, entry.source)
     if entry.from_ref is not None:
         teller = world.npcs.get(entry.from_ref)
-        who += f": {entry.from_ref if teller is None else teller.name}"
+        who += f": {entry.from_ref if teller is None else shown_name(teller)}"
     return f"— {entry.text} ({who}, {date_of(world.clock, entry.at_s)})"
 
 

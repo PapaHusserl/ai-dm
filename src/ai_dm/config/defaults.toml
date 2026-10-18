@@ -43,6 +43,13 @@ defect_attitude = 20
 offended_attitude = -10
 spread_morale = false
 
+# выжившие боя (Ж1): начальное отношение к герою по исходу
+[survivors]
+defected = 40
+surrendered = 0
+spared = 20
+fled = -40
+
 [disarm]
 unarmed_types = ["humanoid", "fey"]
 unarmed_proficiency = 2

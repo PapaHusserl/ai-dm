@@ -7,6 +7,7 @@ from ai_dm.combat.setup import validate_start
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules import encounter
+from ai_dm.rules.npc_names import shown_name
 from ai_dm.state.combat import CombatState, Group, Participant, Zone, ZoneFeature
 from ai_dm.state.creature import AppliedCondition, CreatureState
 
@@ -97,7 +98,7 @@ def make_zone(spec):
 def make_enemy(ctx, spec):
     npc = ctx.bundle.world.npcs.get(spec.ref)
     monster = ctx.registry.get("monster", spec.monster_id)
-    name = spec.name or (npc.name if npc is not None else monster.name)
+    name = spec.name or (shown_name(npc) if npc is not None else monster.name)
     part = Participant(
         ref=spec.ref, side="enemies", group_id=spec.group, zone_id=spec.zone,
         monster_id=spec.monster_id, name=name,

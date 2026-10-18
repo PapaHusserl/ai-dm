@@ -123,3 +123,61 @@ def test_input_text_has_no_unknown_npc_or_location(registry, cfg):
     text = request.messages[0].content[0].text
     assert "Секретный_Фермер" not in text
     assert "Логово" not in text
+
+
+# Ж1 (docs/plan-zh1.md, п. 0.9): именованный NPC движка со скрытым именем идёт во вход под видом
+
+def add_hidden(bundle, **fields):
+    data = {
+        "origin": "engine", "name": "Гракх", "location_id": "vale",
+        "combat": {"label": "Воин-гоблин 1"},
+    }
+    data.update(fields)
+    add_npc(bundle, "goblin_warrior_1", **data)
+
+
+def name_in(state, npc_id):
+    return [n["name"] for n in state["npcs"] if n["id"] == npc_id]
+
+
+def test_hidden_name_is_shown_as_label_in_input(registry, cfg):
+    bundle = make_bundle(registry)
+    add_hidden(bundle)
+    assert name_in(state_of(registry, cfg, bundle), "goblin_warrior_1") == ["Воин-гоблин 1"]
+
+
+def test_known_name_is_shown_in_input(registry, cfg):
+    bundle = make_bundle(registry)
+    add_hidden(bundle, known_name="Гракх")
+    assert name_in(state_of(registry, cfg, bundle), "goblin_warrior_1") == ["Гракх"]
+
+
+def test_hidden_npc_elsewhere_is_in_input_when_label_is_said(registry, cfg):
+    bundle = make_bundle(registry)
+    add_hidden(bundle, location_id="forest")
+    scene_turn(bundle, 1, "Воин-гоблин 1 пропал в лесу.")
+    assert "goblin_warrior_1" in npc_ids(state_of(registry, cfg, bundle))
+
+
+def test_hidden_npc_elsewhere_is_not_found_by_real_name(registry, cfg):
+    bundle = make_bundle(registry)
+    add_hidden(bundle, location_id="forest")
+    scene_turn(bundle, 1, "Гракх пропал в лесу.")
+    assert "goblin_warrior_1" not in npc_ids(state_of(registry, cfg, bundle))
+
+
+def test_npc_with_empty_name_is_not_found_by_empty_string(registry, cfg):
+    bundle = make_bundle(registry)
+    add_npc(bundle, "nameless", name="", location_id="forest")
+    scene_turn(bundle, 1, "Тихо.")
+    assert "nameless" not in npc_ids(state_of(registry, cfg, bundle))
+
+
+def test_hidden_real_name_not_in_summarizer_text(registry, cfg):
+    bundle = make_bundle(registry)
+    add_hidden(bundle, name="Мурк")
+    ctx = make_ctx(registry, cfg, bundle=bundle)
+    request = SummarizerPromptBuilder(ctx_app()).build(ctx, "", "summarize_scene")
+    text = request.messages[0].content[0].text
+    assert "Воин-гоблин 1" in text
+    assert "Мурк" not in text

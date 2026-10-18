@@ -16,6 +16,7 @@ from ai_dm.rules.knowledge import (
     entries_for,
     evict_oldest,
     has_entry,
+    is_near,
     met_npc_ids,
     normalize,
     note_combat,
@@ -24,6 +25,7 @@ from ai_dm.rules.knowledge import (
     note_secret,
     prompt_entries,
     remember_fact,
+    rename_met,
     shorten_text,
     spoils,
 )
@@ -594,6 +596,27 @@ def test_combat_enemy_without_monster_id_is_skipped(registry):
     assert hero.knowledge == []
 
 
+def test_combat_enemy_after_foreign_heroes_side_monster_is_still_noted(registry):
+    bundle = make_bundle(registry)
+    hero = hero_of(bundle)
+    ally = Participant(ref="w1", side="heroes", group_id="h", monster_id="black_bear")
+    enemy = Participant(ref="g1", side="enemies", group_id="e", monster_id="goblin_warrior")
+    state = CombatState(
+        id="c1", zones=[], participants=[ally, enemy], groups={}, outcome="victory"
+    )
+    note_combat(hero, bundle.world, state, registry, CFG)
+    assert texts(hero) == ["Бой: Воин-гоблин — победа"]
+
+
+def test_combat_defector_on_heroes_side_is_noted(registry):
+    bundle = make_bundle(registry)
+    hero = hero_of(bundle)
+    defector = Participant(ref="w1", side="heroes", group_id="h", monster_id="black_bear")
+    state = fight("victory", enemies=(), extra=(defector,))
+    note_combat(hero, bundle.world, state, registry, CFG, ["w1"])
+    assert [e.ref for e in hero.knowledge] == ["black_bear"]
+
+
 def test_second_fight_with_other_result_adds_entry(registry):
     bundle = make_bundle(registry)
     hero = hero_of(bundle)
@@ -1059,3 +1082,132 @@ def test_prompt_kinds_follow_canonical_order(registry):
 def test_prompt_refs_sorted_alphabetically(registry):
     hero = journal_hero(registry, entry("а", ref="zed"), entry("б", ref="aldric"))
     assert list(prompt_entries(hero, ALL, 30)["npc"]) == ["aldric", "zed"]
+
+
+# Ж1 (docs/plan-zh1.md, п. 0.6): скрытое имя выжившего боя -- note_presence по имени его не ищет,
+# is_near, rename_met, is_met/backfill читают shown_name
+
+def survivor(bundle, **kwargs):
+    base = {
+        "id": "goblin_warrior_1", "name": "Гракх", "means": ["бой"], "origin": "engine",
+        "location_id": "vale", "named": False,
+        "combat": {"monster_id": "goblin_warrior", "label": "Воин-гоблин 1"},
+    }
+    npc = NPC(**{**base, **kwargs})
+    bundle.world.npcs[npc.id] = npc
+    return npc
+
+
+def test_presence_hidden_name_in_text_is_not_a_meeting(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle)
+    note_presence(hero_of(bundle), bundle.world, "Гракх опускает взгляд.", CFG)
+    assert not has_entry(hero_of(bundle), "npc", "goblin_warrior_1")
+
+
+def test_presence_hidden_name_gives_no_log_line(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, name="Мурк")
+    log = note_presence(hero_of(bundle), bundle.world, "Мурк", CFG)
+    assert all("знакомство" not in line for line in log)
+
+
+def test_presence_known_name_of_survivor_is_a_meeting(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, known_name="Гракх")
+    note_presence(hero_of(bundle), bundle.world, "Гракх опускает взгляд.", CFG)
+    assert "Знакомство: Гракх" in texts(hero_of(bundle))
+
+
+def test_presence_pack_npc_name_still_found(registry):
+    bundle = make_bundle(registry)
+    note_presence(hero_of(bundle), bundle.world, "Гракх молчит.", CFG)
+    assert "Знакомство: Гракх" in texts(hero_of(bundle))
+
+
+def test_is_near_same_location(registry):
+    bundle = make_bundle(registry)
+    assert is_near(bundle.world.npcs["grakh"], hero_of(bundle)) is True
+
+
+def test_is_near_follower_elsewhere(registry):
+    bundle = make_bundle(registry)
+    npc = bundle.world.npcs["aldric"]
+    npc.follows = hero_of(bundle).id
+    assert is_near(npc, hero_of(bundle)) is True
+
+
+def test_is_near_other_location_is_false(registry):
+    bundle = make_bundle(registry)
+    assert is_near(bundle.world.npcs["aldric"], hero_of(bundle)) is False
+
+
+def test_is_near_dead_npc_is_false(registry):
+    bundle = make_bundle(registry)
+    npc = bundle.world.npcs["grakh"]
+    npc.status = "dead"
+    assert is_near(npc, hero_of(bundle)) is False
+
+
+def test_rename_met_updates_meeting_text_to_shown_name(registry):
+    bundle = make_bundle(registry)
+    npc = survivor(bundle)
+    hero = hero_of(bundle)
+    hero.knowledge.append(entry("Знакомство: Воин-гоблин 1", ref=npc.id))
+    npc.known_name = "Гракх"
+    rename_met(hero, npc)
+    assert texts(hero) == ["Знакомство: Гракх"]
+
+
+def test_rename_met_keeps_other_entries_of_the_npc(registry):
+    bundle = make_bundle(registry)
+    npc = survivor(bundle, known_name="Гракх")
+    hero = hero_of(bundle)
+    hero.knowledge.append(entry("Знакомство: Воин-гоблин 1", ref=npc.id))
+    hero.knowledge.append(entry("любит эль", ref=npc.id, source="told"))
+    rename_met(hero, npc)
+    assert texts(hero) == ["Знакомство: Гракх", "любит эль"]
+
+
+def test_rename_met_does_not_touch_other_npcs(registry):
+    bundle = make_bundle(registry)
+    npc = survivor(bundle, known_name="Гракх")
+    hero = hero_of(bundle)
+    hero.knowledge.append(entry("Знакомство: Олдрик", ref="aldric"))
+    rename_met(hero, npc)
+    assert texts(hero) == ["Знакомство: Олдрик"]
+
+
+def test_hidden_survivor_is_not_met_by_real_name_in_text(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, named=True)
+    bundle.memory.game_summary = "Гракх ударил."
+    assert "goblin_warrior_1" not in met_npc_ids(bundle)
+
+
+def test_hidden_survivor_is_met_by_label_in_text(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, named=True)
+    bundle.memory.game_summary = "Воин-гоблин 1 сдался."
+    assert "goblin_warrior_1" in met_npc_ids(bundle)
+
+
+def test_survivor_with_known_name_is_met_by_that_name(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, named=True, known_name="Мурк", name="Другое")
+    bundle.memory.game_summary = "Мурк сдался."
+    assert "goblin_warrior_1" in met_npc_ids(bundle)
+
+
+def test_backfill_hidden_survivor_is_written_by_label(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, attitude=20)
+    backfill(bundle, CFG)
+    assert texts(hero_of(bundle)) == ["Знакомство: Воин-гоблин 1"]
+
+
+def test_backfill_survivor_with_known_name_is_written_by_it(registry):
+    bundle = make_bundle(registry)
+    survivor(bundle, attitude=20, known_name="Гракх")
+    backfill(bundle, CFG)
+    assert texts(hero_of(bundle)) == ["Знакомство: Гракх"]

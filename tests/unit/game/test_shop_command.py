@@ -596,6 +596,30 @@ def test_good_attitude_with_strong_haggle_is_clamped_in_the_shop(registry, tmp_p
     assert row(shop(app), "Колчан")[0].endswith("— 8 см")
 
 
+# Ж1: скрытое имя выжившего в /shop -- вид существа, не настоящее имя
+
+HIDDEN = {"origin": "engine", "combat": {"label": "Воин-гоблин 1"}}
+
+
+def test_hidden_survivor_merchant_header_shows_label(registry, tmp_path):
+    app = make_shop(registry, tmp_path, **HIDDEN)
+    lines = shop(app)
+    assert lines[0].startswith("Воин-гоблин 1 (general)")
+    assert not row(lines, "Мара")
+
+
+def test_hidden_survivor_refusal_shows_label(registry, tmp_path):
+    app = make_shop(registry, tmp_path, attitude=-60, **HIDDEN)
+    lines = shop(app)
+    assert lines[0] == "Воин-гоблин 1 отказывается торговать"
+    assert not row(lines, "Мара")
+
+
+def test_survivor_with_known_name_shows_it_in_shop(registry, tmp_path):
+    app = make_shop(registry, tmp_path, known_name="Мара", **HIDDEN)
+    assert shop(app)[0].startswith("Мара (general)")
+
+
 def test_shop_with_haggle_does_not_change_the_profile(registry, tmp_path):
     app = haggled_shop(registry, tmp_path, -10)
     profile = app.bundle.world.npcs["mara"].trade

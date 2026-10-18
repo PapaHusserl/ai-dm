@@ -18,6 +18,7 @@ from ai_dm.reports.capture import TurnCapture
 from ai_dm.rules.custom_items import world_registry
 from ai_dm.rules.knowledge import note_combat, note_presence
 from ai_dm.rules.spellcasting import expire_concentration
+from ai_dm.rules.survivors import classify, materialize, reveal_names
 from ai_dm.state.scene import TurnRecord
 
 ERROR_MENU = ["retry", "switch_model", "save_and_quit"]
@@ -285,6 +286,7 @@ class TurnRunner:
         keep = self.app_cfg.master.recent_turns_keep
         work.memory.recent_turns = work.memory.recent_turns[-keep:]
         work.session.current_scene.player_turns += 1
+        reveal_names(hero_of(work), work.world, narration)
         note_presence(
             hero_of(work), work.world, f"{player_input}\n{narration}", self.cfg.knowledge
         )
@@ -533,9 +535,14 @@ class TurnRunner:
 
     def end_fight(self, work, result, fold) -> None:
         state = work.session.active_combat
+        hero = hero_of(work)
+        # выжившие определяются до finish_combat: он снимает метки переговоров
+        survivors = classify(work, hero)
         combat_flow.settle_parley(work, self.cfg)
         result.combat_outcome = combat_flow.finish_combat(work, self.registry)
-        note_combat(hero_of(work), work.world, state, self.registry, self.cfg.knowledge)
+        turned = [s.part.ref for s in survivors if s.kind == "defected"]
+        note_combat(hero, work.world, state, self.registry, self.cfg.knowledge, turned)
+        materialize(work, hero, survivors, self.cfg)
         if fold:
             combat_fold.fold_fight(work, state, self.registry)
 
