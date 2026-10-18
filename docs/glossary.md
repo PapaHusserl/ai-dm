@@ -200,4 +200,6 @@
 | Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания |
 | Knowledge journal | Журнал знаний | `HeroState.knowledge`, `knowledge_note`, `/lore` | что герой узнал о людях, местах, богах, существах (Ж3) |
 | Scene mood | Настроение сцены | `SceneState.scene_mood`, `scene_mood` | `romance` по сюжету; выбирает музыку, не `Tone.mood` (Ж3) |
+| Combat survivor | Выживший боя | `NPC.origin = "engine"`, `NPC.combat`, `rules/survivors.py` | перебежчик, сдавшийся, пощажённый или бежавший враг, оставшийся в `world.npcs` (Ж1) |
+| Hidden name | Скрытое имя | `name_hidden`, `shown_name`, `NPC.known_name`, `NpcUpdate.name` | у выжившего игрок видит вид существа, пока настоящее имя не прозвучало; рассказчик имя видит (Ж1) |
 | Bestiary | Бестиарий | `KnowledgeEntry.kind = creature` | записи об изученных существах в журнале знаний (Ж3) |

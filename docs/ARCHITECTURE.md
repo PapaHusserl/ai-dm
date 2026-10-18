@@ -327,6 +327,7 @@ ai-dm/
     (`skill_check(..., base_adv=)`); одна попытка на цель за бой (метка `parley_tried`). Исходы: `status="surrendered"`
     (не боеспособен, ход пропускается, бить можно), `fled`, `defect` (сторона heroes, `EngineTactics`),
     `wavering` (теряет один ход). Итоги для именованных NPC после боя -- `game/combat_flow.settle_parley`.
+    Сдавшийся, бежавший и перебежчик после боя становятся NPC мира (Ж1, см. подраздел «Выжившие боя»).
     Отбор оружия (`combat/disarm.py`, пункт меню `disarm:<цель>:<оружие>`, `pickup:<номер>`): бросок атаки текущим
     ближним оружием против проверки цели (Атлетика/Акробатика героя, лучший мод. Сил/Лов монстра; двуручный хват и
     размер больше -- преимущество цели, меньше -- помеха), тратит одну атаку. Оружейность действия монстра --
@@ -616,7 +617,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,5k после Ж3), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,7k после Ж1), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`; вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |
@@ -728,7 +729,7 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 |---|---|---|
 | `NPC` | `memory: list[NpcSceneMemory]` | память о герое: сцены (`scene_id`, `at_s`, `weight ≥ 0`, `events` ≥ 1) |
 | `NPC` | `goals: list[NpcGoal]` | долгие цели: `kind`, `target`, `text`, `since_s`, `status` (`active`/`done`/`dropped`); код записи — позже |
-| `NPC` | `known_name: str \| None` | имя, под которым NPC известен герою; код — Ж1 |
+| `NPC` | `known_name: str \| None` | имя, под которым NPC известен герою; для `origin="engine"` скрыто, пока `None` (Ж1, см. ниже) |
 | `NPC` | `family: list[FamilyLink]` | `kind` (`parent`/`spouse`/`child`), `ref`, `ref_kind` (`npc`/`hero`) |
 | `NPC` | `notes: str` | свободные заметки рассказчику; бывший `relations_text` |
 | `NPC` | `services: list[str]` | id услуг; код — У0 |
@@ -757,7 +758,8 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
   (улучшение и ухудшение равноценны). Зовут `change_attitude` и `combat_flow.settle_parley`.
 - `memory_data`, `memory_last`, `goals_data` (только активные) — данные для промпта.
 
-Запись — только рассказчиком, через `npc_update` (`NpcUpdate.memory_kind` из `MEMORY_KINDS` или `none`, `memory_text`;
+Запись — рассказчиком, через `npc_update`; исключение — события боя выживших, их пишет движок
+(`survivors.remember_fight`, Ж1; пересмотр Q7 Ж0) (`NpcUpdate.memory_kind` из `MEMORY_KINDS` или `none`, `memory_text`;
 `WorldNpcUpdate` полей памяти не имеет). `update_problem` → `memory_problem` до любых изменений: `memory_text` без вида —
 `Invalid memory_text_without_kind`; нет сцены — `Invalid no_scene`; в сцене уже 5 событий — `rejected`
 (`limit-exceeded`), запрос не применяется целиком, в том числе `attitude_delta`. Далее `change_attitude`, затем
@@ -771,7 +773,38 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 NPC сцены. Мок на 50 сцен — `MemoryMock(npc_memory=True)`, `tests/scenarios/test_zh0_npc_memory.py` (ровно 20 записей =
 20 старших по `(weight, at_s)`, детерминизм, сейв на сцене 30).
 
-Решение 12 (перебежчик остаётся в `world.npcs`) — код в Ж1; в Ж0 только поля.
+Решение 12 (перебежчик остаётся в `world.npcs`) — выполнено в Ж1 для всех выживших (раздел ниже).
+
+### Выжившие боя (Ж1, схема v11 без миграции)
+
+Признак выжившего — `NPC.origin == "engine"`, вид существа — `NPC.combat = {"monster_id", "label"}` (`label` — имя
+участника боя с номером, «Гоблин 1»). Скрытое имя: `rules/npc_names.py` — `name_hidden(npc)` (`origin == "engine"` и
+`known_name is None`) и `shown_name(npc)` (пак и ai — `name`; engine — `known_name`, иначе `label`). Модуль
+листовой: `rules/knowledge.py` импортирует его, а `rules/survivors.py` импортирует `knowledge`, так что имена в
+`survivors` дали бы цикл.
+
+`rules/survivors.py`: `classify(bundle, hero)` (до `finish_combat`: он снимает метки переговоров) → список `Survivor(part,
+kind, label, group)`; `kind_of`: `defected` (метка `parley_defected`, статус не `dead`; исходная группа лежит в
+`params["group"]` метки, пишет `apply_defect`), `surrendered`, `fled`, `spared` (`down`, а при `ended_by_master` и
+`active`). Выживший — безымянный участник (`creature` есть, `ref` не в `world.npcs`), исход `victory`/`fled`/
+`ended_by_master`, герой жив. `materialize(bundle, hero, survivors, cfg)` создаёт NPC: id
+`<monster_id>_t<turn_seq>_<n>` (первый свободный по `uniqueness.id_taken`), `named=False`, `means=[label]`, копии
+`creature`/`equipment`, `groups=[исходная группа]`, локация героя (бежавшему — первая соседняя по id, считается локально:
+слой `rules` не видит `master.relevance`), отношение из `[survivors]` (`start_attitude`), событие памяти и цель
+`life_debt` (`LIFE_DEBT_TEXT`), запись журнала `MET` по виду (`note_met`). Порядок в `TurnRunner.end_fight`: `classify` →
+`settle_parley` → `finish_combat` → `note_combat` (перебежчики идут в бестиарий через `defected=`) → `materialize` →
+`fold_fight`.
+
+Открытие имени: `TurnRunner.commit` зовёт `reveal_names(hero, world, narration)` перед `note_presence`: NPC рядом или с
+`follows`, `name != shown_name` (имя назначено), `mentions` (эвристика Ж3) → `known_name = name` и
+`knowledge.rename_met`. `note_presence` скрытых по имени не ищет; `is_met`/`backfill` читают `shown_name`.
+
+Протокол: `NpcUpdate.name` (у `WorldNpcUpdate` его нет). `handlers/world.py`: `name_problem` (`name_locked` — не engine или
+уже `named`; `empty_name`; занятое — `rejected` по `uniqueness.name_conflict`), `change_name` (`name`, `named=True`,
+лог без имени), `npc_label` (= `shown_name`) во всех логах и сообщениях пути `npc_update`. Промпт: `survivor_data(npc)` —
+ключи `kind`, `unnamed`, `name_hidden` в `scene_npcs` и `known_npcs` (только у engine-NPC); рассказчик настоящее имя
+видит. Показ игроку идёт через `shown_name`: `lore_text`, `battle_map`, `shop_text`, `make_enemy`,
+`summarizer.state_data`. Конфиг — `[survivors]` (`SurvivorsConfig`). Хвост: `start_combat` не трогали (BACKLOG 78).
 
 ## E12. Журнал знаний героя (Ж3)
 
@@ -790,9 +823,12 @@ NPC сцены. Мок на 50 сцен — `MemoryMock(npc_memory=True)`, `test
 Тексты записей движка начинаются с констант `MET` («Знакомство: »), `VISITED` («Место: »), `FOUGHT` («Бой: »).
 
 **Кто пишет.** Движок: первая встреча NPC (`TurnRunner.commit` → `note_presence`: живой NPC в локации героя или идущий с
-ним, чьё имя есть в вводе или рассказе хода) и первое посещение локации героя (`seen`); бестиарий (`TurnRunner.end_fight`
-→ `note_combat`: безымянные враги боя, текст «Бой: <монстр> — победа|бегство|поражение|прерван»); милость бога
-(`favor_change` героя → `note_favor`, `deduced`); раскрытый секрет (`reveal_secret` → `note_secret`, `deduced`).
+ним, чьё имя есть в вводе или рассказе хода; NPC со скрытым именем (`name_hidden`) по тексту не ищутся) и первое
+посещение локации героя (`seen`); бестиарий (`TurnRunner.end_fight` → `note_combat`: безымянные враги боя и перебежчики
+(`defected=`), текст «Бой: <монстр> — победа|бегство|поражение|прерван»); знакомство с выжившим по виду
+(`survivors.materialize` → `note_met`, текст «Знакомство: <вид>») и его переименование при открытии имени
+(`reveal_names` → `knowledge.rename_met`); милость бога (`favor_change` героя → `note_favor`, `deduced`); раскрытый
+секрет (`reveal_secret` → `note_secret`, `deduced`).
 Рассказчик: запрос `knowledge_note` (`protocol/handlers/knowledge.py`, только explore, без strict).
 
 **Отказы `knowledge_note`.** `Invalid`: `empty_text`, `unknown_ref` (с `allowed(...)`), `bad_ref` (ситуация не слаг),
@@ -812,7 +848,7 @@ NPC сцены. Мок на 50 сцен — `MemoryMock(npc_memory=True)`, `test
 `monster_id` участников. Записи движка `MET`/`VISITED` не идут. Потолок `[master] knowledge_max = 30` (новейшие по `at_s`;
 0 — блок выключен); блока нет, если отбор пуст. Стоимость: худший случай ≈ 2,1k токенов, типично 0,4–0,8k на ход, внутри
 `context_cap`; роли `world` и summarizer журнал не получают. Статика: два запроса и раздел правил «Журнал знаний и
-настроение сцены» подняли `explore.total` до ≈ 19,5k (`STATIC_MAX` 20050).
+настроение сцены» подняли `explore.total` до ≈ 19,5k (`STATIC_MAX` 20050); после Ж1 замер 19736.
 
 **`/lore`.** `game/lore_text.py` (`lore_groups`, `find_entity`, `entry_lines`, `lore_lines`): без аргумента — виды и
 сущности с числом записей, с аргументом — записи найденной сущности (подстрока имени или `ref`, без регистра) «— текст
