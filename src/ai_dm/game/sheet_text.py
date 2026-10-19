@@ -118,6 +118,8 @@ def effect_texts(effects):
             texts.append(f"поджог {effect.dice} {damage}")
         elif effect.type == "slow":
             texts.append(f"замедл. {effect.value} фт")
+        elif effect.type == "sleep":
+            texts.append(f"сон: СЛ {effect.dc} Тел")
         elif effect.type == "silvered":
             texts.append("серебро")
         elif effect.type == "ac_bonus":

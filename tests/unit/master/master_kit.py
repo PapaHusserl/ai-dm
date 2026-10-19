@@ -50,7 +50,8 @@
 #         "scene_npcs": [{"id", "name", "attitude"}] -- NPC мира со статусом alive и
 #                  location_id == локации героя, по id
 #         "combat": None | {"id", "round", "outcome", "participants": [{"ref", "side", "zone_id",
-#                  "status"}]} -- сводка session.active_combat
+#                  "status", "conditions"?}]} -- сводка session.active_combat; "conditions" --
+#                  id состояний монстра/NPC, ключа нет, если состояний нет
 #         "recent_turns": [turn_data(t)] -- trim_turns(recent_window(
 #                  memory, app_cfg.master.recent_turns)), limit = context_limit(app_cfg, model),
 #                  estimate = count_tokens от запроса с этими ходами; ключи записи -- только

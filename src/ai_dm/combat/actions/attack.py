@@ -422,8 +422,36 @@ def weapon_rider(engine, ref, target_ref, info) -> None:
     engine.log(f"  {engine.name(target_ref)} опутан")
 
 
+def poison_immune(engine, target_ref) -> bool:
+    # монстр или NPC со статблоком: иммунитет к состоянию «отравлен» или к урону ядом
+    if not engine.monster_of(target_ref):
+        return False
+    monster = engine.monster(target_ref)
+    return "poisoned" in monster.condition_immunities or "poison" in monster.damage_immunities
+
+
+def sleep_arrow(engine, ref, target_ref, effect) -> None:
+    # сонный яд: спасбросок Тел, провал -- отравлен и без сознания на срок в раундах
+    name = engine.name(target_ref)
+    if poison_immune(engine, target_ref):
+        engine.log(f"  {name}: иммунитет к яду")
+        return
+    if engine.save(target_ref, "con", effect.dc).outcome == "success":
+        engine.log(f"  {name} стряхивает сонный яд")
+        return
+    rounds = effect.duration_s // engine.cfg.time.round_s
+    expires = Expiry(kind="rounds", value=rounds)
+    engine.impose(target_ref, AppliedCondition(id="poisoned", source=ref, expires=expires))
+    # отдельный срок: tick_rounds уменьшает value у каждого состояния
+    engine.impose(
+        target_ref,
+        AppliedCondition(id="unconscious", source=ref, expires=expires.model_copy()),
+    )
+    engine.log(f"  {name}: отравлен, засыпает (без сознания до урона или {rounds} раундов)")
+
+
 def arrow_conditions(engine, ref, target_ref, ammo, effects) -> None:
-    # горение и замедление от стрелы; на упавшую цель не накладываются
+    # горение, замедление и сон от стрелы; на упавшую цель не накладываются
     if engine.creature(target_ref).hp_current <= 0:
         return
     target = engine.creature(target_ref)
@@ -448,6 +476,8 @@ def arrow_conditions(engine, ref, target_ref, ammo, effects) -> None:
                 f"  {engine.name(target_ref)}: скорость -{effect.value} фт "
                 "до конца своего следующего хода"
             )
+        if effect.type == "sleep":
+            sleep_arrow(engine, ref, target_ref, effect)
 
 
 def attack(
@@ -497,11 +527,12 @@ def attack(
         events.append(
             attack_event(ref, target_ref, info.id, info.kind, result.outcome, dealt.final)
         )
-        arrow_conditions(engine, ref, target_ref, ammo, effects)
         weapon_rider(engine, ref, target_ref, info)
         events += downed.after_damage(
             engine, target_ref, dealt, ref, crit=crit, nonlethal=nonlethal
         )
+        # после урона: сон от стрелы не снимается её же попаданием
+        arrow_conditions(engine, ref, target_ref, ammo, effects)
         events += mastery.on_hit(engine, ref, target_ref, info, dealt.final, provoked)
         return events
     graze, graze_events = mastery.on_miss(engine, ref, target_ref, info)

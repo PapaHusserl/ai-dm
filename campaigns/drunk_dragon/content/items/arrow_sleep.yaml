@@ -1,6 +1,6 @@
 id: arrow_sleep
 name: Сонная стрела
-description: +1d4 ядом, сонный мор замедляет цель.
+description: Сонный яд Греты, +1d4 ядом; спасбросок Телосложения, при провале цель отравлена и спит.
 cost_cp: 0
 source: campaign:drunk_dragon
 ammo_for:
@@ -11,5 +11,6 @@ effects:
 - type: extra_damage
   dice: 1d4
   damage_type: poison
-- type: slow
-  value: 10
+- type: sleep
+  dc: 12
+  duration_s: 60

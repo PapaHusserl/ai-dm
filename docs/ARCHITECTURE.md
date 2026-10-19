@@ -1146,6 +1146,10 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
 - `combat/monster_traits.py`: `has_trait`, `pack_ally`, `PackTacticsSource` (регистрируется в `CombatEngine.__init__`, тег
   `pack` ставит `attack.attack_tags`), `endures` (зовёт `downed.after_damage` до `monster_damaged`), `extra_damage` и
   `on_hit` (зовёт `attack.attack` после `special_damage`, до `after_damage`; `AttackInfo.action` несёт действие монстра).
+- Сонная стрела: `attack.arrow_conditions` → `attack.sleep_arrow` (`poison_immune`; спасбросок через `engine.save`, состояния
+  через `engine.impose`); `downed.wake_sleeping` — первая строка `after_damage`, будит любым уроном > 0;
+  `CombatEngine.start_turn` не зовёт `stealth.search` у недееспособного; `end.settle_ground` снимает у не-героев
+  состояния с `Expiry rounds`; `PromptBuilder.combat_data` отдаёт монстрам `conditions`.
 - `combat/death_burst.explode` — зовёт `downed.kill_monster` после события смерти; урон идёт через `engine.damage` и
   `downed.after_damage` (цепочка взрывов возможна).
 - `combat/falling.hovers`: монстр с `fly_ft` не падает, пока дееспособен и не лежит. `rules/loot.NO_COIN_TYPES`: монет за

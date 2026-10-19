@@ -24,6 +24,7 @@ from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.damage import DamageResult, apply_damage
 from ai_dm.rules.derived import ability_modifier, armor_class, gear_ac, saving_throw_parts
 from ai_dm.rules.modifiers import default_modifier_registry
+from ai_dm.rules.modifiers.conditions import with_implied
 from ai_dm.rules.names import ABILITY_SHORT
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.roll_pipeline import RollRequest, roll
@@ -379,7 +380,8 @@ class CombatEngine:
         self.state.savage_used = []
         events = self.burn(ref)
         self.expire("start_of_turn", ref)
-        if p.status == "active" and p.side == "enemies" and self.monster_of(ref):
+        asleep = "incapacitated" in {c.id for c in with_implied(self.creature(ref))}
+        if p.status == "active" and p.side == "enemies" and self.monster_of(ref) and not asleep:
             stealth.search(self, ref)
         if p.status == "active":
             stand_up(self, ref)

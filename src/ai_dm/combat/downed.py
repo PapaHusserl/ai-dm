@@ -40,10 +40,22 @@ def add_unconscious(creature) -> None:
         creature.conditions.append(AppliedCondition(id="unconscious", source="0_hp"))
 
 
+def wake_sleeping(engine, target_ref, dealt) -> None:
+    # урон будит: «без сознания» не от 0 HP (сонный яд) снимается, отравление остаётся, цель лежит
+    creature = engine.creature(target_ref)
+    asleep = [c for c in creature.conditions if c.id == "unconscious" and c.source != "0_hp"]
+    if not asleep or dealt.final <= 0:
+        return
+    creature.conditions = [c for c in creature.conditions if c not in asleep]
+    engine.log(f"  {engine.name(target_ref)} просыпается от боли")
+    engine.impose(target_ref, AppliedCondition(id="prone", source=asleep[0].source))
+
+
 def after_damage(
     engine, target_ref, dealt, attacker_ref, *, crit=False, nonlethal=False
 ) -> list[DomainEvent]:
-    # вызывается после apply_damage: 0 HP, смерть, концентрация
+    # вызывается после apply_damage: сон, 0 HP, смерть, концентрация
+    wake_sleeping(engine, target_ref, dealt)
     if target_ref in engine.heroes:
         return hero_damaged(engine, target_ref, dealt, attacker_ref, crit)
     if monster_traits.endures(engine, target_ref, dealt, crit):

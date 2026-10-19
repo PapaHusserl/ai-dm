@@ -78,6 +78,7 @@ EffectType = Literal[
     # особые стрелы, клинок, эликсир (пак Дракона)
     "burn",
     "slow",
+    "sleep",
     "pierce_armor",
     "silvered",
     "ignore_magic_ac",
@@ -177,11 +178,19 @@ class EffectSpec(ContentModel):
     vs: list[str] = []
     # длительность эффекта в секундах мира (эликсир)
     duration_s: int | None = None
+    # СЛ спасброска (sleep)
+    dc: int | None = None
 
     @model_validator(mode="after")
     def check_class_id(self):
         if "class_level" in (self.add, self.max_add) and self.class_id is None:
             raise ValueError("class_id обязателен при add/max_add == class_level")
+        return self
+
+    @model_validator(mode="after")
+    def check_sleep(self):
+        if self.type == "sleep" and (self.dc is None or self.duration_s is None):
+            raise ValueError("sleep: нужны dc и duration_s")
         return self
 
 

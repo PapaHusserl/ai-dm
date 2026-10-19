@@ -190,6 +190,39 @@ def test_message_combat_summary(registry, cfg):
     assert "g2" in refs
 
 
+def combat_participants(ctx):
+    combat = data_of(build(ctx, mode="combat_narrate"))["combat"]
+    return {p["ref"]: p for p in combat["participants"]}
+
+
+def test_combat_participant_with_conditions_lists_their_ids(registry, cfg):
+    from ai_dm.state.creature import AppliedCondition
+
+    ctx = combat_ctx(registry, cfg, mode="combat_narrate")
+    target = next(p for p in ctx.bundle.session.active_combat.participants if p.ref == "g1")
+    target.creature.conditions.append(AppliedCondition(id="unconscious"))
+    target.creature.conditions.append(AppliedCondition(id="poisoned"))
+    assert combat_participants(ctx)["g1"]["conditions"] == ["unconscious", "poisoned"]
+
+
+def test_combat_participant_without_conditions_has_no_key(registry, cfg):
+    ctx = combat_ctx(registry, cfg, mode="combat_narrate")
+    assert "conditions" not in combat_participants(ctx)["g2"]
+
+
+def test_combat_conditions_of_a_named_npc_are_listed(registry, cfg):
+    from ai_dm.state.creature import AppliedCondition, CreatureState
+
+    ctx = combat_ctx(registry, cfg, mode="combat_narrate")
+    target = next(p for p in ctx.bundle.session.active_combat.participants if p.ref == "g1")
+    target.creature = None
+    npc = ctx.bundle.world.npcs["grakh"]
+    target.ref = "grakh"
+    npc.creature = CreatureState(hp_current=5, hp_max=5)
+    npc.creature.conditions.append(AppliedCondition(id="unconscious"))
+    assert combat_participants(ctx)["grakh"]["conditions"] == ["unconscious"]
+
+
 def test_message_has_offered_choices(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.bundle.session.offered_choices = ["Поговорить", "Уйти"]

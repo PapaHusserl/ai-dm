@@ -432,6 +432,13 @@ class PromptBuilder:
                     for p in c.participants
                 ],
             }
+            # состояния монстров и NPC (сон, яд); герой -- в блоке hero; пусто -- ключа нет
+            for entry, p in zip(combat["participants"], c.participants, strict=True):
+                creature = p.creature
+                if creature is None and p.ref in world.npcs:
+                    creature = world.npcs[p.ref].creature
+                if creature is not None and creature.conditions:
+                    entry["conditions"] = [cond.id for cond in creature.conditions]
             # спутники героя в бою мех. не участвуют (этап 7), но рядом: для повествования
             combat["companions_nearby"] = [
                 {"id": n.id, "name": n.name}

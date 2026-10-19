@@ -117,6 +117,10 @@ def settle_ground(engine) -> None:
         creature.active_effects = [
             e for e in creature.active_effects if e.id not in SETTLED_FLAGS
         ]
+        # боевые сроки в раундах вне боя не тикают
+        creature.conditions = [
+            c for c in creature.conditions if c.expires is None or c.expires.kind != "rounds"
+        ]
 
 
 def release_concentration(engine) -> None:
