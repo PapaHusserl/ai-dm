@@ -133,10 +133,12 @@ def test_monster_ids_exist_in_srd(registry):
     assert missing == []
 
 
-def test_location_ids_exist_in_vale_pack():
-    text = (ROOT / "campaigns" / "vale" / "locations.yaml").read_text(encoding="utf-8")
-    vale = {entry["id"] for entry in yaml.safe_load(text)}
-    assert sorted(set(raw_index()["locations"]) - vale) == []
+def test_location_ids_exist_in_packs():
+    known = set()
+    for pack in ("vale", "drunk_dragon"):
+        text = (ROOT / "campaigns" / pack / "locations.yaml").read_text(encoding="utf-8")
+        known |= {entry["id"] for entry in yaml.safe_load(text)}
+    assert sorted(set(raw_index()["locations"]) - known) == []
 
 
 # минимальный набор (п. 4)

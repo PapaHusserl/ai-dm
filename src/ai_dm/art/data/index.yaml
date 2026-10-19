@@ -9,6 +9,39 @@ locations:
   vale: vale
   lame_goose: tavern
   cellar: cellar
+  abbey_scarlet_mist: dd_abbey_scarlet_mist
+  ancient_tomb: dd_ancient_tomb
+  ash_forge: dd_ash_forge
+  black_bogs: dd_black_bogs
+  black_spring: dd_black_spring
+  chernolesye: dd_chernolesye
+  city: dd_city
+  city_ratusha: dd_city_ratusha
+  city_waterworks: dd_city_waterworks
+  dead_barrow: dd_dead_barrow
+  dead_pine_gorge: dd_dead_pine_gorge
+  deep_shaft: dd_deep_shaft
+  devils_backwater: dd_devils_backwater
+  dry_heather: dd_dry_heather
+  east_shaft: dd_east_shaft
+  grey_quarter: dd_grey_quarter
+  heather_wastes: dd_heather_wastes
+  iron_ridge: dd_iron_ridge
+  iron_ridge_foothills: dd_iron_ridge_foothills
+  iron_ridge_foothills_villages: dd_iron_ridge_foothills_villages
+  olbrecht_manor: dd_olbrecht_manor
+  old_gat: dd_old_gat
+  old_tar_works: dd_old_tar_works
+  old_tower: dd_old_tower
+  sanctuary_of_dawn: dd_sanctuary_of_dawn
+  shop_hunting_horn: dd_shop_hunting_horn
+  swamp_topkoe: dd_swamp_topkoe
+  tavern_drunken_dragon: dd_tavern_drunken_dragon
+  varen_manor: dd_varen_manor
+  viper_island: dd_viper_island
+  watch_tower_outpost: dd_watch_tower_outpost
+  white_winds_ledge: dd_white_winds_ledge
+  wolf_teeth_pass: dd_wolf_teeth_pass
 location_tags:
   таверна: tavern
   город: city
@@ -30,3 +63,5 @@ creature_types:
   humanoid: humanoid
   beast: beast
   undead: undead
+  elemental: elemental
+  construct: construct
