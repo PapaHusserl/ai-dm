@@ -68,6 +68,39 @@ def test_turn_data_is_json_serializable():
     json.dumps(turn_data(full_turn()), ensure_ascii=False)
 
 
+def test_turn_data_cuts_leaked_json_from_narration():
+    record = full_turn(narration='Находишь кошель.\n\n{ "offer_choices": [ "А", "Б" ] }')
+    assert turn_data(record)["narration"] == "Находишь кошель."
+
+
+def test_turn_data_cuts_tail_list_from_narration():
+    record = full_turn(narration="Находишь кошель.\n\nЧто дальше?\n\n1. А\n2. Б")
+    assert turn_data(record)["narration"] == "Находишь кошель.\n\nЧто дальше?"
+
+
+def test_turn_data_cuts_hint_and_html_from_narration():
+    record = full_turn(
+        narration="**Подсказка по результатам:**\n- x\n\n---\n\n<p>Находишь кошель.</p>"
+    )
+    assert turn_data(record)["narration"] == "Находишь кошель."
+
+
+def test_turn_data_does_not_touch_the_record():
+    leaked = 'Находишь кошель.\n\n{ "offer_choices": [ "А", "Б" ] }'
+    record = full_turn(narration=leaked)
+    turn_data(record)
+    assert record.narration == leaked
+
+
+def test_prompt_recent_turns_are_cleaned_but_memory_is_not(registry, cfg):
+    leaked = 'Находишь кошель.\n\n{ "offer_choices": [ "А", "Б" ] }'
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.memory.recent_turns = [full_turn(1, narration=leaked)]
+    recent = recent_of(ctx)
+    assert recent[0]["narration"] == "Находишь кошель."
+    assert ctx.bundle.memory.recent_turns[0].narration == leaked
+
+
 def test_turn_data_keeps_several_outcomes_in_order():
     record = full_turn(outcomes=["a", "gold: отклонено (повтор начисления)", "b"])
     assert turn_data(record)["outcomes"] == ["a", "gold: отклонено (повтор начисления)", "b"]

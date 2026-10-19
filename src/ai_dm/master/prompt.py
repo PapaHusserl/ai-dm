@@ -12,6 +12,7 @@ from ai_dm.master.context import (
     request_tokens,
     window_budget,
 )
+from ai_dm.master.leaks import cut_leaks
 from ai_dm.master.relevance import nearby_locations, npc_reasons, rank_npcs
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
@@ -88,7 +89,8 @@ def turn_data(turn):
     # прошлый ход для рассказчика: без requests, rolls и scene_id (их модель копировала)
     return {
         "turn_seq": turn.turn_seq, "at_s": turn.at_s, "player_input": turn.player_input,
-        "narration": turn.narration, "outcomes": list(turn.outcomes),
+        "narration": cut_leaks(turn.narration, choices_taken=True)[0],
+        "outcomes": list(turn.outcomes),
     }
 
 

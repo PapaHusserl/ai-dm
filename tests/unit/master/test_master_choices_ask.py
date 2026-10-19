@@ -14,7 +14,7 @@ from master_kit import (
 )
 
 from ai_dm.llm.types import Text
-from ai_dm.master.session import CHOICES_ASK, TurnFailed, ends_with_choice
+from ai_dm.master.session import CHOICES_ASK, MasterResult, TurnFailed, ends_with_choice
 from ai_dm.protocol.apply import apply
 
 QUESTION = "Ты стоишь у двери.\n\nОткрыть её?"
@@ -443,3 +443,171 @@ def test_ask_refusal_answer_with_offer_choices_is_not_executed(tmp_path, registr
     assert result.requests == []
     assert ctx.bundle.session.offered_choices == []
     assert result.stop_reason == "refusal"
+
+
+# ЖП3 П1 (BACKLOG 104): утечка служебного текста в рассказе, finish / apply_leaked_choices
+
+SCENE = "Лира кивает и отводит взгляд."
+LEAK = '{ "offer_choices": [ "Бежать", "Драться" ] }'
+LEAKED = SCENE + "\n\n" + LEAK
+
+
+def test_leak_json_is_cut_and_choices_applied_without_retry(tmp_path, registry, cfg):
+    adapter, result, ctx = go([text_step(LEAKED)], tmp_path, registry, cfg)
+    assert result.narration == SCENE
+    assert "offer_choices" in result.accepted
+    assert ctx.bundle.session.offered_choices == ["Бежать", "Драться"]
+    assert "leak_cleaned" in result.report_tags
+    assert "choices_retry" not in result.report_tags
+    assert len(adapter.requests) == 1
+
+
+def test_leak_choices_are_applied_as_offer_choices_request(tmp_path, registry, cfg):
+    _, result, _ = go([text_step(LEAKED)], tmp_path, registry, cfg)
+    assert [r.type for r in result.requests] == ["offer_choices"]
+    assert [d.status for d in result.decisions] == ["accepted"]
+
+
+def test_leak_after_tool_round_is_cut_and_applied(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1")), text_step(LEAKED)]
+    adapter, result, ctx = go(steps, tmp_path, registry, cfg)
+    assert result.narration == SCENE
+    assert ctx.bundle.session.offered_choices == ["Бежать", "Драться"]
+    assert len(adapter.requests) == 2
+
+
+def test_leak_tag_is_added_once(tmp_path, registry, cfg):
+    _, result, _ = go([text_step(LEAKED)], tmp_path, registry, cfg)
+    assert result.report_tags.count("leak_cleaned") == 1
+
+
+def test_clean_text_has_no_leak_tag(tmp_path, registry, cfg):
+    _, result, _ = go([text_step("Ты идёшь дальше.")], tmp_path, registry, cfg)
+    assert "leak_cleaned" not in result.report_tags
+
+
+def test_leak_with_real_offer_call_cuts_json_and_does_not_offer_twice(tmp_path, registry, cfg):
+    steps = [tools_step(offer_call(choices=("Спать", "Идти")), text=LEAKED)]
+    adapter, result, ctx = go(steps, tmp_path, registry, cfg)
+    assert result.narration == SCENE
+    assert [r.type for r in result.requests] == ["offer_choices"]
+    assert ctx.bundle.session.offered_choices == ["Спать", "Идти"]
+    assert "leak_cleaned" in result.report_tags
+    assert len(adapter.requests) == 1
+
+
+def test_tail_list_is_cut_when_offer_choices_accepted(tmp_path, registry, cfg):
+    tail = "Лира ждёт.\n\n**Что ты решишь?**\n\n1. А\n2. Б"
+    steps = [tools_step(offer_call()), text_step(tail)]
+    _, result, _ = go(steps, tmp_path, registry, cfg)
+    assert result.narration == "Лира ждёт.\n\n**Что ты решишь?**"
+    assert "leak_cleaned" in result.report_tags
+
+
+def test_leak_in_combat_narrate_is_cut_but_not_applied_while_fight_goes_on(
+    tmp_path, registry, cfg
+):
+    adapter = scripted([text_step(LEAKED)])
+    session, _, _, _ = make_session(adapter, tmp_path)
+    ctx = combat_ctx(registry, cfg, "combat_narrate")
+    result = session.run(ctx, "Бью.", apply, "combat_narrate")
+    assert result.narration == SCENE
+    assert "leak_cleaned" in result.report_tags
+    assert ctx.bundle.session.offered_choices == []
+    assert result.requests == []
+    assert "offer_choices" not in result.accepted
+    assert len(adapter.requests) == 1
+
+
+def test_leak_in_combat_narrate_after_victory_is_applied(tmp_path, registry, cfg):
+    adapter = scripted([text_step(LEAKED)])
+    session, _, _, _ = make_session(adapter, tmp_path)
+    ctx = combat_ctx(registry, cfg, "combat_narrate", outcome="victory")
+    result = session.run(ctx, "Бью.", apply, "combat_narrate")
+    assert result.narration == SCENE
+    assert ctx.bundle.session.offered_choices == ["Бежать", "Драться"]
+    assert "offer_choices" in result.accepted
+    assert len(adapter.requests) == 1
+
+
+def test_leak_in_explore_with_active_combat_is_cut_but_not_applied(tmp_path, registry, cfg):
+    adapter = scripted([text_step(LEAKED)])
+    session, _, _, _ = make_session(adapter, tmp_path)
+    ctx = combat_ctx(registry, cfg, "explore")
+    result = session.run(ctx, "Иду.", apply, "explore")
+    assert result.narration == SCENE
+    assert ctx.bundle.session.offered_choices == []
+
+
+def test_leak_with_one_choice_is_cut_and_falls_back_to_ask(tmp_path, registry, cfg):
+    text = "Ты стоишь у двери.\n\nОткрыть её?\n\n" + '{ "offer_choices": [ "Открыть" ] }'
+    adapter, result, ctx = go([text_step(text), tools_step(offer_call())], tmp_path, registry, cfg)
+    assert result.narration == QUESTION
+    assert "choices_retry" in result.report_tags
+    assert "leak_cleaned" in result.report_tags
+    assert len(adapter.requests) == 2
+    assert ctx.bundle.session.offered_choices == ["Бежать", "Драться"]
+
+
+@pytest.mark.parametrize("role", ["world", "summarizer"])
+def test_leak_is_untouched_for_other_roles(tmp_path, registry, cfg, role):
+    _, result, ctx = go([text_step(LEAKED)], tmp_path, registry, cfg, role=role)
+    assert result.narration == LEAKED
+    assert result.leaked_choices is None
+    assert "leak_cleaned" not in result.report_tags
+    assert ctx.bundle.session.offered_choices == []
+
+
+def test_finish_does_not_duplicate_existing_leak_tag(tmp_path):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    result = MasterResult()
+    result.texts = [LEAKED]
+    result.report_tags = ["leak_cleaned"]
+    session.finish(result)
+    assert result.report_tags == ["leak_cleaned"]
+
+
+def spy_run_round(session, monkeypatch):
+    calls = []
+    monkeypatch.setattr(session, "run_round", lambda *args: calls.append(args))
+    return calls
+
+
+def test_apply_leaked_choices_skipped_when_offer_choices_already_accepted(
+    tmp_path, registry, cfg, monkeypatch
+):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    calls = spy_run_round(session, monkeypatch)
+    result = MasterResult()
+    result.leaked_choices = ["А", "Б"]
+    result.accepted = {"offer_choices"}
+    session.apply_leaked_choices(make_ctx(registry, cfg, mode="explore"), result, apply, "explore")
+    assert calls == []
+
+
+def test_apply_leaked_choices_skipped_without_leaked_choices(
+    tmp_path, registry, cfg, monkeypatch
+):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    calls = spy_run_round(session, monkeypatch)
+    session.apply_leaked_choices(
+        make_ctx(registry, cfg, mode="explore"), MasterResult(), apply, "explore"
+    )
+    assert calls == []
+
+
+def test_apply_leaked_choices_runs_round_when_allowed(tmp_path, registry, cfg, monkeypatch):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    calls = spy_run_round(session, monkeypatch)
+    result = MasterResult()
+    result.leaked_choices = ["А", "Б"]
+    session.apply_leaked_choices(make_ctx(registry, cfg, mode="explore"), result, apply, "explore")
+    assert len(calls) == 1
+    assert calls[0][1][0].input["choices"] == ["А", "Б"]
+
+
+def test_rejected_leak_apply_does_not_break_the_turn(tmp_path, registry, cfg):
+    _, result, ctx = go([text_step(LEAKED)], tmp_path, registry, cfg, executor=reject_all)
+    assert result.narration == SCENE
+    assert ctx.bundle.session.offered_choices == []
+    assert "offer_choices" not in result.accepted

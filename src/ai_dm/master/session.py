@@ -8,6 +8,7 @@ from ai_dm.llm.cost import cost_nano, pick_price
 from ai_dm.llm.errors import LlmFatal, RetriesExhausted
 from ai_dm.llm.retry import call_with_retries
 from ai_dm.llm.types import Message, Text, ToolCall, ToolResult
+from ai_dm.master.leaks import MARKED_LINE, cut_leaks
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.render import render_tool_result
@@ -53,9 +54,6 @@ CHOICES_ASK = (
     "Вызови `offer_choices` с этими вариантами (два или три коротких, по смыслу разных); "
     "текст сцены не повторяй."
 )
-
-# строка списка с маркером: -, —, •, *, 1. / 1)
-MARKED_LINE = re.compile(r"^\s*(?:[-—•*]|\d+[.)])\s")
 
 # подсказка при пустом ответе по режиму (world -- по роли)
 EMPTY_NOTES = {
@@ -144,6 +142,7 @@ class MasterResult:
         self.rounds = 0
         self.invalid_count = 0
         self.accepted = set()
+        self.leaked_choices = None
 
 
 class MasterSession:
@@ -318,22 +317,44 @@ class MasterSession:
     def finish(self, result):
         # рассказ — все принятые тексты хода: модель часто пишет повествование
         # в том же ответе, где вызывает инструмент, а финальный ответ — короткий
-        result.narration = plain_text("\n\n".join(t.strip() for t in result.texts if t.strip()))
+        narration = plain_text("\n\n".join(t.strip() for t in result.texts if t.strip()))
+        if self.role == "narrator":
+            # служебный текст (JSON offer_choices, самоинструкции, HTML) игроку не показывается
+            cleaned, result.leaked_choices = cut_leaks(
+                narration, choices_taken="offer_choices" in result.accepted
+            )
+            if cleaned != narration and "leak_cleaned" not in result.report_tags:
+                result.report_tags.append("leak_cleaned")
+            narration = cleaned
+        result.narration = narration
         return result
 
-    def choices_missing(self, ctx, result, mode):
-        # рассказ кончился вопросом или списком, а offer_choices в ходу не принят
-        # (не в бою или на ходу, которым бой закончился)
+    def choices_allowed(self, ctx, mode):
+        # offer_choices уместен: не в бою или на ходу, которым бой закончился
         if self.role != "narrator" or mode not in CHOICE_MODES:
-            return False
-        if "offer_choices" in result.accepted:
             return False
         combat = ctx.bundle.session.active_combat
         if mode == "explore":
-            over = combat is None
-        else:
-            over = combat is not None and combat.outcome in COMBAT_OVER
-        return over and ends_with_choice(result.narration)
+            return combat is None
+        return combat is not None and combat.outcome in COMBAT_OVER
+
+    def choices_missing(self, ctx, result, mode):
+        # рассказ кончился вопросом или списком, а offer_choices в ходу не принят
+        if "offer_choices" in result.accepted:
+            return False
+        return self.choices_allowed(ctx, mode) and ends_with_choice(result.narration)
+
+    def apply_leaked_choices(self, ctx, result, executor, mode):
+        # варианты из утёкшего JSON применяются как вызов модели, без платного повтора
+        if not result.leaked_choices or "offer_choices" in result.accepted:
+            return
+        if not self.choices_allowed(ctx, mode):
+            return
+        call = ToolCall(
+            id="leak", name="offer_choices",
+            input={"type": "offer_choices", "choices": result.leaked_choices},
+        )
+        self.run_round(ctx, [call], executor, result, mode)
 
     def tag_missing_combat(self, ctx, result, mode):
         # рассказ объявил бой, а start_combat в ходу не принят: только тег для репорта
@@ -458,6 +479,7 @@ class MasterSession:
             if note is None:
                 result.texts += texts
                 result = self.finish(result)
+                self.apply_leaked_choices(ctx, result, executor, mode)
                 if self.choices_missing(ctx, result, mode):
                     self.ask_choices(ctx, req, response, run_id, plan, executor, mode, result)
                 self.tag_missing_combat(ctx, result, mode)
