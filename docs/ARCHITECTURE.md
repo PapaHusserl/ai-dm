@@ -221,12 +221,15 @@ ai-dm/
                  checks.py damage.py healing.py death_saves.py exhaustion.py rests.py
                  inventory.py money.py progression.py mortality_guard.py creatures.py
                  triggers_eval.py secrets.py time_ops.py auto_flags.py
+                 goals.py survivors.py npc_names.py npc_memory.py knowledge.py divine.py
     combat/      setup.py zones.py initiative.py engine.py available.py controllers.py
                  actions/{attack,multiattack,cast,move,standard,item,improvise,parley,features}.py
                  disarm.py mastery.py area.py opportunity.py downed.py defeat.py end.py
     persistence/ layout.py store.py backup.py migrations/{__init__,m0001_v0_to_v1}.py
     devtools/    sim_combat.py sim_grid.py grid_heroes.py
-    protocol/ llm/ master/ world_sim/ campaign/ game/ ui/ reports/   # этапы 2+, на этапе 1 не создаются
+    protocol/ llm/ master/ campaign/ game/ ui/ reports/   # этапы 2+, на этапе 1 не создаются
+    world_sim/   tick.py triggers.py candidates.py verdicts.py nudge.py mortality.py aging.py events.py chronicle.py
+                 pending.py hazard.py
   content/       subclasses/<class_id>/*.yaml  feats/  monsters/
   campaigns/     # этап 3
   tests/         unit/<пакет>/  scenarios/  fixtures/saves/v0  golden/  schema/
@@ -723,19 +726,19 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `CURRENT_SCHEMA_VERSION = 11`, миграция `m0011_v10_to_v11` (чистая `dict -> dict`, `deepcopy`, `setdefault`, контекст не
 нужен). Отпечаток — `tests/schema/save_v11.schema.json`, фикстура `tests/fixtures/saves/v10`, золотой ход
 `tests/golden/zh0_turn.json` (тот же ход на мигрированной фикстуре даёт тот же снимок). Принцип (решение 0): поля под
-Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 занята М0).
+Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 в итоге ушла Ж2 — «Цели NPC (Ж2)» ниже; М0 → v13, С0 → v14).
 
 | Где | Поле | Смысл |
 |---|---|---|
 | `NPC` | `memory: list[NpcSceneMemory]` | память о герое: сцены (`scene_id`, `at_s`, `weight ≥ 0`, `events` ≥ 1) |
-| `NPC` | `goals: list[NpcGoal]` | долгие цели: `kind`, `target`, `text`, `since_s`, `status` (`active`/`done`/`dropped`); код записи — позже |
+| `NPC` | `goals: list[NpcGoal]` | долгие цели: `kind`, `target`, `text`, `since_s`, `status` (`active`/`done`/`dropped`); код — Ж2 (`rules/goals.py`, ниже) |
 | `NPC` | `known_name: str \| None` | имя, под которым NPC известен герою; для `origin="engine"` скрыто, пока `None` (Ж1, см. ниже) |
 | `NPC` | `family: list[FamilyLink]` | `kind` (`parent`/`spouse`/`child`), `ref`, `ref_kind` (`npc`/`hero`) |
 | `NPC` | `notes: str` | свободные заметки рассказчику; бывший `relations_text` |
 | `NPC` | `services: list[str]` | id услуг; код — У0 |
 | `HeroState` | `family`, `knowledge: list[KnowledgeEntry]` | связи героя; журнал знаний (`kind`, `ref`, `text`, `source`, `from_ref`, `at_s`), наполнение — Ж3 (E12) |
 | `SceneState` | `scene_mood: str` | настроение сцены для музыки (не `Tone.mood`); ставит запрос `scene_mood`, уровень «сцена» в `pick_theme` — Ж3 (F8) |
-| `WorldSim` | `pending_acts: list[str]` | действия мира, отложенные до границы (46) |
+| `WorldSim` | `pending_acts: list[str]` | действия мира (`act`), отложенные до границы (46); код — Ж2 (`world_sim/pending.py`) |
 
 Миграция: `NPC.relations_text` убирается (`pop`), текст переезжает в `notes` целиком, если `notes` пуст (в v10 `notes`
 нет; пак `drunk_dragon`, `import_dragon.py` и фикстура `vale_stage2` переведены на `notes`); остальные поля —
@@ -743,7 +746,7 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `NpcGoal`, `FamilyLink`, `NPC_EVENT_TEXT_MAX = 120`) и `state/knowledge.py`. Открытые перечни — `str` в моделях
 (`MEMORY_KINDS`, `GOAL_KINDS`, `KNOWLEDGE_KINDS`, `KNOWLEDGE_SOURCES` — константы: расширение перечня не меняет схему и
 не требует новой версии), закрытые — `Literal`; все модели `extra="forbid"`. `scripts/migrate_dusk_18plus.py` принимает
-сейвы v9–v11.
+сейвы v9–v11 (с Ж2 — до v12).
 
 ### Память NPC (`rules/npc_memory.py`, BACKLOG 79)
 
@@ -800,15 +803,86 @@ kind, label, group)`; `kind_of`: `defected` (метка `parley_defected`, ст�
 `knowledge.rename_met`. `note_presence` скрытых по имени не ищет; `is_met`/`backfill` читают `shown_name`.
 
 Протокол: `NpcUpdate.name` (у `WorldNpcUpdate` его нет). `handlers/world.py`: `name_problem` (`name_locked` — не engine или
-уже `named`; `empty_name`; занятое — `rejected` по `uniqueness.name_conflict`), `change_name` (`name`, `named=True`,
+уже `named`; `empty_name`; занятое — `rejected` по `uniqueness.name_conflict`; с Ж2 — и имя, совпадающее с видом
+существа, `npc_names.looks_like_kind`: метка боя с номером и без, название монстра реестра — BACKLOG 86), `change_name` (`name`, `named=True`,
 лог без имени), `npc_label` (= `shown_name`) во всех логах и сообщениях пути `npc_update`. Промпт: `survivor_data(npc)` —
 ключи `kind`, `unnamed`, `name_hidden` в `scene_npcs` и `known_npcs` (только у engine-NPC); рассказчик настоящее имя
 видит. Показ игроку идёт через `shown_name`: `lore_text`, `battle_map`, `shop_text`, `make_enemy`,
 `summarizer.state_data`. Конфиг — `[survivors]` (`SurvivorsConfig`). Хвост: `start_combat` не трогали (BACKLOG 78).
 
+### Цели NPC (Ж2)
+
+**Цель ↔ триггер.** `rules/goals.py`: `add_goal(npc, kind, target, text, now_s)` (цель на героя) и `add_npc_goal` (на NPC)
+создают `NpcGoal` и триггер-спутник `Trigger(id="goal:<kind>:<target>", if={"all": [структура, {"narrative": NARRATIVE[kind]}]},
+then=текст цели, once=True)` в `npc.opportunity`. Структура: для героя `{"not": {"hero_dead": true}}`, для NPC
+`{"npc_status": {"id": target, "is": "alive"}}`. Связь цель↔триггер — только по id (поля в `NpcGoal` нет). Одна активная цель
+на `(kind, target)`: повтор → `None`; спутник закрытой цели с тем же id заменяется. Близости к герою в `if` нет: приход
+мстителя решает world (`WorldNpcUpdate(location_id, then_ref)`). Отдельного вида кандидата нет — работает прежняя цепочка
+`candidates.verdict_candidates` → вердикт world → `fire` → `act` → `then_ref`.
+
+**Закрытие.** `mark_fired` после `fire` (в `triggers.check` через `fire_trigger` и в `verdicts.apply_verdicts`) → `done`;
+`sweep(world, heroes)` в начале `triggers.check`: носитель не `alive` или мишень мертва/ушла → `dropped` и спутник
+`disabled`; `close_goal(npc, kind, target, status)` — запросом.
+
+**Редкая проверка.** `WorldSim.goals_checked_s`; `goals.due(sim, now_s, every_days)` — первая проверка сразу, далее через
+`[world] goals_check_every_days` (1) от предыдущей (как `god_due` у богов, но одна метка на мир). `triggers.check(bundle, cfg)`
+считает `due` один раз, передаёт `skip_goals=not due` в `verdict_candidates`, пропускает спутников (`goals.skipped`), после
+проверки пишет метку. Обычные триггеры не затронуты; `max_calls_per_day` world — второй потолок.
+
+**Факты, по которым движок ставит цели.** `survivors.remember_fight`: бежавший/сдавшийся с отношением ≤
+`[survivors] revenge_attitude_max` (−40) → `revenge`; пощажённый → `gratitude`; перебежчик → `life_debt` (через
+`add_goal`). `goals.on_kill` (из `TurnRunner.end_fight`) и `goals.on_npc_killed` (из `change_status` при
+`by=<герой>`) → `avenge`: мстители — живые NPC с `FamilyLink.ref` = убитый или с группой убитого в `npc.groups`
+(не участники боя, не `follows` героя, отношение ≤ 0); цель `revenge` на героя и память `kin_killed` (при наличии сцены).
+Убийца пишется в `Participant.last_hit_by` (`downed.kill_monster`); убил не герой — мести нет, без убийцы — на героя.
+`combat/defeat.do_debt` ставит кредитору цель `debt` вместо прямого триггера (флаг `world.flags["debt:<hero>"]` остаётся).
+
+**Протокол.** `NpcUpdateBase`: `goal_kind` (`GOAL_KINDS` или `none`), `goal_target` (пусто = текущий герой),
+`goal_text`, `goal_status` (`none`/`done`/`dropped`); оба пути `npc_update` (рассказчик и `offscreen`), у `WorldNpcUpdate`
+те же поля. `handlers/world.goal_problem` → `Invalid`: `goal_fields_without_kind` (раньше `empty_update`),
+`unknown_goal_target`, `goal_exists`, `no_such_goal`, `goal_kind_with_status` (постановка и `status` в одном запросе),
+`npc_not_alive` (цель мёртвому/уходящему NPC; закрытие разрешено); `change_goal` — `add_goal`/`close_goal`, лог через
+`npc_label`. Цель применяется раньше `status=dead`. Мститель у world — `location_id` + обязательный `then_ref`.
+
+**Показ.** `master/relevance.npc_reasons`: `npc.named or goals.has_active_goal(npc)` — безымянный выживший с активной целью
+попадает в `known_npcs` (BACKLOG 85). Правила: `narrator_rules.md` (когда ставить и закрывать цели, `change_deity`),
+`world_rules.md` (вердикт на `event:`, `goal_*` при исполнении `then`, приход мстителя). Статика: `STATIC_MAX` 20960.
+
+**46 `pending_acts`.** `world_sim/pending.py`: `stash_acts` — при `world_skipped` кандидаты `act` (сериализованный
+`Candidate.model_dump_json()`, не ref) откладываются в `WorldSim.pending_acts` без дублей по ref, потолок `PENDING_MAX = 20`;
+`take_acts` перед вызовом world возвращает отложенные (владелец жив: `owner_present`) вместе с новыми, отсортированные
+`sort_key`, и очищает очередь; `load_acts` молча отбрасывает битые записи. Мягкий сбой world (откатов нет) — `stash_unapplied`:
+откладываются только `act`, по чьему `then_ref` не прошёл ни один запрос (`TurnContext.applied_refs`,
+`protocol.apply.note_applied`, `TurnFailed.applied_refs`). Вызов — `game/boundary.call_world`.
+
+**9 `ends_when`.** `candidates.event_candidates`: активное событие с `ends_when`, у которого структура выполнена, а остаток
+нарративный → вердикт-кандидат `ref="event:<id>"`, `owner_kind="event"` (`OWNER_RANK["event"] = 4`); `verdicts.apply_verdicts`
+при «выполнено» ставит `event.ends_at_s = now_s` (хронику пишет тик, `close_events` не менялся);
+`nudge.mark_not_participating` `event:` пропускает.
+
+**Hazard в тике.** `world_sim/hazard.py`: `roll_hazards(bundle, rng, cfg, registry, at)` — `tick.tick_days` вызывает раз в
+день после `mortality.roll_day`; для активных героев (по id) в зоне события с `hazard` (`zone_events`: `event_active` и
+`mortality.affected`) — `saving_throw`; провал → `add_exhaustion(+1, cause="hazard")` с вмешательством бога на шестом
+уровне (`intervener` → `try_intervention`), запись `event` в хронике, при смерти — `hero_died` и запись `death`.
+Не больше одного hazard от события на героя в день (внутри тика). Запрос рассказчика с событием не связан.
+
+**Смена бога.** Запрос `ChangeDeity(god_id, reason)` в `MODE_TOOLS["explore"]`; `handlers/world.change_deity`: `unknown_god` /
+`same_deity`, затем `divine.change_deity(hero, god_id)` — прежний бог получает ключ `favor` (0), новый +1 только без
+ключа в `hero.favor` (возврат — 0); возвращает фактический сдвиг. Хроника `favor`, запись журнала знаний `note_favor`
+(`deduced`), лог «благосклонность +1» только при прибавке. `PromptBuilder.divine_data` — поле `deity`.
+
+### Сейв v12 (Ж2)
+
+`CURRENT_SCHEMA_VERSION = 12`, миграция `m0012_v11_to_v12` (чистая `dict -> dict`, `deepcopy`, контекст не нужен):
+`world["sim"].setdefault("goals_checked_s", None)`. Отпечаток — `tests/schema/save_v12.schema.json`, фикстура
+`tests/fixtures/saves/v11`; `scripts/migrate_dusk_18plus.py` принимает сейвы v9–v12. Единственное новое поле —
+`WorldSim.goals_checked_s: int | None` (время последней проверки триггеров целей, смысл — «Редкая проверка» выше).
+`WorldSim.pending_acts` существовало в v11 (Ж0) и получило код в Ж2; поля запросов `goal_*`, смена бога и hazard полей
+сейва не добавляли. Старые триггеры `debt_<hero>` миграцией не переводятся: остаются как есть, без цели. М0 → v13, С0 → v14.
+
 ## E12. Журнал знаний героя (Ж3)
 
-Схема сейва v11 не меняется: `HeroState.knowledge: list[KnowledgeEntry]` (`state/knowledge.py`) и
+Схема сейва журналом не меняется (v11, с Ж2 — v12 по другой причине, см. выше): `HeroState.knowledge: list[KnowledgeEntry]` (`state/knowledge.py`) и
 `SceneState.scene_mood` заложены в Ж0, в Ж3 получили код.
 
 **Модель и перечни.** `kind` — о ком запись (`KNOWLEDGE_KINDS`: `npc`, `location`, `faction`, `god`, `creature`,
@@ -827,7 +901,7 @@ kind, label, group)`; `kind_of`: `defected` (метка `parley_defected`, ст�
 посещение локации героя (`seen`); бестиарий (`TurnRunner.end_fight` → `note_combat`: безымянные враги боя и перебежчики
 (`defected=`), текст «Бой: <монстр> — победа|бегство|поражение|прерван»); знакомство с выжившим по виду
 (`survivors.materialize` → `note_met`, текст «Знакомство: <вид>») и его переименование при открытии имени
-(`reveal_names` → `knowledge.rename_met`); милость бога (`favor_change` героя → `note_favor`, `deduced`); раскрытый
+(`reveal_names` → `knowledge.rename_met`); милость бога (`favor_change` героя → `note_favor`, `deduced`) и смена бога (`change_deity` → `note_favor`, Ж2); раскрытый
 секрет (`reveal_secret` → `note_secret`, `deduced`).
 Рассказчик: запрос `knowledge_note` (`protocol/handlers/knowledge.py`, только explore, без strict).
 

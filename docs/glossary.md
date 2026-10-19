@@ -203,3 +203,11 @@
 | Combat survivor | Выживший боя | `NPC.origin = "engine"`, `NPC.combat`, `rules/survivors.py` | перебежчик, сдавшийся, пощажённый или бежавший враг, оставшийся в `world.npcs` (Ж1) |
 | Hidden name | Скрытое имя | `name_hidden`, `shown_name`, `NPC.known_name`, `NpcUpdate.name` | у выжившего игрок видит вид существа, пока настоящее имя не прозвучало; рассказчик имя видит (Ж1) |
 | Bestiary | Бестиарий | `KnowledgeEntry.kind = creature` | записи об изученных существах в журнале знаний (Ж3) |
+| NPC goal | Цель NPC | `NpcGoal`, `NPC.goals`, `rules/goals.py`, `goal_kind`/`goal_target`/`goal_text`/`goal_status` | долгая цель (месть, долг, благодарность…) с состоянием `active`/`done`/`dropped`; ставит движок по фактам или рассказчик/world запросом (Ж2) |
+| Goal companion trigger | Триггер-спутник цели | `goal:<kind>:<target>`, `goals.companion` | триггер в `npc.opportunity`, превращающий цель в событие через вердикт world; связь с целью только по id (Ж2) |
+| Avenger | Мститель | `goals.avengers`, `goals.avenge`, `NpcGoal.kind = revenge` | живой NPC (родня или отряд убитого героем), получающий цель мести; новых NPC движок не создаёт (Ж2) |
+| Goals check | Редкая проверка целей | `WorldSim.goals_checked_s`, `[world] goals_check_every_days`, `goals.due` | триггеры целей проверяются раз в N игровых дней общей пачкой на мир (Ж2) |
+| Pending acts | Отложенные действия мира | `WorldSim.pending_acts`, `world_sim/pending.py` | `act`-кандидаты, отложенные при пропуске или мягком сбое world до следующей границы; не более 20 (Ж2, BACKLOG 46) |
+| Event verdict | Вердикт события | `event:<id>`, `candidates.event_candidates` | нарративный остаток `ends_when` глобального события проверяет world как вердикт-кандидат (Ж2, BACKLOG 9) |
+| Event hazard roll | Hazard в тике | `world_sim/hazard.py`, `roll_hazards` | раз в день активный герой в зоне события с `hazard` бросает спасбросок; провал — +1 истощение (Ж2) |
+| Change of deity | Смена бога | `change_deity`, `ChangeDeity`, `divine.change_deity` | запрос рассказчика любому герою; +1 только богу, которому герой не служил (нет ключа в `hero.favor`); прежний бог остаётся с 0 (Ж2) |
