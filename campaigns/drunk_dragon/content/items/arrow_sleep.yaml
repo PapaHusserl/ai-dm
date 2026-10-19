@@ -1,0 +1,15 @@
+id: arrow_sleep
+name: Сонная стрела
+description: +1d4 ядом, сонный мор замедляет цель.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: extra_damage
+  dice: 1d4
+  damage_type: poison
+- type: slow
+  value: 10

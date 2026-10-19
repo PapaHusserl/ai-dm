@@ -1,0 +1,13 @@
+id: arrow_poison
+name: Отравленная стрела
+description: +1d4 ядом.
+cost_cp: 0
+source: campaign:drunk_dragon
+ammo_for:
+- longbow
+- composite_longbow
+- shortbow
+effects:
+- type: extra_damage
+  dice: 1d4
+  damage_type: poison
