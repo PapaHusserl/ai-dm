@@ -15,8 +15,8 @@
 | dungeon.ogg | dungeon | Kevin MacLeod | Rites | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100722> | 2026-10-10 | перекодирован |
 | dark.ogg | dark | Kevin MacLeod | Unseen Horrors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400043> | 2026-10-10 | перекодирован; обрезан до 4:00 (из 4:11), затухание 3 с на хвосте |
 | explore.ogg | explore | Kevin MacLeod | Skye Cuillin | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100346> | 2026-10-10 | перекодирован |
-| romance.ogg | romance | Kevin MacLeod | There is Romance | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100044> | 2026-10-10 | перекодирован |
-| romance_sensual.ogg | romance_sensual | Kevin MacLeod | Sardana | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400055> | 2026-10-10 | перекодирован |
+| romance.ogg | romance | Kevin MacLeod | Reawakening | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400017> | 2026-10-19 | перекодирован |
+| romance_sensual.ogg | romance_sensual | Kevin MacLeod | Mystery Sax | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | <https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700082> | 2026-10-19 | перекодирован; обрезан до 4:00 (из 4:35), затухание 3 с на хвосте |
 | wilds.ogg | wilds | cynicmusic | Dark Forest Theme | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://opengameart.org/content/dark-forest-theme> | 2026-10-10 | перекодирован |
 | crowd.ogg | эмбиент tavern | conleec | Small_Town_Bar_007.wav | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://freesound.org/people/conleec/sounds/212094/> | 2026-10-10 | источник: HQ-превью (mp3); вырезка 2:00 (с 1:00 из 6:11), моно, затухание/нарастание 0,5 с на шве |
 | street.ogg | эмбиент town | nicoproson | CROWD village square.wav | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | <https://freesound.org/people/nicoproson/sounds/648483/> | 2026-10-10 | источник: HQ-превью (mp3); вырезка 2:00 (с 1:00 из 4:08), моно, затухание/нарастание 0,5 с на шве |
@@ -29,4 +29,4 @@
 Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License, <http://creativecommons.org/licenses/by/4.0/>:
 
 - "Clash Defiant", "Midnight Tale", "Village Consort", "Ascending the Vale", "Rites", "Unseen Horrors", "Skye Cuillin",
-  "There is Romance", "Sardana" — Kevin MacLeod (incompetech.com).
+  "Reawakening", "Mystery Sax" — Kevin MacLeod (incompetech.com).
