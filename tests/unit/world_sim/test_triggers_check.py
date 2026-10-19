@@ -434,3 +434,23 @@ def test_goal_trigger_is_not_a_candidate_for_a_dead_target_npc(registry, cfg):
     result = run_check(bundle, cfg)
     assert not has_ref(refs_of(result), "goal:love:mara")
     assert bundle.world.npcs["aldric"].goals[0].status == "dropped"
+
+
+def test_pack_preset_hero_trigger_fires_in_new_world(tmp_path, registry, cfg):
+    # шаг 34: opportunity пресета героя из пака доходит до мира и срабатывает на границе сцены
+    from campaign_kit import SAVED_AT, default_files, load, write_pack
+
+    from ai_dm.game.starter import new_world_from_pack
+
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [
+        {"id": "preset_hook", "if": {"hero_at": "tavern"}, "then": "Арн берётся за дело",
+         "once": True}
+    ]
+    pack = load(write_pack(tmp_path, files), registry)
+    bundle = new_world_from_pack(
+        registry, cfg, pack, hero="arn", seed=1, world_id="w1", saved_at=SAVED_AT
+    )
+    result = run_check(bundle)
+    assert has_ref(result.fired, "preset_hook")
+    assert bundle.heroes[0].opportunity[0].fired_count == 1

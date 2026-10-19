@@ -14,8 +14,14 @@ from ai_dm.campaign.models import (
 from ai_dm.campaign.presets import PACK_TONE, load_presets
 from ai_dm.config.settings import load_rules_config
 from ai_dm.core.clock import GameClock
-from ai_dm.rules.builder import ValidationErrors, build_character
+from ai_dm.rules.builder import (
+    ValidationErrors,
+    build_character,
+    means_problems,
+    opportunity_problems,
+)
 from ai_dm.rules.inventory import find_item
+from ai_dm.rules.triggers_eval import KnownIds
 from ai_dm.state.triggers import (
     AllOf,
     AnyOf,
@@ -331,6 +337,15 @@ def check_hero(pack, preset, registry) -> list[str]:
     for god_id in preset.favor:
         if god_id not in gods:
             errors.append(f"{where}: поле favor: неизвестный бог {god_id!r}")
+    if preset.means:
+        for _, text in means_problems(preset.means):
+            errors.append(f"{where}: поле means: {text}")
+    # known собирается здесь: campaign.build.known_ids импортировать нельзя (цикл через uniqueness)
+    known = KnownIds(
+        npcs={npc.id for npc in pack.npcs}, locations=locations, pantheon=gods,
+    )
+    for _, text in opportunity_problems(preset, known, registry):
+        errors.append(f"{where}: поле opportunity: {text}")
     if preset.birth_date is not None:
         try:
             GameClock.from_date(preset.birth_date, pack.manifest.calendar)

@@ -277,6 +277,30 @@ def test_dragon_grey_has_motive_in_pack_and_in_hero_state(cfg):
     assert dragon_world(cfg).heroes[0].motive == preset.motive
 
 
+def test_dragon_grey_has_means_and_at_most_two_opportunities_in_pack():
+    preset = next(p for p in dragon_pack().heroes if p.id == "grey")
+    assert 1 <= len(preset.means) <= 3
+    assert 1 <= len(preset.opportunity) <= 2
+
+
+def test_dragon_grey_hero_state_gets_means_and_opportunity_of_preset(cfg):
+    preset = next(p for p in dragon_pack().heroes if p.id == "grey")
+    hero = dragon_world(cfg).heroes[0]
+    assert hero.means == preset.means
+    assert [t.id for t in hero.opportunity] == [t.id for t in preset.opportunity]
+
+
+def test_build_hero_copies_preset_opportunity_deeply(cfg):
+    from ai_dm.campaign.build import build_hero
+
+    pack = dragon_pack()
+    preset = next(p for p in pack.heroes if p.id == "grey")
+    hero = build_hero(pack, preset, dragon_registry())
+    assert hero.opportunity[0] is not preset.opportunity[0]
+    assert hero.opportunity[0].if_ is not preset.opportunity[0].if_
+    assert hero.means is not preset.means
+
+
 def test_dragon_has_foothills_villages_and_grey_quarter(cfg):
     names = [loc.name for loc in dragon_world(cfg).world.locations.values()]
     assert any("Предгорья Кряжа" in n for n in names)

@@ -7,6 +7,7 @@ from ai_dm.core.clock import Calendar
 from ai_dm.rules.builder import CharacterChoices
 from ai_dm.state.hero import Companion, Equipped, LevelChoices
 from ai_dm.state.memory import ChapterSummary, ChronicleEntry, SceneSummary
+from ai_dm.state.triggers import Trigger
 from ai_dm.state.world import (
     NPC,
     Faction,
@@ -95,6 +96,9 @@ class HeroPreset(BaseModel):
     money_cp: int | None = None
     location_id: str | None = None
     motive: str = ""
+    # средства и возможности -- как у листа героя; проверка -- loader.check_hero
+    means: list[str] = Field(default_factory=list)
+    opportunity: list[Trigger] = Field(default_factory=list)
     level: int = Field(default=1, ge=1)
     xp: int = Field(default=0, ge=0)
     # выборы по уровням 2..level (стиль, экспертиза, подкласс); без них пресет выше 1 ур. не собрать

@@ -62,6 +62,14 @@ def stage2_locations():
     return locations
 
 
+def stage2_hero(key):
+    # шаг 34: пресеты Вейла получили motive/means/opportunity; эталон этапа 2 их держит пустыми
+    hero = copy.deepcopy(SNAPSHOT[key]["hero"])
+    for hook in ("motive", "means", "opportunity"):
+        del hero[hook]
+    return hero
+
+
 # пак как данные
 
 def test_vale_pack_loads(registry):
@@ -116,12 +124,26 @@ def test_world_has_no_extra_entities_compared_to_stage2(registry):
 
 def test_arn_hero_equals_stage2(registry):
     hero = new_world(registry, "arn").heroes[0]
-    assert contains(SNAPSHOT["arn"]["hero"], hero.model_dump(mode="json")) == []
+    assert contains(stage2_hero("arn"), hero.model_dump(mode="json")) == []
 
 
 def test_liel_hero_equals_stage2(registry):
     hero = new_world(registry, "liel").heroes[0]
-    assert contains(SNAPSHOT["liel"]["hero"], hero.model_dump(mode="json")) == []
+    assert contains(stage2_hero("liel"), hero.model_dump(mode="json")) == []
+
+
+def test_vale_presets_have_motive_and_means(registry):
+    for preset in vale(registry).heroes:
+        assert preset.motive, preset.id
+        assert 1 <= len(preset.means) <= 3, preset.id
+
+
+def test_vale_world_heroes_get_preset_hooks(registry):
+    presets = {p.id: p for p in vale(registry).heroes}
+    for hero_id in ("arn", "grey", "liel"):
+        hero = new_world(registry, hero_id).heroes[0]
+        assert hero.motive == presets[hero_id].motive
+        assert hero.means == presets[hero_id].means
 
 
 def test_start_scene_rng_and_clock_equal_stage2(registry):

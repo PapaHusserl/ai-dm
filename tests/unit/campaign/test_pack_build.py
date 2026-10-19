@@ -674,15 +674,121 @@ def test_apply_hooks_copies_motive_means_and_triggers(registry):
     assert hero.opportunity[0] is not sheet.opportunity[0]
 
 
-def test_apply_hooks_replaces_previous_hooks(registry):
+def test_apply_hooks_full_sheet_replaces_previous_hooks(registry):
+    from ai_dm.rules.builder import build_character
+
+    hero = build_character(base_sheet().choices, registry)
+    hero.motive = "старый мотив"
+    hero.means = ["старое"]
+    hero.opportunity = [narrative_trigger("old")]
+    apply_hooks(hero, base_sheet())
+    assert hero.motive == "Найти сестру."
+    assert hero.means == ["острый ум"]
+    assert [t.id for t in hero.opportunity] == ["o1"]
+
+
+def test_apply_hooks_empty_opportunity_keeps_previous_opportunity(registry):
     from ai_dm.rules.builder import build_character
 
     hero = build_character(base_sheet().choices, registry)
     hero.means = ["старое"]
     hero.opportunity = [narrative_trigger("old")]
     apply_hooks(hero, base_sheet(opportunity=[]))
-    assert hero.opportunity == []
+    assert [t.id for t in hero.opportunity] == ["old"]
     assert hero.means == ["острый ум"]
+    assert hero.motive == "Найти сестру."
+
+
+def test_apply_hooks_empty_means_keeps_previous_means(registry):
+    from ai_dm.rules.builder import build_character
+
+    hero = build_character(base_sheet().choices, registry)
+    hero.means = ["старое"]
+    apply_hooks(hero, base_sheet(means=[]))
+    assert hero.means == ["старое"]
+
+
+def test_apply_hooks_empty_motive_keeps_previous_motive(registry):
+    from ai_dm.rules.builder import build_character
+
+    hero = build_character(base_sheet().choices, registry)
+    hero.motive = "старый мотив"
+    apply_hooks(hero, base_sheet(motive=""))
+    assert hero.motive == "старый мотив"
+
+
+def test_apply_hooks_all_empty_leaves_hero_untouched(registry):
+    from ai_dm.rules.builder import build_character
+
+    hero = build_character(base_sheet().choices, registry)
+    hero.motive = "старый мотив"
+    hero.means = ["старое"]
+    hero.opportunity = [narrative_trigger("old")]
+    apply_hooks(hero, base_sheet(motive="", means=[], opportunity=[]))
+    assert hero.motive == "старый мотив"
+    assert hero.means == ["старое"]
+    assert [t.id for t in hero.opportunity] == ["old"]
+
+
+# means / opportunity пресета пака (шаг 34)
+
+def hooks_files(**changes):
+    files = default_files()
+    files["heroes/arn.yaml"].update({
+        "motive": "найти правду",
+        "means": ["а", "б"],
+        "opportunity": [{"id": "o1", "if": {"hero_at": "tavern"}, "then": "делает дело",
+                         "once": True}],
+    })
+    files["heroes/arn.yaml"].update(changes)
+    return files
+
+
+def test_preset_means_and_opportunity_reach_hero(tmp_path, registry, cfg):
+    hero = build(tmp_path, registry, cfg, hooks_files()).heroes[0]
+    assert hero.motive == "найти правду"
+    assert hero.means == ["а", "б"]
+    assert [t.id for t in hero.opportunity] == ["o1"]
+    assert hero.opportunity[0].once is True
+
+
+def test_preset_hooks_are_copies_in_hero(tmp_path, registry, cfg):
+    from ai_dm.game.starter import new_world_from_pack
+
+    pack = load(write_pack(tmp_path, hooks_files()), registry)
+    hero = new_world_from_pack(
+        registry, cfg, pack, hero="arn", seed=1, world_id="w1", saved_at=SAVED_AT
+    ).heroes[0]
+    preset = pack.heroes[0]
+    assert hero.means == preset.means
+    assert hero.means is not preset.means
+    assert hero.opportunity[0] is not preset.opportunity[0]
+    hero.means.append("ещё")
+    hero.opportunity[0].fired_count = 5
+    assert preset.means == ["а", "б"]
+    assert preset.opportunity[0].fired_count == 0
+
+
+def test_preset_without_hooks_gives_empty_means_and_opportunity(tmp_path, registry, cfg):
+    hero = build(tmp_path, registry, cfg).heroes[0]
+    assert hero.means == []
+    assert hero.opportunity == []
+
+
+def test_hero_preset_model_accepts_means_and_opportunity_fields():
+    preset = HeroPreset.model_validate({
+        "id": "x", "choices": base_sheet().choices.model_dump(),
+        "means": ["а"],
+        "opportunity": [{"id": "o1", "if": {"flag": "f"}, "then": "т"}],
+    })
+    assert preset.means == ["а"]
+    assert [t.id for t in preset.opportunity] == ["o1"]
+
+
+def test_hero_preset_model_defaults_to_empty_means_and_opportunity():
+    preset = HeroPreset.model_validate({"id": "x", "choices": base_sheet().choices.model_dump()})
+    assert preset.means == []
+    assert preset.opportunity == []
 
 
 # known_ids / taken_names

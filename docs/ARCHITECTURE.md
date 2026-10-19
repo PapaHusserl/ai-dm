@@ -563,6 +563,8 @@ ui ──> game ──> master ──> llm
 что в сейве. Конфликтная сущность (5.3) не загружается и попадает в список игроку; ссылающиеся на неё — тоже. Догрузка:
 новые id добавляются при каждой загрузке мира, существующие не меняются. Первые паки: `vale` (бывшая заглушка этапа 2),
 `drunk_dragon` (старт с главы II, выжимка сцены вместо незакрытого выбора).
+Пресет героя несёт `motive`/`means`/`opportunity` как лист героя на лету; при загрузке пака они проверяются по
+правилам листа (`means` 0..3, `opportunity` ≤ 2, ссылки условий по id пака); лист главнее пресета.
 
 ## D3. Граница сцены и глава
 
@@ -632,7 +634,7 @@ ui ──> game ──> master ──> llm
 | `rules.hero_options` | Допустимые множества создания героя (Б2а), чистые запросы к реестру: виды, классы, предыстории, навыки класса без занятых, оружие с мастерством, боевые стили, заклинания класса по кругу, лимиты `spell_counts`, черты происхождения (`origin_feats`), выборы черт (`feat_pick_options`), навыки вида, стандартный набор, таблица покупки очков, наборы класса и `kit_label`. Один источник «что разрешено» для справочника модели (`master.hero.class_data`, вывод `sheet_reference_block` не менялся) и шагов мастера. |
 | `rules.builder` (тексты по частям, Б2а) | `ABILITY_MESSAGES`, `BONUS_MESSAGE`, `over_twenty_message` — тексты арифметических ошибок, общие для `build_character` и шагов; `point_buy_cost`, `name_problems`, `motive_problems`/`means_problems`/`hooks_problems` — проверки по значениям, через них работают `check_ability_scores`, `sheet_name_problems`, `sheet_hooks_problems` (сигнатуры не менялись). |
 | `game.hero_steps` | Пошаговое создание героя (Б2а), без UI: `Draft` (черновик), `StepDef`/`STEPS` (22 шага в порядке SRD 2024; функции `needs_*`/`options_*`/`count_*`/`put_*`/`label_*` — функции модуля, не замыкания), `apply_put`, `step_done`, `next_pos`, `clear_from`, `to_sheet(draft, registry)` (итог — тот же `HeroSheet`, мотив и средства от игрока, `opportunity` пуст), `step_for_code`, `background_summary_lines`. Тексты ошибок шагов — из `rules.builder`. |
-| `campaign.build` | Герой на лету: `build_world(hero_id=HeroSheet)` — `resolve_hero_preset` (пресет `custom`, старт в локации манифеста, деньги от набора класса), `apply_hooks` (мотив, средства, возможности); `known_ids(pack)` и `taken_names(pack)` — для `SheetTask`. |
+| `campaign.build` | Герой на лету: `build_world(hero_id=HeroSheet)` — `resolve_hero_preset` (пресет `custom`, старт в локации манифеста, деньги от набора класса), `apply_hooks` (мотив, средства, возможности); `known_ids(pack)` и `taken_names(pack)` — для `SheetTask`. Пресет пака: `build_hero` переносит те же три поля. |
 | `content` (классы) | `CharacterClass.starting_kits` (`StartingKit`: `id`, `items`, `equip`, `gold_cp`; SRD 5.2 варианты A/B/C, замены — `rules-adaptation.md`); выбор набора — `CharacterChoices.class_kit` (схема пака, не сейва; сейв остаётся v8), применение — `rules.builder.apply_class_kit`. |
 
 Сторож: `master.context` не импортирует адаптеры `llm`, `game`, `ui`; `master.summarizer` и `master.hero` не импортируют `game`.

@@ -305,6 +305,105 @@ def test_hero_preset_location_is_unknown(tmp_path, registry):
     check_error(tmp_path, registry, files, "arn.yaml", "nowhere")
 
 
+# средства и возможности пресета героя (шаг 34): правила листа героя
+
+def preset_opportunity(**changes):
+    trigger = {"id": "o1", "if": {"hero_at": "tavern"}, "then": "делает дело", "once": True}
+    trigger.update(changes)
+    return trigger
+
+
+def test_hero_preset_means_four_items_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["means"] = ["а", "б", "в", "г"]
+    check_error(tmp_path, registry, files, "arn.yaml", "means", "от одного до трёх")
+
+
+def test_hero_preset_means_item_too_long_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["means"] = ["я" * 121]
+    check_error(tmp_path, registry, files, "arn.yaml", "means", "длиннее 120")
+
+
+def test_hero_preset_empty_means_is_valid(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["means"] = []
+    assert ids(load(write_pack(tmp_path, files), registry).heroes) == ["arn"]
+
+
+def test_hero_preset_valid_means_and_opportunity_load(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["means"] = ["а", "б", "в"]
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity()]
+    preset = load(write_pack(tmp_path, files), registry).heroes[0]
+    assert preset.means == ["а", "б", "в"]
+    assert [t.id for t in preset.opportunity] == ["o1"]
+
+
+def test_hero_preset_three_opportunities_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [
+        preset_opportunity(id="o1"), preset_opportunity(id="o2"), preset_opportunity(id="o3"),
+    ]
+    check_error(tmp_path, registry, files, "arn.yaml", "opportunity", "не больше 2")
+
+
+def test_hero_preset_repeated_opportunity_id_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(), preset_opportunity()]
+    check_error(tmp_path, registry, files, "arn.yaml", "opportunity", "повторный id")
+
+
+def test_hero_preset_empty_then_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(then="")]
+    check_error(tmp_path, registry, files, "arn.yaml", "opportunity", "намерение")
+
+
+def test_hero_preset_opportunity_unknown_location_is_error(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(**{"if": {"hero_at": "nowhere"}})]
+    check_error(tmp_path, registry, files, "arn.yaml", "неизвестная локация 'nowhere'")
+
+
+def test_hero_preset_opportunity_unknown_npc_is_error(tmp_path, registry):
+    files = default_files()
+    cond = {"npc_status": {"id": "ghost", "is": "alive"}}
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(**{"if": cond})]
+    check_error(tmp_path, registry, files, "arn.yaml", "неизвестный NPC 'ghost'")
+
+
+def test_hero_preset_opportunity_unknown_god_is_error(tmp_path, registry):
+    files = default_files()
+    cond = {"favor": {"god": "nobody", "gte": 1}}
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(**{"if": cond})]
+    check_error(tmp_path, registry, files, "arn.yaml", "неизвестный бог 'nobody'")
+
+
+def test_hero_preset_opportunity_unknown_item_is_error(tmp_path, registry):
+    files = default_files()
+    cond = {"hero_has": "no_such"}
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(**{"if": cond})]
+    check_error(tmp_path, registry, files, "arn.yaml", "неизвестный предмет 'no_such'")
+
+
+def test_hero_preset_opportunity_known_refs_are_valid(tmp_path, registry):
+    files = default_files()
+    cond = {"all": [{"hero_at": "cellar"}, {"npc_status": {"id": "aldric", "is": "alive"}},
+                    {"favor": {"god": "selune", "gte": 1}}]}
+    files["heroes/arn.yaml"]["opportunity"] = [preset_opportunity(**{"if": cond})]
+    assert ids(load(write_pack(tmp_path, files), registry).heroes) == ["arn"]
+
+
+def test_hero_preset_opportunity_flag_and_narrative_have_no_refs(tmp_path, registry):
+    files = default_files()
+    files["heroes/arn.yaml"]["opportunity"] = [
+        preset_opportunity(id="o1", **{"if": {"flag": "anything"}}),
+        preset_opportunity(id="o2", **{"if": {"narrative": "случилось нечто"}}),
+    ]
+    assert ids(load(write_pack(tmp_path, files), registry).heroes) == ["arn"]
+
+
 # календарь пака
 
 def test_holiday_31st_in_30_day_month_is_error(tmp_path, registry):

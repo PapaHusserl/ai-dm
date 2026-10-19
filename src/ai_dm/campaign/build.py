@@ -44,10 +44,13 @@ def resolve_hero_preset(pack, hero) -> HeroPreset:
 
 
 def apply_hooks(hero, sheet) -> None:
-    # мотив, средства и возможности листа -- копиями
-    hero.motive = sheet.motive
-    hero.means = list(sheet.means)
-    hero.opportunity = [t.model_copy(deep=True) for t in sheet.opportunity]
+    # мотив, средства и возможности листа -- копиями; лист главнее пресета, пустое поле не затирает
+    if sheet.motive:
+        hero.motive = sheet.motive
+    if sheet.means:
+        hero.means = list(sheet.means)
+    if sheet.opportunity:
+        hero.opportunity = [t.model_copy(deep=True) for t in sheet.opportunity]
 
 
 def known_ids(pack) -> KnownIds:
@@ -99,6 +102,8 @@ def build_hero(pack, preset, registry):
         hero.companions = [preset.companion.model_copy()]
     hero.sheet.xp = preset.xp
     hero.motive = preset.motive
+    hero.means = list(preset.means)
+    hero.opportunity = [t.model_copy(deep=True) for t in preset.opportunity]
     hero.favor = dict(preset.favor)
     hero.deity_id = preset.deity_id
     if preset.birth_date is not None:
