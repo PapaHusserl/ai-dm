@@ -20,7 +20,7 @@ def battle_text(state, heroes, outcome) -> str:
             name = participant_name(state, heroes, part.ref)
             if name not in names:
                 names.append(name)
-    text = f"бился рядом с героем против {', '.join(names)} ({OUTCOME_TEXT.get(outcome, FALLEN)})"
+    text = f"в бою рядом с героем против {', '.join(names)} ({OUTCOME_TEXT.get(outcome, FALLEN)})"
     return shorten_text(text, NPC_EVENT_TEXT_MAX)
 
 

@@ -201,6 +201,7 @@
 | Knowledge journal | Журнал знаний | `HeroState.knowledge`, `knowledge_note`, `/lore` | что герой узнал о людях, местах, богах, существах (Ж3) |
 | Scene mood | Настроение сцены | `SceneState.scene_mood`, `scene_mood` | `romance` по сюжету; выбирает музыку, не `Tone.mood` (Ж3) |
 | Combat survivor | Выживший боя | `NPC.origin = "engine"`, `NPC.combat`, `rules/survivors.py` | перебежчик, сдавшийся, пощажённый или бежавший враг, оставшийся в `world.npcs` (Ж1) |
+| Warm memory kinds | Тёплые виды памяти | `WARM_KINDS`, `warm_min_weight` | `romance`, `friendship`, `joke`, `shared_deed`, `battle`: человеческие события героя и NPC; при вытеснении сцена весит не меньше `warm_min_weight`, вид пишется раз на сцену (Ж8) |
 | Hidden name | Скрытое имя | `name_hidden`, `shown_name`, `NPC.known_name`, `NpcUpdate.name` | у выжившего игрок видит вид существа, пока настоящее имя не прозвучало; рассказчик имя видит (Ж1) |
 | Bestiary | Бестиарий | `KnowledgeEntry.kind = creature` | записи об изученных существах в журнале знаний (Ж3) |
 | NPC goal | Цель NPC | `NpcGoal`, `NPC.goals`, `rules/goals.py`, `goal_kind`/`goal_target`/`goal_text`/`goal_status` | долгая цель (месть, долг, благодарность…) с состоянием `active`/`done`/`dropped`; ставит движок по фактам или рассказчик/world запросом (Ж2) |

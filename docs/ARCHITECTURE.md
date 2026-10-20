@@ -752,23 +752,30 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 
 ### Память NPC (`rules/npc_memory.py`, BACKLOG 79)
 
-Лимиты — `[npc_memory]` (`NpcMemoryConfig` в `RulesConfig`): `max_scenes = 20`, `max_events_per_scene = 5`. Чистые
+Лимиты — `[npc_memory]` (`NpcMemoryConfig` в `RulesConfig`): `max_scenes = 20`, `max_events_per_scene = 5`, `warm_min_weight = 10` (Ж8). Чистые
 функции над `NPC` и `SceneState`:
 
 - `remember(npc, scene, event, cfg)` — событие в запись сцены; новой записи нет — создаётся (`at_s` = начало сцены, вес =
   `scene.attitude_spent[npc.id]`), при полной памяти до этого `evict`; новая сцена входит всегда. Лимит событий в
   записи — `None`.
-- `evict` — убрать запись с наименьшим `(weight, at_s)`; `events_full` — в записи сцены уже максимум событий.
+- `evict(npc, cfg)` — убрать запись с наименьшим `(effective_weight, at_s)`; `effective_weight(entry, cfg)` —
+  `max(weight, cfg.warm_min_weight)`, если в записи есть событие вида из `WARM_KINDS` (`state/relations.py`: `romance`,
+  `friendship`, `joke`, `shared_deed`, `battle`), иначе `weight`; хранимый `weight` не меняется (Ж8).
+  `events_full` — в записи сцены уже максимум событий. `has_kind(npc, scene, kind)` — есть ли в записи сцены событие
+  вида.
 - `refresh_weight(npc, scene)` — `weight = scene.attitude_spent[npc.id]`: вес — модуль изменения отношений за сцену
   (улучшение и ухудшение равноценны). Зовут `change_attitude` и `combat_flow.settle_parley`.
 - `memory_data`, `memory_last`, `goals_data` (только активные) — данные для промпта.
 
-Запись — рассказчиком, через `npc_update`; исключение — события боя выживших, их пишет движок
-(`survivors.remember_fight`, Ж1; пересмотр Q7 Ж0) (`NpcUpdate.memory_kind` из `MEMORY_KINDS` или `none`, `memory_text`;
+Запись — рассказчиком, через `npc_update`; исключения — события боя выживших, их пишет движок
+(`survivors.remember_fight`, Ж1; пересмотр Q7 Ж0), и память общего боя спутникам (`rules/battle_memory.py`, Ж8:
+`nearby_companions` — живые, `follows == hero.id`; `battle_text`; `remember_battle` — `battle` каждому спутнику,
+один на сцену, нет сцены или герой мёртв — ничего) (`NpcUpdate.memory_kind` из `MEMORY_KINDS` или `none`, `memory_text`;
 `WorldNpcUpdate` полей памяти не имеет). `update_problem` → `memory_problem` до любых изменений: `memory_text` без вида —
 `Invalid memory_text_without_kind`; нет сцены — `Invalid no_scene`; в сцене уже 5 событий — `rejected`
 (`limit-exceeded`), запрос не применяется целиком, в том числе `attitude_delta`. Далее `change_attitude`, затем
-`change_memory` (вес новой записи берёт потраченное отношение). Текст длиннее 120 знаков не отклоняется: обрезка по
+`change_memory` (вес новой записи берёт потраченное отношение); для вида из `WARM_KINDS`, уже записанного в сцене,
+`change_memory` память не пишет: `clamped`, метка `duplicate-kind`, отношение применено (Ж8). Текст длиннее 120 знаков не отклоняется: обрезка по
 последнему пробелу с «…» (итог ≤ 120), статус `clamped`, метка `text-shortened`, запись в `decision.log`, рассказчику —
 пометка «текст укорочен до 120».
 
@@ -798,7 +805,7 @@ kind, label, group)`; `kind_of`: `defected` (метка `parley_defected`, ст�
 слой `rules` не видит `master.relevance`), отношение из `[survivors]` (`start_attitude`), событие памяти и цель
 `life_debt` (`LIFE_DEBT_TEXT`), запись журнала `MET` по виду (`note_met`). Порядок в `TurnRunner.end_fight`: `classify` →
 `settle_parley` → `finish_combat` → `note_combat` (перебежчики идут в бестиарий через `defected=`) → `materialize` →
-`fold_fight`.
+`remember_battle` (Ж8, `rules/battle_memory.py`) → `fold_fight`.
 
 Открытие имени: `TurnRunner.commit` зовёт `reveal_names(hero, world, narration)` перед `note_presence`: NPC рядом или с
 `follows`, `name != shown_name` (имя назначено), `mentions` (эвристика Ж3) → `known_name = name` и

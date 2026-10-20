@@ -1,6 +1,6 @@
 # Ж8 П1 (docs/plan-zh8.md): общий бой пишет движок каждому спутнику героя (kind battle).
 #   nearby_companions -- живые NPC с follows == hero.id;
-#   battle_text -- «бился рядом с героем против <враги> (<исход>)», до NPC_EVENT_TEXT_MAX знаков;
+#   battle_text -- «в бою рядом с героем против <враги> (<исход>)», до NPC_EVENT_TEXT_MAX знаков;
 #   remember_battle -- событие battle спутникам; нет сцены / герой мёртв -- без памяти.
 import game_kit  # noqa: F401  (путь к master_kit)
 import pytest
@@ -58,7 +58,7 @@ def test_nearby_companions_skips_follower_of_someone_else(registry, cfg):
 def test_battle_text_victory_lists_enemies(registry, cfg):
     bundle, hero, _ = setup(registry, cfg)
     text = battle_text(bundle.session.active_combat, {hero.id: hero}, "victory")
-    assert text == "бился рядом с героем против Воин-гоблин 1, Воин-гоблин 2 (победа)"
+    assert text == "в бою рядом с героем против Воин-гоблин 1, Воин-гоблин 2 (победа)"
 
 
 def test_battle_text_fled(registry, cfg):
@@ -124,7 +124,7 @@ def test_remember_battle_writes_event_to_companion(registry, cfg):
     bundle, hero, npc = setup(registry, cfg)
     fight(bundle, hero, cfg=cfg)
     [event] = battle_events(npc)
-    assert event.text == "бился рядом с героем против Воин-гоблин 1, Воин-гоблин 2 (победа)"
+    assert event.text == "в бою рядом с героем против Воин-гоблин 1, Воин-гоблин 2 (победа)"
 
 
 def test_remember_battle_event_has_turn_seq_and_scene(registry, cfg):
