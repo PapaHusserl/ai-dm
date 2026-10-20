@@ -3,35 +3,27 @@
 Закладка для новой сессии. Перезаписывается, не дописывается. Правила — docs/RULES.md, как работаем — AGENTS.md.
 
 ## Где мы
-- 19 ✅ (2026-10-20, 6a502ec): Обман «ссорится» — цель один свой ход бьёт союзника по `group_id` (иначе по стороне),
-  СЛ +2, только фразой; мораль группы при сильном успехе (СЛ+10 / нат. 20) — раненые ≤ 50 % HP «тоже сдаются/уходят»,
-  `spread_morale = true`. Исходы переговоров вынесены в `combat/actions/parley_effects.py`. ≈ $8 — docs/plan-19.md.
-- Новые BACKLOG 118 (подменю TUI «навык × исход»), 119 (старые мутанты `parley_dc`).
+- 96а ▶: П1 «движок + простая UI» закоммичена (6dca2ea, push): `/inv надеть|снять|выпить`, смена оружия/щита в бою
+  по SRD, заметки рассказчику. cov 97,97 %, smells 200/200, dead чист. Итог П1 и решения 1–17 — docs/plan-96a.md.
+  П2 (окно `InvModal` в TUI) — после Э10а.
+- Э10а (OpenAI, BACKLOG 65): блок снят (NOTES.md 2026-10-20 «gemini очень плохо»), план — docs/plan-e10a.md
+  (не закоммичен — войдёт в коммит Э10а); решения 1–7 приняты (зависимость `openai>=3.35` — да; по умолчанию Gemini,
+  OpenAI запасной в `narrator_chain`; effort medium; import — sol low; без reasoning.summary; сметы тестя не делать).
+  Ждёт «окей, кабаним».
 
 ## Следующие 3 шага (из ROADMAP)
-1. 96а Экипировка и зелья из `inv`.
-2. ЖП4 Живой прогон (+ резерв Фикс ЖП4): проверить Ж8 (записи новых видов у спутников, `duplicate-kind`, вход
-   рассказчика против ≈ 28k) и 19 (Обман «он вас предаст» → враг бьёт своего; «сдавайтесь» с большим броском по
-   раненой группе → несколько сдались).
-3. У0.
+1. Э10а OpenAI-адаптер — docs/plan-e10a.md (одна партия M; груминг пропущен по просьбе проектировщика).
+2. 96а П2 — окно TUI по плану в docs/plan-96a.md; затем итог шага у тестя, 96 → done/ решает архитектор (96б впереди).
+3. ЖП4 (+ резерв Фикс ЖП4) — проверить 96а целиком, Ж8, 19; первый прогон на OpenAI-адаптере. Затем У0.
 
 ## Открытые вопросы
-- BACKLOG 67, 75 — ждут ЖП4 (без находок → dropped).
-- tests/scenarios/memory_script.py: MEMORY_CONTEXT_CAP 2806 — хрупкий, сломается от нового поля героя.
-- BACKLOG 10 и 20: строки «Остаток … → Ж2» устарели — поправить при касании.
-- `master.context_cap`: `ge=8000` в коде или только рекомендация в TZ 11 — решение проектировщика.
-- mutmut без сети не собирается (PyPI timeout): запускать с `UV_OFFLINE=1`.
-- Папа-кабан на fable упирается в лимит Fable — в шаге 19 перезапущен на opus разово.
-- Живой мир на другой машине (dusk_academy): раздать `scripts/migrate_dusk_18plus.py`; откат — `scripts/rollback_world.py`.
-- Перед живым прогоном — бэкап saves/.
-
-## Временное и заморожено
-- ~/.config/ai-dm/config.toml (бэкап config.toml.bak-20261014): summarizer gemini-3-flash-preview, запасной
-  рассказчик gemini-4-argon; IPv6 до googleapis — играть с `networksetup -setv6off Wi-Fi`.
-- Заморожено: BACKLOG 16, 30 (кроме records_for), 65. Тегов stage-* нет (есть только k0).
-- Музыка: OGG кодировать через libsndfile (`uv run --no-project --with soundfile`).
+- BACKLOG 67, 75 — ждут ЖП4. Новые: 120 (сдвиг часов `/inv` через полночь), 121 (старые мутанты после 96а П1).
+- tests/scenarios/memory_script.py: MEMORY_CONTEXT_CAP 2806 — хрупкий.
+- mutmut без сети: `UV_OFFLINE=1`. Папа-кабан — на fable; на opus не переключать без спроса Влада (2026-10-20).
+- Хук запрещает правку docs/ через bash — только Edit/Write.
+- Перед живым прогоном — бэкап saves/. `ruff check src tests` — 16 старых замечаний на main.
 
 ## Ссылки
-- Последний шаг — docs/plan-19.md; отклик — ~/projects/semia-kabanov/otkliki/orkestrator/ai-dm/2026-10-20-19.md.
-- `ruff check src tests` — 16 замечаний на main (старые), не разобраны.
+- docs/plan-e10a.md (текущий), docs/plan-96a.md; последний коммит 6dca2ea.
+- Отклик планирования 96а — ~/projects/semia-kabanov/otkliki/orkestrator/ai-dm/2026-10-20-96a.md.
 - Очередь — docs/ROADMAP.md; беклог — docs/BACKLOG.md; NOTES.md. AGENTS.md, docs/RULES.md.
