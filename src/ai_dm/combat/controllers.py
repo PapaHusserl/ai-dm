@@ -26,6 +26,21 @@ class ScriptedController:
         return choice
 
 
+def is_quarreling(engine, ref) -> bool:
+    return any(e.id == "quarreling" for e in engine.creature(ref).active_effects)
+
+
+def quarrel_targets(engine, ref) -> list[str]:
+    # цели поссорившегося: боеспособные союзники по группе, а если их нет -- своей стороны
+    me = engine.part(ref)
+    mates = [
+        p.ref for p in engine.state.participants
+        if p.ref != ref and p.side == me.side and engine.is_capable(p.ref)
+    ]
+    group = [r for r in mates if engine.part(r).group_id == me.group_id]
+    return group or mates
+
+
 class EngineTactics:
     # детерминированная тактика рядовых участников, броски не использует
     def __init__(self, engine):
@@ -38,9 +53,11 @@ class EngineTactics:
 
     def choose_turn(self, options, ref) -> str:
         ids = [o.id for o in options]
-        chosen = self.pick_early(options, ref)
-        if chosen is not None:
-            return chosen
+        # поссорившийся бьёт своих: ни особых действий, ни толчка
+        if not is_quarreling(self.engine, ref):
+            chosen = self.pick_early(options, ref)
+            if chosen is not None:
+                return chosen
         if "multiattack" in ids:
             return "multiattack"
         attack = self.pick_attack(options, ref)
@@ -129,6 +146,8 @@ class EngineTactics:
     def enemies(self, ref, status) -> list:
         # враги стороны: боеспособные ("active") или лежащие ("down")
         engine = self.engine
+        if is_quarreling(engine, ref):
+            return [] if status == "down" else quarrel_targets(engine, ref)
         side = engine.part(ref).side
         result = []
         for p in engine.state.participants:

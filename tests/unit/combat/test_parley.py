@@ -3,7 +3,7 @@
 #   combat.actions.parley.parley_dc(engine, ref, target, skill, outcome) -> (dc, mode, parts)
 #     mode -- "disadvantage" (безымянный монстр, NPC с отношением <= -30) или "normal"
 #   Навык: intimidation (surrender, flee) / persuasion (surrender, flee, defect) /
-#   deception (flee, waver).
+#   deception (flee, waver, quarrel).
 #   СЛ: 15 или Инт цели; -2 при HP <= 50%, -5 при <= 25%; -3 выбыла половина группы, ещё -3 выбыл
 #   лидер; -2 перевес героев (только Запугивание); defect +5; waver -2;
 #   ключевой NPC +5, defect запрещён;
@@ -14,7 +14,9 @@
 import pytest
 from combat_kit import (
     ScriptedRng,
+    bite,
     creature,
+    custom_registry,
     hp,
     make_engine,
     make_fighter,
@@ -25,10 +27,12 @@ from combat_kit import (
     turn,
 )
 
-from ai_dm.combat.actions.parley import parley_dc
+from ai_dm.combat.actions.parley import FLAG_IDS, parley_dc
+from ai_dm.config.settings import load_rules_config
 from ai_dm.rules.names import SKILL_NAMES
 from ai_dm.rules.results import Rejected
-from ai_dm.state.combat import CombatState
+from ai_dm.state.combat import CombatState, Zone
+from ai_dm.state.creature import ActiveEffect
 
 # две кости при помехе: оба d20 берутся из очереди
 PASS = [19, 19]
@@ -364,9 +368,17 @@ def test_intimidation_cannot_make_a_target_waver(registry, cfg):
     assert talk(engine, skill="intimidation", outcome="waver").reason == "outcome_not_allowed"
 
 
-def test_quarrel_is_not_in_this_batch(registry, cfg):
-    engine = duel(registry, cfg)
-    assert isinstance(talk(engine, skill="deception", outcome="quarrel"), Rejected)
+def test_deception_can_make_a_target_quarrel(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    assert not isinstance(talk(engine, skill="deception", outcome="quarrel"), Rejected)
+
+
+@pytest.mark.parametrize("skill", ["intimidation", "persuasion"])
+def test_other_skills_cannot_make_a_target_quarrel(registry, cfg, skill):
+    engine = duel(registry, cfg, goblins=2)
+    result = talk(engine, skill=skill, outcome="quarrel")
+    assert_refused(engine, result)
+    assert result.reason == "outcome_not_allowed"
 
 
 def test_unknown_skill_is_refused(registry, cfg):
@@ -747,14 +759,13 @@ def test_default_parley_config(cfg):
     assert (p.friendly_bonus, p.hp_half_bonus, p.hp_quarter_bonus) == (5, 2, 5)
     assert (p.losses_bonus, p.leader_down_bonus) == (3, 3)
     assert (p.overwhelm_bonus, p.defect_penalty, p.waver_bonus, p.key_penalty) == (2, 5, 2, 5)
-    assert (p.min_int, p.offended_margin, p.spread_morale) == (3, 5, False)
+    assert (p.min_int, p.offended_margin, p.spread_morale) == (3, 5, True)
+    assert (p.quarrel_penalty, p.strong_margin) == (2, 10)
     assert list(p.immune_types) == ["construct", "ooze", "plant"]
     assert (p.surrender_attitude, p.defect_attitude, p.offended_attitude) == (10, 20, -10)
 
 
 def test_parley_dc_follows_the_config(registry):
-    from ai_dm.config.settings import load_rules_config
-
     custom = load_rules_config(toml_text="[parley]\nbase_dc = 12\ndefect_penalty = 1\n")
     engine = duel(registry, custom)
     assert dc_of(engine)[0] == 12
@@ -864,7 +875,7 @@ def test_other_refusal_reasons(registry, cfg):
     engine = duel(registry, cfg)
     assert talk(engine, target="nobody").reason == "target_required"
     assert talk(engine, skill="athletics").reason == "unknown_skill"
-    assert talk(engine, outcome="quarrel").reason == "unknown_outcome"
+    assert talk(engine, outcome="mutiny").reason == "unknown_outcome"
     assert engine.parley("goblin_1", skill="persuasion", outcome="surrender",
                          target="hero").reason == "not_a_hero"
     turn(engine, "hero").action = False
@@ -945,8 +956,6 @@ def test_surrendered_enemy_does_not_provoke_when_the_hero_leaves(registry, cfg):
 
 
 def test_wavering_target_still_takes_start_of_turn_damage_but_loses_the_action(registry, cfg):
-    from ai_dm.state.creature import ActiveEffect
-
     engine = duel(registry, cfg, ScriptedRng(d20=PASS, d6=[4]), goblins=2)
     talk(engine, skill="deception", outcome="waver")
     creature(engine, "goblin_1").active_effects.append(
@@ -957,3 +966,513 @@ def test_wavering_target_still_takes_start_of_turn_damage_but_loses_the_action(r
     engine.step()
     assert hp(engine, "goblin_1") == 6
     assert hp(engine, "hero") == 12
+
+
+# --- шаг 19: «ссорится» (deception + quarrel) ---
+
+def quarrel(engine, target="goblin_1"):
+    return talk(engine, skill="deception", outcome="quarrel", target=target)
+
+
+def mark_quarrel(engine, ref="goblin_1"):
+    creature(engine, ref).active_effects.append(
+        ActiveEffect(id="quarreling", source="hero", kind="flag")
+    )
+
+
+def run_turn(engine, ref):
+    engine.state.turn_index = [p.ref for p in engine.state.participants].index(ref)
+    return engine.step()
+
+
+def test_quarrel_is_a_known_flag_cleared_after_the_fight():
+    assert "quarreling" in FLAG_IDS
+
+
+def test_quarrel_dc_is_the_plain_dc_plus_two(registry, cfg):
+    assert dc_of(duel(registry, cfg, goblins=2), skill="deception", outcome="quarrel")[0] == 17
+
+
+def test_quarrel_dc_parts_name_the_quarrel_penalty(registry, cfg):
+    parts = dc_of(duel(registry, cfg, goblins=2), skill="deception", outcome="quarrel")[2]
+    assert ("ссора", 2) in parts
+
+
+def test_quarrel_penalty_follows_the_config(registry):
+    custom = load_rules_config(toml_text="[parley]\nquarrel_penalty = 4\n")
+    assert dc_of(duel(registry, custom, goblins=2), skill="deception", outcome="quarrel")[0] == 19
+
+
+def test_quarrel_log_shows_the_penalty(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=FAIL), goblins=2)
+    quarrel(engine)
+    assert "СЛ 17 [база 15, ссора +2]" in "\n".join(engine.state.log)
+
+
+def test_quarrel_log_names_the_outcome(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=FAIL), goblins=2)
+    quarrel(engine)
+    assert "поссориться со своими" in "\n".join(engine.state.log)
+
+
+def test_quarrel_succeeds_exactly_on_the_dc(registry, cfg):
+    # 16 + 1 = 17
+    engine = duel(registry, cfg, ScriptedRng(d20=[16, 16]), goblins=2)
+    quarrel(engine)
+    assert "quarreling" in effect_ids(engine, "goblin_1")
+
+
+def test_quarrel_fails_one_below_the_dc(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[15, 15]), goblins=2)
+    quarrel(engine)
+    assert "quarreling" not in effect_ids(engine, "goblin_1")
+
+
+def test_quarrel_flag_lasts_until_the_end_of_the_targets_turn(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    quarrel(engine)
+    [flag] = [e for e in creature(engine, "goblin_1").active_effects if e.id == "quarreling"]
+    assert (flag.kind, flag.source) == ("flag", "hero")
+    assert (flag.expires.kind, flag.expires.owner) == ("end_of_turn", "goblin_1")
+
+
+def test_quarrel_changes_neither_side_nor_status(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    quarrel(engine)
+    p = part(engine, "goblin_1")
+    assert (p.side, p.status) == ("enemies", "active")
+
+
+def test_quarrel_gives_no_events_and_logs_the_quarrel(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    assert event_types(quarrel(engine)) == []
+    assert "  Воин-гоблин 1 ссорится со своими" in "\n".join(engine.state.log)
+
+
+def test_quarrel_spends_the_action_and_marks_the_attempt(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    quarrel(engine)
+    assert turn(engine, "hero").action is False
+    assert "parley_tried" in effect_ids(engine, "goblin_1")
+
+
+def test_quarrel_without_anyone_to_quarrel_with_is_refused(registry, cfg):
+    engine = duel(registry, cfg)
+    result = quarrel(engine)
+    assert_refused(engine, result)
+    assert result.reason == "no_one_to_quarrel"
+
+
+def test_refused_quarrel_leaves_no_attempt_flag_and_no_log(registry, cfg):
+    engine = duel(registry, cfg)
+    before = list(engine.state.log)
+    quarrel(engine)
+    assert effect_ids(engine, "goblin_1") == []
+    assert engine.state.log == before
+
+
+def test_quarrel_with_only_a_downed_mate_is_refused(registry, cfg):
+    engine = duel(registry, cfg, goblins=2)
+    part(engine, "goblin_2").status = "down"
+    set_hp(engine, "goblin_2", 0)
+    assert quarrel(engine).reason == "no_one_to_quarrel"
+
+
+def test_quarrel_with_a_mate_from_another_group_is_allowed(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")], rng=ScriptedRng(d20=PASS),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("raider_1", "goblin_warrior", "hall", group="raiders")],
+    )
+    assert not isinstance(quarrel(engine), Rejected)
+
+
+def test_other_outcomes_do_not_need_a_mate(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS))
+    assert not isinstance(talk(engine, skill="deception", outcome="waver"), Rejected)
+
+
+def test_quarrel_is_not_in_the_menu(registry, cfg):
+    engine = duel(registry, cfg, goblins=2)
+    assert not [i for i in parley_ids(engine) if i.endswith(":quarrel")]
+
+
+def test_quarreling_goblin_hits_a_group_mate_not_the_hero(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS + [15], d6=[3]), goblins=2)
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert (hp(engine, "goblin_2"), hp(engine, "hero")) == (5, 12)
+
+
+def test_quarreling_goblin_hits_the_weakest_mate(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS + [15], d6=[3]), goblins=3)
+    set_hp(engine, "goblin_2", 8)
+    set_hp(engine, "goblin_3", 6)
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert (hp(engine, "goblin_2"), hp(engine, "goblin_3")) == (8, 1)
+
+
+def test_quarreling_goblin_prefers_its_group_to_other_groups(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")],
+        rng=ScriptedRng(d20=PASS + [15], d6=[3]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("goblin_2", "goblin_warrior", "hall"),
+                  mon("raider_1", "goblin_warrior", "hall", group="raiders")],
+    )
+    set_hp(engine, "raider_1", 3)
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert (hp(engine, "goblin_2"), hp(engine, "raider_1")) == (5, 3)
+
+
+def test_quarreling_goblin_without_group_mates_hits_another_group(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")],
+        rng=ScriptedRng(d20=PASS + [15], d6=[3]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("raider_1", "goblin_warrior", "hall", group="raiders")],
+    )
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert (hp(engine, "raider_1"), hp(engine, "hero")) == (5, 12)
+
+
+def test_quarrel_ends_with_the_turn_and_the_next_one_hits_the_hero(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS + [15, 15], d6=[3, 3]), goblins=2)
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert "quarreling" not in effect_ids(engine, "goblin_1")
+    run_turn(engine, "goblin_1")
+    assert hp(engine, "hero") == 7
+
+
+def test_the_hurt_mate_hits_the_hero_on_its_own_turn(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS + [15, 15], d6=[3, 3]), goblins=2)
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    run_turn(engine, "goblin_2")
+    assert (hp(engine, "hero"), hp(engine, "goblin_1")) == (7, 10)
+
+
+def test_quarreling_goblin_has_no_attack_options_against_the_hero(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    quarrel(engine)
+    ids = option_ids(engine, "goblin_1")
+    hostile = [i for i in ids if i.split(":")[0] in ("attack", "shove", "disarm") and ":hero" in i]
+    assert hostile == []
+    assert "attack:скимитар:goblin_2" in ids
+
+
+def test_the_quarrel_does_not_change_the_hero_options(registry, cfg):
+    engine = duel(registry, cfg, goblins=2)
+    before = option_ids(engine, "hero")
+    mark_quarrel(engine)
+    assert option_ids(engine, "hero") == before
+
+
+def spread_out(registry, cfg, rng, reg=None):
+    # герой у двери, ссорящийся в зале, его союзник на балконе (нужны дальность или шаг)
+    monster = "goblin_warrior" if reg is None else "brute"
+    reg = reg or registry
+    return make_engine(
+        reg, cfg, heroes=[(make_fighter(reg), "door")], rng=rng,
+        monsters=[mon("goblin_1", monster, "hall"), mon("goblin_2", monster, "balcony")],
+    )
+
+
+def melee_only(registry):
+    return custom_registry(registry, brute={"actions": [bite()]})
+
+
+def test_quarreling_melee_monster_walks_to_a_mate_in_another_zone(registry, cfg):
+    engine = spread_out(
+        registry, cfg, ScriptedRng(d20=PASS + [15], d6=[3]), reg=melee_only(registry),
+    )
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert part(engine, "goblin_1").zone_id == "balcony"
+
+
+def test_quarreling_melee_monster_hits_the_mate_it_walked_to(registry, cfg):
+    engine = spread_out(
+        registry, cfg, ScriptedRng(d20=PASS + [15], d6=[3]), reg=melee_only(registry),
+    )
+    quarrel(engine)
+    run_turn(engine, "goblin_1")
+    assert (hp(engine, "goblin_2"), hp(engine, "hero")) == (7, 12)
+
+
+def test_quarreling_archer_shoots_a_mate_in_another_zone(registry, cfg):
+    engine = spread_out(registry, cfg, ScriptedRng(d20=PASS + [15], d6=[3]))
+    quarrel(engine)
+    events = run_turn(engine, "goblin_1")
+    assert [(e.data["mode"], e.data["target"]) for e in events if e.type == "attack"] == [
+        ("ranged", "goblin_2"),
+    ]
+
+
+def test_quarreling_goblin_whose_mates_are_gone_ends_the_turn(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=PASS), goblins=2)
+    quarrel(engine)
+    part(engine, "goblin_2").status = "dead"
+    set_hp(engine, "goblin_2", 0)
+    events = run_turn(engine, "goblin_1")
+    assert (hp(engine, "hero"), [e.type for e in events if e.type == "attack"]) == (12, [])
+
+
+def roof(registry, cfg, rng=None, monster="goblin_warrior", reg=None):
+    zones = [
+        Zone(id="door", name="У двери", adjacent=["hall"]),
+        Zone(id="hall", name="Центр зала", adjacent=["door", "balcony"]),
+        Zone(id="balcony", name="Балкон", adjacent=["hall"], elevation=1),
+    ]
+    reg = reg or registry
+    return make_engine(
+        reg, cfg, heroes=[(make_fighter(reg), "balcony")], rng=rng, zones=zones,
+        monsters=[mon("goblin_1", monster, "balcony"), mon("goblin_2", monster, "balcony")],
+    )
+
+
+def choose(engine, ref="goblin_1"):
+    return engine.controllers[ref].choose_turn(engine.available_actions(ref), ref)
+
+
+def test_goblin_on_a_roof_shoves_the_hero_when_not_quarreling(registry, cfg):
+    assert choose(roof(registry, cfg)) == "shove:hero:hall"
+
+
+def test_quarreling_goblin_does_not_shove(registry, cfg):
+    engine = roof(registry, cfg)
+    mark_quarrel(engine)
+    assert choose(engine).startswith("attack:")
+
+
+def entangle(engine, ref="goblin_1"):
+    creature(engine, ref).active_effects.append(
+        ActiveEffect(id="ensnaring_strike", source="hero", kind="ensnared",
+                     params={"dice": "1d6", "damage_type": "piercing", "dc": 12})
+    )
+
+
+def test_ensnared_goblin_tries_to_escape_when_not_quarreling(registry, cfg):
+    engine = duel(registry, cfg, goblins=2)
+    entangle(engine)
+    assert choose(engine).startswith("escape")
+
+
+def test_quarreling_ensnared_goblin_attacks_instead_of_escaping(registry, cfg):
+    engine = duel(registry, cfg, goblins=2)
+    entangle(engine)
+    mark_quarrel(engine)
+    assert choose(engine).startswith("attack:")
+
+
+def test_quarreling_boss_multiattacks_only_its_mates(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")],
+        rng=ScriptedRng(d20=[15, 15], d6=[1, 1]),
+        monsters=[mon("boss", "goblin_boss", "hall"), mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    mark_quarrel(engine, "boss")
+    events = engine.perform("boss", "multiattack")
+    assert [(e.data["target"], e.data["outcome"]) for e in events if e.type == "attack"] == [
+        ("goblin_1", "hit"), ("goblin_1", "hit"),
+    ]
+
+
+def test_quarreling_boss_prefers_multiattack_to_a_disarm(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")],
+        monsters=[mon("boss", "goblin_boss", "hall"), mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    mark_quarrel(engine, "boss")
+    assert choose(engine, "boss") == "multiattack"
+
+
+# --- шаг 19: мораль группы (spread_morale) ---
+
+# Воин-гоблин: 10 HP, Инт 10 (СЛ 15); Запугивание героя +3, при помехе берётся меньшая кость.
+# Цель goblin_1 на 2 HP (≤ 25 %): СЛ 10, значит СЛ + 10 = 20 -- кость 17.
+STRONG = [17, 17]
+SHORT = [16, 16]
+
+
+def hurt_band(registry, cfg, d20, goblins=3):
+    # goblin_1 -- цель; goblin_2 ровно на половине HP, goblin_3 чуть выше половины
+    engine = duel(registry, cfg, ScriptedRng(d20=d20), goblins=goblins)
+    set_hp(engine, "goblin_1", 2)
+    set_hp(engine, "goblin_2", 5)
+    if goblins > 2:
+        set_hp(engine, "goblin_3", 6)
+    return engine
+
+
+def status_of(engine, ref):
+    return part(engine, ref).status
+
+
+def test_strong_success_makes_a_wounded_group_mate_surrender_too(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert [status_of(engine, r) for r in ("goblin_1", "goblin_2")] == ["surrendered"] * 2
+
+
+def test_strong_success_leaves_a_mate_above_half_hp_fighting(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert status_of(engine, "goblin_3") == "active"
+
+
+def test_strong_success_does_not_touch_a_wounded_member_of_another_group(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[(make_fighter(registry), "hall")], rng=ScriptedRng(d20=STRONG),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("goblin_2", "goblin_warrior", "hall"),
+                  mon("raider_1", "goblin_warrior", "hall", group="raiders")],
+    )
+    for ref, value in (("goblin_1", 2), ("goblin_2", 5), ("raider_1", 3)):
+        set_hp(engine, ref, value)
+    talk(engine, skill="intimidation")
+    assert status_of(engine, "raider_1") == "active"
+
+
+def test_one_short_of_the_strong_margin_spreads_nothing(registry, cfg):
+    engine = hurt_band(registry, cfg, SHORT)
+    talk(engine, skill="intimidation")
+    assert [status_of(engine, r) for r in ("goblin_1", "goblin_2")] == ["surrendered", "active"]
+
+
+def test_natural_twenty_on_a_success_spreads_the_morale(registry, cfg):
+    # 20 + 3 = 23 против СЛ 15: запас 8, но натуральная 20
+    engine = duel(registry, cfg, ScriptedRng(d20=[20, 20]), goblins=3)
+    set_hp(engine, "goblin_2", 5)
+    talk(engine, skill="intimidation")
+    assert status_of(engine, "goblin_2") == "surrendered"
+
+
+def test_natural_twenty_on_a_failure_does_nothing(registry, cfg, monkeypatch):
+    # Инт 22: СЛ 22, а 20 + 1 = 21
+    monkeypatch.setitem(registry.get("monster", "goblin_warrior").abilities, "int", 22)
+    engine = duel(registry, cfg, ScriptedRng(d20=[20, 20]), goblins=3)
+    set_hp(engine, "goblin_2", 5)
+    talk(engine, skill="persuasion")
+    assert [status_of(engine, r) for r in ("goblin_1", "goblin_2")] == ["active", "active"]
+
+
+def test_flee_spreads_the_morale_too(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation", outcome="flee")
+    assert [status_of(engine, r) for r in ("goblin_1", "goblin_2")] == ["fled", "fled"]
+
+
+@pytest.mark.parametrize("skill,outcome,d20", [
+    ("persuasion", "defect", [20, 20]),
+    ("deception", "waver", [19, 19]),
+    ("deception", "quarrel", [20, 20]),
+])
+def test_other_outcomes_do_not_spread(registry, cfg, skill, outcome, d20):
+    engine = hurt_band(registry, cfg, d20)
+    talk(engine, skill=skill, outcome=outcome)
+    p = part(engine, "goblin_2")
+    assert (p.side, p.status, effect_ids(engine, "goblin_2")) == ("enemies", "active", [])
+
+
+def test_morale_can_be_switched_off(registry):
+    off = load_rules_config(toml_text="[parley]\nspread_morale = false\n")
+    engine = hurt_band(registry, off, STRONG)
+    talk(engine, skill="intimidation")
+    assert [status_of(engine, r) for r in ("goblin_1", "goblin_2")] == ["surrendered", "active"]
+
+
+def test_strong_margin_follows_the_config(registry):
+    wide = load_rules_config(toml_text="[parley]\nstrong_margin = 5\n")
+    engine = hurt_band(registry, wide, SHORT)
+    talk(engine, skill="intimidation")
+    assert status_of(engine, "goblin_2") == "surrendered"
+
+
+def test_morale_gives_an_event_for_every_one_who_gave_up(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    events = talk(engine, skill="intimidation")
+    assert [(e.type, e.data["id"]) for e in events] == [
+        ("participant_surrendered", "goblin_1"), ("participant_surrendered", "goblin_2"),
+    ]
+
+
+def test_morale_writes_a_log_line_for_each_follower(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert "  Воин-гоблин 2 тоже сдаётся" in "\n".join(engine.state.log)
+
+
+def test_fleeing_follower_is_logged(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation", outcome="flee")
+    assert "  Воин-гоблин 2 тоже уходит" in "\n".join(engine.state.log)
+
+
+def test_single_target_log_has_no_also(registry, cfg):
+    engine = hurt_band(registry, cfg, SHORT)
+    talk(engine, skill="intimidation")
+    log = "\n".join(engine.state.log)
+    assert "  Воин-гоблин 1 сдаётся" in log
+    assert "тоже" not in log
+
+
+def test_target_of_a_strong_success_has_no_also(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert "  Воин-гоблин 1 сдаётся" in "\n".join(engine.state.log)
+
+
+def test_morale_takes_no_extra_roll(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert engine.rng.calls == ["d20", "d20"]
+
+
+def test_surrendered_follower_drops_its_weapons(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    talk(engine, skill="intimidation")
+    assert {i.owner_ref for i in engine.state.ground_items} == {"goblin_1", "goblin_2"}
+
+
+def test_morale_skips_a_member_who_is_down(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG)
+    part(engine, "goblin_2").status = "down"
+    set_hp(engine, "goblin_2", 0)
+    set_hp(engine, "goblin_3", 5)
+    talk(engine, skill="intimidation")
+    assert [status_of(engine, r) for r in ("goblin_2", "goblin_3")] == ["down", "surrendered"]
+
+
+def test_morale_that_removes_every_enemy_wins_the_fight(registry, cfg):
+    engine = hurt_band(registry, cfg, STRONG, goblins=2)
+    talk(engine, skill="intimidation")
+    assert engine.state.outcome == "victory"
+
+
+def test_without_morale_the_fight_goes_on(registry, cfg):
+    engine = hurt_band(registry, cfg, SHORT, goblins=2)
+    talk(engine, skill="intimidation")
+    assert engine.state.outcome is None
+
+
+@pytest.mark.parametrize("fields", [
+    {"creature_type": "construct"},
+    {"abilities": {"str": 8, "dex": 15, "con": 10, "int": 3, "wis": 8, "cha": 8}},
+])
+def test_morale_does_not_reach_a_wounded_member_who_cannot_hear(registry, cfg, fields):
+    reg = custom_registry(registry, dummy=fields)
+    engine = make_engine(
+        reg, cfg, heroes=[(make_fighter(reg), "hall")], rng=ScriptedRng(d20=STRONG),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("dummy_1", "dummy", "hall"),
+                  mon("goblin_3", "goblin_warrior", "hall")],
+    )
+    for ref, value in (("goblin_1", 2), ("dummy_1", 5), ("goblin_3", 5)):
+        set_hp(engine, ref, value)
+    talk(engine, skill="intimidation")
+    assert [status_of(engine, r) for r in ("dummy_1", "goblin_3")] == ["active", "surrendered"]

@@ -56,6 +56,7 @@ class ParleyConfig(BaseModel):
     # надбавки к СЛ за исход и за ключевого NPC
     defect_penalty: int = 5
     waver_bonus: int = 2
+    quarrel_penalty: int = 2
     key_penalty: int = 5
     # не отвечают на переговоры: Инт не больше min_int и типы существ из списка
     min_int: int = 3
@@ -68,8 +69,10 @@ class ParleyConfig(BaseModel):
     offended_attitude: int = -10
     # цель обезоружена: СЛ ниже
     disarmed_bonus: int = 2
-    # мораль группы при сильном успехе (на будущее, пока не используется)
-    spread_morale: bool = False
+    # мораль группы при сильном успехе: «сдаться» и «отступить» затрагивают раненых группы цели
+    spread_morale: bool = True
+    # сильный успех: итог не меньше СЛ + strong_margin (или натуральная 20)
+    strong_margin: int = 10
 
 
 class SurvivorsConfig(BaseModel):

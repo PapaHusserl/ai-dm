@@ -1,27 +1,28 @@
-from ai_dm.combat import disarm
-from ai_dm.combat.controllers import EngineTactics
+from ai_dm.combat.actions.parley_effects import apply_success, offend, sentient
+from ai_dm.combat.controllers import quarrel_targets
 from ai_dm.combat.zones import distance
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.checks import skill_check
 from ai_dm.rules.names import SKILL_NAMES
 from ai_dm.rules.results import Rejected
-from ai_dm.state.creature import ActiveEffect, Expiry
+from ai_dm.state.creature import ActiveEffect
 
-# навык -> какие исходы он допускает (SRD 5.2: Influence); «ссорится» отложен (BACKLOG)
+# навык -> какие исходы он допускает (SRD 5.2: Influence)
 ALLOWED = {
     "intimidation": ("surrender", "flee"),
     "persuasion": ("surrender", "flee", "defect"),
-    "deception": ("flee", "waver"),
+    "deception": ("flee", "waver", "quarrel"),
 }
 # что предлагает меню героя: одна строка на навык и цель, остальное -- фразой
 MENU = (("intimidation", "surrender"), ("persuasion", "defect"), ("deception", "flee"))
 OUTCOME_WORDS = {
     "surrender": "сдаться", "flee": "отступить", "defect": "перейти на вашу сторону",
-    "waver": "заколебаться",
+    "waver": "заколебаться", "quarrel": "поссориться со своими",
 }
 # метки на существе цели; на NPC живут до конца боя (убирает game/combat_flow)
 FLAG_IDS = (
     "parley_tried", "wavering", "parley_defected", "parley_offended", "parley_advantage",
+    "quarreling",
 )
 
 
@@ -66,11 +67,7 @@ def target_problem(engine, ref, target):
 
 def mind_problem(engine, ref, target):
     # цель разумна и слышит: своя или соседняя зона
-    cfg = engine.cfg.parley
-    if not engine.monster_of(target):
-        return "not_sentient"
-    monster = engine.monster(target)
-    if monster.abilities["int"] <= cfg.min_int or monster.creature_type in cfg.immune_types:
+    if not sentient(engine, target):
         return "not_sentient"
     if distance(engine.state.zones, engine.part(ref).zone_id, engine.part(target).zone_id) > 1:
         return "out_of_hearing"
@@ -78,9 +75,11 @@ def mind_problem(engine, ref, target):
 
 
 def history_problem(engine, outcome, target):
-    # одна попытка на цель за бой; ключевой NPC не переходит
+    # одна попытка на цель за бой; ключевой NPC не переходит; ссориться цели не с кем -- отказ
     if has_flag(engine, target, "parley_tried"):
         return "already_tried"
+    if outcome == "quarrel" and not quarrel_targets(engine, target):
+        return "no_one_to_quarrel"
     npc = engine.world.npcs.get(target)
     if outcome == "defect" and npc is not None and npc.key:
         return "key_npc_cannot_defect"
@@ -145,6 +144,8 @@ def parley_dc(engine, ref, target, skill, outcome):
         parts.append(("переход", cfg.defect_penalty))
     if outcome == "waver":
         parts.append(("колебание", -cfg.waver_bonus))
+    if outcome == "quarrel":
+        parts.append(("ссора", cfg.quarrel_penalty))
     if npc is not None and npc.key:
         parts.append(("ключевой", cfg.key_penalty))
     return sum(value for _, value in parts), mode, parts
@@ -188,7 +189,8 @@ def resolve(engine, ref, skill, outcome, target) -> list[DomainEvent]:
         f"СЛ {dc} [{parts_text(parts)}]: {result.log.text}"
     )
     if result.outcome == "success":
-        return APPLY[outcome](engine, ref, target)
+        strong = result.total - dc >= engine.cfg.parley.strong_margin or result.natural == 20
+        return apply_success(engine, ref, target, outcome, strong)
     if outcome == "defect" and dc - result.total >= engine.cfg.parley.offended_margin:
         offend(engine, ref, target)
     return []
@@ -204,62 +206,6 @@ def parley(engine, ref, skill, outcome, target=None):
 def perform(engine, ref, option) -> list[DomainEvent]:
     params = option.params
     return resolve(engine, ref, params["skill"], params["outcome"], params["target"])
-
-
-def offend(engine, ref, target) -> None:
-    # грубый провал «переходи к нам»: следующая атака цели по герою с преимуществом;
-    # метка parley_offended нужна и после боя (отношение NPC падает)
-    creature = engine.creature(target)
-    creature.active_effects.append(ActiveEffect(id="parley_offended", source=ref, kind="flag"))
-    creature.active_effects.append(
-        ActiveEffect(
-            id="parley_advantage", source=ref, kind="modifier",
-            params={"target": "attack_roll", "mode": "advantage", "against": ref, "consume": True},
-            expires=Expiry(kind="end_of_turn", owner=target),
-        )
-    )
-    engine.log(f"  {engine.name(target)} оскорблён")
-
-
-def apply_surrender(engine, ref, target) -> list[DomainEvent]:
-    engine.part(target).status = "surrendered"
-    engine.log(f"  {engine.name(target)} сдаётся")
-    disarm.surrender_drop(engine, target)
-    return [DomainEvent(type="participant_surrendered", data={"id": target})]
-
-
-def apply_flee(engine, ref, target) -> list[DomainEvent]:
-    engine.part(target).status = "fled"
-    engine.log(f"  {engine.name(target)} уходит")
-    return [DomainEvent(type="participant_fled", data={"id": target})]
-
-
-def apply_defect(engine, ref, target) -> list[DomainEvent]:
-    p = engine.part(target)
-    # исходная группа остаётся в метке: по ней перебежчик станет NPC мира
-    flag = ActiveEffect(id="parley_defected", source=ref, kind="flag", params={"group": p.group_id})
-    p.side = "heroes"
-    p.controller = "engine"
-    p.group_id = engine.part(ref).group_id
-    p.intent = None
-    engine.controllers[target] = EngineTactics(engine)
-    engine.creature(target).active_effects.append(flag)
-    engine.log(f"  {engine.name(target)} переходит на вашу сторону")
-    return [DomainEvent(type="participant_defected", data={"id": target})]
-
-
-def apply_waver(engine, ref, target) -> list[DomainEvent]:
-    engine.creature(target).active_effects.append(
-        ActiveEffect(id="wavering", source=ref, kind="flag")
-    )
-    engine.log(f"  {engine.name(target)} колеблется")
-    return []
-
-
-APPLY = {
-    "surrender": apply_surrender, "flee": apply_flee, "defect": apply_defect,
-    "waver": apply_waver,
-}
 
 
 def lose_turn(engine, ref) -> bool:

@@ -16,6 +16,7 @@
 from combat_kit import (
     ScriptedRng,
     creature,
+    down_hero,
     give_weapon,
     hp,
     make_engine,
@@ -28,8 +29,9 @@ from combat_kit import (
     set_hp,
 )
 
+from ai_dm.combat.actions.attack import attack_targets
 from ai_dm.rules.results import Rejected
-from ai_dm.state.creature import AppliedCondition
+from ai_dm.state.creature import ActiveEffect, AppliedCondition
 
 
 def duel(registry, cfg, rng=None, hero=None, hero_zone="hall", goblin_zone="hall"):
@@ -306,3 +308,73 @@ def test_moved_enemy_is_targetable_in_its_new_zone(registry, cfg):
     engine = duel(registry, cfg, goblin_zone="balcony")
     move_to(engine, "goblin_1", "hall")
     assert "attack:longsword:goblin_1" in option_ids(engine, "hero")
+
+
+# --- шаг 19: поссорившийся бьёт союзников (метка quarreling) ---
+
+def pair(registry, cfg, other_group="goblins"):
+    return make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall"),
+                  mon("goblin_2", "goblin_warrior", "hall", group=other_group)],
+    )
+
+
+def quarrel_flag(engine, ref="goblin_1"):
+    creature(engine, ref).active_effects.append(
+        ActiveEffect(id="quarreling", source="hero", kind="flag")
+    )
+
+
+def test_attack_targets_of_a_monster_are_the_heroes(registry, cfg):
+    assert attack_targets(pair(registry, cfg), "goblin_1") == ["hero"]
+
+
+def test_attack_targets_of_a_quarreling_monster_are_its_mates(registry, cfg):
+    engine = pair(registry, cfg)
+    quarrel_flag(engine)
+    assert attack_targets(engine, "goblin_1") == ["goblin_2"]
+
+
+def test_attack_targets_of_a_quarreling_monster_take_another_group_without_mates(registry, cfg):
+    engine = pair(registry, cfg, other_group="raiders")
+    quarrel_flag(engine)
+    assert attack_targets(engine, "goblin_1") == ["goblin_2"]
+
+
+def test_attack_targets_of_a_quarreling_monster_skip_a_downed_hero(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    down_hero(engine, "hero")
+    quarrel_flag(engine)
+    assert attack_targets(engine, "goblin_1") == []
+
+
+def test_attack_targets_of_a_calm_monster_still_include_a_downed_hero(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    down_hero(engine, "hero")
+    assert attack_targets(engine, "goblin_1") == ["hero"]
+
+
+def test_the_flag_changes_only_the_targets_of_its_owner(registry, cfg):
+    engine = pair(registry, cfg)
+    quarrel_flag(engine)
+    assert attack_targets(engine, "goblin_2") == ["hero"]
+
+
+def test_the_flag_does_not_change_the_hero_targets(registry, cfg):
+    engine = pair(registry, cfg)
+    quarrel_flag(engine)
+    assert attack_targets(engine, "hero") == ["goblin_1", "goblin_2"]
+
+
+def test_quarreling_monster_gets_attack_options_against_mates_only(registry, cfg):
+    engine = pair(registry, cfg)
+    quarrel_flag(engine)
+    ids = [i for i in option_ids(engine, "goblin_1") if i.startswith("attack:")]
+    assert ids and all(i.endswith(":goblin_2") for i in ids)

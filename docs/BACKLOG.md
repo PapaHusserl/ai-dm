@@ -176,17 +176,6 @@ updated: 2026-10-17
 - К0а (2026-10-11), старые выжившие мутанты: spell_candidates/spell_errors (default= у max), resource_maxes/add_amount (max_add), choice_errors/short_rest/rest (тексты), castable_spells (has_slot, forbidden), cast_mark (лог), conclude (invisible/hidden, OUTCOME_WORDS), transfer_mark_options (continue→break), GameApp.__init__/load (boundary), build_hero (motive/deity/birth_s), feature_groups/sheet_data, concentration_line. Не мутированы: sheet_text.spell_ids, GameApp.save_current (ветка pending_level). Commit с чертой (feat) не покрыт — общих черт в SRD-данных нет. pending_level проверяется только у первого героя — пересмотреть в Ж0.
 - К0б (2026-10-11): выжившие мутанты — 22 текст исключений (норма), 3 эквивалентных в `level_for_xp`, 3 старых в `roll_hazard` (аргументы `damage_log_text`: крит/бонус лога урона опасности не проверяются). `sys.path.insert` — +1 файл `tests/unit/rules/test_classes_1_20.py` (долг 70 файлов, решение В-2а).
 
-## 19. Переговоры в бою: «ссорится» и мораль группы
-status: planned
-priority: medium
-updated: 2026-10-17
-
-(из партии «Переговоры в бою», docs/plan-combat-parley.md)
-Отложены решением проектировщика: исход Обмана «ссорится» (цель на ходу атакует ближайшего союзника по группе) и
-распространение сильного успеха на группу (`[parley] spread_morale` -- флаг есть, логики нет). Меню предлагает по одной
-строке на навык и цель (Запугивание-сдаться, Убеждение-перейти, Обман-отступить); остальные пары -- только фразой
-(подменю «навык × исход» в TUI не сделано).
-
 ## 22. Отбор оружия: хвосты
 status: planned
 priority: medium
@@ -744,3 +733,23 @@ updated: 2026-10-20
 
 (Ж8 П1, mutmut по `TurnRunner.end_fight`) Мутант `ai_dm.game.turn.xǁTurnRunnerǁend_fight__mutmut_10`:
 `combat_flow.settle_parley(work, self.cfg)` → `(work, None)` выжил. Строка старая (до Ж8), партия её не трогала.
+
+## 118. Подменю TUI «навык × исход» в переговорах боя
+status: idea
+priority: low
+updated: 2026-10-20
+
+(шаг 19, решение 6, docs/plan-19.md) Боевое меню предлагает по одной строке на навык и цель (Запугивание-сдаться,
+Убеждение-перейти, Обман-отступить); остальные пары, в том числе Обман-ссорится, — только фразой. Подменю «навык ×
+исход» в TUI (`combat/available.py`, `ui/combat_menu.py`) не сделано.
+
+## 119. Выжившие мутанты parley_dc: подписи слагаемых СЛ
+status: idea
+priority: low
+updated: 2026-10-20
+
+(шаг 19, mutmut по `parley_dc`, docs/plan-19.md) 21 выживший мутант `ai_dm.combat.actions.parley.x_parley_dc` —
+на старых строках (до шага 19): подписи слагаемых лога СЛ («Инт цели», «дружелюбен», «HP ≤ 50%», «потери группы»,
+«лидер выбыл», «перевес героев», «переход», «колебание», «ключевой») — mutmut_15–18, 33, 34, 49, 50, 76, 77, 87, 88,
+106, 107, 113, 114, 119, 120, 131, 132; mutmut_11 (`>` → `>=`, отличается только подпись «база»/«Инт цели»).
+Предложение: тест на полный текст слагаемых для набора условий.

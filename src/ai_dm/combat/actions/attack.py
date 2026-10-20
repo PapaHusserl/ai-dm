@@ -1,5 +1,6 @@
 from ai_dm.combat import downed, mastery, monster_traits
 from ai_dm.combat.actions import features
+from ai_dm.combat.controllers import is_quarreling, quarrel_targets
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice
 from ai_dm.core.events import DomainEvent
@@ -166,7 +167,9 @@ def monster_unarmed(engine, ref) -> list[AttackInfo]:
 
 
 def attack_targets(engine, ref) -> list[str]:
-    # враги другой стороны: боеспособные и лежащие
+    # враги другой стороны: боеспособные и лежащие; поссорившийся бьёт только своих
+    if is_quarreling(engine, ref):
+        return quarrel_targets(engine, ref)
     side = engine.part(ref).side
     return [
         p.ref for p in engine.state.participants

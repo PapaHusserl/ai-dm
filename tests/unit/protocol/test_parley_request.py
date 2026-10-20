@@ -1,5 +1,6 @@
 # player_action.parley (docs/plan-combat-parley.md, п. 3): ParleySpec{skill, outcome, target};
-#   skill: intimidation|persuasion|deception|none; outcome: surrender|flee|defect|waver|none;
+#   skill: intimidation|persuasion|deception|none;
+#   outcome: surrender|flee|defect|waver|quarrel|none;
 #   target: ref врага, пусто = нет. Все три пусты -> parley None; частично -> ValidationError;
 #   parley вместе с improvise -> ValidationError. Категорию СЛ мастер не передаёт
 #   (СЛ считает движок).
@@ -68,7 +69,12 @@ def test_parley_rejects_a_foreign_skill(skill):
 
 def test_parley_rejects_an_unknown_outcome():
     with pytest.raises(ValidationError):
-        action(parley={**FULL, "outcome": "quarrel"})
+        action(parley={**FULL, "outcome": "mutiny"})
+
+
+def test_parley_accepts_the_quarrel_outcome():
+    spec = action(parley={**FULL, "skill": "deception", "outcome": "quarrel"}).parley
+    assert spec.outcome == "quarrel"
 
 
 def test_parley_has_no_dc_category_field():

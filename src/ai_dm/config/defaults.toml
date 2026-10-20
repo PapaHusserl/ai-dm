@@ -33,6 +33,7 @@ leader_down_bonus = 3
 overwhelm_bonus = 2
 defect_penalty = 5
 waver_bonus = 2
+quarrel_penalty = 2
 key_penalty = 5
 min_int = 3
 immune_types = ["construct", "ooze", "plant"]
@@ -41,7 +42,8 @@ disarmed_bonus = 2
 surrender_attitude = 10
 defect_attitude = 20
 offended_attitude = -10
-spread_morale = false
+spread_morale = true
+strong_margin = 10
 
 # выжившие боя (Ж1): начальное отношение к герою по исходу
 [survivors]

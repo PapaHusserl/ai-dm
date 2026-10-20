@@ -20,7 +20,7 @@ GoalKindOrNone = Literal[(*GOAL_KINDS, "none")]
 ImproviseEffectOrNone = Literal[(*get_args(ImproviseEffect), "none")]
 DcCategoryOrNone = Literal[(*get_args(DcCategory), "none")]
 ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
-ParleyOutcomeOrNone = Literal["surrender", "flee", "defect", "waver", "none"]
+ParleyOutcomeOrNone = Literal["surrender", "flee", "defect", "waver", "quarrel", "none"]
 
 
 class Request(BaseModel):
@@ -119,7 +119,8 @@ class ParleySpec(Request):
     outcome: ParleyOutcomeOrNone = Field(
         "none",
         description="Чего хочет герой от цели: surrender, flee, defect (перейти на сторону героя), "
-        "waver (поколебаться, потерять ход); none = нет. Исход и СЛ решает движок.",
+        "waver (поколебаться, потерять ход), quarrel (поссориться со своими: цель один ход бьёт "
+        "союзника); none = нет. Исход и СЛ решает движок.",
     )
     target: str = Field("", description="ref врага, с кем говорят; пусто = нет.")
     NEUTRAL: ClassVar[dict] = {"target": ""}

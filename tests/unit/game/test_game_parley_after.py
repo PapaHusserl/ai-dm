@@ -116,6 +116,27 @@ def test_surrendered_enemies_give_xp_like_defeated(registry, cfg):
     assert bundle.heroes[0].sheet.xp == combat_xp(["goblin_warrior", "goblin_warrior"], registry)
 
 
+# Ж19: мораль группы даёт тем, кто сдался или ушёл следом, те же статусы, что у одиночной цели
+
+def test_morale_surrendered_and_fled_enemies_are_all_defeated_for_loot(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered", "g2": "fled"}, named=())
+    finish_combat(bundle, registry)
+    assert bundle.session.last_combat.defeated == ["goblin_warrior", "goblin_warrior"]
+
+
+def test_morale_surrendered_and_fled_enemies_give_xp(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered", "g2": "fled"}, named=())
+    finish_combat(bundle, registry)
+    assert bundle.heroes[0].sheet.xp == combat_xp(["goblin_warrior", "goblin_warrior"], registry)
+
+
+def test_morale_followers_who_were_named_get_the_surrender_attitude(registry, cfg):
+    bundle = fight(registry, cfg, statuses={"g1": "surrendered", "g2": "surrendered"},
+                   named=("g1", "g2"))
+    settle_parley(bundle, cfg)
+    assert [bundle.world.npcs[r].attitude for r in ("g1", "g2")] == [10, 10]
+
+
 def test_defector_gives_xp_like_defeated(registry, cfg):
     bundle = fight(registry, cfg, statuses={"g1": "dead"}, named=())
     part = [p for p in bundle.session.active_combat.participants if p.ref == "g2"][0]

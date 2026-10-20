@@ -325,11 +325,14 @@ ai-dm/
     Смена подготовленных: `rest` `long` с `prepared_swap{drop, take}` (`swap_problem` до отдыха, `swap_prepared` после);
     лимит смены -- `Spellcasting.prepared_swap` класса (`1` или `all`).
     Переговоры (`actions/parley.py`, `PlayerAction.parley: ParleySpec{skill, outcome, target}` и пункты меню
-    `parley:<цель>:<навык>:<исход>`): навык intimidation/persuasion/deception × исход surrender/flee/defect/waver,
-    СЛ и допустимость считает движок (`parley_dc`, `[parley]` в конфиге), враг без отношения NPC -- помеха
+    `parley:<цель>:<навык>:<исход>`): навык intimidation/persuasion/deception × исход surrender/flee/defect/waver/quarrel
+    (quarrel -- только фразой Обмана, в меню нет), СЛ и допустимость считает движок (`parley_dc`, `[parley]` в конфиге), враг без отношения NPC -- помеха
     (`skill_check(..., base_adv=)`); одна попытка на цель за бой (метка `parley_tried`). Исходы: `status="surrendered"`
     (не боеспособен, ход пропускается, бить можно), `fled`, `defect` (сторона heroes, `EngineTactics`),
-    `wavering` (теряет один ход). Итоги для именованных NPC после боя -- `game/combat_flow.settle_parley`.
+    `wavering` (теряет один ход), `quarreling` (один ход цели бьёт союзника по группе, иначе по стороне:
+    `controllers.quarrel_targets`, метка снимается `expire` в конце её хода). Мораль (`spread_morale`, `[parley]`):
+    сильный успех (итог ≥ СЛ + `strong_margin` или натуральная 20) «сдаться»/«отступить» применяет тот же исход без
+    броска к раненым (HP ≤ 50 %) разумным боеспособным группы цели. Итоги для именованных NPC после боя -- `game/combat_flow.settle_parley`.
     Сдавшийся, бежавший и перебежчик после боя становятся NPC мира (Ж1, см. подраздел «Выжившие боя»).
     Отбор оружия (`combat/disarm.py`, пункт меню `disarm:<цель>:<оружие>`, `pickup:<номер>`): бросок атаки текущим
     ближним оружием против проверки цели (Атлетика/Акробатика героя, лучший мод. Сил/Лов монстра; двуручный хват и

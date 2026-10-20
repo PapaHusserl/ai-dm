@@ -19,6 +19,7 @@
 import pytest
 from combat_kit import (
     ScriptedRng,
+    creature,
     down_hero,
     make_engine,
     make_fighter,
@@ -30,9 +31,16 @@ from combat_kit import (
     turn,
 )
 
-from ai_dm.combat.controllers import AutoHeroController, EngineTactics, ScriptedController
+from ai_dm.combat.controllers import (
+    AutoHeroController,
+    EngineTactics,
+    ScriptedController,
+    is_quarreling,
+    quarrel_targets,
+)
 from ai_dm.core.rng import Rng
 from ai_dm.state.combat import DecisionPoint
+from ai_dm.state.creature import ActiveEffect
 
 
 def decide(controller, engine, ref, kind="turn_action"):
@@ -305,3 +313,114 @@ def test_engine_builds_default_controllers_from_participant_kind(registry, cfg):
     )
     assert isinstance(engine.controllers["hero"], AutoHeroController)
     assert isinstance(engine.controllers["goblin_1"], EngineTactics)
+
+
+# --- шаг 19: поссорившийся (метка quarreling) бьёт своих ---
+
+def band(registry, cfg, specs):
+    # specs: (ref, group) -- безымянные воины-гоблины в зале против героя
+    return make_engine(
+        registry, cfg, heroes=[make_fighter(registry)],
+        monsters=[mon(ref, "goblin_warrior", "hall", group=group) for ref, group in specs],
+    )
+
+
+def mark_quarrel(engine, ref="goblin_1"):
+    creature(engine, ref).active_effects.append(
+        ActiveEffect(id="quarreling", source="hero", kind="flag")
+    )
+
+
+def test_is_quarreling_needs_the_quarreling_flag(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    creature(engine, "goblin_1").active_effects.append(
+        ActiveEffect(id="wavering", source="hero", kind="flag")
+    )
+    assert is_quarreling(engine, "goblin_1") is False
+
+
+def test_is_quarreling_sees_the_flag(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    mark_quarrel(engine)
+    assert (is_quarreling(engine, "goblin_1"), is_quarreling(engine, "goblin_2")) == (True, False)
+
+
+def test_quarrel_targets_are_the_group_mates(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a"), ("raider_1", "b")])
+    assert quarrel_targets(engine, "goblin_1") == ["goblin_2"]
+
+
+def test_quarrel_targets_exclude_the_quarreler_and_the_heroes(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a"), ("goblin_3", "a")])
+    assert quarrel_targets(engine, "goblin_1") == ["goblin_2", "goblin_3"]
+
+
+def test_quarrel_targets_fall_back_to_the_whole_side(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("raider_1", "b"), ("raider_2", "b")])
+    assert quarrel_targets(engine, "goblin_1") == ["raider_1", "raider_2"]
+
+
+def test_quarrel_targets_skip_the_incapable(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a"), ("raider_1", "b")])
+    part(engine, "goblin_2").status = "dead"
+    assert quarrel_targets(engine, "goblin_1") == ["raider_1"]
+
+
+def test_quarrel_targets_skip_a_mate_without_hp(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    set_hp(engine, "goblin_2", 0)
+    assert quarrel_targets(engine, "goblin_1") == []
+
+
+def test_quarrel_targets_are_empty_for_a_lone_monster(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a")])
+    assert quarrel_targets(engine, "goblin_1") == []
+
+
+def test_quarrel_targets_skip_a_creature_of_another_side(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    part(engine, "goblin_2").side = "heroes"
+    assert quarrel_targets(engine, "goblin_1") == []
+
+
+def test_enemies_of_a_quarreling_monster_are_its_targets(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    mark_quarrel(engine)
+    assert EngineTactics(engine).enemies("goblin_1", "active") == ["goblin_2"]
+
+
+def test_a_quarreling_monster_has_no_downed_enemies(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    down_hero(engine, "hero")
+    mark_quarrel(engine)
+    assert EngineTactics(engine).enemies("goblin_1", "down") == []
+
+
+def test_enemies_of_a_calm_monster_stay_the_heroes(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    mark_quarrel(engine, "goblin_2")
+    tactics = EngineTactics(engine)
+    assert (tactics.enemies("goblin_1", "active"), tactics.enemies("goblin_1", "down")) == (
+        ["hero"], [],
+    )
+
+
+def test_a_calm_monster_still_finishes_a_downed_hero(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a")])
+    down_hero(engine, "hero")
+    assert EngineTactics(engine).enemies("goblin_1", "down") == ["hero"]
+
+
+def test_a_lone_quarreling_monster_ends_the_turn_and_leaves_a_downed_hero(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a")])
+    down_hero(engine, "hero")
+    mark_quarrel(engine)
+    options = engine.available_actions("goblin_1")
+    assert EngineTactics(engine).choose_turn(options, "goblin_1") == "end_turn"
+
+
+def test_a_quarreling_monster_attacks_a_mate(registry, cfg):
+    engine = band(registry, cfg, [("goblin_1", "a"), ("goblin_2", "a")])
+    mark_quarrel(engine)
+    options = engine.available_actions("goblin_1")
+    assert EngineTactics(engine).choose_turn(options, "goblin_1") == "attack:скимитар:goblin_2"
