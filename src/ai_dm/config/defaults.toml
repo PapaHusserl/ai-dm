@@ -87,6 +87,7 @@ per_scene = 20
 [npc_memory]
 max_scenes = 20
 max_events_per_scene = 5
+warm_min_weight = 10
 
 # журнал знаний героя (Ж3): записей на одну сущность, сверх лимита уходит самая старая
 [knowledge]

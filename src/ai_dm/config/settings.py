@@ -151,6 +151,8 @@ class NpcMemoryConfig(BaseModel):
     # сцен в памяти одного NPC о герое; новая сцена вытесняет сцену с наименьшим весом
     max_scenes: int = Field(default=20, gt=0)
     max_events_per_scene: int = Field(default=5, gt=0)
+    # минимальный вес тёплой сцены (WARM_KINDS) при вытеснении, даже если отношение не сдвинулось
+    warm_min_weight: int = Field(default=10, ge=1)
 
 
 class KnowledgeConfig(BaseModel):

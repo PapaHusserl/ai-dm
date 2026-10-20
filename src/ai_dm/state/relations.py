@@ -7,8 +7,10 @@ NPC_EVENT_TEXT_MAX = 120
 # открытые перечни -- str в моделях (расширение перечня не меняет схему сейва)
 MEMORY_KINDS = (
     "spared", "saved", "helped", "gift", "promise", "betrayal", "insult", "threat", "theft",
-    "harm", "kin_killed", "romance", "deal", "other",
+    "harm", "kin_killed", "romance", "deal", "other", "friendship", "joke", "shared_deed", "battle",
 )
+# тёплые виды: на вытеснении вес не ниже warm_min_weight; одна запись вида на сцену
+WARM_KINDS = ("romance", "friendship", "joke", "shared_deed", "battle")
 GOAL_KINDS = ("revenge", "life_debt", "debt", "gratitude", "love", "rivalry")
 
 

@@ -12,11 +12,16 @@
 #       at_s, weight, events (kind, turn_seq, text).
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from ai_dm.config.settings import load_rules_config
 from ai_dm.rules.npc_memory import (
+    effective_weight,
     events_full,
     evict,
     goals_data,
+    has_kind,
     memory_data,
     memory_last,
     refresh_weight,
@@ -51,6 +56,12 @@ def put(npc, sc, ev=None, cfg=CFG):
 def entry(n, weight, events=1):
     return NpcSceneMemory(
         scene_id=f"scene_{n}", at_s=n * 100, weight=weight, events=[event()] * events
+    )
+
+
+def warm(n, weight, kind):
+    return NpcSceneMemory(
+        scene_id=f"scene_{n}", at_s=n * 100, weight=weight, events=[event(kind)]
     )
 
 
@@ -218,39 +229,167 @@ def test_remember_event_over_limit_in_full_memory_evicts_nothing():
 def test_evict_removes_lowest_weight():
     npc = make_npc()
     fill(npc, [4, 2, 9])
-    evict(npc)
+    evict(npc, CFG)
     assert ids(npc) == ["scene_1", "scene_3"]
 
 
 def test_evict_returns_removed_entry():
     npc = make_npc()
     fill(npc, [4, 2, 9])
-    assert evict(npc).scene_id == "scene_2"
+    assert evict(npc, CFG).scene_id == "scene_2"
 
 
 def test_evict_equal_weights_removes_oldest_by_at_s():
     npc = make_npc()
     fill(npc, [3, 3, 3])
-    evict(npc)
+    evict(npc, CFG)
     assert ids(npc) == ["scene_2", "scene_3"]
 
 
 def test_evict_equal_weights_oldest_even_when_list_is_not_ordered():
     npc = make_npc()
     npc.memory = [entry(3, 3), entry(1, 3), entry(2, 3)]
-    assert evict(npc).scene_id == "scene_1"
+    assert evict(npc, CFG).scene_id == "scene_1"
 
 
 def test_evict_weight_beats_age():
     npc = make_npc()
     fill(npc, [9, 9, 1])
-    assert evict(npc).scene_id == "scene_3"
+    assert evict(npc, CFG).scene_id == "scene_3"
 
 
 def test_evict_zero_weight_goes_first():
     npc = make_npc()
     fill(npc, [2, 0, 1])
-    assert evict(npc).scene_id == "scene_2"
+    assert evict(npc, CFG).scene_id == "scene_2"
+
+
+def test_evict_keeps_oldest_warm_scene_among_zero_weight_others():
+    npc = make_npc()
+    fill(npc, [0] * 20)
+    npc.memory[0].events = [event("joke")]
+    assert evict(npc, CFG).scene_id == "scene_2"
+
+
+def test_evict_keeps_warm_scene_in_memory():
+    npc = make_npc()
+    fill(npc, [0] * 20)
+    npc.memory[0].events = [event("joke")]
+    evict(npc, CFG)
+    assert "scene_1" in ids(npc)
+
+
+def test_evict_all_warm_equal_weight_removes_oldest():
+    npc = make_npc()
+    fill(npc, [0] * 20)
+    for m in npc.memory:
+        m.events = [event("romance")]
+    assert evict(npc, CFG).scene_id == "scene_1"
+
+
+def test_evict_warm_zero_weight_beats_cold_with_low_weight():
+    npc = make_npc()
+    npc.memory = [warm(1, 0, "joke"), entry(2, 2)]
+    assert evict(npc, CFG).scene_id == "scene_2"
+
+
+def test_evict_warm_zero_weight_loses_to_cold_with_higher_weight():
+    npc = make_npc()
+    npc.memory = [entry(1, 12), warm(2, 0, "joke")]
+    assert evict(npc, CFG).scene_id == "scene_2"
+
+
+def test_evict_warm_floor_equals_cold_weight_removes_older():
+    npc = make_npc()
+    npc.memory = [warm(2, 0, "joke"), entry(1, 10)]
+    assert evict(npc, CFG).scene_id == "scene_1"
+
+
+def test_evict_warm_floor_equals_cold_weight_removes_older_warm():
+    npc = make_npc()
+    npc.memory = [warm(1, 0, "joke"), entry(2, 10)]
+    assert evict(npc, CFG).scene_id == "scene_1"
+
+
+def test_remember_new_scene_over_limit_evicts_cold_not_warm():
+    npc = make_npc()
+    fill(npc, [0] * CFG.max_scenes)
+    for m in npc.memory:
+        m.events = [event("romance")]
+    npc.memory[7].events = [event("other")]
+    put(npc, scene(99))
+    assert "scene_8" not in ids(npc)
+    assert len(npc.memory) == CFG.max_scenes
+
+
+# effective_weight
+
+def test_effective_weight_big_shift_stays():
+    assert effective_weight(warm(1, 12, "joke"), CFG) == 12
+
+
+def test_effective_weight_cold_zero_stays_zero():
+    assert effective_weight(warm(1, 0, "helped"), CFG) == 0
+
+
+def test_effective_weight_warm_zero_gets_floor():
+    assert effective_weight(warm(1, 0, "joke"), CFG) == CFG.warm_min_weight == 10
+
+
+def test_effective_weight_warm_low_gets_floor():
+    assert effective_weight(warm(1, 3, "romance"), CFG) == 10
+
+
+def test_effective_weight_floor_comes_from_config():
+    cfg = load_rules_config(toml_text="[npc_memory]\nwarm_min_weight = 5\n").npc_memory
+    assert effective_weight(warm(1, 0, "joke"), cfg) == 5
+
+
+def test_effective_weight_any_warm_event_in_scene_counts():
+    e = warm(1, 0, "helped")
+    e.events.append(event("battle"))
+    assert effective_weight(e, CFG) == 10
+
+
+def test_effective_weight_does_not_change_stored_weight():
+    e = warm(1, 0, "joke")
+    effective_weight(e, CFG)
+    assert e.weight == 0
+
+
+# has_kind
+
+def test_has_kind_true_for_present_kind():
+    npc = make_npc()
+    npc.memory = [warm(1, 0, "joke")]
+    assert has_kind(npc, scene(1), "joke") is True
+
+
+def test_has_kind_false_for_other_kind():
+    npc = make_npc()
+    npc.memory = [warm(1, 0, "joke")]
+    assert has_kind(npc, scene(1), "friendship") is False
+
+
+def test_has_kind_false_without_scene_entry():
+    npc = make_npc()
+    npc.memory = [warm(1, 0, "joke")]
+    assert has_kind(npc, scene(2), "joke") is False
+
+
+def test_has_kind_false_without_memory():
+    assert has_kind(make_npc(), scene(1), "joke") is False
+
+
+# конфиг
+
+def test_config_warm_min_weight_default_is_ten():
+    assert load_rules_config().npc_memory.warm_min_weight == 10
+
+
+def test_config_warm_min_weight_zero_is_rejected():
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text="[npc_memory]\nwarm_min_weight = 0\n")
 
 
 # refresh_weight

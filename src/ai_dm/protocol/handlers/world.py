@@ -4,7 +4,7 @@ from ai_dm.rules import divine, goals, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
-from ai_dm.rules.npc_memory import events_full, refresh_weight, remember
+from ai_dm.rules.npc_memory import events_full, has_kind, refresh_weight, remember
 from ai_dm.rules.npc_names import looks_like_kind, shown_name
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
@@ -12,7 +12,7 @@ from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.memory import add_entry
-from ai_dm.state.relations import NPC_EVENT_TEXT_MAX, NpcEvent
+from ai_dm.state.relations import NPC_EVENT_TEXT_MAX, WARM_KINDS, NpcEvent
 from ai_dm.state.world import NPC, Connection, DangerMark, GlobalEvent, Location, TradeProfile
 
 MASTER_DEATH_CAUSES = ("goal", "hazard")
@@ -185,6 +185,17 @@ def change_memory(ctx, npc, request, decision):
     scene = ctx.scene
     text = request.memory_text or ""
     short = shorten_text(text, NPC_EVENT_TEXT_MAX)
+    if request.memory_kind in WARM_KINDS and has_kind(npc, scene, request.memory_kind):
+        # отношение из этого запроса уже применено, дубль вида в сцене в память не пишется
+        decision.status = "clamped"
+        decision.report_tag = "duplicate-kind"
+        decision.reason = f"{request.memory_kind} уже записан в этой сцене"
+        decision.log.append(f"{npc_label(npc)} уже помнит {request.memory_kind} в этой сцене")
+        decision.signal_to_master = (
+            f"{npc_label(npc)} уже помнит {request.memory_kind} в этой сцене: "
+            "повтор не записан, опиши по факту."
+        )
+        return
     event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
     remember(npc, scene, event, ctx.cfg.npc_memory)
     decision.log.append(f"{npc_label(npc)} запомнил: {request.memory_kind}")

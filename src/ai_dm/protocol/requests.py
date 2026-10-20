@@ -534,7 +534,8 @@ class NpcUpdate(NpcUpdateBase):
         "none", description="Сделать NPC торговцем типа (пресет ассортимента); none = не менять."
     )
     memory_kind: MemoryKindOrNone = Field(
-        "none", description="Вид значимого поступка героя, который NPC запомнит; none = нет."
+        "none",
+        description="Вид события между героем и NPC (поступок или тёплый момент); none = нет.",
     )
     memory_text: str = Field(
         "", description="Коротко, что сделал герой (до 120 знаков); только вместе с memory_kind."

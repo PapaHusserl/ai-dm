@@ -310,6 +310,15 @@ def test_rules_time_section_mentions_travel_to():
     assert "`advance_time.travel_to`" in xp_time_section()
 
 
+@pytest.mark.parametrize("word", ["friendship", "joke", "shared_deed", "battle", "Мелочи", "notes"])
+def test_rules_mention_warm_memory_kinds_and_trifles(word):
+    assert word in rules_text()
+
+
+def test_rules_say_master_does_not_change_notes():
+    assert "`notes` ты не меняешь" in rules_text()
+
+
 def test_rules_quote_xp_log_prefix():
     from ai_dm.protocol.handlers.resources import XP_LOG
 

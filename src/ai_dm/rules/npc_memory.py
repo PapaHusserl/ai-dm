@@ -1,11 +1,23 @@
-from ai_dm.state.relations import NpcSceneMemory
+from ai_dm.state.relations import WARM_KINDS, NpcSceneMemory
 
 
-def evict(npc):
-    # убрать и вернуть запись с наименьшим (weight, at_s)
-    victim = min(npc.memory, key=lambda s: (s.weight, s.at_s))
+def effective_weight(entry, cfg):
+    # вес для вытеснения: тёплая сцена -- не ниже warm_min_weight, хранимый weight не меняется
+    warm = any(e.kind in WARM_KINDS for e in entry.events)
+    return max(entry.weight, cfg.warm_min_weight if warm else 0)
+
+
+def evict(npc, cfg):
+    # убрать и вернуть запись с наименьшим (эффективный вес, at_s)
+    victim = min(npc.memory, key=lambda s: (effective_weight(s, cfg), s.at_s))
     npc.memory.remove(victim)
     return victim
+
+
+def has_kind(npc, scene, kind):
+    # в записи этой сцены уже есть событие этого вида
+    entry = scene_entry(npc, scene)
+    return entry is not None and any(e.kind == kind for e in entry.events)
 
 
 def scene_entry(npc, scene):
@@ -24,7 +36,7 @@ def remember(npc, scene, event, cfg):
     entry = scene_entry(npc, scene)
     if entry is None:
         if len(npc.memory) >= cfg.max_scenes:
-            evict(npc)
+            evict(npc, cfg)
         entry = NpcSceneMemory(
             scene_id=scene.id, at_s=scene.started_at_s,
             weight=scene.attitude_spent.get(npc.id, 0), events=[event],

@@ -497,3 +497,101 @@ def test_memory_over_scene_limit_evicts_lowest_weight(registry, cfg):
         remember_call(ctx, attitude_delta=1 if n == 1 else (10 if n % 2 else -10))
     assert len(memory(ctx)) == cfg.npc_memory.max_scenes
     assert "s1" not in [m.scene_id for m in memory(ctx)]
+
+
+# Ж8 П1: тёплые виды -- одно событие вида на сцену
+
+def kinds(ctx):
+    return [e.kind for m in memory(ctx) for e in m.events]
+
+
+@pytest.mark.parametrize("kind", ["joke", "romance", "friendship", "shared_deed", "battle"])
+def test_warm_kind_twice_in_scene_is_clamped(kind, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, kind, attitude_delta=2)
+    assert remember_call(ctx, kind, attitude_delta=2).status == "clamped"
+
+
+def test_warm_kind_duplicate_has_duplicate_kind_tag(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke", attitude_delta=2)
+    assert remember_call(ctx, "joke", attitude_delta=2).report_tag == "duplicate-kind"
+
+
+def test_warm_kind_duplicate_is_not_written(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke", attitude_delta=2)
+    remember_call(ctx, "joke", attitude_delta=2)
+    assert kinds(ctx) == ["joke"]
+
+
+def test_warm_kind_duplicate_still_applies_attitude(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    start = ctx.bundle.world.npcs["aldric"].attitude
+    remember_call(ctx, "joke", attitude_delta=2)
+    remember_call(ctx, "joke", attitude_delta=2)
+    assert ctx.bundle.world.npcs["aldric"].attitude == start + 4
+
+
+def test_warm_kind_duplicate_tells_master_already_remembers(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    assert "уже помнит" in remember_call(ctx, "joke").signal_to_master
+
+
+def test_warm_kind_duplicate_signal_text(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    assert remember_call(ctx, "joke").signal_to_master == (
+        "Олдрик уже помнит joke в этой сцене: повтор не записан, опиши по факту."
+    )
+
+
+def test_warm_kind_duplicate_has_reason_and_log(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    decision = remember_call(ctx, "joke")
+    assert "joke" in decision.reason
+    assert any("уже помнит joke" in line for line in decision.log)
+
+
+def test_other_warm_kind_in_same_scene_is_written(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    assert remember_call(ctx, "friendship").status == "accepted"
+    assert kinds(ctx) == ["joke", "friendship"]
+
+
+def test_cold_kind_twice_in_scene_gives_two_events(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "helped")
+    assert remember_call(ctx, "helped").status == "accepted"
+    assert kinds(ctx) == ["helped", "helped"]
+
+
+def test_warm_kind_in_two_scenes_gives_two_events(registry, cfg):
+    from ai_dm.state.scene import SceneState
+
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    ctx.bundle.session.current_scene = SceneState(id="scene_2", started_at_s=500)
+    assert remember_call(ctx, "joke").status == "accepted"
+    assert kinds(ctx) == ["joke", "joke"]
+
+
+def test_warm_kind_into_full_scene_is_still_limit_exceeded(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    fill_scene(ctx, cfg)
+    decision = remember_call(ctx, "joke")
+    assert (decision.status, decision.report_tag) == ("rejected", "limit-exceeded")
+
+
+def test_warm_battle_written_by_engine_blocks_master_duplicate(registry, cfg):
+    from ai_dm.rules.npc_memory import remember
+    from ai_dm.state.relations import NpcEvent
+
+    ctx = make_ctx(registry, cfg)
+    npc = ctx.bundle.world.npcs["aldric"]
+    remember(npc, ctx.bundle.session.current_scene, NpcEvent(kind="battle", turn_seq=1, text="бой"),
+             cfg.npc_memory)
+    assert remember_call(ctx, "battle").report_tag == "duplicate-kind"

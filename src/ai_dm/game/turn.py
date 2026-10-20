@@ -15,6 +15,7 @@ from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
 from ai_dm.protocol.decision import Decision
 from ai_dm.reports.capture import TurnCapture
+from ai_dm.rules.battle_memory import remember_battle
 from ai_dm.rules.custom_items import world_registry
 from ai_dm.rules.goals import on_kill
 from ai_dm.rules.knowledge import note_combat, note_presence
@@ -545,6 +546,7 @@ class TurnRunner:
         note_combat(hero, work.world, state, self.registry, self.cfg.knowledge, turned)
         self.avenge_killed(work, hero, state)
         materialize(work, hero, survivors, self.cfg)
+        remember_battle(work, hero, state, state.outcome, self.cfg)
         if fold:
             combat_fold.fold_fight(work, state, self.registry)
 

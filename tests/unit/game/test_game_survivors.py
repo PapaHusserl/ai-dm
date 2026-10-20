@@ -185,7 +185,7 @@ def test_victory_by_fight_leaves_no_survivors(registry, cfg, tmp_path):
 
 def test_hero_defeat_leaves_no_survivors(registry, cfg, tmp_path):
     rig = fight_rig(registry, cfg, tmp_path)
-    bundle = finish(rig, "defeat", {"g1": "down", "g2": "down"})
+    bundle = finish(rig, "defeat_pending", {"g1": "down", "g2": "down"})
     assert survivors(bundle) == {}
 
 
@@ -285,6 +285,36 @@ def test_revenge_goal_text_names_the_killed(registry, cfg, tmp_path):
     finish(rig, "victory", {"g1": "dead", "g2": "down"})
     [goal] = revenge_of(mate)
     assert goal.text.endswith("Воин-гоблин 1")
+
+
+# Ж8 П1: общий бой -- движок пишет спутнику героя событие battle (оба пути fold)
+
+def battle_of(npc):
+    return [e for m in npc.memory for e in m.events if e.kind == "battle"]
+
+
+@pytest.mark.parametrize("fold", [True, False])
+def test_companion_gets_battle_memory_on_both_paths(registry, cfg, tmp_path, fold):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig, groups=[], follows="hero")
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"}, fold=fold)
+    [event] = battle_of(mate)
+    assert event.text.endswith("(победа)")
+
+
+def test_non_companion_gets_no_battle_memory(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig, groups=[])
+    finish(rig, "victory", {"g1": "dead", "g2": "dead"})
+    assert battle_of(mate) == []
+
+
+def test_battle_memory_and_survivors_both_appear(registry, cfg, tmp_path):
+    rig = fight_rig(registry, cfg, tmp_path)
+    mate = add_mate(rig, groups=[], follows="hero")
+    bundle = finish(rig, "victory", {"g1": "down", "g2": "down"})
+    assert len(battle_of(mate)) == 1
+    assert sorted(survivors(bundle)) == [f"{PREFIX}1", f"{PREFIX}2"]
 
 
 def test_kin_killed_memory_is_written_for_the_avenger(registry, cfg, tmp_path):
