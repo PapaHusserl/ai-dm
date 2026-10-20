@@ -63,6 +63,51 @@ def test_hero_data_has_favored_enemy_uses(registry, cfg):
     assert hero_data(grey_ctx(registry, cfg))["favored_enemy"] == {"current": 2, "max": 2}
 
 
+def test_hero_data_has_hit_dice(registry, cfg):
+    assert hero_data(grey_ctx(registry, cfg))["hit_dice"] == {"current": 3, "max": 3}
+
+
+def test_hero_data_hit_dice_follow_current_value(registry, cfg):
+    ctx = grey_ctx(registry, cfg)
+    ctx.bundle.heroes[0].creature.resources["hit_dice:d10"].current = 2
+    assert hero_data(ctx)["hit_dice"] == {"current": 2, "max": 3}
+
+
+def test_hero_data_hit_dice_drop_after_a_short_rest_with_one_die(registry, cfg):
+    from protocol_kit import req
+
+    from ai_dm.protocol.apply import apply
+
+    ctx = grey_ctx(registry, cfg)
+    ctx.bundle.heroes[0].creature.hp_current = 1
+    apply(ctx, req("rest", kind="short", hit_dice=1))
+    assert hero_data(ctx)["hit_dice"] == {"current": 2, "max": 3}
+
+
+def test_hero_data_hit_dice_sum_over_several_pools(registry, cfg):
+    from ai_dm.state.creature import ResourcePool
+
+    ctx = grey_ctx(registry, cfg)
+    ctx.bundle.heroes[0].creature.resources["hit_dice:d8"] = ResourcePool(current=1, max=2)
+    assert hero_data(ctx)["hit_dice"] == {"current": 4, "max": 5}
+
+
+def test_hero_data_without_hit_dice_pools_has_no_key(registry, cfg):
+    ctx = grey_ctx(registry, cfg)
+    resources = ctx.bundle.heroes[0].creature.resources
+    for name in [n for n in resources if n.startswith("hit_dice:")]:
+        del resources[name]
+    assert "hit_dice" not in hero_data(ctx)
+
+
+def test_rules_say_short_rest_hit_dice_not_above_current():
+    text = (resources.files("ai_dm.master") / "prompts" / "narrator_rules.md").read_text(
+        encoding="utf-8"
+    )
+    assert "`hit_dice`" in text
+    assert "не больше `current`" in text
+
+
 def test_hero_data_has_companion(registry, cfg):
     companion = hero_data(grey_ctx(registry, cfg))["companion"]
     assert companion["name"] == "Акела"

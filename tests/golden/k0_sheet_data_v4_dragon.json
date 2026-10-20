@@ -61,6 +61,10 @@
         "name": "Чутьё стаи"
       }
     ],
+    "hit_dice": {
+      "current": 3,
+      "max": 3
+    },
     "languages": [
       "celestial",
       "gnomish"

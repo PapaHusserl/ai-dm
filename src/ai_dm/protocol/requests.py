@@ -296,7 +296,8 @@ class GiveCustomItem(Request):
 
 
 class UseItem(Request):
-    """Герой применяет расходник из инвентаря: выпивает эликсир или зелье (вне боя)."""
+    """Герой применяет расходник из инвентаря (сам или ему его дают): выпивает эликсир или зелье
+    (вне боя)."""
 
     type: Literal["use_item"]
     item_id: str = Field(description="Id предмета из инвентаря героя.")
@@ -329,11 +330,12 @@ class TakeItem(Request):
     qty: int = Field(description="Количество.")
     why: Literal["given", "lost", "stolen", "spent"] = Field(
         description="Почему предмет уходит: given отдан, lost потерян, stolen украден, "
-        "spent израсходован не применением. Выпить или применить предмет: только use_item."
+        "spent израсходован не применением (вылит, сожжён, сломан, уничтожен). "
+        "Выпить или применить предмет: только use_item."
     )
     holder_npc_id: str = Field(
-        "", description="Только для сюжетных предметов: id NPC в этой локации, которому предмет "
-        "отдан (обязателен); для остальных пусто."
+        "", description="Для сюжетных предметов при given/lost/stolen: id NPC в этой локации, "
+        "у которого вещь оказалась (обязателен); при spent и для обычных предметов пусто."
     )
     NEUTRAL: ClassVar[dict] = {"holder_npc_id": ""}
 

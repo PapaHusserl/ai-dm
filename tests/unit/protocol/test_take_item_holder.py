@@ -118,11 +118,54 @@ def test_custom_item_without_holder_npc_id_is_invalid_and_changes_nothing(regist
     assert dump(ctx) == before
 
 
-def test_custom_item_without_holder_is_invalid_for_any_reason(registry, cfg):
+def test_custom_item_without_holder_is_invalid_for_any_reason_except_spent(registry, cfg):
     ctx = holder_ctx(registry, cfg)
-    for why in ("given", "lost", "stolen", "spent"):
-        assert isinstance(take(ctx, why=why), Invalid)
+    for why in ("given", "lost", "stolen"):
+        d = take(ctx, why=why)
+        assert isinstance(d, Invalid)
+        assert d.code == "holder_required"
     assert count_item(ctx.hero, "custom_1") == 1
+
+
+def test_spent_custom_item_without_holder_is_accepted(registry, cfg):
+    ctx = holder_ctx(registry, cfg)
+    d = take(ctx, why="spent")
+    assert isinstance(d, Decision)
+    assert d.status == "accepted"
+
+
+def test_spent_custom_item_leaves_the_hero(registry, cfg):
+    ctx = holder_ctx(registry, cfg)
+    take(ctx, why="spent")
+    assert count_item(ctx.hero, "custom_1") == 0
+
+
+def test_spent_custom_item_gets_no_holder(registry, cfg):
+    ctx = holder_ctx(registry, cfg)
+    take(ctx, why="spent")
+    assert holder(ctx) is None
+    assert lost_items_data(ctx.bundle.world) == []
+
+
+def test_spent_custom_item_logs_the_spending(registry, cfg):
+    ctx = holder_ctx(registry, cfg)
+    d = take(ctx, why="spent")
+    assert any("Израсходовано" in line for line in d.log)
+
+
+def test_spent_with_a_living_holder_npc_assigns_no_holder(registry, cfg):
+    ctx = holder_ctx(registry, cfg)
+    d = take(ctx, why="spent", holder_npc_id="mara")
+    assert d.status == "accepted"
+    assert holder(ctx) is None
+    assert count_item(ctx.hero, "custom_1") == 0
+
+
+def test_spent_qty_is_clamped_to_what_the_hero_has(registry, cfg):
+    ctx = holder_ctx(registry, cfg, qty=2)
+    d = take(ctx, qty=5, why="spent")
+    assert d.status == "clamped"
+    assert count_item(ctx.hero, "custom_1") == 0
 
 
 def test_holder_npc_in_another_location_is_absent(registry, cfg):

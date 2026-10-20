@@ -151,13 +151,19 @@ def test_repeat_has_no_log_lines(registry, cfg):
     assert apply(ctx, long_req()).log == []
 
 
-def test_signal_names_end_and_next_time_and_advance_time(registry, cfg):
+def test_signal_names_next_time_short_rest_and_advance_time(registry, cfg):
     end_s = 20 * HOUR
     ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + HOUR)
     signal = apply(ctx, long_req()).signal_to_master
-    assert clock_text(end_s) in signal
     assert clock_text(end_s + 12 * HOUR) in signal
+    assert "короткий отдых" in signal
     assert "advance_time" in signal
+
+
+def test_signal_says_time_passing_restores_nothing(registry, cfg):
+    end_s = 20 * HOUR
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + HOUR)
+    assert "не восстанавливаются" in apply(ctx, long_req()).signal_to_master
 
 
 def test_signal_next_time_follows_configured_cooldown(registry, cfg):

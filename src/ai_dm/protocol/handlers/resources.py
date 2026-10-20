@@ -504,10 +504,10 @@ def cast_spell(ctx, request):
 
 
 def take_holder(ctx, request):
-    # сюжетный предмет уходит к держателю: NPC из локации героя обязателен
+    # сюжетный предмет уходит к держателю: NPC из локации героя обязателен, кроме spent
     # возвращает (NPC, None) или (None, проблема)
     world = ctx.bundle.world
-    if request.item_id not in world.custom_items:
+    if request.item_id not in world.custom_items or request.why == "spent":
         return None, None
     here = [
         n.id for n in world.npcs.values()
@@ -752,8 +752,9 @@ def rest_redundant(ctx, request):
         return None
     return rejected(
         "отдых уже был",
-        f"Длинный отдых кончился в {clock_text(end_s)}; следующий — не раньше "
-        f"{clock_text(next_s)}. Отдых не повторяй; сон или ожидание дай через advance_time.",
+        f"Скажи игроку: длинный отдых снова возможен с {clock_text(next_s)}; сейчас можно "
+        "короткий отдых (rest short) или просто подремать/подождать — время двигай "
+        "advance_time, HP и ресурсы при этом не восстанавливаются.",
         report_tag="rest_repeat",
     )
 

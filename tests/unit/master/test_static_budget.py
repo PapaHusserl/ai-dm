@@ -16,6 +16,9 @@
 #   20050 не менялся.
 #   Ж2 коммит 2 (2026-10-18): поля goal_* в npc_update, правило «Цели NPC»; explore.total
 #   19736 -> 20344; 20960 = 20344 + 3 %.
+#   Фикс ЖП3 П3 (2026-10-20): правила (103 spent без держателя, 99 hit_dice, 101 вещь от NPC,
+#   108 зелье от спутника) и описания TakeItem/UseItem; порог 20960 превышен,
+#   замер 20988; 21620 = 20988 + 3 %.
 import json
 from importlib import resources
 
@@ -28,8 +31,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# Ж3 п.9: замер explore.total 19462 + 3 % (до этого Ж0 п.18: 18185 -> 18700).
-STATIC_MAX = 20960
+# Фикс ЖП3 П3: замер explore.total 20988 + 3 %.
+STATIC_MAX = 21620
 
 MODES = sorted(MODE_TOOLS)
 

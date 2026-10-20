@@ -51,3 +51,46 @@ def test_rules_point_at_gear_on_the_bodies():
 
 def test_rules_allow_ids_from_inventory_and_lost_items_in_tools():
     assert "id предметов из инвентаря героя и `lost_items`" in rules_text()
+
+
+# Фикс ЖП3 П3 (103): уничтоженная сюжетная вещь -- spent без держателя
+def test_rules_send_destroyed_story_item_to_spent_without_holder():
+    text = rules_text()
+    assert "`take_item` `why: spent` без держателя" in text
+    assert "вернуть её потом нельзя" in text
+
+
+def test_rules_require_holder_for_lost_stolen_given():
+    assert "`lost`/`stolen`/`given` — только с `holder_npc_id`" in rules_text()
+
+
+# Фикс ЖП3 П3 (101): вещь от NPC -- только вызовом
+def test_rules_forbid_npc_giving_an_item_by_text_only():
+    line = next(
+        ln for ln in rules_text().splitlines() if ln.startswith("- NPC дал, протянул")
+    )
+    assert "`give_item`" in line
+    assert "`give_custom_item`" in line
+    assert "одного текста мало" in line
+
+
+# Фикс ЖП3 П3 (108): зелье от спутника или NPC -- give_item и use_item
+def test_rules_use_item_paragraph_covers_potion_from_companion_or_npc():
+    para = next(p for p in rules_text().split("\n\n") if p.startswith("`use_item` —"))
+    assert "спутник или NPC" in para
+    assert "`give_item`" in para
+    assert "сразу `use_item`" in para
+
+
+def test_use_item_description_mentions_being_given():
+    from ai_dm.protocol.requests import UseItem
+
+    assert "ему его дают" in UseItem.__doc__
+
+
+def test_take_item_fields_describe_spent_without_holder():
+    from ai_dm.protocol.requests import TakeItem
+
+    fields = TakeItem.model_fields
+    assert "вылит, сожжён, сломан, уничтожен" in fields["why"].description
+    assert "при spent" in fields["holder_npc_id"].description

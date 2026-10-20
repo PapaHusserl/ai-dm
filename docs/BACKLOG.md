@@ -798,3 +798,15 @@ updated: 2026-10-20
 `ai_dm.master.prompt.PromptBuilder.combat_data` 10, 11, 18–23, 26, 29, 32, 46–55, 58–61, 66–68 (ключи `round`, `side`,
 `zone_id`, `status`, `id`, `name`, `strict=` в `zip`, фильтр `companions_nearby`, сортировка, `monster_traits`).
 Часть может убиваться тестами вне выбранного набора — сперва перепрогнать с широким TESTS.
+
+## 113. Выжившие мутанты на старых строках take_holder и sheet_data
+status: idea
+priority: low
+updated: 2026-10-20
+
+(Фикс ЖП3 П3, mutmut по test_take_item_holder, test_rest_repeat, test_master_hero_data) Старые строки, не тронутые партией:
+`ai_dm.protocol.handlers.resources.x_take_holder` 8–12 (фильтр `here`: `status == "alive"` и локация героя),
+21–23 (текст `holder_required`); `x_rest_redundant` 22, 23 (заголовок «отдых уже был»);
+`ai_dm.master.prompt.PromptBuilder.sheet_data` 14 (`not effects and not options` → `or`), 31–34 (`languages`),
+59–61 (`spells_always_prepared`), 96, 98, 99 (`model_dump(mode="json")` напарника).
+Часть может убиваться тестами вне выбранного набора — сперва перепрогнать с широким TESTS.

@@ -72,6 +72,7 @@ def test_rules_mention_only_known_tools():
             "bad_circle", "prepared_swap", "recent_turns",
         "memory_kind", "memory_text", "memory_last",
         "goal_kind", "goal_target", "goal_text", "goal_status",
+        "hit_dice",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []

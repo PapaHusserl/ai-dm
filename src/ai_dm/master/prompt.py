@@ -21,6 +21,7 @@ from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.knowledge import prompt_entries
 from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.npc_names import name_hidden
+from ai_dm.rules.rests import hit_dice_pools
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.trade import (
     category_models,
@@ -407,6 +408,12 @@ class PromptBuilder:
         if "favored_enemy" in resources:
             pool = resources["favored_enemy"]
             data["favored_enemy"] = {"current": pool.current, "max": pool.max}
+        pools = hit_dice_pools(hero.creature)
+        if pools:
+            data["hit_dice"] = {
+                "current": sum(pool.current for _, pool, _ in pools),
+                "max": sum(pool.max for _, pool, _ in pools),
+            }
         if hero.companions:
             data["companion"] = hero.companions[0].model_dump(mode="json")
         if companion_due(hero, registry):
