@@ -753,3 +753,25 @@ updated: 2026-10-20
 «лидер выбыл», «перевес героев», «переход», «колебание», «ключевой») — mutmut_15–18, 33, 34, 49, 50, 76, 77, 87, 88,
 106, 107, 113, 114, 119, 120, 131, 132; mutmut_11 (`>` → `>=`, отличается только подпись «база»/«Инт цели»).
 Предложение: тест на полный текст слагаемых для набора условий.
+
+## 120. Сдвиг часов из `/inv` через полночь
+status: idea
+priority: low
+updated: 2026-10-20
+
+(шаг 96а, решение 16, docs/plan-96a.md) Надевание/снятие доспеха и щита из `/inv` двигает часы мира вне хода
+(`game/inv_actions.py:shift_clock`): гасится только просроченная концентрация. Не проходят `close_scene_if_needed`,
+`tick_days` и истечение эликсиров (`until` у `ac_bonus`/`resist`) — при переходе через полночь или конце эффекта
+состояние пересчитается только следующим ходом (или не пересчитается). Нужен тест на границе суток и общий путь сдвига.
+
+## 121. Выжившие мутанты на старых строках после шага 96а П1
+status: idea
+priority: low
+updated: 2026-10-20
+
+(шаг 96а П1, mutmut по изменённым функциям, docs/plan-96a.md) 72 выживших на строках до партии (база baf77aa):
+`protocol.handlers.resources.use_item` 28 (валидация, тексты `bad_amount`/`unknown_item`, лимит расходников,
+`item = found[1] if …`); `rules.inventory.equip` 12 (тексты `InventoryError`); `ui.format.turn_menu_lines` 14
+(`head_lines`/`inert_lines`, `last`, отступ); `ui.combat_menu.build_view` 9 (`block="free"` у «ещё», `MenuView(None, …)`);
+`resources.drink_once` 5 (вынесенный старый код эликсиров: `effects[0]`, `duration_s or 0`, ветка `resist`);
+`game.controllers.PlayerController.choose` 3; `game.commands.cmd_inv` 1 (`format_cp`). Разобрать при касании функций.

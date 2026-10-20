@@ -6,6 +6,8 @@ from ai_dm.state.creature import ActiveEffect, Expiry
 from ai_dm.state.hero import InventoryEntry
 
 SLOTS = ("armor", "shield", "main_hand", "off_hand")
+# SRD 5.2: минуты на надеть / снять доспех по типу
+ARMOR_MINUTES = {"light": (1, 1), "medium": (5, 1), "heavy": (10, 5)}
 
 
 QUALITY_WORDS = {"junk": "ржавый", "worn": "поношенный", "used": "потёртый"}
@@ -128,6 +130,9 @@ def equip(hero, item_id: str, registry, slot: str = "main_hand") -> None:
             raise InventoryError(f"двуручное оружие нельзя со щитом: {item_id}")
         if "two_handed" in item.properties and hero.equipped.off_hand is not None:
             raise InventoryError(f"двуручное оружие нельзя с оружием в левой руке: {item_id}")
+        other = "main_hand" if slot == "off_hand" else "off_hand"
+        if getattr(hero.equipped, other) == item_id and count_item(hero, item_id) < 2:
+            raise InventoryError(f"один предмет нельзя взять в обе руки: {item_id}")
         setattr(hero.equipped, slot, item_id)
     elif kind == "armor" and item.category == "shield":
         main_hand = hero.equipped.main_hand
@@ -143,6 +148,37 @@ def equip(hero, item_id: str, registry, slot: str = "main_hand") -> None:
         hero.equipped.armor = item_id
     else:
         raise InventoryError(f"предмет нельзя экипировать: {item_id}")
+
+
+def blocking_slots(hero, item_id: str, registry, slot: str = "main_hand") -> list[str]:
+    # занятые слоты, которые мешают надеть предмет (equip откажет): их снимают до equip
+    found = find_item(registry, item_id)
+    if found is None:
+        return []
+    kind, item = found
+    equipped = hero.equipped
+    two_handed_held = equipped.main_hand is not None and (
+        "two_handed" in registry.get("weapon", equipped.main_hand).properties
+    )
+    blockers = []
+    if kind == "weapon" and "two_handed" in item.properties:
+        blockers = ["shield", "off_hand"]
+    elif kind == "weapon" and slot == "off_hand" and "light" in item.properties:
+        blockers = ["shield"] + ["main_hand"] * two_handed_held
+    elif kind == "armor" and item.category == "shield":
+        blockers = ["off_hand"] + ["main_hand"] * two_handed_held
+    return [s for s in blockers if getattr(equipped, s) is not None]
+
+
+def unequip(hero, slot: str) -> str:
+    # снимает предмет со слота; возвращает его id
+    if slot not in SLOTS:
+        raise InventoryError(f"нет такого слота: {slot}")
+    item_id = getattr(hero.equipped, slot)
+    if item_id is None:
+        raise InventoryError(f"слот пуст: {slot}")
+    setattr(hero.equipped, slot, None)
+    return item_id
 
 
 def use_item(hero, item_id: str, registry, rng) -> int:

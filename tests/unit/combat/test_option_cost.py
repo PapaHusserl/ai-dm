@@ -40,8 +40,7 @@ def test_dodge_costs_action(registry, cfg):
 
 
 def test_end_turn_is_free(registry, cfg):
-    end = options_of(registry, cfg)[-1]
-    assert end.kind == "end_turn"
+    end = next(o for o in options_of(registry, cfg) if o.kind == "end_turn")
     assert end.cost == "free"
 
 

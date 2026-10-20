@@ -52,7 +52,8 @@ def test_second_action_is_rejected(registry, cfg):
 def test_end_turn_stays_after_the_action(registry, cfg):
     engine = duel(registry, cfg, ScriptedRng(d20=[2]))
     engine.perform("hero", "attack:longsword:goblin_1")
-    assert option_ids(engine, "hero")[-1] == "end_turn"
+    ids = [i for i in option_ids(engine, "hero") if not i.startswith(("equip:", "unequip:"))]
+    assert ids[-1] == "end_turn"
 
 
 def test_potion_spends_the_bonus_action_only(registry, cfg):

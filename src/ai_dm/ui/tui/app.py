@@ -11,6 +11,7 @@ from textual.suggester import SuggestFromList
 from textual.widgets import Footer, Input, RichLog
 
 from ai_dm.art import art_for_event, art_for_location, pick_picture
+from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.game.commands import HELP, cost_report
 from ai_dm.game.lore_text import find_entity, lore_groups
 from ai_dm.game.scene import hero_of
@@ -201,7 +202,8 @@ class AiDmApp(App):
         self.show_menu()
 
     def action_more_menu(self):
-        self.push_screen(MoreModal(strings.MORE_TITLE, self.menu.options), self.more_chosen)
+        shown = [o for o in self.menu.options if o.kind not in HIDDEN_KINDS]
+        self.push_screen(MoreModal(strings.MORE_TITLE, shown), self.more_chosen)
 
     def action_menu_back(self):
         self.menu.expanded = None

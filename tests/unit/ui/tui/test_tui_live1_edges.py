@@ -62,14 +62,18 @@ def test_turn_menu_long_effects_wrap_with_four_space_indent():
 
 
 def test_turn_menu_long_label_wraps_under_the_text():
-    options = [SimpleNamespace(cost="action", label="Очень длинная подпись варианта " * 3)]
+    options = [
+        SimpleNamespace(cost="action", kind="attack", label="Очень длинная подпись варианта " * 3)
+    ]
     lines = turn_menu_lines(options, TURN, 40)
     at = next(i for i, x in enumerate(lines) if x.strip().startswith("1."))
     assert lines[at + 1].startswith(" " * len("    1. ")) and lines[at + 1].strip()
 
 
 def test_turn_menu_cost_group_title_is_printed_once_per_group():
-    options = [SimpleNamespace(cost="action", label=f"Вариант {n}") for n in range(3)]
+    options = [
+        SimpleNamespace(cost="action", kind="attack", label=f"Вариант {n}") for n in range(3)
+    ]
     lines = turn_menu_lines(options, TURN, 80)
     assert len([x for x in lines if x.strip().endswith(":") and "Действие" in x]) == 1
 

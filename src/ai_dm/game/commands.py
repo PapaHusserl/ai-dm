@@ -1,4 +1,4 @@
-from ai_dm.game import difficulty, tone
+from ai_dm.game import difficulty, inv_actions, tone
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
 from ai_dm.game.lore_text import lore_lines
@@ -37,7 +37,7 @@ HELP = {
     "model": "[роль провайдер:модель] показать или сменить модель",
     "cost": "расходы на модель",
     "sheet": "лист героя: характеристики, навыки, черты",
-    "inv": "инвентарь по группам",
+    "inv": "инвентарь по группам; надеть <предмет> [левая] · снять <слот> · выпить <предмет>",
     "shop": "торговцы здесь: что купить и что продать",
     "lore": "[имя] журнал знаний героя: кто, что, откуда",
     "spells": "заклинания и ячейки",
@@ -233,6 +233,8 @@ def cmd_difficulty(app, arg):
 
 
 def cmd_inv(app, arg):
+    if arg:
+        return inv_actions.run(app, arg)
     hero = hero_of(app.bundle)
     lines = inv_lines(hero, app.registry, format_cp(hero.money_cp))
     return app.reply(fit(lines, app.settings.app.ui.width))

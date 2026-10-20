@@ -21,8 +21,13 @@
 #       InventoryError; off_hand не при щите и не при двуручном в main_hand; двуручное и щит --
 #       не при оружии в off_hand
 #   SLOTS = ("armor", "shield", "main_hand", "off_hand")
-#   unequip(hero, slot: "armor" | "shield" | "main_hand" | "off_hand") -> None
-#       слот -> None; предмет остаётся в инвентаре; неизвестный слот -> InventoryError
+#   unequip(hero, slot: "armor" | "shield" | "main_hand" | "off_hand") -> str
+#       слот -> None, возвращает id снятого; предмет остаётся в инвентаре; неизвестный слот и
+#       пустой слот -> InventoryError
+#   blocking_slots(hero, item_id, registry, slot="main_hand") -> list[str]
+#       занятые слоты, из-за которых equip откажет (их снимают до equip)
+#   ARMOR_MINUTES: категория доспеха -> (минут надеть, минут снять), SRD 5.2
+#   equip: один предмет (qty 1) нельзя взять в обе руки; при двух копиях можно
 #   use_item(hero, item_id, registry, rng) -> int
 #       зелье лечения: бросок effects[0].dice через core.dice.roll_dice(expr, rng) -- первое, что
 #       берётся из rng; hp_current = min(hp_max, hp_current + бросок); предмет убывает на 1;
@@ -33,12 +38,15 @@ import pytest
 from ai_dm.core.dice import roll_dice
 from ai_dm.core.rng import Rng
 from ai_dm.rules.inventory import (
+    ARMOR_MINUTES,
     SLOTS,
     InventoryError,
     add_item,
+    blocking_slots,
     count_item,
     equip,
     remove_item,
+    unequip,
     use_item,
 )
 from ai_dm.state.creature import CreatureState
@@ -596,4 +604,198 @@ def test_remove_last_copy_unequips_off_hand(registry):
     equip(hero, "dagger", registry, slot="off_hand")
     remove_item(hero, "dagger")
     assert hero.equipped.off_hand is None
+
+
+# unequip (шаг 96а)
+
+def test_unequip_shield_empties_slot_and_returns_id(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    equip(hero, "shield", registry)
+    assert unequip(hero, "shield") == "shield"
+    assert hero.equipped.shield is None
+
+
+def test_unequip_keeps_item_in_inventory(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    equip(hero, "shield", registry)
+    unequip(hero, "shield")
+    assert count_item(hero, "shield") == 1
+
+
+@pytest.mark.parametrize(
+    ("slot", "item_id"),
+    [("armor", "chain_mail"), ("main_hand", "longsword"), ("off_hand", "dagger")],
+)
+def test_unequip_each_slot(registry, slot, item_id):
+    hero = make_hero()
+    add_item(hero, item_id, cost_cp=0)
+    equip(hero, item_id, registry, slot=slot if slot == "off_hand" else "main_hand")
+    assert unequip(hero, slot) == item_id
+    assert getattr(hero.equipped, slot) is None
+
+
+def test_unequip_one_slot_leaves_the_others(registry):
+    hero = make_hero()
+    for item in ("chain_mail", "shield", "longsword"):
+        add_item(hero, item, cost_cp=0)
+        equip(hero, item, registry)
+    unequip(hero, "shield")
+    assert hero.equipped.armor == "chain_mail"
+    assert hero.equipped.main_hand == "longsword"
+
+
+def test_unequip_empty_slot_is_error():
+    with pytest.raises(InventoryError) as raised:
+        unequip(make_hero(), "shield")
+    assert str(raised.value) == "слот пуст: shield"
+
+
+def test_unequip_unknown_slot_is_error():
+    with pytest.raises(InventoryError) as raised:
+        unequip(make_hero(), "head")
+    assert str(raised.value) == "нет такого слота: head"
+
+
+# часы надевания доспехов (SRD 5.2)
+
+def test_armor_minutes_follow_srd():
+    assert ARMOR_MINUTES == {"light": (1, 1), "medium": (5, 1), "heavy": (10, 5)}
+
+
+# один предмет в двух руках
+
+def test_equip_same_single_item_in_both_hands_is_error(registry):
+    hero = make_hero()
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "dagger", registry)
+    with pytest.raises(InventoryError):
+        equip(hero, "dagger", registry, slot="off_hand")
+    assert hero.equipped.off_hand is None
+
+
+def test_equip_same_single_item_main_hand_after_off_hand_is_error(registry):
+    hero = make_hero()
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "dagger", registry, slot="off_hand")
+    with pytest.raises(InventoryError):
+        equip(hero, "dagger", registry)
+    assert hero.equipped.main_hand is None
+
+
+def test_equip_two_copies_in_both_hands_is_ok(registry):
+    hero = make_hero()
+    add_item(hero, "dagger", 2, cost_cp=0)
+    equip(hero, "dagger", registry)
+    equip(hero, "dagger", registry, slot="off_hand")
+    assert hero.equipped.main_hand == "dagger"
+    assert hero.equipped.off_hand == "dagger"
+
+
+# blocking_slots
+
+def test_blocking_two_handed_lists_shield_and_off_hand(registry):
+    hero = make_hero()
+    for item in ("shield", "dagger", "greatsword"):
+        add_item(hero, item, cost_cp=0)
+    hero.equipped.shield = "shield"
+    hero.equipped.off_hand = "dagger"
+    assert blocking_slots(hero, "greatsword", registry) == ["shield", "off_hand"]
+
+
+def test_blocking_two_handed_with_free_hands_is_empty(registry):
+    hero = make_hero()
+    add_item(hero, "greatsword", cost_cp=0)
+    assert blocking_slots(hero, "greatsword", registry) == []
+
+
+def test_blocking_two_handed_lists_only_occupied_slots(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "greatsword", cost_cp=0)
+    equip(hero, "shield", registry)
+    assert blocking_slots(hero, "greatsword", registry) == ["shield"]
+
+
+def test_blocking_off_hand_weapon_lists_shield(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "shield", registry)
+    assert blocking_slots(hero, "dagger", registry, "off_hand") == ["shield"]
+
+
+def test_blocking_off_hand_weapon_lists_two_handed_main_hand(registry):
+    hero = make_hero()
+    add_item(hero, "greatsword", cost_cp=0)
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "greatsword", registry)
+    assert blocking_slots(hero, "dagger", registry, "off_hand") == ["main_hand"]
+
+
+def test_blocking_off_hand_weapon_ignores_one_handed_main_hand(registry):
+    hero = make_hero()
+    add_item(hero, "longsword", cost_cp=0)
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "longsword", registry)
+    assert blocking_slots(hero, "dagger", registry, "off_hand") == []
+
+
+def test_blocking_main_hand_weapon_ignores_shield(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "shield", registry)
+    assert blocking_slots(hero, "dagger", registry) == []
+
+
+def test_blocking_shield_lists_off_hand_weapon(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "dagger", registry, slot="off_hand")
+    assert blocking_slots(hero, "shield", registry) == ["off_hand"]
+
+
+def test_blocking_shield_lists_two_handed_main_hand(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "greatsword", cost_cp=0)
+    equip(hero, "greatsword", registry)
+    assert blocking_slots(hero, "shield", registry) == ["main_hand"]
+
+
+def test_blocking_shield_ignores_one_handed_main_hand(registry):
+    hero = make_hero()
+    add_item(hero, "shield", cost_cp=0)
+    add_item(hero, "longsword", cost_cp=0)
+    equip(hero, "longsword", registry)
+    assert blocking_slots(hero, "shield", registry) == []
+
+
+def test_blocking_armor_is_empty(registry):
+    hero = make_hero()
+    add_item(hero, "chain_mail", cost_cp=0)
+    add_item(hero, "greatsword", cost_cp=0)
+    equip(hero, "greatsword", registry)
+    assert blocking_slots(hero, "chain_mail", registry) == []
+
+
+def test_blocking_unknown_item_is_empty(registry):
+    assert blocking_slots(make_hero(), "no_such_item", registry) == []
+
+
+def test_equip_passes_after_unequipping_the_blockers(registry):
+    hero = make_hero()
+    for item in ("shield", "dagger", "greatsword"):
+        add_item(hero, item, cost_cp=0)
+    hero.equipped.shield = "shield"
+    hero.equipped.off_hand = "dagger"
+    with pytest.raises(InventoryError):
+        equip(hero, "greatsword", registry)
+    for slot in blocking_slots(hero, "greatsword", registry):
+        unequip(hero, slot)
+    equip(hero, "greatsword", registry)
+    assert hero.equipped.main_hand == "greatsword"
 

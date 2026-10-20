@@ -1,6 +1,8 @@
 import re
 from dataclasses import dataclass, field
 
+from ai_dm.combat.available import HIDDEN_KINDS
+
 # Меню хода героя: цель + действия против неё, короткий блок бесцелевых, остальное в «Ещё…».
 # Слой отображения поверх плоского списка вариантов: движок и нумерация протокола не меняются.
 MAX_ROWS = 10
@@ -199,6 +201,7 @@ def number(rows):
 
 
 def build_view(options, roster, target, nonlethal=False, expanded=None):
+    options = [option for option in options if option.kind not in HIDDEN_KINDS]
     view = MenuView(target, targets(options, roster), header_of(options), more=list(options))
     enemies = {chip.ref for chip in roster}
     if expanded is not None:

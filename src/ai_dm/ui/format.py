@@ -1,5 +1,7 @@
 import textwrap
 
+from ai_dm.combat.available import HIDDEN_KINDS
+
 WIDTH = 80
 ROLL_MARK = "⚄ "
 
@@ -94,6 +96,8 @@ def turn_menu_lines(options, turn, width=WIDTH, concentration="", ac="", effects
     lines = head_lines(turn, width, concentration, ac, effects)
     last = None
     for number, option in enumerate(options, start=1):
+        if option.kind in HIDDEN_KINDS:
+            continue
         if option.cost != last:
             last = option.cost
             lines.append(f"  {COST_TITLES[option.cost]}:")

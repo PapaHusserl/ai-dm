@@ -278,3 +278,61 @@ def test_wrapped_roll_line_keeps_all_words():
 
     words = " ".join(line.strip() for line in roll_lines(LONG_ROLL)).split()
     assert words[1:] == LONG_ROLL.split()
+
+
+# turn_menu_lines: скрытые варианты смены экипировки (шаг 96а) в меню не печатаются
+
+def swap_menu_options():
+    from types import SimpleNamespace
+
+    return [
+        SimpleNamespace(cost="action", kind="attack", label="Атака мечом"),
+        SimpleNamespace(cost="free", kind="end_turn", label="Закончить ход"),
+        SimpleNamespace(cost="free", kind="equip", label="Взять в руку: Копьё"),
+        SimpleNamespace(cost="action", kind="unequip", label="Снять щит: Щит"),
+    ]
+
+
+def swap_menu_turn():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(action=True, attacks_left=0, bonus=True, move=30, reaction=True)
+
+
+def test_turn_menu_lines_skip_equip_and_unequip_options():
+    from ai_dm.ui.format import turn_menu_lines
+
+    text = "\n".join(turn_menu_lines(swap_menu_options(), swap_menu_turn(), 80))
+    assert "Взять в руку" not in text
+    assert "Снять щит" not in text
+
+
+def test_turn_menu_lines_keep_visible_options_and_numbers():
+    from ai_dm.ui.format import turn_menu_lines
+
+    lines = turn_menu_lines(swap_menu_options(), swap_menu_turn(), 80)
+    assert any(x.strip() == "1. Атака мечом" for x in lines)
+    assert any(x.strip() == "2. Закончить ход" for x in lines)
+    assert not any(x.strip().startswith(("3.", "4.")) for x in lines)
+
+
+def test_turn_menu_number_is_the_index_in_the_full_list():
+    from types import SimpleNamespace
+
+    from ai_dm.ui.format import turn_menu_lines
+
+    options = [
+        SimpleNamespace(cost="action", kind="attack", label="Первый"),
+        SimpleNamespace(cost="action", kind="equip", label="Скрытый"),
+        SimpleNamespace(cost="action", kind="dash", label="Третий"),
+    ]
+    lines = turn_menu_lines(options, swap_menu_turn(), 80)
+    assert any(x.strip() == "3. Третий" for x in lines)
+    assert not any(x.strip().startswith("2.") for x in lines)
+
+
+def test_hidden_option_does_not_print_its_own_cost_group_title():
+    from ai_dm.ui.format import turn_menu_lines
+
+    lines = turn_menu_lines(swap_menu_options(), swap_menu_turn(), 80)
+    assert len([x for x in lines if x.strip() == "Действие:"]) == 1

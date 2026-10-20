@@ -6,7 +6,7 @@ from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, b
 from ai_dm.combat.stealth import HIDE_DC, can_hide
 from ai_dm.rules.death_saves import is_dying
 from ai_dm.rules.derived import clock_text, free_cast_pool
-from ai_dm.rules.inventory import active_item_until, find_item, item_totals
+from ai_dm.rules.inventory import InventoryError, active_item_until, equip, find_item, item_totals
 from ai_dm.rules.modifiers.conditions import with_implied
 from ai_dm.rules.names import SKILL_NAMES
 
@@ -21,6 +21,8 @@ class ActionOption(BaseModel):
 
 
 COST_ORDER = ["action", "bonus", "move", "reaction", "free"]
+# варианты смены экипировки: идут по номеру из окна inv, в меню и в списке рассказчика их нет
+HIDDEN_KINDS = ("equip", "unequip")
 
 
 def target_text(engine, target) -> str:
@@ -424,6 +426,78 @@ def pickup_options(engine, ref) -> list[ActionOption]:
     return result
 
 
+def equip_problem(hero, item_id, registry, slot):
+    # отказ equip на копии слотов (владение, руки, щит) или None, если прошёл бы
+    trial = hero.model_copy(update={"equipped": hero.equipped.model_copy()})
+    try:
+        equip(trial, item_id, registry, slot)
+    except InventoryError as error:
+        return error
+    return None
+
+
+def equip_ok(hero, item_id, registry, slot) -> bool:
+    return equip_problem(hero, item_id, registry, slot) is None
+
+
+def equip_options(engine, ref) -> list[ActionOption]:
+    # смена оружия и щита из окна inv (в меню не показывается, HIDDEN_KINDS): оружие -- свободное
+    # взаимодействие, иначе действие; щит -- всегда действие; доспех в бою не меняется
+    if not engine.is_hero(ref):
+        return []
+    turn = engine.part(ref).turn
+    weapon_cost = None
+    if turn.free_interaction:
+        weapon_cost = "free"
+    elif turn.action:
+        weapon_cost = "action"
+    costs = {
+        "main_hand": weapon_cost, "off_hand": weapon_cost,
+        "shield": "action" if turn.action else None,
+    }
+    hero = engine.heroes[ref]
+    result = [
+        ActionOption(
+            id="equip:" + item_id + (":off_hand" if slot == "off_hand" else ""), kind="equip",
+            label=label, params={"item": item_id, "slot": slot}, cost=costs[slot],
+        )
+        for item_id, slot, label in equip_candidates(engine, hero, costs)
+    ]
+    for slot, cost in costs.items():
+        item_id = getattr(hero.equipped, slot)
+        if item_id is not None and cost is not None:
+            verb = "Снять щит" if slot == "shield" else "Убрать оружие"
+            result.append(
+                ActionOption(
+                    id=f"unequip:{slot}", kind="unequip",
+                    label=f"{verb}: {find_item(engine.registry, item_id)[1].name}",
+                    params={"slot": slot}, cost=cost,
+                )
+            )
+    return result
+
+
+def equip_candidates(engine, hero, costs):
+    # (предмет, слот, подпись) того, что из инвентаря можно взять или надеть сейчас
+    for item_id in item_totals(hero):
+        found = find_item(engine.registry, item_id)
+        if found is None or found[0] == "item":
+            continue
+        for slot, label in equip_slots(found):
+            free = costs[slot] is not None and getattr(hero.equipped, slot) != item_id
+            if free and equip_ok(hero, item_id, engine.registry, slot):
+                yield item_id, slot, f"{label}: {found[1].name}"
+
+
+def equip_slots(found):
+    # куда берётся предмет: оружие -- в правую или левую руку, щит -- в слот щита
+    if found[0] == "weapon":
+        return (("main_hand", "Взять в руку"), ("off_hand", "В левую руку"))
+    if found[1].category == "shield":
+        return (("shield", "Надеть щит"),)
+    return ()
+
+
 def has_second_wind(engine, ref) -> bool:
     if not engine.is_hero(ref):
         return False
@@ -505,4 +579,5 @@ def list_options(engine, ref) -> list[ActionOption]:
         for option in options:
             if option.kind in ("attack", "disarm"):
                 option.label += f" (ещё {p.turn.attacks_left} из 2)"
-    return sorted(options, key=lambda o: COST_ORDER.index(o.cost))
+    # смена экипировки в конце: скрытые из меню варианты не сдвигают номера видимых
+    return sorted(options, key=lambda o: COST_ORDER.index(o.cost)) + equip_options(engine, ref)

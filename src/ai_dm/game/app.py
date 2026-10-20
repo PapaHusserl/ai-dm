@@ -41,6 +41,7 @@ from ai_dm.rules.progression import can_level_up
 
 LOADED_PREFIX = "Загружено: "
 SIMPLE_REASON = "звук только в TUI"
+INV_NOTES_PREFIX = "Перед этим герой сам: "
 LEVEL_MENU = ["average", "roll"]
 DEAD_MENU = ["load_last_save", "quit"]
 CHOICE_TITLES = {
@@ -142,6 +143,8 @@ class GameApp:
         self.failed_reason = None
         # (шкала, значение) изменения тона, ждущего подтверждения (pending tone_confirm)
         self.tone_change = None
+        # действия героя из окна inv, о которых рассказчик узнает в следующем ходе (не в сейве)
+        self.inv_notes = []
         # звук: cli подменяет на настоящий контроллер только в TUI
         self.audio = SilentSound(SIMPLE_REASON)
 
@@ -202,7 +205,15 @@ class GameApp:
         in_combat = self.bundle.session.active_combat is not None
         if in_combat and line.isdigit() and not 1 <= int(line) <= len(self.runner.preview_turn()):
             return self.reply(["Нет такого варианта."])
-        return self.after_turn(self.runner.play(line))
+        return self.after_turn(self.runner.play(self.with_notes(line, in_combat)))
+
+    def with_notes(self, line, in_combat) -> str:
+        # что герой сделал из окна inv (надел, снял, выпил) -- рассказчику в начале следующего хода;
+        # номер варианта боя остаётся числом, заметки ждут словесного хода
+        if not self.inv_notes or (in_combat and line.isdigit()):
+            return line
+        notes, self.inv_notes = self.inv_notes, []
+        return f"({INV_NOTES_PREFIX}{'; '.join(notes)}.) {line}"
 
     def after_turn(self, turn) -> Reply:
         turn, lines = self.chain_turn(turn)
@@ -459,6 +470,7 @@ class GameApp:
         self.runner.last_capture = None
         self.reported = None
         self.failed_reason = None
+        self.inv_notes = []
         scene = bundle.session.current_scene
         pending_boundary = bundle.session.boundary_pending and hero_of(bundle).status != "dead"
         if not pending_boundary and (scene is None or scene.closed_reason is not None):

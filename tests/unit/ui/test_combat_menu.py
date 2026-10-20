@@ -259,6 +259,39 @@ def test_limit_holds_for_every_enemy_count():
         assert len(view.rows) <= MAX_ROWS
 
 
+# скрытые варианты смены экипировки (шаг 96а): ни в строках, ни в «Ещё…»
+
+def swap_options():
+    return [
+        plain("equip:spear", kind="equip", label="Взять в руку: Копьё", cost="free",
+              item="spear", slot="main_hand"),
+        plain("unequip:shield", kind="unequip", label="Снять щит: Щит", slot="shield"),
+    ]
+
+
+def test_build_view_rows_have_no_equipment_swap_options():
+    options = big_fight(2) + swap_options()
+    view = build_view(options, roster(2), "g1")
+    assert not [i for i in ids(view.rows) if (i or "").startswith(("equip:", "unequip:"))]
+
+
+def test_build_view_more_list_has_no_equipment_swap_options():
+    view = build_view(big_fight(2) + swap_options(), roster(2), "g1")
+    assert not [o for o in view.more if o.kind in ("equip", "unequip")]
+
+
+def test_build_view_with_swap_options_equals_view_without_them():
+    plain_view = build_view(big_fight(2), roster(2), "g1")
+    view = build_view(big_fight(2) + swap_options(), roster(2), "g1")
+    assert ids(view.rows) == ids(plain_view.rows)
+    assert [o.id for o in view.more] == [o.id for o in plain_view.more]
+
+
+def test_build_view_expanded_has_no_equipment_swap_options():
+    view = build_view(big_fight(2) + swap_options(), roster(2), "g1", expanded="move")
+    assert not [i for i in ids(view.rows) if (i or "").startswith(("equip:", "unequip:"))]
+
+
 def test_rows_have_keys_1_to_9_then_0():
     view = build_view(big_fight(5), roster(5), "g1")
     keys = [row.key for row in view.rows]
@@ -745,15 +778,26 @@ FLAT_IDS_3_GOBLINS = [
 
 def test_list_options_ids_are_unchanged_in_fight_with_three_goblins(cfg, tmp_path):
     game = goblins_game(cfg, tmp_path, 3)
-    assert [o.id for o in game.runner.preview_turn()] == FLAT_IDS_3_GOBLINS
+    flat = [o.id for o in game.runner.preview_turn()]
+    # смена экипировки идёт после end_turn и видимые номера не сдвигает
+    assert flat[: len(FLAT_IDS_3_GOBLINS)] == FLAT_IDS_3_GOBLINS
+    assert all(i.startswith(("equip:", "unequip:")) for i in flat[len(FLAT_IDS_3_GOBLINS):])
 
 
 def test_option_list_for_narrator_is_the_full_flat_list(cfg, tmp_path):
     game = goblins_game(cfg, tmp_path, 3)
     shown = combat_flow.option_list(game.bundle, game.registry, cfg)
-    flat = game.runner.preview_turn()
+    flat = [o for o in game.runner.preview_turn() if o.kind not in ("equip", "unequip")]
     assert [item["id"] for item in shown] == FLAT_IDS_3_GOBLINS
     assert shown == [{"id": o.id, "label": o.label, "cost": o.cost} for o in flat]
+
+
+def test_option_list_for_narrator_hides_the_equipment_swap_options(cfg, tmp_path):
+    game = goblins_game(cfg, tmp_path, 3)
+    flat = game.runner.preview_turn()
+    assert any(o.kind in ("equip", "unequip") for o in flat)
+    shown = combat_flow.option_list(game.bundle, game.registry, cfg)
+    assert not [i for i in shown if i["id"].startswith(("equip:", "unequip:"))]
 
 
 def test_view_does_not_change_the_flat_options(cfg, tmp_path):

@@ -262,8 +262,10 @@ def test_combat_actions_are_numbered_from_one(registry, tmp_path):
     options = app.runner.preview_turn()
     assert options
     for number, option in enumerate(options, start=1):
-        assert f"{number}. {option.label}" in out.lines
-    assert f"{len(options)}. Закончить ход" in out.lines
+        if option.kind not in ("equip", "unequip"):
+            assert f"{number}. {option.label}" in out.lines
+    end_number = [o.kind for o in options].index("end_turn") + 1
+    assert f"{end_number}. Закончить ход" in out.lines
 
 
 def test_number_in_combat_is_an_action_not_an_old_offered_choice(registry, tmp_path):
@@ -290,7 +292,8 @@ def test_resumed_combat_shows_actions_at_start(registry, tmp_path):
     out = play(app, [])
     options = app.runner.preview_turn()
     for number, option in enumerate(options, start=1):
-        assert f"{number}. {option.label}" in out.lines
+        if option.kind not in ("equip", "unequip"):
+            assert f"{number}. {option.label}" in out.lines
 
 
 # меню ошибки хода

@@ -1,6 +1,26 @@
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.derived import clock_text
-from ai_dm.rules.inventory import drink_item, find_item, use_item
+from ai_dm.rules.inventory import drink_item, equip, find_item, unequip, use_item
+
+
+def swap(engine, ref, option) -> list[DomainEvent]:
+    # смена оружия или щита: свободное взаимодействие или действие -- как посчитал вариант
+    turn = engine.part(ref).turn
+    if option.cost == "free":
+        turn.free_interaction = False
+    else:
+        turn.action = False
+    hero = engine.heroes[ref]
+    slot = option.params["slot"]
+    if option.kind == "unequip":
+        item_id = unequip(hero, slot)
+        verb = "снимает" if slot == "shield" else "убирает"
+    else:
+        item_id = option.params["item"]
+        equip(hero, item_id, engine.registry, slot)
+        verb = "надевает" if slot == "shield" else "берёт"
+    engine.log(f"{engine.name(ref)} {verb}: {find_item(engine.registry, item_id)[1].name}")
+    return []
 
 
 def use(engine, ref, option) -> list[DomainEvent]:

@@ -1,4 +1,5 @@
 from ai_dm.combat.actions import cast, parley
+from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.combat.engine import CombatEngine, CombatRoundLimit
 from ai_dm.core.events import DomainEvent
 from ai_dm.core.rng import Rng
@@ -152,6 +153,7 @@ def option_list(bundle, registry, cfg) -> list[dict]:
     return [
         {"id": option.id, "label": option.label, "cost": option.cost}
         for option in preview_options(bundle, registry, cfg)
+        if option.kind not in HIDDEN_KINDS
     ]
 
 

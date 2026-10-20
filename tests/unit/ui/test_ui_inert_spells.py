@@ -8,9 +8,9 @@ from ai_dm.ui.simple import render
 
 TURN = SimpleNamespace(action=True, attacks_left=0, bonus=True, move=30, reaction=True)
 OPTIONS = [
-    SimpleNamespace(cost="action", label="Атака мечом"),
-    SimpleNamespace(cost="action", label="Рывок"),
-    SimpleNamespace(cost="bonus", label="Метка охотника"),
+    SimpleNamespace(cost="action", kind="attack", label="Атака мечом"),
+    SimpleNamespace(cost="action", kind="dash", label="Рывок"),
+    SimpleNamespace(cost="bonus", kind="mark", label="Метка охотника"),
 ]
 
 

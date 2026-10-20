@@ -445,7 +445,25 @@ def test_more_modal_lists_every_flat_option(cfg, tmp_path, tui):
 
     text = run(app, steps)
     for option in game.runner.preview_turn():
-        assert tui_flat(option.label) in text, option.id
+        if option.kind not in ("equip", "unequip"):
+            assert tui_flat(option.label) in text, option.id
+
+
+def test_more_modal_hides_the_equipment_swap_options(cfg, tmp_path, tui):
+    # смена экипировки идёт только из окна inv: ни в меню, ни в «Ещё…» её нет
+    app, game = goblins_app(cfg, tmp_path)
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        await pilot.press("f4")
+        await pilot.pause()
+        return " || ".join(more_labels(app))
+
+    text = run(app, steps)
+    hidden = [o for o in game.runner.preview_turn() if o.kind in ("equip", "unequip")]
+    assert hidden
+    for option in hidden:
+        assert tui_flat(option.label) not in text, option.id
 
 
 def test_every_target_variant_is_visible_after_choosing_that_target(cfg, tmp_path, tui):
@@ -674,7 +692,10 @@ def test_more_modal_digits_pick_options_one_to_nine(cfg, tmp_path, tui):
 def test_simple_mode_keeps_flat_numbering_in_combat(cfg, tmp_path):
     game = goblins_game(cfg, tmp_path)
     out = play(game, ["Бью ногой дверь"])
-    flat = [option.label for option in game.runner.preview_turn()]
+    flat = [
+        option.label for option in game.runner.preview_turn()
+        if option.kind not in ("equip", "unequip")
+    ]
     shown = numbered_lines(out.lines)[-len(flat):]
     assert [number for number, _ in shown] == list(range(1, len(flat) + 1))
     assert [text[:30] for _, text in shown] == [label[:30] for label in flat]

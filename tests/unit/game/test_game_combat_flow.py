@@ -165,7 +165,8 @@ def test_preview_lists_hero_actions_with_end_turn_last(registry, cfg, tmp_path):
     rig, _ = start_fight(registry, cfg, tmp_path)
     options = rig.runner.preview_turn()
     ids = [o.id for o in options]
-    assert ids[-1] == "end_turn"
+    visible = [o.id for o in options if o.kind not in ("equip", "unequip")]
+    assert visible[-1] == "end_turn"
     assert "move:hall" in ids
     assert all(o.label for o in options)
     assert len(set(ids)) == len(ids)
@@ -269,7 +270,8 @@ def test_after_hero_turn_npcs_act_until_hero_again(registry, cfg, tmp_path):
     assert state.initiative_order[state.turn_index] == "hero"
     assert state.round == round_before + 1
     assert any("ход:" in line for line in result.log)
-    assert option_ids(rig.runner)[-1] == "end_turn"
+    ids = [i for i in option_ids(rig.runner) if not i.startswith(("equip:", "unequip:"))]
+    assert ids[-1] == "end_turn"
 
 
 def test_combat_log_of_turn_is_the_new_state_log_lines(registry, cfg, tmp_path):
@@ -850,7 +852,11 @@ def test_dead_hero_gets_no_xp_even_with_dead_enemies(registry, cfg):
 # B4: combat.options в запросах мастера
 
 def expected_options(runner):
-    return [{"id": o.id, "label": o.label, "cost": o.cost} for o in runner.preview_turn()]
+    # рассказчику скрытые equip/unequip не показываются
+    return [
+        {"id": o.id, "label": o.label, "cost": o.cost} for o in runner.preview_turn()
+        if o.kind not in ("equip", "unequip")
+    ]
 
 
 def test_classify_request_carries_options_of_the_boundary(registry, cfg, tmp_path):
@@ -935,7 +941,8 @@ def test_text_open_turn_menu_still_offers_action(registry, cfg, tmp_path):
     options = rig.runner.preview_turn()
     assert any(o.cost == "action" for o in options)
     assert not any(o.id == "move:hall" for o in options)
-    assert options[-1].id == "end_turn"
+    visible = [o for o in options if o.kind not in ("equip", "unequip")]
+    assert visible[-1].id == "end_turn"
 
 
 def test_text_with_bonus_step_only_keeps_turn_open(registry, cfg, tmp_path):

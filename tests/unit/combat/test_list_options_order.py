@@ -69,8 +69,22 @@ def two_goblins(registry, cfg, hero):
     )
 
 
+def visible_ids(engine, ref):
+    # видимые пункты: до end_turn включительно; после него идут скрытые equip/unequip
+    ids = option_ids(engine, ref)
+    return ids[: ids.index("end_turn") + 1]
+
+
+def test_hidden_swap_options_come_after_end_turn(registry, cfg):
+    ids = option_ids(two_goblins(registry, cfg, make_fighter(registry)), "hero")
+    tail = ids[ids.index("end_turn") + 1:]
+    assert tail
+    assert all(i.startswith(("equip:", "unequip:")) for i in tail)
+
+
 def test_fighter_order(registry, cfg):
-    assert option_ids(two_goblins(registry, cfg, make_fighter(registry)), "hero") == HERO_FIGHTER
+    engine = two_goblins(registry, cfg, make_fighter(registry))
+    assert visible_ids(engine, "hero") == HERO_FIGHTER
 
 
 def test_goblin_order(registry, cfg):
@@ -78,7 +92,7 @@ def test_goblin_order(registry, cfg):
 
 
 def test_wizard_order(registry, cfg):
-    assert option_ids(two_goblins(registry, cfg, make_wizard(registry)), "wiz") == WIZARD
+    assert visible_ids(two_goblins(registry, cfg, make_wizard(registry)), "wiz") == WIZARD
 
 
 def test_hero_in_an_exit_zone_order(registry, cfg):
@@ -86,7 +100,7 @@ def test_hero_in_an_exit_zone_order(registry, cfg):
         registry, cfg, heroes=[make_fighter(registry)], zones=make_zones(door_exit=True),
         hero_zone="door", monsters=[mon("boss", "goblin_boss", "hall")],
     )
-    assert option_ids(engine, "hero") == EXIT_HERO
+    assert visible_ids(engine, "hero") == EXIT_HERO
     assert option_ids(engine, "boss") == BOSS
 
 
@@ -100,10 +114,10 @@ def solo(registry, cfg):
 def test_order_after_the_action_is_spent(registry, cfg):
     engine = solo(registry, cfg)
     turn(engine, "hero").action = False
-    assert option_ids(engine, "hero") == HERO_ACTION_SPENT
+    assert visible_ids(engine, "hero") == HERO_ACTION_SPENT
 
 
 def test_order_after_the_bonus_action_is_spent(registry, cfg):
     engine = solo(registry, cfg)
     turn(engine, "hero").bonus = False
-    assert option_ids(engine, "hero") == HERO_BONUS_SPENT
+    assert visible_ids(engine, "hero") == HERO_BONUS_SPENT

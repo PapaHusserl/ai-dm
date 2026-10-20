@@ -598,11 +598,12 @@ def attack_or_move_number(runner):
     for i, option_id in enumerate(ids):
         if option_id.startswith("move:") and option_id[len("move:"):] in enemy_zones:
             return i + 1
-    return len(ids)
+    return ids.index("end_turn") + 1
 
 
 def end_turn_number(runner):
-    return len(option_ids(runner))
+    # скрытые equip/unequip идут после end_turn: номер -- индекс end_turn
+    return option_ids(runner).index("end_turn") + 1
 
 
 def drive(runner_like, pick, limit=60):

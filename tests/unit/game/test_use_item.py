@@ -166,6 +166,135 @@ def test_potions_over_scene_limit_are_rejected(dragon, cfg):
     assert count_item(hero, POTION) == 1
 
 
+def test_potion_limit_counts_only_healing_not_elixirs(dragon, cfg):
+    registry, bundle = dragon
+    small = cfg.model_copy(deep=True)
+    small.limits.consumables_per_scene = 1
+    bundle.session.current_scene = SceneState(id="scene_1", started_at_s=0, location_id="vale")
+    ctx = make_ctx(registry, small, bundle=bundle)
+    assert apply(ctx, req("use_item", item_id=ELIXIR, qty=1)).status == "accepted"
+    assert bundle.session.current_scene.consumables_used == 0
+
+
+def test_use_item_heal_counts_toward_the_scene_limit(dragon, cfg):
+    registry, bundle = dragon
+    bundle.session.current_scene = SceneState(id="scene_1", started_at_s=0, location_id="vale")
+    add_item(bundle.heroes[0], POTION, 2, cost_cp=0)
+    drink(registry, cfg, bundle, POTION)
+    assert bundle.session.current_scene.consumables_used == 1
+
+
+def test_use_item_heal_trims_qty_to_the_limit_left(dragon, cfg):
+    registry, bundle = dragon
+    small = cfg.model_copy(deep=True)
+    small.limits.consumables_per_scene = 2
+    scene = SceneState(id="scene_1", started_at_s=0, location_id="vale", consumables_used=1)
+    bundle.session.current_scene = scene
+    hero = bundle.heroes[0]
+    add_item(hero, POTION, 3, cost_cp=0)
+    d = apply(make_ctx(registry, small, bundle=bundle), req("use_item", item_id=POTION, qty=3))
+    assert d.result["qty"] == 1
+    assert count_item(hero, POTION) == 2
+    assert scene.consumables_used == 2
+
+
+# consumables_left / heal_once / drink_once (шаг 96а): общий путь обработчика и /inv
+
+def test_consumables_left_without_scene_is_none(cfg):
+    from ai_dm.protocol.handlers.resources import consumables_left
+
+    assert consumables_left(None, cfg.limits) is None
+
+
+def test_consumables_left_is_limit_minus_used(cfg):
+    from ai_dm.protocol.handlers.resources import consumables_left
+
+    scene = SceneState(id="scene_1", started_at_s=0, location_id="vale", consumables_used=1)
+    assert consumables_left(scene, cfg.limits) == cfg.limits.consumables_per_scene - 1
+
+
+def test_consumables_left_can_reach_zero(cfg):
+    from ai_dm.protocol.handlers.resources import consumables_left
+
+    scene = SceneState(
+        id="scene_1", started_at_s=0, location_id="vale",
+        consumables_used=cfg.limits.consumables_per_scene,
+    )
+    assert consumables_left(scene, cfg.limits) == 0
+
+
+def test_heal_once_heals_spends_the_potion_and_returns_the_log_line(dragon):
+    from ai_dm.core.rng import Rng
+    from ai_dm.protocol.handlers.resources import heal_once
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    add_item(hero, POTION, 1, cost_cp=0)
+    hero.creature.hp_current = 1
+    line = heal_once(hero, registry.get("item", POTION), registry, Rng(5))
+    assert hero.creature.hp_current > 1
+    assert count_item(hero, POTION) == 0
+    now, top = hero.creature.hp_current, hero.creature.hp_max
+    assert line == (
+        f"{hero.name}: {registry.get('item', POTION).name} +{now - 1} HP, {now}/{top}"
+    )
+
+
+def test_heal_once_line_equals_the_handler_log(dragon, cfg):
+    from ai_dm.core.rng import Rng
+    from ai_dm.protocol.handlers.resources import heal_once
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    add_item(hero, POTION, 2, cost_cp=0)
+    hero.creature.hp_current = 1
+    copy = bundle.model_copy(deep=True)
+    ctx = make_ctx(registry, cfg, rng=Rng(5), bundle=bundle)
+    d = apply(ctx, req("use_item", item_id=POTION, qty=1))
+    line = heal_once(copy.heroes[0], registry.get("item", POTION), registry, Rng(5))
+    assert d.log == [line]
+
+
+def test_drink_once_returns_line_until_and_flag(dragon):
+    from ai_dm.protocol.handlers.resources import drink_once
+    from ai_dm.rules.derived import clock_text
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    now_s = bundle.world.clock.now_s
+    line, until, was_active = drink_once(hero, registry.get("item", ELIXIR), registry, now_s)
+    assert was_active is False
+    assert until == clock_text(now_s + 3600)
+    assert "+2 КД" in line
+    assert f"до {until}" in line
+
+
+def test_drink_once_second_time_extends(dragon):
+    from ai_dm.protocol.handlers.resources import drink_once
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    add_item(hero, ELIXIR, 1, cost_cp=0)
+    now_s = bundle.world.clock.now_s
+    item = registry.get("item", ELIXIR)
+    drink_once(hero, item, registry, now_s)
+    line, until, was_active = drink_once(hero, item, registry, now_s)
+    assert was_active is True
+    assert "продлена" in line
+    assert until in line
+
+
+def test_use_item_elixir_result_has_until_and_extended_flag_on_repeat(dragon, cfg):
+    registry, bundle = dragon
+    add_item(bundle.heroes[0], ELIXIR, 1, cost_cp=0)
+    ctx = make_ctx(registry, cfg, bundle=bundle)
+    first = apply(ctx, req("use_item", item_id=ELIXIR, qty=1))
+    second = apply(ctx, req("use_item", item_id=ELIXIR, qty=1))
+    assert "extended" not in first.result
+    assert second.result["extended"] is True
+    assert second.result["until"] == first.result["until"]
+
+
 # E3 (stage3-live-effects-visible): take_item и эликсир -- применять только через use_item
 
 def take(registry, cfg, bundle, why, item_id=ELIXIR):
@@ -276,3 +405,42 @@ def test_first_elixir_log_has_no_extended_note(dragon, cfg):
     registry, bundle = dragon
     ctx, d = drink(registry, cfg, bundle)
     assert "продлена" not in "\n".join(d.log)
+
+
+def test_use_item_elixir_result_is_exactly_item_qty_until(dragon, cfg):
+    from ai_dm.rules.derived import clock_text
+
+    registry, bundle = dragon
+    now_s = bundle.world.clock.now_s
+    _, d = drink(registry, cfg, bundle)
+    assert d.result == {"item_id": ELIXIR, "qty": 1, "until": clock_text(now_s + 3600)}
+
+
+def test_use_item_elixir_repeat_result_adds_only_the_extended_flag(dragon, cfg):
+    from ai_dm.rules.derived import clock_text
+
+    registry, bundle = dragon
+    add_item(bundle.heroes[0], ELIXIR, 1, cost_cp=0)
+    now_s = bundle.world.clock.now_s
+    ctx = make_ctx(registry, cfg, bundle=bundle)
+    apply(ctx, req("use_item", item_id=ELIXIR, qty=1))
+    d = apply(ctx, req("use_item", item_id=ELIXIR, qty=1))
+    assert d.result == {
+        "item_id": ELIXIR, "qty": 1, "until": clock_text(now_s + 3600), "extended": True,
+    }
+
+
+def test_drink_once_joins_all_effects_with_commas(dragon):
+    from ai_dm.protocol.handlers.resources import drink_once
+    from ai_dm.rules.derived import clock_text
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    now_s = bundle.world.clock.now_s
+    item = registry.get("item", ELIXIR)
+    line = drink_once(hero, item, registry, now_s)[0]
+    until = clock_text(now_s + 3600)
+    assert line == (
+        f"{hero.name}: {item.name} — +2 КД, сопротивление slashing, "
+        f"сопротивление bludgeoning до {until}"
+    )

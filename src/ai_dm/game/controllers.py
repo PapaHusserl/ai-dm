@@ -1,3 +1,4 @@
+from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.combat.controllers import EngineTactics
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
@@ -56,10 +57,12 @@ class PlayerController:
             if step in ids:
                 return step
             engine.log(f"шаг {step} недоступен — пропущен")
-        if self.hold and len(ids) > 1:
+        # смена экипировки ход не держит: её в меню нет
+        shown = [o for o in options if o.kind not in HIDDEN_KINDS]
+        if self.hold and len(shown) > 1:
             return "hold"
         # свободный текст: ход открыт, пока не потрачено основное действие
-        if self.planned and any(o.cost == "action" for o in options):
+        if self.planned and any(o.cost == "action" for o in shown):
             return "hold"
         return "end_turn"
 

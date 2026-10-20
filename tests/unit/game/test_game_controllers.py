@@ -82,6 +82,80 @@ def test_player_controller_without_plan_ends_turn(registry, cfg):
     assert controller.choose(rest, point) == "end_turn"
 
 
+def swap_menu():
+    # видимые пункты и скрытые варианты смены экипировки (шаг 96а), как в list_options
+    from ai_dm.combat.available import ActionOption
+
+    return {
+        "dodge": ActionOption(id="dodge", kind="dodge", label="Уклонение"),
+        "end_turn": ActionOption(id="end_turn", kind="end_turn", label="Конец", cost="free"),
+        "equip": ActionOption(
+            id="equip:spear", kind="equip", label="Взять в руку: Копьё", cost="free",
+            params={"item": "spear", "slot": "main_hand"},
+        ),
+        "unequip": ActionOption(
+            id="unequip:shield", kind="unequip", label="Снять щит", params={"slot": "shield"}
+        ),
+    }
+
+
+def swap_point(options):
+    return DecisionPoint(kind="turn_action", actor="hero", options=[o.id for o in options])
+
+
+def test_hold_ignores_hidden_swap_options(registry, cfg):
+    from ai_dm.game.controllers import PlayerController
+
+    menu = swap_menu()
+    options = [menu["end_turn"], menu["equip"], menu["unequip"]]
+    controller = PlayerController(["move:hall"], hold=True)
+    controller.attach(None)
+    controller.steps = []
+    assert controller.choose(options, swap_point(options)) == "end_turn"
+
+
+def test_hold_still_works_with_visible_options_next_to_hidden(registry, cfg):
+    from ai_dm.game.controllers import PlayerController
+
+    menu = swap_menu()
+    options = [menu["dodge"], menu["end_turn"], menu["equip"]]
+    controller = PlayerController(hold=True)
+    controller.attach(None)
+    assert controller.choose(options, swap_point(options)) == "hold"
+
+
+def test_text_plan_is_not_held_by_a_hidden_action_option(registry, cfg):
+    from ai_dm.game.controllers import PlayerController
+
+    menu = swap_menu()
+    options = [menu["end_turn"], menu["unequip"]]
+    controller = PlayerController(["move:hall"])
+    controller.attach(None)
+    controller.steps = []
+    assert controller.choose(options, swap_point(options)) == "end_turn"
+
+
+def test_text_plan_is_held_by_a_visible_action_option(registry, cfg):
+    from ai_dm.game.controllers import PlayerController
+
+    menu = swap_menu()
+    options = [menu["dodge"], menu["end_turn"], menu["unequip"]]
+    controller = PlayerController(["move:hall"])
+    controller.attach(None)
+    controller.steps = []
+    assert controller.choose(options, swap_point(options)) == "hold"
+
+
+def test_step_can_pick_a_hidden_swap_option(registry, cfg):
+    from ai_dm.game.controllers import PlayerController
+
+    menu = swap_menu()
+    options = [menu["end_turn"], menu["equip"]]
+    controller = PlayerController(["equip:spear"])
+    controller.attach(None)
+    assert controller.choose(options, swap_point(options)) == "equip:spear"
+
+
 def test_player_controller_plays_plan_through_engine(registry, cfg):
     from ai_dm.game.controllers import PlayerController
 

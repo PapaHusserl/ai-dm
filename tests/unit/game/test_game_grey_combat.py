@@ -46,7 +46,7 @@ def pick(prefix):
         for i, option_id in enumerate(ids):
             if option_id.startswith("move:") and option_id[len("move:"):] in enemy_zones:
                 return i + 1
-        return len(ids)
+        return ids.index("end_turn") + 1
 
     return choose
 

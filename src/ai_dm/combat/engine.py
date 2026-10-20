@@ -56,6 +56,8 @@ PERFORM = {
     "horde_breaker": features.horde_breaker,
     "second_wind": features.second_wind,
     "use_item": item.use,
+    "equip": item.swap,
+    "unequip": item.swap,
     "transfer_mark": cast.transfer_mark,
     "escape": standard.escape,
     "end_turn": lambda engine, ref, option: [],

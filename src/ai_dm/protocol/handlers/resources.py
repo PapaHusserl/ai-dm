@@ -340,8 +340,8 @@ def use_item(ctx, request):
     if item.effects[0].type == "heal":
         scene = ctx.scene
         qty = min(request.qty, have)
-        if scene is not None:
-            left = ctx.cfg.limits.consumables_per_scene - scene.consumables_used
+        left = consumables_left(scene, ctx.cfg.limits)
+        if left is not None:
             qty = max(0, min(qty, left))
             if qty == 0:
                 return rejected(
@@ -350,31 +350,43 @@ def use_item(ctx, request):
                     "предмет не применён, опиши по факту.",
                 )
             scene.consumables_used += qty
-        log = []
-        for _ in range(qty):
-            healed = use_inventory_item(hero, request.item_id, ctx.registry, ctx.rng)
-            hp = f"{hero.creature.hp_current}/{hero.creature.hp_max}"
-            log.append(f"{hero.name}: {item.name} +{healed} HP, {hp}")
+        log = [heal_once(hero, item, ctx.registry, ctx.rng) for _ in range(qty)]
         return Decision(status="accepted", result={"item_id": request.item_id, "qty": qty}, log=log)
-    was_active = drink_item(hero, request.item_id, ctx.registry, now_s)
+    line, until, was_active = drink_once(hero, item, ctx.registry, now_s)
+    result = {"item_id": request.item_id, "qty": 1, "until": until}
+    if was_active:
+        result["extended"] = True
+    return Decision(status="accepted", result=result, log=[line])
+
+
+def consumables_left(scene, limits):
+    # сколько лечебных расходников ещё можно применить за сцену; None -- сцены нет, лимита нет
+    if scene is None:
+        return None
+    return limits.consumables_per_scene - scene.consumables_used
+
+
+def heal_once(hero, item, registry, rng) -> str:
+    # одно лечебное зелье: применяет и возвращает строку лога
+    healed = use_inventory_item(hero, item.id, registry, rng)
+    hp = f"{hero.creature.hp_current}/{hero.creature.hp_max}"
+    return f"{hero.name}: {item.name} +{healed} HP, {hp}"
+
+
+def drink_once(hero, item, registry, now_s):
+    # эликсир с эффектом на время: (строка лога, «до hh:mm», действовал ли уже)
+    was_active = drink_item(hero, item.id, registry, now_s)
     until = clock_text(now_s + (item.effects[0].duration_s or 0))
     if was_active:
         name = item.short_name or item.name
-        return Decision(
-            status="accepted",
-            result={"item_id": request.item_id, "qty": 1, "until": until, "extended": True},
-            log=[f"{hero.name}: {name} уже действовала — продлена до {until}"],
-        )
+        return f"{hero.name}: {name} уже действовала — продлена до {until}", until, True
     parts = []
     for effect in item.effects:
         if effect.type == "ac_bonus":
             parts.append(f"+{effect.value} КД")
         elif effect.type == "resist":
             parts.append(f"сопротивление {effect.damage_type}")
-    log = [f"{hero.name}: {item.name} — {', '.join(parts)} до {until}"]
-    return Decision(
-        status="accepted", result={"item_id": request.item_id, "qty": 1, "until": until}, log=log
-    )
+    return f"{hero.name}: {item.name} — {', '.join(parts)} до {until}", until, False
 
 
 def spell_target(ctx, spell, kind, target):

@@ -69,7 +69,10 @@ def test_numbering_is_continuous_across_groups(registry, tmp_path):
 
 def test_number_picks_the_shown_item(registry, tmp_path):
     app, out = fight_out(registry, tmp_path)
-    labels = [option.label for option in app.runner.preview_turn()]
+    labels = [
+        option.label for option in app.runner.preview_turn()
+        if option.kind not in ("equip", "unequip")
+    ]
     shown = [text for _, text in numbered_lines(last_menu(out.lines))]
     assert labels == shown
 
