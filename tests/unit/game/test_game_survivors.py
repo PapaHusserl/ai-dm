@@ -10,6 +10,7 @@ import pytest
 from game_kit import (
     combat_of,
     end_turn_number,
+    enemies_surrender,
     make_rig,
     script_then_react,
     scripted,
@@ -168,6 +169,7 @@ def test_survivor_id_has_turn_and_number_format(registry, cfg, tmp_path):
 
 def test_ended_by_master_spares_active_enemies(registry, cfg, tmp_path):
     rig = fight_rig(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.combat_outcome == "ended_by_master"
     assert len(survivors(rig.runner.bundle)) == 2

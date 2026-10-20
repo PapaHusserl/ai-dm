@@ -446,19 +446,30 @@ OPTIONS = [
 ]
 
 
-@pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate"])
-def test_combat_options_go_to_state_json(registry, cfg, mode):
-    ctx = combat_ctx(registry, cfg, mode=mode)
+def test_combat_options_go_to_state_json(registry, cfg):
+    ctx = combat_ctx(registry, cfg, mode="combat_classify")
     ctx.combat_options = OPTIONS
-    combat = data_of(build(ctx, mode=mode))["combat"]
+    combat = data_of(build(ctx, mode="combat_classify"))["combat"]
     assert combat["options"] == OPTIONS
 
 
-@pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate"])
-def test_combat_options_none_gives_empty_list(registry, cfg, mode):
-    ctx = combat_ctx(registry, cfg, mode=mode)
-    combat = data_of(build(ctx, mode=mode))["combat"]
+def test_combat_options_none_gives_empty_list(registry, cfg):
+    ctx = combat_ctx(registry, cfg, mode="combat_classify")
+    combat = data_of(build(ctx, mode="combat_classify"))["combat"]
     assert combat["options"] == []
+
+
+def test_combat_narrate_has_no_options_key(registry, cfg):
+    ctx = combat_ctx(registry, cfg, mode="combat_narrate")
+    combat = data_of(build(ctx, mode="combat_narrate"))["combat"]
+    assert "options" not in combat
+
+
+def test_combat_narrate_ignores_given_combat_options(registry, cfg):
+    ctx = combat_ctx(registry, cfg, mode="combat_narrate")
+    ctx.combat_options = OPTIONS
+    combat = data_of(build(ctx, mode="combat_narrate"))["combat"]
+    assert "options" not in combat
 
 
 def test_combat_options_are_not_in_system_blocks(registry, cfg):

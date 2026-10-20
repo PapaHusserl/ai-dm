@@ -659,13 +659,18 @@ def test_unknown_key_in_audio_section_is_rejected():
 # Ж0 п.0 (BACKLOG 77): в дефолте только anthropic = 2.2, остальные -- общее значение
 
 def test_cpt_by_provider_default_is_anthropic_only():
-    assert app().master.chars_per_token_by_provider == {"anthropic": 2.2}
+    assert app().master.chars_per_token_by_provider == {"anthropic": 2.2, "gemini": 3.0}
 
 
-@pytest.mark.parametrize("provider", ["gemini", "mock", "someone_else"])
+@pytest.mark.parametrize("provider", ["mock", "someone_else"])
 def test_cpt_for_is_common_value_by_default(provider):
     master = app().master
     assert master.cpt_for(provider) == master.chars_per_token == 2.5
+
+
+def test_cpt_for_gemini_is_3_0_by_default():
+    # ЖП3: оценка/факт 1,23 по журналу drunk_dragon
+    assert app().master.cpt_for("gemini") == 3.0
 
 
 def test_context_cap_default_keeps_dynamic_reserve_of_8000():
@@ -710,7 +715,8 @@ def test_cpt_by_provider_can_be_set_for_anthropic():
     text = "[master.chars_per_token_by_provider]\nanthropic = 2.2\n"
     master = load_settings(text).app.master
     assert master.cpt_for("anthropic") == 2.2
-    assert master.cpt_for("gemini") == 2.5
+    assert master.cpt_for("gemini") == 3.0
+    assert master.cpt_for("mock") == 2.5
 
 
 def test_cpt_by_provider_override_beats_common_value():

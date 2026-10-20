@@ -558,7 +558,6 @@ class TurnRunner:
     def narrate_combat(self, work, rng, said, log_lines, session, run_id, result) -> str:
         ctx = TurnContext(
             work, self.registry, self.cfg, rng, mode="combat_narrate",
-            combat_options=combat_flow.next_options(work, self.registry, self.cfg),
         )
         parts = ([said] if said else []) + list(log_lines)
         master = session.run(

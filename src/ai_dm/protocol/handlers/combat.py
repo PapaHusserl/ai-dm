@@ -5,6 +5,7 @@ from ai_dm.combat.defeat import DefeatParams, apply_defeat_outcome
 from ai_dm.combat.engine import CombatEngine
 from ai_dm.combat.setup import validate_start
 from ai_dm.protocol.decision import Decision, Invalid
+from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules import encounter
 from ai_dm.rules.npc_names import shown_name
@@ -347,6 +348,14 @@ def end_combat(ctx, request):
     )
     if engine.is_over:
         return Invalid(code="combat_already_over", message="бой уже окончен")
+    enemies = [p for p in state.participants if p.side == "enemies"]
+    if not any(p.status in ("fled", "surrendered") for p in enemies):
+        return rejected(
+            "бой идёт",
+            "Враги не сдались и не бежали — бой продолжается, рассказывай по логу; "
+            "end_combat — только после сдачи или бегства из лога.",
+            report_tag="end_combat_refused",
+        )
     ctx.events.extend(engine.end_combat())
     reason = request.reason or "без причины"
     return Decision(

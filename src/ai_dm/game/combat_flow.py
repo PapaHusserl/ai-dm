@@ -155,18 +155,6 @@ def option_list(bundle, registry, cfg) -> list[dict]:
     ]
 
 
-def next_options(bundle, registry, cfg) -> list[dict]:
-    # варианты следующего хода героя после хода остальных; бой кончился или герой лежит -- пусто
-    state = bundle.session.active_combat
-    if state is None or is_finished(state):
-        return []
-    hero = hero_of(bundle)
-    for part in state.participants:
-        if part.ref == hero.id and (part.status != "active" or hero.creature.hp_current <= 0):
-            return []
-    return option_list(bundle, registry, cfg)
-
-
 def part_creature(bundle, part):
     # состояние существа участника-не героя: своё (безымянный) или из записи NPC
     if part.creature is not None:

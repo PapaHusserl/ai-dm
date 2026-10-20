@@ -785,3 +785,16 @@ updated: 2026-10-20
 
 (репорт t446) Список вариантов боя множится: оружие × цели × виды стрел (`combat/available.py:100`); игрок вводит «96».
 Свернуть/сгруппировать в UI.
+
+## 112. Выжившие мутанты на старых строках боевых функций
+status: idea
+priority: low
+updated: 2026-10-20
+
+(Фикс ЖП3 П2, mutmut по тестам master_prompt, apply_combat, requests, game_combat_flow) Старые строки, не тронутые партией:
+`ai_dm.protocol.handlers.combat.x_end_combat` 9, 10 (текст «сейчас нет боя»), 15, 17 (`registry`, `rng` у `CombatEngine`),
+24–31 (`Invalid` combat_already_over — code/message), 59–62 (`reason`, «без причины»), 67, 71, 72 (`result.outcome`);
+`ai_dm.game.turn.TurnRunner.narrate_combat` 5, 10–13, 17, 24, 25, 30, 31, 33, 41;
+`ai_dm.master.prompt.PromptBuilder.combat_data` 10, 11, 18–23, 26, 29, 32, 46–55, 58–61, 66–68 (ключи `round`, `side`,
+`zone_id`, `status`, `id`, `name`, `strict=` в `zip`, фильтр `companions_nearby`, сортировка, `monster_traits`).
+Часть может убиваться тестами вне выбранного набора — сперва перепрогнать с широким TESTS.

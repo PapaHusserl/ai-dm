@@ -12,6 +12,7 @@ from game_kit import (
     attack_or_move_number,
     drive,
     end_turn_number,
+    enemies_surrender,
     make_app,
     make_rig,
     script_then_react,
@@ -148,6 +149,7 @@ def test_no_bestiary_entry_while_fight_goes_on(registry, cfg, tmp_path):
 
 def test_ended_by_master_writes_interrupted_entry(registry, cfg, tmp_path):
     rig = fight_rig(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.combat_outcome == "ended_by_master"
     assert [e.text for e in creature_entries(rig)] == ["Бой: Воин-гоблин — прерван"]

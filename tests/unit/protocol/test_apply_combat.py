@@ -454,8 +454,15 @@ def test_end_combat_without_combat_is_invalid(registry, cfg):
     assert d.code == "no_active_combat"
 
 
-def test_end_combat_marks_outcome_and_flag(registry, cfg):
+def surrendered_ctx(registry, cfg, status="surrendered"):
     ctx, _ = start(registry, cfg)
+    for enemy in enemies_of(ctx):
+        enemy.status = status
+    return ctx
+
+
+def test_end_combat_marks_outcome_and_flag(registry, cfg):
+    ctx = surrendered_ctx(registry, cfg)
     state = ctx.bundle.session.active_combat
     d = apply(ctx, req("end_combat", reason="враги сдались"))
     assert d.status == "accepted"
@@ -463,6 +470,47 @@ def test_end_combat_marks_outcome_and_flag(registry, cfg):
     assert ctx.bundle.world.flags[f"combat_ended:{state.id}"] is True
     assert "combat_ended" in [e.type for e in ctx.events]
     assert d.log
+
+
+def test_end_combat_accepted_when_enemies_fled(registry, cfg):
+    ctx = surrendered_ctx(registry, cfg, status="fled")
+    d = apply(ctx, req("end_combat", reason="враги бежали"))
+    assert d.status == "accepted"
+    assert ctx.bundle.session.active_combat.outcome == "ended_by_master"
+
+
+def test_end_combat_accepted_when_one_of_enemies_fled(registry, cfg):
+    ctx, _ = start(registry, cfg)
+    enemies_of(ctx)[0].status = "fled"
+    d = apply(ctx, req("end_combat", reason="один бежал"))
+    assert d.status == "accepted"
+
+
+def test_end_combat_with_active_enemies_is_rejected_with_tag(registry, cfg):
+    ctx, _ = start(registry, cfg)
+    d = apply(ctx, req("end_combat", reason="устали"))
+    assert d.status == "rejected"
+    assert d.report_tag == "end_combat_refused"
+    assert d.reason == "бой идёт"
+    assert d.signal_to_master
+
+
+def test_end_combat_with_one_dead_and_others_active_is_rejected(registry, cfg):
+    ctx, _ = start(registry, cfg)
+    enemies_of(ctx)[0].status = "dead"
+    d = apply(ctx, req("end_combat", reason="устали"))
+    assert d.status == "rejected"
+    assert d.report_tag == "end_combat_refused"
+
+
+def test_end_combat_with_active_enemies_changes_nothing(registry, cfg):
+    ctx, _ = start(registry, cfg)
+    state = ctx.bundle.session.active_combat
+    apply(ctx, req("end_combat", reason="устали"))
+    assert ctx.bundle.session.active_combat is state
+    assert state.outcome != "ended_by_master"
+    assert f"combat_ended:{state.id}" not in ctx.bundle.world.flags
+    assert "combat_ended" not in [e.type for e in ctx.events]
 
 
 # B1: срез врагов до max_enemies -- группы без участников убираются, лидер переназначается

@@ -47,6 +47,9 @@ def memory_settings():
     app = base.app.model_copy(deep=True)
     app.context_windows[MODEL] = NPC_MEMORY_WINDOW
     app.master.context_cap = MEMORY_CONTEXT_CAP
+    # роль narrator в настройках на gemini: дефолт gemini = 3.0 (ЖП3) сдвинул бы подобранную
+    # калибровку -- держим общее значение 2.5, как при подборе MEMORY_CONTEXT_CAP
+    app.master.chars_per_token_by_provider = {}
     app.prices[MODEL] = next(iter(app.prices.values())).model_copy()
     rules = base.rules.model_copy(deep=True)
     rules.scene.max_per_chapter = SCENES_PER_CHAPTER

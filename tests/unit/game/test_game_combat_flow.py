@@ -13,6 +13,7 @@ from game_kit import (
     core_dump,
     drive,
     end_turn_number,
+    enemies_surrender,
     make_rig,
     number_of,
     option_ids,
@@ -382,6 +383,7 @@ def test_unsupported_part_of_text_gets_missing_mechanic_tag(registry, cfg, tmp_p
 
 def test_end_combat_by_master_resets_state_and_closes_scene(registry, cfg, tmp_path):
     rig, _ = start_fight(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     bundle = rig.runner.bundle
     assert result.committed is True
@@ -396,8 +398,17 @@ def test_end_combat_by_master_resets_state_and_closes_scene(registry, cfg, tmp_p
     assert bundle.heroes[0].sheet.xp == combat_xp(["goblin_warrior", "goblin_warrior"], registry)
 
 
+def test_end_combat_with_active_enemies_is_refused_and_combat_goes_on(registry, cfg, tmp_path):
+    rig, _ = start_fight(registry, cfg, tmp_path, end_combat=True)
+    result = rig.runner.play(str(end_turn_number(rig.runner)))
+    assert combat_of(rig.runner) is not None
+    assert result.combat_outcome != "ended_by_master"
+    assert "end_combat_refused" in result.report_tags
+
+
 def test_end_of_combat_autosaves_closed_scene_without_combat(registry, cfg, tmp_path):
     rig, _ = start_fight(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     rig.runner.play(str(end_turn_number(rig.runner)))
     assert list_slots(tmp_path, "w1") == ["auto"]
     saved = load_slot(tmp_path, "w1", "auto")
@@ -852,19 +863,19 @@ def test_classify_request_carries_options_of_the_boundary(registry, cfg, tmp_pat
         assert state_of(request)["combat"]["options"] == expected
 
 
-def test_narrate_request_carries_options_of_next_hero_turn(registry, cfg, tmp_path):
+def test_narrate_request_has_no_options_while_combat_goes_on(registry, cfg, tmp_path):
     rig, _ = start_fight(registry, cfg, tmp_path)
     rig.runner.play(str(end_turn_number(rig.runner)))
     assert combat_of(rig.runner) is not None
     request = narrate_requests(rig.adapter)[-1]
-    assert state_of(request)["combat"]["options"] == expected_options(rig.runner)
+    assert "options" not in state_of(request)["combat"]
 
 
-def test_narrate_options_are_empty_when_combat_ends(registry, cfg, tmp_path):
+def test_narrate_request_has_no_options_when_combat_ends(registry, cfg, tmp_path):
     rig, _ = start_fight(registry, cfg, tmp_path)
     drive(rig.runner, attack_or_move_number)
     assert combat_of(rig.runner) is None
-    assert state_of(narrate_requests(rig.adapter)[-1])["combat"]["options"] == []
+    assert "options" not in state_of(narrate_requests(rig.adapter)[-1])["combat"]
 
 
 def test_system_prompt_has_no_options_and_prefix_is_stable(registry, cfg, tmp_path):

@@ -344,6 +344,17 @@ def test_advance_time_travel_to_empty_is_none():
     assert model.travel_to is None
 
 
+def test_advance_time_travel_to_none_string_is_none():
+    model = parse_request({"type": "advance_time", "category": "hour", "travel_to": "none"})
+    assert model.travel_to is None
+    assert model.category == "hour"
+
+
+def test_advance_time_travel_to_real_location_is_kept():
+    model = parse_request({"type": "advance_time", "category": "none", "travel_to": "forest"})
+    assert model.travel_to == "forest"
+
+
 def test_rest_hit_dice_zero_is_none():
     assert parse_request({"type": "rest", "kind": "short", "hit_dice": 0}).hit_dice is None
 

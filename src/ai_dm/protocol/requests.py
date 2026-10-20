@@ -251,7 +251,9 @@ class DefeatOutcome(Request):
 
 
 class EndCombat(Request):
-    """Завершить бой по решению мастера (сдача, бегство, переговоры)."""
+    """Завершить бой после сдачи или бегства врагов по логу (переговоры);
+    пока враги дерутся — отклоняется.
+    """
 
     type: Literal["end_combat"]
     reason: str = Field("", description="Причина завершения; пусто = нет.")
@@ -396,9 +398,17 @@ class AdvanceTime(Request):
     category: Literal["none", "minute", "hour", "day", "week", "month"] = Field(
         "none", description="На сколько сдвинуть время; none, если идёт путь."
     )
-    travel_to: str = Field("", description="Id локации, куда идёт герой; пусто = нет.")
+    travel_to: str = Field(
+        "", description='Id локации, куда идёт герой; пусто = нет (не "none").'
+    )
     pace: Literal["slow", "normal", "fast"] = Field("normal", description="Темп пути.")
     NEUTRAL: ClassVar[dict] = {"category": "none", "travel_to": ""}
+
+    @field_validator("travel_to", mode="before")
+    @classmethod
+    def none_travel_is_empty(cls, value):
+        # модель по аналогии с category пишет "none" вместо пустой строки
+        return "" if value == "none" else value
 
 
 class Rest(Request):

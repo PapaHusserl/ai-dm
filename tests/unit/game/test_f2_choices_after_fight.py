@@ -10,6 +10,7 @@ from game_kit import (
     attack_or_move_number,
     drive,
     end_turn_number,
+    enemies_surrender,
     make_app,
     make_rig,
     run_records,
@@ -136,6 +137,7 @@ def test_victory_menu_is_drawn_after_end_fight(registry, tmp_path):
 
 def test_ended_by_master_turn_is_asked_too(registry, cfg, tmp_path):
     rig, adapter = start_fight(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.committed is True
     assert rig.runner.bundle.session.active_combat is None

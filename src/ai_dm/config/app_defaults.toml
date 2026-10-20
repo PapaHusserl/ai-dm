@@ -135,6 +135,8 @@ knowledge_max = 30
 # chars_per_token по провайдеру: Claude считает кириллицу плотнее (BACKLOG 77)
 [master.chars_per_token_by_provider]
 anthropic = 2.2
+# ЖП3: оценка/факт 1,23 по журналу drunk_dragon (calls-013)
+gemini = 3.0
 
 [llm]
 refusal_fallback = false

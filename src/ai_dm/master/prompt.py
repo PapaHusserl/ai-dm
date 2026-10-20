@@ -451,7 +451,7 @@ class PromptBuilder:
             traits = monster_trait_notes(c.participants, ctx.registry)
             if traits:
                 combat["monster_traits"] = traits
-            if ctx.mode in ("combat_classify", "combat_narrate"):
+            if ctx.mode == "combat_classify":
                 combat["options"] = ctx.combat_options or []
         return combat
 

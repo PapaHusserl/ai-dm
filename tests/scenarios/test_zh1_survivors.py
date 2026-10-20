@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "unit" / "protocol"
 
 from game_kit import (  # noqa: E402
     end_turn_number,
+    enemies_surrender,
     make_app,
     script_then_react,
     scripted,
@@ -34,6 +35,7 @@ def fought_app(registry, tmp_path):
         registry, tmp_path, script_then_react(steps, end_combat=True), bundle=make_bundle(registry)
     )
     app.handle("Бью ногой дверь")
+    enemies_surrender(app.runner)
     app.handle(str(end_turn_number(app.runner)))
     return app
 

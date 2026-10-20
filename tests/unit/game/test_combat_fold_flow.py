@@ -11,6 +11,7 @@ from game_kit import (
     combat_of,
     drive,
     end_turn_number,
+    enemies_surrender,
     make_app,
     make_bundle,
     make_rig,
@@ -160,6 +161,7 @@ def test_fold_text_notes_wounds_of_hero(registry, cfg, tmp_path):
 
 def test_end_combat_on_first_hero_turn_has_no_fold(registry, cfg, tmp_path):
     rig = start_rig(registry, cfg, tmp_path, end_combat=True)
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.combat_outcome == "ended_by_master"
     turns = turns_of(rig)
@@ -173,6 +175,7 @@ def test_one_middle_turn_has_no_fold(registry, cfg, tmp_path):
     rig = start_rig(registry, cfg, tmp_path)
     rig.runner.play(str(attack_or_move_number(rig.runner)))
     rig.adapter.then.end_combat = True
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.combat_outcome == "ended_by_master"
     assert len(turns_of(rig)) == 3
@@ -184,6 +187,7 @@ def test_two_middle_turns_fold(registry, cfg, tmp_path):
     for _ in range(2):
         rig.runner.play(str(attack_or_move_number(rig.runner)))
     rig.adapter.then.end_combat = True
+    enemies_surrender(rig.runner)
     rig.runner.play(str(end_turn_number(rig.runner)))
     assert len(turns_of(rig)) == 3
     assert len(folds_of(rig)) == 1
@@ -221,6 +225,7 @@ def test_ended_by_master_after_three_turns_names_surrendered(registry, cfg, tmp_
         rig.runner.play(str(attack_or_move_number(rig.runner)))
     assert combat_of(rig.runner) is not None
     rig.adapter.then.end_combat = True
+    enemies_surrender(rig.runner)
     result = rig.runner.play(str(end_turn_number(rig.runner)))
     assert result.combat_outcome == "ended_by_master"
     turns = turns_of(rig)

@@ -567,6 +567,13 @@ def combat_of(runner):
     return runner.bundle.session.active_combat
 
 
+def enemies_surrender(runner, status="surrendered"):
+    # ЖП3 П2: end_combat при активных врагах отклоняется -- перед ним один враг сдаётся или бежит,
+    # остальные дерутся (если сдадутся все, бой кончится победой до рассказа)
+    enemies = [p for p in combat_of(runner).participants if p.side == "enemies"]
+    enemies[0].status = status
+
+
 # ходы боя по номерам
 
 def option_ids(runner):
