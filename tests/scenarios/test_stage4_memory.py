@@ -157,8 +157,9 @@ def test_scenes_and_turns_dropped_oldest_first(first):
 
 
 def test_every_stage_fires_somewhere(first):
+    # 129: соседние локации у рассказчика неустранимы -- ступень locations не срабатывает
     fired = {stage for r in first.narrator_records() for stage in stages_of(r)}
-    assert fired == set(STAGES)
+    assert fired == set(STAGES) - {"locations"}
 
 
 def test_one_turn_has_turns_scenes_and_npcs_dropped_together(first):

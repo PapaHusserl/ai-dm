@@ -205,3 +205,110 @@ def test_travel_follows_config():
     cfg = load_rules_config(toml_text="[time.travel_pace]\nnormal = 3600\n")
     assert travel_seconds(3600, "normal", cfg=cfg) == 3600
     assert travel_seconds(1800, "normal", cfg=cfg) == 1800
+
+
+# Фикс ЖП4 (132): route_path(world, from_id, to_id) -> [(id, distance_m)] без старта | None
+
+def world_of(*links, isolated=()):
+    # links: (from, to, distance_m) -- связь записана только у from
+    from types import SimpleNamespace
+
+    from ai_dm.state.world import Connection, Location
+
+    locations = {}
+    for place_id in [x for a, b, _ in links for x in (a, b)] + list(isolated):
+        locations.setdefault(place_id, Location(id=place_id, name=place_id))
+    for a, b, distance in links:
+        locations[a].connections.append(Connection(to=b, distance_m=distance))
+    return SimpleNamespace(locations=locations)
+
+
+def test_route_path_two_hops():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800), ("forest", "hill", 2400))
+    assert route_path(world, "vale", "hill") == [("forest", 4800), ("hill", 2400)]
+
+
+def test_route_path_three_hops():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("tavern", "square", 300), ("square", "shrine", 200), ("shrine", "shop", 100))
+    assert route_path(world, "tavern", "shop") == [("square", 300), ("shrine", 200), ("shop", 100)]
+
+
+def test_route_path_takes_shorter_sum_not_fewer_hops():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "hill", 9000), ("vale", "forest", 4800), ("forest", "hill", 2400))
+    assert route_path(world, "vale", "hill") == [("forest", 4800), ("hill", 2400)]
+
+
+def test_route_path_takes_direct_link_when_shorter():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "hill", 7000), ("vale", "forest", 4800), ("forest", "hill", 2400))
+    assert route_path(world, "vale", "hill") == [("hill", 7000)]
+
+
+def test_route_path_uses_link_recorded_only_at_target():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800), ("hill", "forest", 2400))
+    assert route_path(world, "vale", "hill") == [("forest", 4800), ("hill", 2400)]
+
+
+def test_route_path_goes_back_against_recorded_direction():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800), ("forest", "hill", 2400))
+    assert route_path(world, "hill", "vale") == [("forest", 2400), ("vale", 4800)]
+
+
+def test_route_path_tie_goes_by_id():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "b", 100), ("b", "end", 100), ("vale", "a", 100), ("a", "end", 100))
+    assert route_path(world, "vale", "end") == [("a", 100), ("end", 100)]
+
+
+def test_route_path_to_isolated_place_is_none():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800), isolated=["goblin_den"])
+    assert route_path(world, "vale", "goblin_den") is None
+
+
+def test_route_path_from_place_without_links_is_none():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800), isolated=["goblin_den"])
+    assert route_path(world, "goblin_den", "vale") is None
+
+
+def test_route_path_stale_queue_entry_does_not_stop_search():
+    from ai_dm.rules.time_ops import route_path
+
+    # b сначала найден по 10, затем по 2 через c; устаревшая запись (10, b) не должна
+    # обрывать поиск до пути a-e-d (13), который короче a-c-b-d (22)
+    world = world_of(
+        ("a", "b", 10), ("a", "c", 1), ("c", "b", 1), ("b", "d", 20), ("a", "e", 12), ("e", "d", 1),
+    )
+    assert route_path(world, "a", "d") == [("e", 12), ("d", 1)]
+
+
+def test_route_path_to_itself_is_empty():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800))
+    assert route_path(world, "vale", "vale") == []
+
+
+def test_route_path_ignores_link_to_missing_place():
+    from ai_dm.rules.time_ops import route_path
+
+    world = world_of(("vale", "forest", 4800))
+    from ai_dm.state.world import Connection
+
+    world.locations["vale"].connections.append(Connection(to="ghost", distance_m=1))
+    assert route_path(world, "vale", "ghost") is None

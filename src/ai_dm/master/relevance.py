@@ -40,13 +40,16 @@ def npc_reason_set(bundle, npc, location_id, text, nearby_ids) -> set[str]:
         reasons.add("said")
     if npc.location_id in nearby_ids and npc.location_id != location_id:
         reasons.add("nearby")
+    if npc.trade is not None:
+        reasons.add("merchant")
     return reasons
 
 
 def npc_reasons(bundle, nearby_ids=()) -> dict[str, set[str]]:
     # именованные живые NPC и причины релевантности: with_hero (идёт с героем), here (в локации
     # героя), active (активный триггер), key (ключевой), said (упомянут в offered_choices /
-    # recent_turns по name), nearby (в соседней локации из nearby_ids)
+    # recent_turns по name), nearby (в соседней локации из nearby_ids), merchant (торговец: цель
+    # визита, 132)
     location_id = None
     for hero in bundle.heroes:
         if hero.id == bundle.manifest.current_hero_id:
@@ -68,10 +71,10 @@ def relevant_npcs(bundle) -> list[str]:
 
 
 def rank_npcs(reasons):
-    # (неустранимые, вытесняемые): вытесняются said, затем key, затем nearby; id по возрастанию.
-    # У NPC с несколькими причинами -- самая защищённая
+    # (неустранимые, вытесняемые): вытесняются said, затем key, затем nearby, затем merchant; id
+    # по возрастанию. У NPC с несколькими причинами -- самая защищённая
     fixed = []
-    order = {"said": 0, "key": 1, "nearby": 2}
+    order = {"said": 0, "key": 1, "nearby": 2, "merchant": 3}
     ranked = []
     for npc_id in sorted(reasons):
         found = reasons[npc_id]

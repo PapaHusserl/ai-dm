@@ -904,3 +904,21 @@ updated: 2026-10-21
 
 (папа-кабан, docs/plan-fix-zhp4.md) `npc_reason_set`, причина `said`: ищется `npc.name.lower()` целиком — «у матушки
 Греты» не находит «Матушка Грета». При касании relevance — хотя бы по фамилии/последнему слову имени.
+
+## 138. Потолок блока known_locations у рассказчика
+status: idea
+priority: low
+updated: 2026-10-21
+
+(mama-kaban, ревью Фикс ЖП4 П1, docs/plan-fix-zhp4.md, решение 16) `state_data.known_locations` — фиксированный блок
+без потолка: в живом мире ≈ 800–900 токенов и растёт с картой. Комментарий в `prompt.py` и `narrator_rules.md` зовёт
+блок «посещёнными местами», хотя туда входят и паковые известные (свекровь) — поправить формулировку при касании.
+
+## 139. Выжившие мутанты на старых строках state_data и travel
+status: idea
+priority: low
+updated: 2026-10-22
+
+(kaban-doeba, мутанты Фикс ЖП4 П1, docs/plan-fix-zhp4.md) Строки вне диффа партии: `travel` — `x_travel__mutmut_91`
+(разделитель «С тобой: …»); `PromptBuilder.state_data` — `_4` (`location = None`), `_105`–`_113`, `_115`, `_116`
+(ключи и текст блока `secrets`), `_174`, `_175` (ключ `secrets`), `_182`, `_183` (ключ `nudge`).

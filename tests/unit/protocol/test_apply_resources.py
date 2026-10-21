@@ -643,6 +643,120 @@ def test_advance_time_needs_exactly_one_of_category_and_travel(registry, cfg):
     assert dump(ctx) == before
 
 
+# Фикс ЖП4 (132): travel_to -- путь по карте через промежуточные локации
+
+def hill_ctx(registry, cfg):
+    # vale -> forest 4800 (кит), forest -> hill 2400
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["hill"] = Location(id="hill", name="Холм")
+    world.locations["forest"].connections.append(Connection(to="hill", distance_m=2400))
+    return ctx
+
+
+def test_travel_through_two_hops_is_accepted(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "hill"
+
+
+def test_travel_through_two_hops_sums_time(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert ctx.bundle.world.clock.now_s == 5400
+    assert d.result["seconds"] == 5400
+
+
+def test_travel_through_two_hops_fast_pace_sums_by_pace(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="hill", pace="fast"))
+    # 4800 м и 2400 м при 6400 м/ч: 2700 + 1350
+    assert ctx.bundle.world.clock.now_s == 4050
+
+
+def test_travel_marks_every_hop_visited(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="hill"))
+    flags = ctx.bundle.world.flags
+    assert flags["visited:forest"] is True
+    assert flags["visited:hill"] is True
+
+
+def test_travel_emits_location_visited_per_hop_in_order(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="hill"))
+    visited = [e.data["id"] for e in ctx.events if e.type == "location_visited"]
+    assert visited == ["forest", "hill"]
+
+
+def test_travel_result_has_path(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert d.result["path"] == ["forest", "hill"]
+
+
+def test_travel_result_has_now_s_and_location_id(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert d.result["now_s"] == 5400
+    assert d.result["location_id"] == "hill"
+
+
+def test_travel_neighbor_result_path_is_target_only(registry, cfg):
+    d = apply(make_ctx(registry, cfg), req("advance_time", travel_to="forest"))
+    assert d.result["path"] == ["forest"]
+
+
+def test_travel_log_names_intermediate_places(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert d.log[0] == "Путь в «Холм»: 5400 с (через Лес)"
+
+
+def test_travel_log_lists_all_intermediate_places_in_order(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["peak"] = Location(id="peak", name="Пик")
+    world.locations["hill"].connections.append(Connection(to="peak", distance_m=1200))
+    d = apply(ctx, req("advance_time", travel_to="peak"))
+    assert d.log[0] == "Путь в «Пик»: 6300 с (через Лес, Холм)"
+
+
+def test_travel_log_to_neighbor_has_no_via(registry, cfg):
+    d = apply(make_ctx(registry, cfg), req("advance_time", travel_to="forest"))
+    assert d.log[0] == "Путь в «Лес»: 3600 с"
+
+
+def test_travel_moves_companion_to_final_target(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = hill_ctx(registry, cfg)
+    ctx.bundle.world.npcs["bran"] = NPC(
+        id="bran", name="Бран", named=True, means=["m"], location_id="vale",
+        follows=ctx.hero.id,
+    )
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert ctx.bundle.world.npcs["bran"].location_id == "hill"
+    assert "С тобой: Бран" in d.log
+
+
+def test_travel_takes_shorter_of_two_routes(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="hill", distance_m=9000))
+    d = apply(ctx, req("advance_time", travel_to="hill"))
+    assert d.result["path"] == ["forest", "hill"]
+    assert ctx.bundle.world.clock.now_s == 5400
+
+
+def test_travel_to_isolated_place_lists_neighbors(registry, cfg):
+    ctx = hill_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="goblin_den"))
+    assert d.code == "no_route"
+    assert "forest" in d.message
+    assert "hill" not in d.message
+
+
 # B6: damage -- спасброски вне боя при падении и при уроне уже лежащему герою
 
 def weak_ctx(registry, cfg, rng, hp=10):

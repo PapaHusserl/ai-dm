@@ -1,5 +1,6 @@
 # Ожидаемый API: пакетный файл ai_dm/master/prompts/narrator_rules.md -- контракт в master_kit.py.
 # Проверяем наличие ключевых правил по фразам и именам инструментов, не по точному тексту.
+import json
 import re
 from importlib import resources
 
@@ -72,7 +73,7 @@ def test_rules_mention_only_known_tools():
             "bad_circle", "prepared_swap", "recent_turns",
         "memory_kind", "memory_text", "memory_last",
         "goal_kind", "goal_target", "goal_text", "goal_status",
-        "hit_dice",
+        "hit_dice", "known_locations", "travel_to",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []
@@ -330,3 +331,27 @@ def test_rules_quote_time_log_prefix_before_placeholder():
 
     prefix = TIME_LOG.split("{}")[0]
     assert prefix and prefix in xp_time_section()
+
+
+# Фикс ЖП4 (132): цели travel_to -- locations или known_locations, без travel_to приход не описывать
+
+def test_rules_say_travel_to_id_from_known_locations():
+    text = rules_text()
+    at = text.index("`advance_time.travel_to` бери id")
+    assert "`known_locations`" in text[at:at + 200]
+
+
+def test_rules_forbid_describing_arrival_without_travel_to():
+    assert "не описывай приход" in rules_text()
+
+
+def test_rules_time_section_says_travel_to_even_if_not_neighbor():
+    assert "даже если она не соседняя" in xp_time_section()
+
+
+def test_travel_to_schema_description_names_known_locations():
+    from ai_dm.protocol.schema import tool_set
+
+    tools = {d["name"]: d for d in tool_set("explore")}
+    schema = json.dumps(tools["advance_time"], ensure_ascii=False)
+    assert "known_locations" in schema

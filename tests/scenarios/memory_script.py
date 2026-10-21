@@ -20,12 +20,14 @@ MODEL = "mock"
 # переполнение зависит только от динамики > MEMORY_CONTEXT_CAP, а не от роста правил/схем.
 # Давление дают длинные имена NPC/локаций, выжимки глав и свёртка: вытесняются все ступени.
 NPC_MEMORY_WINDOW = 400_000
-# 2806: подобрано заново после ЖП3 П3 (hero.hit_dice в данных героя добавил динамики; при 2775
-# no_overflow падал; проходят 2788, 2800, 2825, при 2838 нет ступени chapters; рабочий диапазон
-# примерно 2780-2830, взята середина). Раньше: 2775
+# 2950: подобрано заново в Фикс ЖП4 П1 (129: соседние локации неустранимы, имена локаций
+# укорочены; при 2806 и 2900 падает no_overflow Ж0 (память свидетеля), при 3000 нет ступени
+# chapters; рабочий диапазон -- строго между 2900 и 3000, проверено только 2950 (середина);
+# точные границы не уточнялись). Раньше: 2806
+# (ЖП3 П3: hero.hit_dice; проходили 2788-2825), до того 2775
 # (проходили 2750-2800: все пять ступеней, главы 1-4 на сцене 50 на месте; ниже главы уходят
 # раньше, выше ступень chapters не срабатывает)
-MEMORY_CONTEXT_CAP = 2806
+MEMORY_CONTEXT_CAP = 2950
 MEMORY_NPC = "witness"
 SCENES = 52
 TURNS_PER_SCENE = 3
@@ -64,11 +66,12 @@ def memory_bundle(registry):
     bundle = make_bundle(registry)
     world = bundle.world
     vale = world.locations["vale"]
+    # имена локаций короткие: после 129 соседи у рассказчика неустранимы, давления не дают
     for place_id, distance in (("mid", 100), ("far", 9000), ("tie_a", 700), ("tie_b", 700)):
-        world.locations[place_id] = Location(id=place_id, name=f"{LONG_NAME}{place_id}")
+        world.locations[place_id] = Location(id=place_id, name=place_id)
         vale.connections.append(Connection(to=place_id, distance_m=distance))
     world.locations["rev"] = Location(
-        id="rev", name=f"{LONG_NAME}rev", connections=[Connection(to="vale", distance_m=500)]
+        id="rev", name="rev", connections=[Connection(to="vale", distance_m=500)]
     )
     for npc_id in ("keyer_a", "keyer_b", "keyer_c"):
         world.npcs[npc_id] = NPC(

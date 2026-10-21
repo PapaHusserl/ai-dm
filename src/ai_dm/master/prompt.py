@@ -305,22 +305,19 @@ class PromptBuilder:
         folded = [c for c in memory.chapters if c.number <= memory.game_summary_chapter]
         fixed_chapters = [c for c in memory.chapters if c.number > memory.game_summary_chapter]
         fixed_locations = []
-        locations = []
         nearby = []
         if ctx.hero.location_id is not None:
             place = world.locations[ctx.hero.location_id]
-            fixed_locations = [place.id]
             nearby = nearby_locations(world, place)[1:]
-            # дальние первыми, при равенстве по id
-            far_first = sorted(nearby, key=lambda x: (-x["distance_m"], x["id"]))
-            locations = [x["id"] for x in far_first]
+            # соседние -- цели travel_to, вытеснять нельзя (129)
+            fixed_locations = [place.id, *(x["id"] for x in nearby)]
         reasons = npc_reasons(bundle, {x["id"] for x in nearby})
         fixed_npcs, npcs = rank_npcs(reasons)
         return Candidates(
             turns=recent_window(memory, cfg.recent_turns),
             floor=cfg.recent_turns_floor,
             scenes=[s for s in memory.scenes if s.chapter_id == chapter_id],
-            npcs=npcs, locations=locations, chapters=folded,
+            npcs=npcs, locations=[], chapters=folded,
             fixed_npcs=fixed_npcs, fixed_locations=fixed_locations,
             fixed_chapters=fixed_chapters,
         )
@@ -494,11 +491,18 @@ class PromptBuilder:
         location = None
         scene_npcs = []
         locations = []
+        known_locations = []
         if hero.location_id is not None:
             place = world.locations[hero.location_id]
             location = {"id": place.id, "name": place.name}
-            locations = [
-                x for x in nearby_locations(world, place) if x["id"] in context_plan.location_ids
+            near = nearby_locations(world, place)
+            locations = [x for x in near if x["id"] in context_plan.location_ids]
+            # посещённые не соседние места: цели travel_to по пути карты (132); блок фиксированный
+            near_ids = {x["id"] for x in near}
+            known_locations = [
+                {"id": p.id, "name": p.name}
+                for p in sorted(world.locations.values(), key=lambda p: p.id)
+                if (p.visited or world.flags.get(f"visited:{p.id}")) and p.id not in near_ids
             ]
             for npc in world.npcs.values():
                 if npc.status == "alive" and npc.location_id == hero.location_id:
@@ -568,6 +572,8 @@ class PromptBuilder:
             "offered_choices": session.offered_choices,
             "player_input": user_input,
         }
+        if known_locations:
+            data["known_locations"] = known_locations
         data.update(self.knowledge_data(ctx, context_plan, scene_npcs))
         data.update(items_trail_data(world, session, ctx.registry))
         data.update(trade_data(world, scene_npcs, ctx, hero.sheet.level))

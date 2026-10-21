@@ -860,23 +860,15 @@ def travel(ctx, request):
             message=f"нет локации {request.travel_to!r}"
             + allowed(reachable_ids(world, hero.location_id)),
         )
-    here = world.locations.get(hero.location_id)
-    route = None
-    if here is not None:
-        for connection in here.connections:
-            if connection.to == request.travel_to:
-                route = connection
-        if route is None:
-            for connection in world.locations[request.travel_to].connections:
-                if connection.to == here.id:
-                    route = connection
-    if route is None:
+    route = time_ops.route_path(world, hero.location_id, request.travel_to)
+    if not route:
         return Invalid(
             code="no_route",
             message=f"отсюда нет пути в {request.travel_to!r}"
             + allowed(reachable_ids(world, hero.location_id)),
         )
-    seconds = time_ops.travel_seconds(route.distance_m, request.pace or "normal", ctx.cfg)
+    pace = request.pace or "normal"
+    seconds = sum(time_ops.travel_seconds(d, pace, ctx.cfg) for _, d in route)
     world.clock.advance(seconds)
     hero.location_id = request.travel_to
     companions = []
@@ -884,14 +876,23 @@ def travel(ctx, request):
         if npc.follows == hero.id and npc.status == "alive":
             npc.location_id = request.travel_to
             companions.append(npc.name)
-    event = DomainEvent(type="location_visited", data={"id": request.travel_to})
-    apply_events(world, [event])
-    ctx.events.append(event)
+    path = [location_id for location_id, _ in route]
+    for location_id in path:
+        event = DomainEvent(type="location_visited", data={"id": location_id})
+        apply_events(world, [event])
+        ctx.events.append(event)
     name = world.locations[request.travel_to].name
-    log = [f"Путь в «{name}»: {seconds} с"]
+    line = f"Путь в «{name}»: {seconds} с"
+    if len(path) > 1:
+        via = ", ".join(world.locations[i].name for i in path[:-1])
+        line += f" (через {via})"
+    log = [line]
     if companions:
         log.append("С тобой: " + ", ".join(companions))
-    result = {"seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to}
+    result = {
+        "seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to,
+        "path": path,
+    }
     concentration_note(ctx, log, result)
     return Decision(status="accepted", result=result, log=log)
 

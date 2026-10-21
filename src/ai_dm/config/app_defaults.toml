@@ -157,6 +157,8 @@ knowledge_max = 30
 anthropic = 2.2
 # ЖП3: оценка/факт 1,23 по журналу drunk_dragon (calls-013)
 gemini = 3.0
+# ЖП4: оценка/факт 1,43 по журналу drunk_dragon (calls-018)
+openai = 3.5
 
 [llm]
 refusal_fallback = false

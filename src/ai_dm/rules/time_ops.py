@@ -1,3 +1,5 @@
+import heapq
+
 from ai_dm.config.settings import RulesConfig
 from ai_dm.core.clock import DAY, GameClock
 
@@ -28,6 +30,41 @@ def travel_seconds(distance_m: int, pace: str, cfg: RulesConfig) -> int:
     if distance_m < 0:
         raise ValueError("дистанция не может быть отрицательной")
     return -(-(distance_m * 3600) // cfg.time.travel_pace[pace])
+
+
+def route_path(world, from_id: str, to_id: str) -> list[tuple[str, int]] | None:
+    # кратчайший путь по карте (сумма distance_m, связи в обе стороны); при равной длине
+    # остаётся первый найденный путь. Ответ -- переходы (id, distance_m) без старта:
+    # [] -- старт и есть цель, None -- пути нет
+    edges: dict[str, list[tuple[str, int]]] = {}
+    for place in world.locations.values():
+        for c in place.connections:
+            if c.to in world.locations:
+                edges.setdefault(place.id, []).append((c.to, c.distance_m))
+                edges.setdefault(c.to, []).append((place.id, c.distance_m))
+    best = {from_id: 0}
+    came: dict[str, tuple[str, int]] = {}
+    queue = [(0, from_id)]
+    while queue:
+        dist, here = heapq.heappop(queue)
+        if dist > best[here]:
+            continue
+        if here == to_id:
+            break
+        for other, d in edges.get(here, []):
+            if dist + d < best.get(other, dist + d + 1):
+                best[other] = dist + d
+                came[other] = (here, d)
+                heapq.heappush(queue, (dist + d, other))
+    if to_id not in best:
+        return None
+    path = []
+    current = to_id
+    while current != from_id:
+        previous, d = came[current]
+        path.append((current, d))
+        current = previous
+    return path[::-1]
 
 
 def advance_by_category(clock: GameClock, category: str, cfg: RulesConfig) -> int:

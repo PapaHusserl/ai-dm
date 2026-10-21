@@ -519,6 +519,91 @@ def test_message_locations_skip_unconnected(registry, cfg):
     assert "goblin_den" not in ids
 
 
+# Фикс ЖП4 (132): known_locations -- известные не соседние места, цели travel_to по карте
+
+def known_locations_of(ctx, mode="explore"):
+    return data_of(build(ctx, mode=mode)).get("known_locations")
+
+
+def test_known_locations_has_visited_far_place(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    assert known_locations_of(ctx) == [{"id": "goblin_den", "name": "Логово"}]
+
+
+def test_known_locations_has_place_with_visited_flag(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.flags["visited:goblin_den"] = True
+    assert known_locations_of(ctx) == [{"id": "goblin_den", "name": "Логово"}]
+
+
+def test_known_locations_place_with_field_and_flag_is_listed_once(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    ctx.bundle.world.flags["visited:goblin_den"] = True
+    assert known_locations_of(ctx) == [{"id": "goblin_den", "name": "Логово"}]
+
+
+def test_known_locations_key_absent_when_nothing_known(registry, cfg):
+    data = data_of(build(make_ctx(registry, cfg)))
+    assert "known_locations" not in data
+
+
+def test_known_locations_false_flag_does_not_count(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.flags["visited:goblin_den"] = False
+    assert known_locations_of(ctx) is None
+
+
+def test_known_locations_skip_visited_neighbor(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["forest"].visited = True
+    ctx.bundle.world.flags["visited:forest"] = True
+    assert known_locations_of(ctx) is None
+
+
+def test_known_locations_skip_current_place(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].visited = True
+    ctx.bundle.world.flags["visited:vale"] = True
+    assert known_locations_of(ctx) is None
+
+
+def test_known_locations_are_sorted_by_id(registry, cfg):
+    from ai_dm.state.world import Location
+
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["zeta"] = Location(id="zeta", name="Зета", visited=True)
+    world.locations["alpha"] = Location(id="alpha", name="Альфа")
+    world.flags["visited:alpha"] = True
+    world.locations["goblin_den"].visited = True
+    ids = [x["id"] for x in known_locations_of(ctx)]
+    assert ids == ["alpha", "goblin_den", "zeta"]
+
+
+def test_known_locations_items_have_only_id_and_name(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    assert set(known_locations_of(ctx)[0]) == {"id", "name"}
+
+
+def test_known_locations_absent_without_hero_location(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    ctx.hero.location_id = None
+    assert known_locations_of(ctx) is None
+
+
+def test_known_locations_survive_any_cap(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    app = app_cfg().model_copy(deep=True)
+    app.master.context_cap = 1
+    request = PromptBuilder(app).build(ctx, "Осматриваюсь.", "explore")
+    assert data_of(request)["known_locations"] == [{"id": "goblin_den", "name": "Логово"}]
+
+
 def test_message_known_npcs_are_named_alive_with_id_name_location_key(registry, cfg):
     npcs = data_of(build(make_ctx(registry, cfg)))["known_npcs"]
     by_id = {n["id"]: n for n in npcs}

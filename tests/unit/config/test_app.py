@@ -604,11 +604,6 @@ def test_openai_prices_have_no_storage_fee():
     assert prices["gpt-6-luna"].cache_storage_hour == 0
 
 
-def test_cpt_for_openai_is_common_value():
-    master = load_settings().app.master
-    assert master.cpt_for("openai") == master.chars_per_token == 2.5
-
-
 def test_profile_without_import_role_is_valid_and_has_none():
     roles = "".join(
         f'\n[profiles.mixed.{name}]\nprovider = "gemini"\n'
@@ -694,10 +689,12 @@ def test_unknown_key_in_audio_section_is_rejected():
 # Ж0 п.0 (BACKLOG 77): в дефолте только anthropic = 2.2, остальные -- общее значение
 
 def test_cpt_by_provider_default_is_anthropic_only():
-    assert app().master.chars_per_token_by_provider == {"anthropic": 2.2, "gemini": 3.0}
+    assert app().master.chars_per_token_by_provider == {
+        "anthropic": 2.2, "gemini": 3.0, "openai": 3.5,
+    }
 
 
-@pytest.mark.parametrize("provider", ["mock", "someone_else"])
+@pytest.mark.parametrize("provider", ["mock", "someone_else", "mistral"])
 def test_cpt_for_is_common_value_by_default(provider):
     master = app().master
     assert master.cpt_for(provider) == master.chars_per_token == 2.5
@@ -706,6 +703,11 @@ def test_cpt_for_is_common_value_by_default(provider):
 def test_cpt_for_gemini_is_3_0_by_default():
     # ЖП3: оценка/факт 1,23 по журналу drunk_dragon
     assert app().master.cpt_for("gemini") == 3.0
+
+
+def test_cpt_for_openai_is_3_5_by_default():
+    # ЖП4 (129): оценка/факт 1,43 по журналу drunk_dragon (calls-018)
+    assert app().master.cpt_for("openai") == 3.5
 
 
 def test_context_cap_default_keeps_dynamic_reserve_of_8000():

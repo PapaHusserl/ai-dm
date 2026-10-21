@@ -492,6 +492,84 @@ def test_relevant_npcs_equals_sorted_reason_keys(registry):
     assert relevant_npcs(bundle) == sorted(npc_reasons(bundle))
 
 
+# Фикс ЖП4 (132): причина merchant -- торговец (цель визита), вытесняется после nearby
+
+def add_merchant(bundle, npc_id, **fields):
+    from ai_dm.state.world import TradeProfile
+
+    add_npc(bundle, npc_id, trade=TradeProfile(kind="general", purse_cp=100), **fields)
+
+
+def test_reasons_merchant_elsewhere(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_merchant(bundle, "greta", location_id="goblin_den")
+    assert npc_reasons(bundle)["greta"] == {"merchant"}
+
+
+def test_reasons_npc_without_trade_is_not_merchant(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "farmer", location_id="goblin_den")
+    assert "farmer" not in npc_reasons(bundle)
+
+
+def test_reasons_merchant_here_keeps_here(registry):
+    from ai_dm.master.relevance import npc_reasons, rank_npcs
+
+    bundle = make_bundle(registry)
+    add_merchant(bundle, "greta", location_id="vale")
+    reasons = npc_reasons(bundle)
+    assert reasons["greta"] == {"here", "merchant"}
+    assert "greta" in rank_npcs(reasons)[0]
+
+
+def test_reasons_dead_merchant_is_not_relevant(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_merchant(bundle, "greta", location_id="goblin_den", status="dead")
+    assert "greta" not in npc_reasons(bundle)
+
+
+def test_merchant_elsewhere_is_relevant(registry):
+    bundle = make_bundle(registry)
+    add_merchant(bundle, "greta", location_id="goblin_den")
+    assert "greta" in relevant_npcs(bundle)
+
+
+def test_rank_npcs_merchant_is_removable(registry):
+    from ai_dm.master.relevance import rank_npcs
+
+    fixed, ranked = rank_npcs({"greta": {"merchant"}})
+    assert fixed == []
+    assert ranked == ["greta"]
+
+
+def test_rank_npcs_order_said_key_nearby_merchant():
+    from ai_dm.master.relevance import rank_npcs
+
+    reasons = {"a_m": {"merchant"}, "b_n": {"nearby"}, "c_k": {"key"}, "d_s": {"said"}}
+    assert rank_npcs(reasons)[1] == ["d_s", "c_k", "b_n", "a_m"]
+
+
+def test_rank_npcs_merchant_with_said_counts_as_merchant():
+    from ai_dm.master.relevance import rank_npcs
+
+    reasons = {"a": {"said", "merchant"}, "b": {"nearby"}}
+    assert rank_npcs(reasons)[1] == ["b", "a"]
+
+
+def test_far_merchant_is_in_known_npcs_with_location(registry, cfg):
+    bundle = make_bundle(registry)
+    add_merchant(bundle, "greta", location_id="goblin_den")
+    data = data_of(build(make_ctx(registry, cfg, bundle=bundle)))
+    entry = next(n for n in data["known_npcs"] if n["id"] == "greta")
+    assert entry["location_id"] == "goblin_den"
+
+
 # nearby_locations: вынесена в relevance
 
 def test_nearby_locations_current_first_then_links_both_ways(registry):

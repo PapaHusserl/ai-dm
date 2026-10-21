@@ -392,7 +392,7 @@ class AwardXp(Request):
 
 
 class AdvanceTime(Request):
-    """Сдвинуть время на категорию или перевезти героя в соседнюю локацию.
+    """Сдвинуть время на категорию или перевезти героя в локацию (путь по карте).
 
     Нужно ровно одно из category и travel_to.
     """
@@ -402,7 +402,11 @@ class AdvanceTime(Request):
         "none", description="На сколько сдвинуть время; none, если идёт путь."
     )
     travel_to: str = Field(
-        "", description='Id локации, куда идёт герой; пусто = нет (не "none").'
+        "",
+        description=(
+            "Id локации из locations или known_locations; путь по карте считает движок; "
+            'пусто = нет (не "none").'
+        ),
     )
     pace: Literal["slow", "normal", "fast"] = Field("normal", description="Темп пути.")
     NEUTRAL: ClassVar[dict] = {"category": "none", "travel_to": ""}

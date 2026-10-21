@@ -26,8 +26,9 @@ FULL_ORDER = (
         ("npcs", i)
         for i in ("said_a", "said_b", "keyer_a", "keyer_b", "keysaid", "near_a", "near_b")
     ]
-    + [("locations", i) for i in ("far", "forest", "tie_a", "tie_b", "rev", "mid")]
 )
+# 129: соседние локации -- цели travel_to, у рассказчика не вытесняются
+NEIGHBORS = ["vale", "far", "forest", "mid", "rev", "tie_a", "tie_b"]
 
 
 def add_npc(world, npc_id, **fields):
@@ -404,17 +405,38 @@ def test_all_neighbor_locations_shown_when_roomy(registry, cfg):
     assert shown_locations(request) == ["vale", "far", "forest", "mid", "rev", "tie_a", "tie_b"]
 
 
-def test_far_locations_dropped_first_ties_by_id(registry, cfg):
+def test_neighbor_locations_are_never_dropped(registry, cfg):
     _, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
-    order = [i for s, i in builder.last_plan.dropped if s == "locations"]
-    assert order == ["far", "forest", "tie_a", "tie_b", "rev", "mid"]
+    assert [i for s, i in builder.last_plan.dropped if s == "locations"] == []
+
+
+def test_all_neighbors_shown_when_nothing_fits(registry, cfg):
+    request, _ = build(make_scenario(registry, cfg), app=app_with(cap=1))
+    assert shown_locations(request) == NEIGHBORS
 
 
 def test_current_location_is_never_dropped(registry, cfg):
     request, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
-    assert shown_locations(request) == ["vale"]
+    assert shown_locations(request)[0] == "vale"
     assert ("locations", "vale") not in builder.last_plan.dropped
     assert data_of(request)["location"]["id"] == "vale"
+
+
+def test_candidates_fix_current_and_all_neighbors(registry, cfg):
+    c = PromptBuilder(app_with()).candidates(make_scenario(registry, cfg))
+    assert c.fixed_locations[0] == "vale"
+    assert sorted(c.fixed_locations) == sorted(NEIGHBORS)
+
+
+def test_candidates_have_no_removable_locations(registry, cfg):
+    c = PromptBuilder(app_with()).candidates(make_scenario(registry, cfg))
+    assert c.locations == []
+
+
+def test_candidates_without_hero_location_fix_nothing(registry, cfg):
+    ctx = make_scenario(registry, cfg)
+    ctx.hero.location_id = None
+    assert PromptBuilder(app_with()).candidates(ctx).fixed_locations == []
 
 
 def test_hero_without_location_has_no_candidate_locations(registry, cfg):
