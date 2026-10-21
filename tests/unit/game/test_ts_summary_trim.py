@@ -94,15 +94,28 @@ def test_two_long_answers_then_short_one_are_not_trimmed(registry, cfg, tmp_path
     assert "summary_trimmed" not in result.report_tags
 
 
-def test_empty_answer_between_long_ones_does_not_count_as_overflow(registry, cfg, tmp_path):
-    # длинный, пустой, длинный: переполнений два (< 3), обрезки нет; бюджет невалидных исчерпан
+def test_empty_answer_between_long_ones_trims_last_long_without_backup(registry, cfg, tmp_path):
+    # Фикс Э10а Р4-b: длинный, пустой, длинный: переполнений два (< 3), бюджет невалидных
+    # исчерпан; движок режет последнюю отклонённую выжимку сам, запасной не вызывается
     steps = long_steps(1) + summ_steps("", call_id="ss-e") + long_steps(1, text=LONG)
     narrator = end_narrator() + summ_steps("От рассказчика.")
     rig = make_summ_rig(registry, cfg, tmp_path, narrator, steps)
     result = rig.runner.play("ход")
-    assert scene(rig).summary == "От рассказчика."
-    assert "summary_trimmed" not in result.report_tags
-    assert "summarizer_backup" in result.report_tags
+    assert scene(rig).source == "summarizer"
+    assert 0 < len(scene(rig).summary) <= 600
+    assert scene(rig).summary.endswith("Бранна.")
+    assert result.report_tags.count("summary_trimmed") == 1
+    assert "summarizer_backup" not in result.report_tags
+    assert rig.narrator_view().summarizer_requests() == []
+
+
+def test_two_long_answers_then_empty_trim_without_backup(registry, cfg, tmp_path):
+    rig = make_summ_rig(registry, cfg, tmp_path, end_narrator(), long_steps(2) + summ_steps(""))
+    result = rig.runner.play("ход")
+    assert scene(rig).source == "summarizer"
+    assert 0 < len(scene(rig).summary) <= 600
+    assert "summary_trimmed" in result.report_tags
+    assert "summarizer_backup" not in result.report_tags
 
 
 def test_trim_after_zero_goes_to_backup_with_summarizer_backup_tag(registry, cfg, tmp_path):

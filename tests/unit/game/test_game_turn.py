@@ -378,6 +378,28 @@ def test_set_adapter_switches_request_model(registry, cfg, tmp_path):
     assert other.requests[0].model == SONNET
 
 
+def test_set_adapter_openai_provider_adds_rules_extra_even_for_non_openai_model(
+    registry, cfg, tmp_path
+):
+    from game_kit import SONNET, ReactiveAdapter
+
+    rig = make_rig(registry, cfg, tmp_path, scripted(FATAL))
+    rig.runner.play("a")
+    other = ReactiveAdapter(provider="openai", model=SONNET)
+    rig.runner.set_adapter(other)
+    rig.runner.retry()
+    assert rig.runner.builder.rules_extra
+    assert other.requests[0].system[0].text.endswith(rig.runner.builder.rules_extra)
+
+
+def test_set_adapter_anthropic_provider_has_no_rules_extra(registry, cfg, tmp_path):
+    from game_kit import ReactiveAdapter
+
+    rig = make_rig(registry, cfg, tmp_path, scripted(FATAL))
+    rig.runner.set_adapter(ReactiveAdapter(provider="anthropic"))
+    assert rig.runner.builder.rules_extra == ""
+
+
 # ход -> сейв -> загрузка -> следующий бросок
 
 def test_save_load_next_roll_matches_continuous_play(registry, cfg, tmp_path):

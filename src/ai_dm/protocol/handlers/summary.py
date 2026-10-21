@@ -38,13 +38,18 @@ def fit_text(ctx, key, text, limit, label):
     after = ctx.summary_trim_after
     if after > 0 and count > after:
         return trim_text(text, limit)
+    if key == "scene" and after > 0:
+        ctx.summary_pending = text
     ratio = len(text) / limit
     message = (
         f"{label} {len(text)} симв., предел {limit}: сократи примерно в {ratio:.1f} раза "
         f"— убери подробности, оставь факты, обещания и открытые нити."
     )
     if after > 0:
-        message += f" Попытка {count} из {after}; дальше движок обрежет по предложению."
+        message += (
+            f" Попытка {count} из {after}. Вызови {key}_summary ещё раз короче; "
+            f"если и она длиннее предела, движок примет её, обрезав по предложению."
+        )
     return Invalid(code="summary_too_long", message=message)
 
 

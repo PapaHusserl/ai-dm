@@ -55,6 +55,8 @@ class TurnContext:
         # после скольких переполнений движок режет выжимку сам (0 -- не режет)
         self.summary_overflows = {}
         self.summary_trim_after = 0
+        # последняя отклонённая как слишком длинная выжимка сцены (для обрезки при пустом финале)
+        self.summary_pending = None
 
     @property
     def turn_seq(self):

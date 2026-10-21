@@ -19,6 +19,9 @@
 #   Фикс ЖП3 П3 (2026-10-20): правила (103 spent без держателя, 99 hit_dice, 101 вещь от NPC,
 #   108 зелье от спутника) и описания TakeItem/UseItem; порог 20960 превышен,
 #   замер 20988; 21620 = 20988 + 3 %.
+#   Фикс Э10а П1 (2026-10-21): ориентир длины в «Стиле повествования» (narrator_rules.md);
+#   explore.total 20988 -> 21307 (rules 10530, tools 10777); порог 21620 не менялся.
+#   Добавка narrator_rules_openai.md в замер не входит (она внутри system[0] только у openai).
 import json
 from importlib import resources
 

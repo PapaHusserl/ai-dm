@@ -215,15 +215,18 @@ def draft_plan(c):
 
 
 class PromptBuilder:
-    def __init__(self, app_cfg, *, role="narrator", model=None):
+    def __init__(self, app_cfg, *, role="narrator", model=None, provider=None):
         self.app_cfg = app_cfg
         self.role = role
         self.role_cfg = self.find_role_cfg(role, model)
         self.model = model or self.role_cfg.model
         self.last_plan = None
-        self.rules = (resources.files("ai_dm.master") / "prompts" / "narrator_rules.md").read_text(
-            encoding="utf-8"
-        )
+        prompts = resources.files("ai_dm.master") / "prompts"
+        self.rules = (prompts / "narrator_rules.md").read_text(encoding="utf-8")
+        # добавка правил по провайдеру: внутри блока system[0], в замер static_tokens не входит
+        self.rules_extra = ""
+        if (provider or self.role_cfg.provider) == "openai":
+            self.rules_extra = (prompts / "narrator_rules_openai.md").read_text(encoding="utf-8")
 
     def find_role_cfg(self, role, model):
         # effort и max_tokens берутся у роли выбранной модели (основная, альтернативная, профили)
@@ -264,8 +267,9 @@ class PromptBuilder:
 
     def static_system(self, ctx, world_text):
         # кэшируемые блоки system, общие для запроса и оценки статики
+        rules = f"{self.rules}\n\n{self.rules_extra}" if self.rules_extra else self.rules
         return [
-            SystemBlock(text=self.rules, cache=True),
+            SystemBlock(text=rules, cache=True),
             SystemBlock(text=self.world_block(ctx, world_text), cache=True),
         ]
 

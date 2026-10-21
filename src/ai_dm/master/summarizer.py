@@ -7,6 +7,7 @@ from ai_dm.master.prompt import dump
 from ai_dm.master.session import MasterSession, TurnFailed, soft_failure
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.context import TurnContext
+from ai_dm.protocol.handlers.summary import trim_text
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules.npc_names import shown_name
 
@@ -197,7 +198,14 @@ class SummarizerSession:
             sleeper=self.sleeper, now=self.now, role="summarizer", call_numbers=self.call_numbers,
             builder=SummarizerPromptBuilder(self.app_cfg, model=self.model), policy=self.policy,
         )
-        session.run(ctx, "", apply, "summarize_scene", run_id=run_id)
+        try:
+            session.run(ctx, "", apply, "summarize_scene", run_id=run_id)
+        except TurnFailed as error:
+            # модель сдалась после «слишком длинно» пустым ответом: режем последнюю выжимку сами
+            if error.reason != "invalid" or not ctx.summary_pending:
+                raise
+            ctx.summary_text = trim_text(ctx.summary_pending, ctx.summary_max)
+            ctx.marks.append("summary_trimmed")
         return ctx
 
     def run_chapter(self, bundle, registry, cfg, run_id) -> TurnContext:

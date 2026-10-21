@@ -121,6 +121,70 @@ def test_run_scene_with_trim_after_one_trims_on_second_answer(registry, cfg, app
     assert 0 < len(ctx.summary_text) <= app_cfg.memory.scene_summary_max
 
 
+SENTENCE = "Герой пришёл в город. "
+
+
+def test_run_scene_two_overflows_then_empty_trims_last_pending(registry, cfg, app_cfg):
+    long805 = SENTENCE * 40
+    long700 = SENTENCE * 32
+    session = make_session(app_cfg, scene_steps(long805, long700, ""))
+    ctx = session.run_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert 0 < len(ctx.summary_text) <= app_cfg.memory.scene_summary_max
+    assert ctx.summary_text.endswith("в город.")
+    assert long700.startswith(ctx.summary_text)
+    assert ctx.marks == ["summary_trimmed"]
+
+
+def test_run_scene_empty_after_overflow_uses_second_text_not_first(registry, cfg, app_cfg):
+    first = "Первая история началась. " * 40
+    second = "Вторая история продолжилась. " * 30
+    session = make_session(app_cfg, scene_steps(first, second, ""))
+    ctx = session.run_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert ctx.summary_text.startswith("Вторая")
+
+
+def test_try_scene_two_overflows_then_empty_has_no_fall_and_no_backup_call(
+    registry, cfg, app_cfg
+):
+    steps = scene_steps(SENTENCE * 40, SENTENCE * 32, "")
+    primary = make_session(app_cfg, steps)
+    backup_adapter = scripted(scene_steps("Бэкап."))
+    primary.backup = SummarizerSession(
+        backup_adapter, app_cfg, sleeper=lambda s: None, model=OPUS
+    )
+    ctx, fell = primary.try_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert fell is False
+    assert ctx.summary_text != "Бэкап."
+    assert 0 < len(ctx.summary_text) <= app_cfg.memory.scene_summary_max
+    assert backup_adapter.requests == []
+
+
+def test_run_scene_overflows_then_short_answer_is_accepted_without_trim(registry, cfg, app_cfg):
+    session = make_session(app_cfg, scene_steps(SENTENCE * 40, SENTENCE * 32, "Коротко."))
+    ctx = session.run_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert ctx.summary_text == "Коротко."
+    assert ctx.marks == []
+
+
+def test_run_scene_empty_without_previous_overflow_still_fails_invalid(registry, cfg, app_cfg):
+    session = make_session(app_cfg, scene_steps("", "", ""))
+    with pytest.raises(TurnFailed) as error:
+        session.run_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert error.value.reason == "invalid"
+
+
+def test_run_scene_trim_after_zero_overflows_then_empty_still_fails(registry, cfg, app_cfg):
+    app_cfg.memory.summary_trim_after = 0
+    session = make_session(app_cfg, scene_steps(SENTENCE * 40, SENTENCE * 32, ""))
+    with pytest.raises(TurnFailed) as error:
+        session.run_scene(make_bundle(registry), registry, cfg, "bnd-1")
+    assert error.value.reason == "invalid"
+
+
+def test_context_summary_pending_defaults_to_none(registry, cfg):
+    assert TurnContext(make_bundle(registry), registry, cfg).summary_pending is None
+
+
 def test_run_chapter_trims_game_and_chapter_to_their_limits(registry, cfg, app_cfg):
     chapter = "Глава началась в городе. " * 100
     game = "Игра началась в городе. " * 200

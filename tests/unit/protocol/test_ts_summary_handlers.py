@@ -235,6 +235,63 @@ def test_fit_text_empty_between_overflows_does_not_count(registry, cfg):
     assert "Попытка 2 из 2" in second.message
 
 
+def test_fit_text_overflow_message_asks_to_call_again_and_has_no_old_threat(registry, cfg):
+    message = fit_text(scene_ctx(registry, cfg), "scene", "я" * 900, 600, "Выжимка").message
+    assert "Вызови scene_summary ещё раз короче" in message
+    assert "дальше движок обрежет" not in message
+
+
+def test_fit_text_overflow_message_names_tool_by_key(registry, cfg):
+    message = fit_text(chapter_ctx(registry, cfg), "game", "я" * 4000, 3000, "game_summary").message
+    assert "Вызови game_summary ещё раз" in message
+
+
+def test_fit_text_scene_overflow_remembers_pending_text(registry, cfg):
+    ctx = scene_ctx(registry, cfg)
+    fit_text(ctx, "scene", "а" * 900, 600, "Выжимка")
+    assert ctx.summary_pending == "а" * 900
+
+
+def test_fit_text_pending_is_the_latest_overflow(registry, cfg):
+    ctx = scene_ctx(registry, cfg)
+    fit_text(ctx, "scene", "а" * 900, 600, "Выжимка")
+    fit_text(ctx, "scene", "б" * 700, 600, "Выжимка")
+    assert ctx.summary_pending == "б" * 700
+
+
+def test_fit_text_pending_stays_none_without_overflow(registry, cfg):
+    ctx = scene_ctx(registry, cfg)
+    fit_text(ctx, "scene", "короткая", 600, "Выжимка")
+    fit_text(ctx, "scene", "", 600, "Выжимка")
+    assert ctx.summary_pending is None
+
+
+def test_fit_text_pending_is_remembered_with_trim_after_one(registry, cfg):
+    ctx = scene_ctx(registry, cfg, after=1)
+    fit_text(ctx, "scene", "а" * 900, 600, "Выжимка")
+    assert ctx.summary_pending == "а" * 900
+
+
+def test_fit_text_empty_after_overflow_keeps_pending(registry, cfg):
+    ctx = scene_ctx(registry, cfg)
+    fit_text(ctx, "scene", "а" * 900, 600, "Выжимка")
+    fit_text(ctx, "scene", "", 600, "Выжимка")
+    assert ctx.summary_pending == "а" * 900
+
+
+def test_fit_text_chapter_keys_do_not_set_pending(registry, cfg):
+    ctx = chapter_ctx(registry, cfg)
+    fit_text(ctx, "chapter", "я" * 2000, 1500, "Выжимка главы")
+    fit_text(ctx, "game", "я" * 4000, 3000, "game_summary")
+    assert ctx.summary_pending is None
+
+
+def test_fit_text_trim_after_zero_does_not_set_pending(registry, cfg):
+    ctx = scene_ctx(registry, cfg, after=0)
+    fit_text(ctx, "scene", "я" * 900, 600, "Выжимка")
+    assert ctx.summary_pending is None
+
+
 # accepted
 
 def test_accepted_without_trim_has_plain_log_and_no_tag():

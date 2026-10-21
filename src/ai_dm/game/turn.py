@@ -126,7 +126,7 @@ class TurnRunner:
             model = adapter.info().model
         self.adapter = adapter
         self.model = model
-        self.builder = PromptBuilder(self.app_cfg, model=model)
+        self.builder = PromptBuilder(self.app_cfg, model=model, provider=adapter.info().provider)
 
     def play(self, player_input) -> TurnResult:
         self.last_input = player_input
