@@ -835,3 +835,14 @@ updated: 2026-10-21
 `[master.chars_per_token_by_provider]` (`config/app_defaults.toml`; временно стоит в ~/.config/ai-dm/config.toml
 проектировщика); (2) соседние локации текущего места (`nearby_locations`) — цели `travel_to`, их вытеснять нельзя
 (в фиксированные, как текущая), иначе при любой недооценке бюджета герой застревает.
+
+## 130. Строка ленты «Записано в журнал: npc Лира» — служебный вид записи виден игроку
+status: idea
+priority: low
+updated: 2026-10-21
+
+(Проектировщик, ЖП4, 2026-10-21: «что значит "записано в журнал: npc Лира"») Лог `knowledge_note`
+(`protocol/handlers/knowledge.py:knowledge_note`) пишет в ленту сырое `request.kind` (`npc`, `location`, `faction`,
+`god`, `creature`, `situation` — `state/knowledge.py:KNOWLEDGE_KINDS`). Игроку непонятно, что это и где смотреть.
+Нужна русская формулировка с указанием на `/lore` (например «В журнал знаний (/lore): о Лире»); склонение имени и
+подписи видов — на груминге.
