@@ -11,6 +11,7 @@ from ai_dm.llm.mock import ScriptedAdapter
 
 HARD = {"stop": "refusal", "stop_detail": "PROHIBITED_CONTENT"}
 FLASH = "gemini-3.8-flash"
+SOL = "gpt-6.1-sol"
 ARGON = "gemini-4-argon"
 PREVIEW = "gemini-3-flash-preview"
 
@@ -140,25 +141,25 @@ def test_two_gold_repeat_turns_in_a_row_write_two_reports(registry, tmp_path):
 # цепочка: каждая модель -- свой каталог
 
 def test_chain_writes_one_report_per_refusing_model(registry, tmp_path):
-    factory = Factory({ARGON: [HARD], PREVIEW: [text_step("Дошли.")]})
+    factory = Factory({SOL: [HARD], ARGON: [HARD], PREVIEW: [text_step("Дошли.")]})
     adapter = ScriptedAdapter([HARD], provider="gemini", model=FLASH)
     app = make_app(registry, tmp_path, adapter, adapter_factory=factory, auto_reports=True)
     app.refusal_chain = True
     app.handle("Иду")
     found = issues(tmp_path)
-    assert len(found) == 2
-    assert {meta_of(p)["model"] for p in found} == {FLASH, ARGON}
+    assert len(found) == 3
+    assert {meta_of(p)["model"] for p in found} == {FLASH, SOL, ARGON}
 
 
 def test_chain_all_refuse_each_model_has_exactly_one_report(registry, tmp_path):
     lite = "gemini-3.5-flash-lite"
-    factory = Factory({ARGON: [HARD], PREVIEW: [HARD], lite: [HARD]})
+    factory = Factory({SOL: [HARD], ARGON: [HARD], PREVIEW: [HARD], lite: [HARD]})
     adapter = ScriptedAdapter([HARD], provider="gemini", model=FLASH)
     app = make_app(registry, tmp_path, adapter, adapter_factory=factory, auto_reports=True)
     app.refusal_chain = True
     app.handle("Иду")
     models = sorted(meta_of(p)["model"] for p in issues(tmp_path))
-    assert models == sorted([FLASH, ARGON, PREVIEW, lite])
+    assert models == sorted([FLASH, SOL, ARGON, PREVIEW, lite])
 
 
 # trim в write_report_lines

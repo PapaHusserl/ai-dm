@@ -53,6 +53,21 @@ def is_timeout_error(error):
     return any(cls.__name__ in TIMEOUT_NAMES for cls in type(error).__mro__)
 
 
+def retry_after_of(error):
+    response = getattr(error, "response", None)
+    if response is None:
+        return None
+    millis = response.headers.get("retry-after-ms")
+    try:
+        return float(millis) / 1000
+    except (TypeError, ValueError):
+        pass
+    try:
+        return float(response.headers.get("retry-after"))
+    except (TypeError, ValueError):
+        return None
+
+
 # Для этапа 6 (репорт об ошибке): исходное исключение лежит в __cause__ (raise ... from error),
 # а в тексте LlmError ключ уже вычищен redact. Трейсбек (и __cause__) в репорт не выводить:
 # в них остаётся исходный текст ошибки провайдера, возможно с ключом.

@@ -1,5 +1,11 @@
 from ai_dm.llm.adapter import AdapterInfo
-from ai_dm.llm.errors import LlmFatal, LlmTransient, is_network_error, is_timeout_error
+from ai_dm.llm.errors import (
+    LlmFatal,
+    LlmTransient,
+    is_network_error,
+    is_timeout_error,
+    retry_after_of,
+)
 from ai_dm.llm.keys import redact
 from ai_dm.llm.types import ChatResponse, Opaque, Text, ToolCall, ToolResult, Usage
 
@@ -27,21 +33,6 @@ def block_from_api(block):
     if block.type == "tool_use":
         return ToolCall(id=block.id, name=block.name, input=block.input)
     return Opaque(provider="anthropic", raw=block.model_dump(mode="json", exclude_none=True))
-
-
-def retry_after_of(error):
-    response = getattr(error, "response", None)
-    if response is None:
-        return None
-    millis = response.headers.get("retry-after-ms")
-    try:
-        return float(millis) / 1000
-    except (TypeError, ValueError):
-        pass
-    try:
-        return float(response.headers.get("retry-after"))
-    except (TypeError, ValueError):
-        return None
 
 
 class AnthropicAdapter:

@@ -1,7 +1,7 @@
 # 19ф Ф1 (docs/plan-19f.md п.1 Ф1) на уровне GameApp: таймаут -- меню ошибки после одного вызова,
 # в подсказке «таймаут», сеть как и раньше -- обе роли при смене модели (регресс Т60).
 from game_kit import FactorySpy, make_app, text_step
-from test_t60_menu import ARGON, gemini
+from test_t60_menu import ARGON, SOL, gemini
 
 from ai_dm.game.turn import ERROR_MENU
 
@@ -52,7 +52,7 @@ def test_timeout_switch_model_changes_both_roles(registry, tmp_path):
 def test_timeout_menu_offers_next_model_first(registry, tmp_path):
     app, _ = timeout_app(registry, tmp_path)
     app.handle("Иду")
-    assert app.choose("switch_model").menu[0] == ARGON
+    assert app.choose("switch_model").menu[0] == SOL
 
 
 def test_retry_after_timeout_repeats_input(registry, tmp_path):

@@ -86,7 +86,25 @@ cache_write = 500000
 cache_write_1h = 500000
 cache_storage_hour = 1000000
 
-# окна Gemini -- консервативно, сверить
+# OpenAI (Responses API, сверено 2026-10-20): кэш неявный, запись кэша -- ставка токена (cache_write),
+# хранения нет (cache_storage_hour = 0); Usage.cache_write_1h у адаптера всегда 0
+[prices."gpt-6.1-sol"]
+input = 2000000
+output = 10000000
+cache_read = 100000
+cache_write = 2500000
+cache_write_1h = 2500000
+cache_storage_hour = 0
+
+[prices."gpt-6-luna"]
+input = 100000
+output = 500000
+cache_read = 10000
+cache_write = 125000
+cache_write_1h = 125000
+cache_storage_hour = 0
+
+# окна Gemini -- консервативно, сверить; окна OpenAI -- макс. вход (окно 1.05M)
 [context_windows]
 claude-opus-5-5 = 1000000
 claude-sonnet-5-5 = 1000000
@@ -95,6 +113,8 @@ claude-haiku-4-5 = 200000
 "gemini-3.5-flash-lite" = 1000000
 "gemini-4-argon" = 1000000
 "gemini-3-flash-preview" = 1000000
+"gpt-6.1-sol" = 922000
+"gpt-6-luna" = 922000
 
 [retry]
 delays = [1, 3, 10]
@@ -150,7 +170,7 @@ gemini_safety = "block_none"
 # Gemini только по IPv4 (local_address 0.0.0.0); false -- как раньше (SSL_CERT_FILE тогда учитывается)
 gemini_ipv4 = true
 # порядок моделей рассказчика в меню ошибки: ключи "провайдер:модель"; первой предлагается следующая после текущей
-narrator_chain = ["gemini:gemini-3.8-flash", "gemini:gemini-4-argon", "gemini:gemini-3-flash-preview", "gemini:gemini-3.5-flash-lite"]
+narrator_chain = ["gemini:gemini-3.8-flash", "openai:gpt-6.1-sol", "gemini:gemini-4-argon", "gemini:gemini-3-flash-preview", "gemini:gemini-3.5-flash-lite"]
 # thinking Claude по ролям (только narrator): "adaptive"; нет ключа -- не передавать
 thinking = { narrator = "adaptive" }
 # показ мышления в ответе: "summarized" или "omitted"
@@ -213,6 +233,32 @@ max_tokens = 4000
 [profiles.anthropic.import]
 provider = "anthropic"
 model = "claude-sonnet-5-5"
+effort = "low"
+max_tokens = 32000
+
+# OpenAI: reasoning входит в max_tokens, потому у world/summarizer 8000; effort у дешёвых ролей явный
+# (без него умолчание medium); у gpt-6.1-sol effort none/minimal нет
+[profiles.openai.narrator]
+provider = "openai"
+model = "gpt-6.1-sol"
+effort = "medium"
+max_tokens = 16000
+
+[profiles.openai.world]
+provider = "openai"
+model = "gpt-6-luna"
+effort = "low"
+max_tokens = 8000
+
+[profiles.openai.summarizer]
+provider = "openai"
+model = "gpt-6-luna"
+effort = "low"
+max_tokens = 8000
+
+[profiles.openai.import]
+provider = "openai"
+model = "gpt-6.1-sol"
 effort = "low"
 max_tokens = 32000
 

@@ -21,7 +21,7 @@ def make(registry, tmp_path, provider, factory):
         registry, tmp_path, narrator, adapter_factory=factory, use_stored_model=False,
     )
     profiles = app.settings.app.profiles
-    for name in ("anthropic", "gemini"):
+    for name in ("anthropic", "gemini", "openai"):
         profiles[name].world.model = f"{name}-{WORLD}"
         profiles[name].summarizer.model = f"{name}-{SUMMARIZER}"
     app.runner.world_adapter = adapter_of(provider, "old-world")
@@ -36,6 +36,7 @@ def make(registry, tmp_path, provider, factory):
     [
         ("anthropic", "gemini", "gemini:gemini-3.8-flash"),
         ("gemini", "anthropic", "anthropic:claude-sonnet-5-5"),
+        ("gemini", "openai", "openai:gpt-6.1-sol"),
     ],
 )
 def test_set_narrator_moves_world_and_summarizer_to_new_provider_profile(

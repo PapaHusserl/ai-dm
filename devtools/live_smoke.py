@@ -2,6 +2,7 @@
 # с одним strict-инструментом. Нужен ключ в окружении или в .env.
 # Запуск: uv run python devtools/live_smoke.py anthropic
 #         uv run python devtools/live_smoke.py gemini --model gemini-3.8-flash
+#         uv run python devtools/live_smoke.py openai
 import argparse
 import sys
 
@@ -15,15 +16,15 @@ from ai_dm.protocol.schema import tool_set
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="live_smoke")
-    parser.add_argument("provider", choices=("anthropic", "gemini"))
+    parser.add_argument("provider", choices=("anthropic", "gemini", "openai"))
     parser.add_argument("--model", default=None)
     parser.add_argument("--dotenv", default=".env")
     args = parser.parse_args(argv)
 
     cfg = load_settings().app
     role = cfg.roles.narrator
-    if args.provider == "gemini":
-        role = cfg.profiles["gemini"].narrator
+    if args.provider in ("gemini", "openai"):
+        role = cfg.profiles[args.provider].narrator
     model = args.model or role.model
     tool = next(t for t in tool_set("explore") if t["strict"])
     request = ChatRequest(

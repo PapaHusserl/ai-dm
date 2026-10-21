@@ -471,14 +471,6 @@ updated: 2026-10-15
 - Инвентарь (`game/sheet_text.py`, `inv_lines`): у оружия не показан урон (кость, тип, свойства, двуручный урон
   универсального), у доспехов и щита — КД (`+2`, «база 11 + Лов» и т. п.). Добавить в строку предмета.
 
-## 65. OpenAI как третий провайдер
-status: idea
-priority: low
-updated: 2026-10-15
-
-(отложено, решение проектировщика 2026-10-15)
-Ресёрч — docs/research/openai-research.md (narrator gpt-6.1-sol, дешёвые роли gpt-6-luna; Responses API; ход ≈2,5× дороже gemini-3.8-flash; партия M). Не делаем, пока Gemini не станет хронически недоступен.
-
 ## 67. Ф2а: тег `combat_announced` — по частоте в ЖП2 решить про приписку
 status: planned
 priority: medium
@@ -775,3 +767,12 @@ updated: 2026-10-20
 (`head_lines`/`inert_lines`, `last`, отступ); `ui.combat_menu.build_view` 9 (`block="free"` у «ещё», `MenuView(None, …)`);
 `resources.drink_once` 5 (вынесенный старый код эликсиров: `effects[0]`, `duration_s or 0`, ветка `resist`);
 `game.controllers.PlayerController.choose` 3; `game.commands.cmd_inv` 1 (`format_cp`). Разобрать при касании функций.
+
+## 122. Выжившие мутанты на старых строках после Э10а
+status: idea
+priority: low
+updated: 2026-10-21
+
+(шаг Э10а, mutmut по изменённым функциям, docs/plan-e10a.md) выжившие на строках до партии: `llm.factory.make_adapter`
+2, 16, 17, 20, 31, 32, 35 (ветки неизвестного провайдера, anthropic, gemini); `llm.errors.retry_after_of` 6 (тело
+перенесено из `anthropic_adapter` без изменений). Разобрать при касании функций.

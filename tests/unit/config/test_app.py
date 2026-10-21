@@ -574,6 +574,41 @@ def test_import_role_exists_in_default_roles_and_in_both_profiles():
     assert app.profiles["anthropic"].import_.effort == "low"
 
 
+def test_openai_profile_roles():
+    profile = load_settings().app.profiles["openai"]
+    assert (profile.narrator.provider, profile.narrator.model) == ("openai", "gpt-6.1-sol")
+    assert (profile.world.provider, profile.world.model) == ("openai", "gpt-6-luna")
+    assert (profile.summarizer.provider, profile.summarizer.model) == ("openai", "gpt-6-luna")
+    assert (profile.import_.provider, profile.import_.model) == ("openai", "gpt-6.1-sol")
+    assert profile.import_.effort == "low"
+
+
+def test_openai_profile_efforts():
+    profile = load_settings().app.profiles["openai"]
+    assert profile.narrator.effort == "medium"
+    assert profile.world.effort == "low"
+    assert profile.summarizer.effort == "low"
+
+
+def test_openai_profile_models_have_price_and_window():
+    config = load_settings().app
+    profile = config.profiles["openai"]
+    for role in (profile.narrator, profile.world, profile.summarizer, profile.import_):
+        assert role.model in config.prices
+        assert role.model in config.context_windows
+
+
+def test_openai_prices_have_no_storage_fee():
+    prices = load_settings().app.prices
+    assert prices["gpt-6.1-sol"].cache_storage_hour == 0
+    assert prices["gpt-6-luna"].cache_storage_hour == 0
+
+
+def test_cpt_for_openai_is_common_value():
+    master = load_settings().app.master
+    assert master.cpt_for("openai") == master.chars_per_token == 2.5
+
+
 def test_profile_without_import_role_is_valid_and_has_none():
     roles = "".join(
         f'\n[profiles.mixed.{name}]\nprovider = "gemini"\n'

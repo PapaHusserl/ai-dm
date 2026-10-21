@@ -70,7 +70,14 @@ def test_anthropic_with_other_model_has_no_effort(monkeypatch):
     assert request.effort is None
 
 
-@pytest.mark.parametrize("provider", ["anthropic", "gemini"])
+def test_openai_uses_narrator_of_openai_profile(monkeypatch):
+    request, made = run_smoke(monkeypatch, ["openai"])
+    assert request.model == cfg().profiles["openai"].narrator.model
+    assert request.effort == cfg().profiles["openai"].narrator.effort
+    assert made == ("openai", request.model)
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "gemini", "openai"])
 def test_request_has_one_strict_tool_and_a_role_name(monkeypatch, provider):
     request, _ = run_smoke(monkeypatch, [provider])
     assert request.role == "narrator"

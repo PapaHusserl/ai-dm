@@ -22,6 +22,7 @@ from ai_dm.game.models import (
 from ai_dm.llm.errors import MissingKey
 
 FLASH = "gemini:gemini-3.8-flash"
+SOL = "openai:gpt-6.1-sol"
 ARGON = "gemini:gemini-4-argon"
 PREVIEW = "gemini:gemini-3-flash-preview"
 LITE = "gemini:gemini-3.5-flash-lite"
@@ -36,7 +37,7 @@ def app():
 
 @pytest.mark.parametrize(
     ("current", "expected"),
-    [(FLASH, ARGON), (ARGON, PREVIEW), (PREVIEW, LITE)],
+    [(FLASH, SOL), (SOL, ARGON), (ARGON, PREVIEW), (PREVIEW, LITE)],
 )
 def test_next_in_chain_gives_the_following_key(current, expected):
     assert next_in_chain(app(), current) == expected
@@ -98,6 +99,10 @@ def test_options_keep_old_ones_and_keys_of_profiles():
         assert key in options
 
 
+def test_options_contain_the_openai_narrator():
+    assert "openai:gpt-6.1-sol" in model_options(app())
+
+
 def test_options_chain_key_already_present_is_not_repeated():
     cfg = app()
     cfg.llm.narrator_chain = [OPUS, FLASH]
@@ -114,7 +119,8 @@ def test_options_with_empty_chain_are_the_old_list():
 
 
 def test_options_put_following_model_first():
-    assert model_options(app(), FLASH)[0] == ARGON
+    assert model_options(app(), FLASH)[0] == SOL
+    assert model_options(app(), SOL)[0] == ARGON
     assert model_options(app(), ARGON)[0] == PREVIEW
     assert model_options(app(), PREVIEW)[0] == LITE
 
@@ -129,7 +135,7 @@ def test_options_keep_the_order_of_the_rest():
     cfg = app()
     plain = model_options(cfg)
     moved = model_options(cfg, FLASH)
-    plain.remove(ARGON)
+    plain.remove(SOL)
     assert moved[1:] == plain
 
 

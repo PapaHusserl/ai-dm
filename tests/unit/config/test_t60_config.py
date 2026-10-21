@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from ai_dm.config.app import load_settings
 
 CHAIN = [
-    "gemini:gemini-3.8-flash", "gemini:gemini-4-argon",
+    "gemini:gemini-3.8-flash", "openai:gpt-6.1-sol", "gemini:gemini-4-argon",
     "gemini:gemini-3-flash-preview", "gemini:gemini-3.5-flash-lite",
 ]
 
@@ -21,7 +21,7 @@ def test_default_gemini_ipv4_is_on():
     assert app().llm.gemini_ipv4 is True
 
 
-def test_default_narrator_chain_has_four_keys_in_order():
+def test_default_narrator_chain_has_five_keys_in_order():
     assert app().llm.narrator_chain == CHAIN
 
 

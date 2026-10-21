@@ -74,8 +74,9 @@
 #       str | None; redact(text, secrets) -> str (секрет -> "***")
 #   ai_dm.llm.anthropic_adapter.AnthropicAdapter(model, app_cfg, *, client_factory=None,
 #       api_key=None); ai_dm.llm.gemini_adapter.GeminiAdapter(model, app_cfg, *, client=None,
-#       sdk=None, api_key=None); ai_dm.llm.factory.make_adapter(provider, model, app_cfg, *,
-#       env=None, dotenv_path=None) -- детали в соответствующих тестах.
+#       sdk=None, api_key=None); ai_dm.llm.openai_adapter.OpenAIAdapter(model, app_cfg, *,
+#       client_factory=None, api_key=None); ai_dm.llm.factory.make_adapter(provider,
+#       model, app_cfg, *, env=None, dotenv_path=None) -- детали в соответствующих тестах.
 from datetime import date
 
 from ai_dm.config.app import load_settings

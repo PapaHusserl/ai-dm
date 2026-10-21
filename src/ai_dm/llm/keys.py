@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 
-KEY_VARS = {"anthropic": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}
+KEY_VARS = {
+    "anthropic": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY",
+}
 
 
 def parse_dotenv(text):

@@ -110,7 +110,8 @@ def make_parser():
     )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
-        "--provider", choices=("anthropic", "gemini"), help="профиль провайдера для нового мира"
+        "--provider", choices=("anthropic", "gemini", "openai"),
+        help="профиль провайдера для нового мира",
     )
     parser.add_argument("--mock", metavar="PATH", help="YAML-сценарий вместо модели")
     parser.add_argument(

@@ -684,9 +684,16 @@ def test_provider_gemini_without_its_key_names_the_variable(tmp_path):
 
 
 def test_unknown_provider_is_rejected(tmp_path):
-    argv = BASE + ["--provider", "openai", "--saves", str(tmp_path / "saves")]
+    argv = BASE + ["--provider", "mistral", "--saves", str(tmp_path / "saves")]
     code, _ = cli(argv, env=BOTH, **NO_ENV)
     assert code != 0
+
+
+def test_provider_openai_without_its_key_names_the_variable(tmp_path):
+    argv = BASE + ["--provider", "openai", "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, env=BOTH, **NO_ENV)
+    assert code != 0
+    assert "OPENAI_API_KEY" in out.text
 
 
 def test_without_any_key_still_explains(tmp_path):

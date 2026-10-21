@@ -10,6 +10,7 @@ from ai_dm.llm.errors import MissingKey
 from ai_dm.llm.mock import ScriptedAdapter
 
 FLASH = "gemini-3.8-flash"
+SOL = "gpt-6.1-sol"
 ARGON = "gemini-4-argon"
 PREVIEW = "gemini-3-flash-preview"
 LITE = "gemini-3.5-flash-lite"
@@ -54,19 +55,19 @@ def test_hard_refusal_switches_to_next_model_and_plays_the_turn(registry, tmp_pa
     factory = ChainFactory()
     app, flash = app_on(registry, tmp_path, [HARD], factory)
     reply = app.handle("Иду")
-    assert reply.narration == f"Рассказ {ARGON}."
+    assert reply.narration == f"Рассказ {SOL}."
     assert app.pending is None
     assert reply.turn.committed is True
-    assert current_model(app) == ARGON
+    assert current_model(app) == SOL
     assert len(flash.requests) == 1
-    assert factory.calls == [("gemini", ARGON)]
+    assert factory.calls == [("openai", SOL)]
 
 
 def test_switch_is_permanent_in_models_json(registry, tmp_path):
     app, _ = app_on(registry, tmp_path, [HARD], ChainFactory())
     app.handle("Иду")
     stored = read_models(tmp_path, "w1")
-    assert stored["narrator"] == {"provider": "gemini", "model": ARGON}
+    assert stored["narrator"] == {"provider": "openai", "model": SOL}
 
 
 def test_switch_line_names_old_new_model_and_detail(registry, tmp_path):
@@ -74,7 +75,7 @@ def test_switch_line_names_old_new_model_and_detail(registry, tmp_path):
     lines = switch_lines(app.handle("Иду"))
     assert len(lines) == 1
     assert FLASH in lines[0]
-    assert ARGON in lines[0]
+    assert SOL in lines[0]
     assert "PROHIBITED_CONTENT" in lines[0]
 
 
@@ -83,7 +84,7 @@ def test_other_hard_details_switch_too(registry, tmp_path, detail):
     step = {"stop": "refusal", "stop_detail": detail}
     app, _ = app_on(registry, tmp_path, [step], ChainFactory())
     reply = app.handle("Иду")
-    assert current_model(app) == ARGON
+    assert current_model(app) == SOL
     assert detail in switch_lines(reply)[0]
 
 
@@ -91,7 +92,7 @@ def test_retry_request_goes_to_new_model(registry, tmp_path):
     factory = ChainFactory()
     app, _ = app_on(registry, tmp_path, [HARD], factory)
     app.handle("Иду")
-    assert factory.made[ARGON].requests[0].model == ARGON
+    assert factory.made[SOL].requests[0].model == SOL
 
 
 def test_refused_turn_leaves_no_trace_in_bundle(registry, tmp_path):
@@ -102,24 +103,25 @@ def test_refused_turn_leaves_no_trace_in_bundle(registry, tmp_path):
 
 
 def test_two_models_refuse_third_plays(registry, tmp_path):
-    factory = ChainFactory({ARGON: [HARD]})
+    factory = ChainFactory({SOL: [HARD]})
     app, _ = app_on(registry, tmp_path, [HARD], factory)
     reply = app.handle("Иду")
     assert len(switch_lines(reply)) == 2
-    assert current_model(app) == PREVIEW
-    assert reply.narration == f"Рассказ {PREVIEW}."
-    assert read_models(tmp_path, "w1")["narrator"]["model"] == PREVIEW
+    assert current_model(app) == ARGON
+    assert reply.narration == f"Рассказ {ARGON}."
+    assert read_models(tmp_path, "w1")["narrator"]["model"] == ARGON
 
 
 def test_model_options_count_from_new_model(registry, tmp_path):
     app, _ = app_on(registry, tmp_path, [HARD], ChainFactory())
     app.handle("Иду")
-    assert app.model_options()[0] == f"gemini:{PREVIEW}"
+    assert app.model_options()[0] == f"gemini:{ARGON}"
 
 
 def test_world_and_summarizer_adapters_are_not_changed(registry, tmp_path):
+    # переход внутри одного провайдера (ARGON -> PREVIEW): world и summarizer остаются
     factory = ChainFactory()
-    app, _ = app_on(registry, tmp_path, [HARD], factory)
+    app, _ = app_on(registry, tmp_path, [HARD], factory, model=ARGON)
     world = ScriptedAdapter([], provider="gemini", model="gemini-w")
     summarizer = ScriptedAdapter([], provider="gemini", model="gemini-s")
     app.runner.world_adapter = world
@@ -127,18 +129,30 @@ def test_world_and_summarizer_adapters_are_not_changed(registry, tmp_path):
     app.handle("Иду")
     assert app.runner.world_adapter is world
     assert app.runner.summarizer_adapter is summarizer
-    assert factory.calls == [("gemini", ARGON)]
+    assert factory.calls == [("gemini", PREVIEW)]
+
+
+def test_switch_to_another_provider_moves_world_and_summarizer_to_its_profile(
+    registry, tmp_path
+):
+    factory = ChainFactory()
+    app, _ = app_on(registry, tmp_path, [HARD], factory)
+    app.runner.world_adapter = ScriptedAdapter([], provider="gemini", model="gemini-w")
+    app.runner.summarizer_adapter = ScriptedAdapter([], provider="gemini", model="gemini-s")
+    app.handle("Иду")
+    assert app.runner.world_adapter.info().provider == "openai"
+    assert app.runner.summarizer_adapter.info().provider == "openai"
 
 
 # цепочка исчерпана
 
-def test_all_models_refuse_gives_four_calls_three_lines_and_menu(registry, tmp_path):
-    factory = ChainFactory({ARGON: [HARD], PREVIEW: [HARD], LITE: [HARD]})
+def test_all_models_refuse_gives_five_calls_four_lines_and_menu(registry, tmp_path):
+    factory = ChainFactory({SOL: [HARD], ARGON: [HARD], PREVIEW: [HARD], LITE: [HARD]})
     app, flash = app_on(registry, tmp_path, [HARD], factory)
     reply = app.handle("Иду")
     calls = len(flash.requests) + sum(len(a.requests) for a in factory.made.values())
-    assert calls == 4
-    assert len(switch_lines(reply)) == 3
+    assert calls == 5
+    assert len(switch_lines(reply)) == 4
     assert app.pending == "error_menu"
     assert reply.turn.menu == ERROR_MENU
     assert reply.hint == REFUSAL_HINT
@@ -230,10 +244,10 @@ def test_missing_key_shows_error_and_stops_the_loop(registry, tmp_path):
 def test_model_without_price_shows_error_and_stops(registry, tmp_path):
     factory = ChainFactory()
     app, flash = app_on(registry, tmp_path, [HARD], factory)
-    del app.settings.app.prices[ARGON]
+    del app.settings.app.prices[SOL]
     reply = app.handle("Иду")
     assert app.pending == "error_menu"
-    assert any(ARGON in line and "нет цены" in line for line in reply.lines)
+    assert any(SOL in line and "нет цены" in line for line in reply.lines)
     assert switch_lines(reply) == []
     assert current_model(app) == FLASH
     assert len(flash.requests) == 1
@@ -249,9 +263,9 @@ def test_retry_from_menu_after_hard_refusal_switches(registry, tmp_path):
     app.refusal_chain = True
     reply = app.choose("retry")
     assert app.pending is None
-    assert current_model(app) == ARGON
+    assert current_model(app) == SOL
     assert len(switch_lines(reply)) == 1
-    assert reply.narration == f"Рассказ {ARGON}."
+    assert reply.narration == f"Рассказ {SOL}."
 
 
 def test_retry_from_menu_after_exhausted_chain_gives_menu_again(registry, tmp_path):

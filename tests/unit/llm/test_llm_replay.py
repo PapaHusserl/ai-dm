@@ -9,6 +9,7 @@ from ai_dm.llm.errors import LlmError, LlmFatal, LlmTransient
 from ai_dm.llm.journal import Journal
 from ai_dm.llm.replay import ReplayAdapter, ReplayDivergence
 from ai_dm.llm.retry import call_with_retries
+from ai_dm.llm.types import ChatResponse, Opaque, ToolCall, Usage
 
 
 def make_journal(tmp_path):
@@ -40,6 +41,23 @@ def test_replay_returns_recorded_responses_in_order(tmp_path):
     log(journal, 2, r2, a2)
     adapter = ReplayAdapter(journal.read_records())
     assert [adapter.complete(r1), adapter.complete(r2)] == [a1, a2]
+
+
+def test_replay_returns_response_with_openai_opaque_unchanged(tmp_path):
+    journal = make_journal(tmp_path)
+    req = make_request("раз")
+    items = [
+        {"type": "reasoning", "id": "rs_1", "encrypted_content": "ZW5j", "summary": []},
+        {"type": "function_call", "call_id": "call_1", "name": "skill_check", "arguments": "{}"},
+    ]
+    resp = ChatResponse(
+        content=[ToolCall(id="call_1", name="skill_check", input={}),
+                 Opaque(provider="openai", raw={"items": items})],
+        stop_reason="tool_use", usage=Usage(input=1, cache_read=2, cache_write=3, output=4),
+        request_id="req-o", model="gpt-6.1-sol",
+    )
+    log(journal, 1, req, resp)
+    assert ReplayAdapter(journal.read_records()).complete(req) == resp
 
 
 def test_replay_diverges_when_request_text_changed(tmp_path):

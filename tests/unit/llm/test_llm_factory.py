@@ -9,6 +9,7 @@ from ai_dm.llm.anthropic_adapter import AnthropicAdapter
 from ai_dm.llm.errors import LlmFatal, MissingKey
 from ai_dm.llm.factory import make_adapter
 from ai_dm.llm.gemini_adapter import GeminiAdapter
+from ai_dm.llm.openai_adapter import OpenAIAdapter
 
 ENV = {"ANTHROPIC_API_KEY": "a-key", "GEMINI_API_KEY": "g-key"}
 
@@ -36,7 +37,29 @@ def test_gemini_info_carries_provider_and_model():
 
 def test_unknown_provider_is_value_error():
     with pytest.raises(ValueError):
-        make_adapter("openai", "gpt", app_cfg(), env=ENV)
+        make_adapter("mistral", "m", app_cfg(), env=ENV)
+
+
+def test_openai_provider_gives_openai_adapter():
+    adapter = make_adapter("openai", "gpt-6.1-sol", app_cfg(), env={"OPENAI_API_KEY": "o-key"})
+    assert isinstance(adapter, OpenAIAdapter)
+
+
+def test_openai_info_carries_provider_and_model():
+    info = make_adapter("openai", "gpt-6-luna", app_cfg(), env={"OPENAI_API_KEY": "o"}).info()
+    assert (info.provider, info.model) == ("openai", "gpt-6-luna")
+
+
+def test_openai_adapter_gets_config_and_key():
+    cfg = app_cfg()
+    adapter = make_adapter("openai", "gpt-6.1-sol", cfg, env={"OPENAI_API_KEY": "o-key"})
+    assert adapter.cfg is cfg
+    assert adapter.api_key == "o-key"
+
+
+def test_openai_without_key_names_the_variable():
+    with pytest.raises(MissingKey, match="OPENAI_API_KEY"):
+        make_adapter("openai", "gpt-6.1-sol", app_cfg(), env=ENV)
 
 
 def test_missing_key_raises_missing_key():

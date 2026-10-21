@@ -110,7 +110,11 @@ def test_missing_key_returns_none():
 
 def test_unknown_provider_is_value_error():
     with pytest.raises(ValueError):
-        load_key("openai", env={})
+        load_key("mistral", env={})
+
+
+def test_openai_key_is_read_from_openai_api_key():
+    assert load_key("openai", env={"OPENAI_API_KEY": "o-key"}) == "o-key"
 
 
 def test_redact_replaces_secret():

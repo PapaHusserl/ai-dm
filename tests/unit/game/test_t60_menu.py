@@ -11,6 +11,7 @@ from ai_dm.llm.errors import MissingKey
 from ai_dm.llm.mock import ScriptedAdapter
 
 FLASH = "gemini:gemini-3.8-flash"
+SOL = "openai:gpt-6.1-sol"
 ARGON = "gemini:gemini-4-argon"
 PREVIEW = "gemini:gemini-3-flash-preview"
 LITE = "gemini:gemini-3.5-flash-lite"
@@ -44,7 +45,10 @@ def models_of(app):
 
 @pytest.mark.parametrize(
     ("model", "first"),
-    [("gemini-3.8-flash", ARGON), ("gemini-4-argon", PREVIEW), ("gemini-3-flash-preview", LITE)],
+    [
+        ("gemini-3.8-flash", SOL), ("gemini-4-argon", PREVIEW),
+        ("gemini-3-flash-preview", LITE),
+    ],
 )
 def test_menu_offers_next_in_chain_first(registry, tmp_path, model, first):
     app, _ = failed_app(registry, tmp_path, NETWORK, model)
@@ -89,14 +93,14 @@ def test_menu_order_for_summarizer_follows_summarizer_model(registry, tmp_path):
 
 def test_model_options_method_puts_next_in_chain_first(registry, tmp_path):
     app = make_app(registry, tmp_path, gemini([text_step()]), adapter_factory=FactorySpy())
-    assert app.model_options()[0] == ARGON
+    assert app.model_options()[0] == SOL
     assert sorted(app.model_options()) == sorted(model_options(app.settings.app))
 
 
 def test_model_command_lists_next_in_chain_first(registry, tmp_path):
     app = make_app(registry, tmp_path, gemini([text_step()]), adapter_factory=FactorySpy())
     text = "\n".join(app.handle("/model").lines)
-    assert "Доступно: " + ARGON + "," in text
+    assert "Доступно: " + SOL + "," in text
 
 
 def test_model_options_method_is_plain_for_model_outside_chain(registry, tmp_path):
@@ -306,7 +310,7 @@ def test_switch_role_returns_to_narrator_after_successful_choice(registry, tmp_p
 def test_model_command_after_summarizer_choice_is_ordered_from_narrator(registry, tmp_path):
     app = summarizer_choice(registry, tmp_path)
     app.choose(PREVIEW)
-    assert app.model_options()[0] == ARGON
+    assert app.model_options()[0] == SOL
 
 
 def test_switch_role_is_kept_when_factory_fails(registry, tmp_path):

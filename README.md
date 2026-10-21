@@ -15,14 +15,16 @@ uv run ruff check src tests devtools
 
 ## Как играть
 
-Ключи. Нужен ключ рассказчика: `GEMINI_API_KEY` (Gemini, по умолчанию) или `ANTHROPIC_API_KEY` (Claude Opus). Если есть
-только ключ Anthropic, игра сама возьмёт профиль anthropic и скажет об этом; мир, сохранённый под Anthropic, открывается без ключа
-Gemini. Явный выбор для нового мира: `--provider anthropic|gemini`. Ключ берётся из переменной окружения или из файла `.env` в папке, откуда запускаете игру
+Ключи. Нужен ключ рассказчика: `GEMINI_API_KEY` (Gemini, по умолчанию), `ANTHROPIC_API_KEY` (Claude Opus) или `OPENAI_API_KEY` (OpenAI, gpt-6.1-sol).
+Если нет ключа Gemini, игра сама возьмёт первый профиль, для которого есть ключ (anthropic, затем openai), и скажет об этом; мир,
+сохранённый под Anthropic или OpenAI, открывается без ключа Gemini. Явный выбор для нового мира: `--provider anthropic|gemini|openai`;
+в игре — `/model narrator openai:gpt-6.1-sol`. Ключ берётся из переменной окружения или из файла `.env` в папке, откуда запускаете игру
 (`.env` лежит в `.gitignore`, не коммитьте его):
 
 ```
 ANTHROPIC_API_KEY=...
 GEMINI_API_KEY=...
+OPENAI_API_KEY=...
 ```
 
 Ключи нигде не печатаются и не попадают в журнал.
@@ -31,7 +33,7 @@ GEMINI_API_KEY=...
 без `--hero` игра спросит):
 
 ```
-uv run ai-dm --new [--campaign vale] [--hero arn|liel|grey | --hero-describe "описание"] [--preset heroic|grim|romantic|fairytale] [--seed N] [--provider anthropic|gemini]
+uv run ai-dm --new [--campaign vale] [--hero arn|liel|grey | --hero-describe "описание"] [--preset heroic|grim|romantic|fairytale] [--seed N] [--provider anthropic|gemini|openai]
 ```
 
 Сущности пака, конфликтующие по id или имени, не загружаются — список печатается при старте. При загрузке мира новые
@@ -112,7 +114,7 @@ uv run ai-dm --replay --world <id> --hero arn --seed 3
 ## Импорт пака из выжимки
 
 ```
-uv run ai-dm --import выжимка.txt --campaign my_pack [--provider anthropic|gemini]
+uv run ai-dm --import выжимка.txt --campaign my_pack [--provider anthropic|gemini|openai]
 ```
 
 ИИ собирает пак кампании из текстовой выжимки (заметки, описание мира, итоги сессии) одним вызовом и пишет его в
