@@ -159,7 +159,8 @@ class PlaySession:
             narration = last_narration_block(app)
             if narration is not None:
                 step.blocks.append(narration)
-        if not line.startswith("/") or line.startswith(SCREEN_COMMANDS):
+        # команда, сделавшая ход (/inv в бою), перерисовывает экран, как ход номером
+        if not line.startswith("/") or line.startswith(SCREEN_COMMANDS) or reply.turn is not None:
             step.blocks.extend(screen_blocks(app))
         step.blocks.append(status_block(app))
         if reply.turn is None or app.pending is not None:

@@ -90,6 +90,7 @@ VISIBLE_TYPES  # unused variable (protocol/requests.py: реестр типов,
 highlighted  # unused attribute
 on_option_list_option_highlighted  # unused method
 action_complete  # unused method
+action_act  # unused method (96а П2: клавиши InvModal, решение проектировщика 2026-10-21)
 # постоянно: поля схемы инструмента hero_sheet (AbilityScores), читаются через model_dump
 con  # unused variable (protocol/requests.py)
 str_  # unused variable (protocol/requests.py)

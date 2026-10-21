@@ -78,7 +78,9 @@ def test_command_answers_in_tui(registry, tmp_path, command):
     expected = reference(registry, tmp_path, command)
     text, closing = tui_run(registry, tmp_path, command)
     # живой прогон 1: окно /model в TUI -- список выбора, а не справка
-    words = "Модель рассказчика" if command == "/model" else first_words(expected)
+    words = {"/model": "Модель рассказчика", "/inv": "Предмет (Enter"}.get(command)
+    # 96а П2: окно /inv -- список предметов с действиями, а не справка
+    words = words or first_words(expected)
     assert words in text
     assert ERROR not in text
     assert closing is (command == "/quit")

@@ -57,6 +57,28 @@ def test_load_command_shows_loaded_offer_menu(registry, tmp_path):
     assert "menu" in kinds(step)
 
 
+def test_inv_equip_in_combat_redraws_combat_screen(registry, tmp_path):
+    # 96а П2: /inv в бою -- шаг хода (reply.turn), экран перерисовывается как после номера меню
+    app, _ = scene_app(registry, tmp_path, hp=200)
+    session = make_session(app)
+    for line in (TALK, "1", DESCEND):
+        session.submit(line)
+    assert app.bundle.session.active_combat is not None
+    step = session.submit("/inv надеть spear")
+    assert app.bundle.heroes[0].equipped.main_hand == "spear"
+    assert "combat_map" in kinds(step)
+    assert "turn_menu" in kinds(step)
+
+
+def test_inv_equip_outside_combat_adds_no_screen_blocks(registry, tmp_path):
+    app, _ = scene_app(registry, tmp_path, hp=200)
+    step = make_session(app).submit("/inv надеть spear")
+    assert app.bundle.heroes[0].equipped.main_hand == "spear"
+    assert "combat_map" not in kinds(step)
+    assert "turn_menu" not in kinds(step)
+    assert "menu" not in kinds(step)
+
+
 def test_help_command_over_limit_does_not_show_limit_menu(registry, tmp_path):
     app = text_app(registry, tmp_path, [PAID, PAID])
     app.settings.app.cost_limits.enabled = True

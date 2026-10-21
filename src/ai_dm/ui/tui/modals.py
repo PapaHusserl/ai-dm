@@ -144,6 +144,60 @@ class SpellModal(ModalScreen):
         self.dismiss(None)
 
 
+class InvModal(ModalScreen):
+    # инвентарь: список предметов и описание; Enter -- первое действие предмета, e/l/u/r/d -- своё;
+    # результат -- действие (клавиша, подсказка, строка /inv, эхо) или None
+    BINDINGS = [Binding("escape", "close", strings.KEY_CLOSE, show=False)] + [
+        Binding(key, f"act('{key}')", show=False) for key in ("e", "l", "u", "r", "d")
+    ]
+
+    def __init__(self, title, rows):
+        super().__init__()
+        self.title_text = title
+        self.rows = list(rows)
+
+    def compose(self):
+        with Vertical(id="modal"):
+            yield Static(Text(strings.INV_PICK), id="inv-title")
+            yield OptionList(id="inv-list")
+            with VerticalScroll(id="inv-body"):
+                yield Static(id="inv-description")
+
+    def on_mount(self):
+        self.query_one("#modal").border_title = self.title_text
+        menu = self.query_one("#inv-list", OptionList)
+        for number, row in enumerate(self.rows, 1):
+            menu.add_option(Text(f"{number}. {row[0]}"))
+        menu.focus()
+        if self.rows:
+            menu.highlighted = 0
+            self.show_description(0)
+
+    def show_description(self, index):
+        _, description, actions = self.rows[index]
+        hints = " · ".join(f"{key} — {hint}" for key, hint, _, _ in actions)
+        text = "\n\n".join(part for part in (description, hints) if part)
+        self.query_one("#inv-description", Static).update(Text(text))
+
+    def on_option_list_option_highlighted(self, event):
+        self.show_description(event.option_index)
+
+    def on_option_list_option_selected(self, event):
+        actions = self.rows[event.option_index][2]
+        if actions:
+            self.dismiss(actions[0])
+
+    def action_act(self, key):
+        index = self.query_one("#inv-list", OptionList).highlighted
+        for action in self.rows[index][2] if index is not None else ():
+            if action[0] == key:
+                self.dismiss(action)
+                return
+
+    def action_close(self):
+        self.dismiss(None)
+
+
 class LoreModal(ModalScreen):
     # журнал знаний героя (/lore): слева сущности по видам, справа записи выбранной; ничего не
     # запускает, Esc закрывает; selected -- (вид, ref) для предвыбора

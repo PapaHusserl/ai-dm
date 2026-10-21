@@ -20,9 +20,10 @@ from ai_dm.ui.format import head_lines, inert_lines
 from ai_dm.ui.screen import limit_percent, picture_state, scene_mark, sound_state
 from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
-from ai_dm.ui.tui.blocks import map_lines, modal_lines, pickable, spell_rows
+from ai_dm.ui.tui.blocks import inv_rows, map_lines, modal_lines, pickable, spell_rows
 from ai_dm.ui.tui.modals import (
     CostModal,
+    InvModal,
     LoreModal,
     ModelModal,
     MoreModal,
@@ -43,7 +44,7 @@ from ai_dm.ui.tui.widgets import (
 COMMAND_SUGGESTER = SuggestFromList([f"/{name}" for name in HELP], case_sensitive=True)
 WIDE = 120
 PANEL_WIDTH = 54
-MODALS = (TextModal, ModelModal, SpellModal, MoreModal, LoreModal)
+MODALS = (TextModal, ModelModal, SpellModal, InvModal, MoreModal, LoreModal)
 
 
 class AiDmApp(App):
@@ -417,6 +418,9 @@ class AiDmApp(App):
         # ход обычной строки (и /load), а не справочная команда
         words = line.split()
         command = words[0] if words else ""
+        if command == "/inv" and len(words) > 1 and self.game.bundle.session.active_combat:
+            # смена оружия/щита в бою -- шаг хода
+            return True
         return not command.startswith("/") or command == "/load"
 
     def start_turn(self, line):
@@ -440,15 +444,17 @@ class AiDmApp(App):
         words = line.split()
         command = words[0] if words else ""
         title = strings.MODAL_TITLES.get(command)
-        if command == "/model" and len(words) > 1:
-            # смена модели -- строкой в ленту, окно только у /model без аргументов
+        if command in ("/model", "/inv") and len(words) > 1:
+            # смена модели и действие с предметом -- строками в ленту, окно только без аргументов
             title = None
         modal_text = []
         if title is not None:
             # справочные команды: ответ -- окном, остальное (строка состояния) -- как обычно
             modal_text = modal_lines(step.blocks)
             step.blocks = [b for b in step.blocks if b.kind not in ("note", "raw")]
-        self.show_step(step, self.is_game_line(line))
+        # отказ `/inv …` в бою ходом не стал (в ответе нет меню хода): боевое меню остаётся
+        refused = command == "/inv" and not any(b.kind == "turn_menu" for b in step.blocks)
+        self.show_step(step, self.is_game_line(line) and not refused)
         self.query_one("#status", StatusBar).set_busy(False)
         entry = self.query_one("#input", Input)
         entry.disabled = False
@@ -459,6 +465,8 @@ class AiDmApp(App):
             self.push_screen(CostModal(title, cost_report(self.game)), lambda _: entry.focus())
         elif modal_text and command == "/spells" and self.can_cast_by_menu():
             self.push_screen(SpellModal(title, spell_rows(self.game)), self.spell_chosen)
+        elif modal_text and command == "/inv" and self.can_pick_item():
+            self.push_screen(InvModal(title, inv_rows(self.game)), self.inv_chosen)
         elif modal_text and command == "/model":
             # выбор модели рассказчика: окно со списком; ответ -- ключ или None (Esc)
             info = self.game.adapter.info()
@@ -495,6 +503,19 @@ class AiDmApp(App):
             return
         self.write_echo(row[4])
         self.start_turn(row[3])
+
+    def can_pick_item(self):
+        # окно действий -- только когда ход можно начать; пустой инвентарь остаётся справкой
+        if self.game.pending is not None or self.session.limit_menu:
+            return False
+        return bool(inv_rows(self.game))
+
+    def inv_chosen(self, action):
+        if action is None:
+            self.query_one("#input", Input).focus()
+            return
+        self.write_echo(action[3])
+        self.start_turn(action[2])
 
     def model_chosen(self, key):
         if key is None:

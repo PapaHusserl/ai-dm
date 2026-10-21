@@ -1,5 +1,8 @@
+from ai_dm.game.inv_actions import option_number
+from ai_dm.game.inv_lookup import drinkable, equippable, slot_of
 from ai_dm.game.scene import hero_of
-from ai_dm.game.sheet_text import spell_ids
+from ai_dm.game.sheet_text import effect_texts, spell_ids
+from ai_dm.rules.inventory import SLOTS, find_item, item_totals
 from ai_dm.rules.spellcasting import free_cast_left, spell_kind
 from ai_dm.ui.format import INERT_NOTE, wrap_block
 from ai_dm.ui.screen import combat_map_lines
@@ -36,6 +39,67 @@ def map_lines(game, width):
         else:
             lines.append(line)
     return lines
+
+
+UNEQUIP_KEYS = {"off_hand": ("r", strings.INV_UNEQUIP_LEFT)}
+
+
+def inv_actions_of(game, item_id, found, worn):
+    # действия предмета: (клавиша, подсказка, строка подкоманды /inv, эхо в ленте);
+    # в бою -- только те, на которые есть скрытый вариант equip/unequip (то же, что ищет /inv)
+    name = found[1].name
+    in_combat = game.bundle.session.active_combat is not None
+    if drinkable(found):
+        drink = ("d", strings.INV_DRINK, f"/inv выпить {item_id}", f"{strings.INV_DRINK}: {name}")
+        return [] if in_combat else [drink]
+    if not equippable(found):
+        return []
+    # (вариант боя, действие); вне боя годятся все
+    candidates = [
+        (("unequip", {"slot": slot}),
+         *UNEQUIP_KEYS.get(slot, ("u", strings.INV_UNEQUIP)),
+         f"/inv снять {strings.INV_SLOT_WORDS[slot]}", f"{strings.INV_UNEQUIP}: {name}")
+        for slot in worn
+    ]
+    if found[0] == "weapon":
+        targets = (("main_hand", "e", strings.INV_EQUIP, ""),
+                   ("off_hand", "l", strings.INV_EQUIP_LEFT, " левая"))
+    else:
+        targets = ((slot_of(found, False), "e", strings.INV_EQUIP, ""),)
+    candidates += [
+        (("equip", {"item": item_id, "slot": slot}), key, hint,
+         f"/inv надеть {item_id}{suffix}", f"{hint}: {name}")
+        for slot, key, hint, suffix in targets if slot not in worn
+    ]
+    return [
+        tuple(action) for (kind, params), *action in candidates
+        if not in_combat or option_number(game, kind, **params) is not None
+    ]
+
+
+def inv_rows(game):
+    # строки окна /inv: (подпись, описание, действия); действия -- подкоманды /inv, второго пути нет
+    hero = hero_of(game.bundle)
+    registry = game.registry
+    in_combat = game.bundle.session.active_combat is not None
+    rows = []
+    no_actions = strings.INV_NO_ACTIONS
+    for item_id, qty in item_totals(hero).items():
+        found = find_item(registry, item_id)
+        if found is None:
+            rows.append((item_id, "", []))
+            continue
+        item = found[1]
+        worn = [slot for slot in SLOTS if getattr(hero.equipped, slot) == item_id]
+        label = ("★ " if worn else "") + item.name + (f" x{qty}" if qty > 1 else "")
+        description = item.description or effect_texts(getattr(item, "effects", []))
+        actions = inv_actions_of(game, item_id, found, worn)
+        if not actions:
+            # зелье в бою -- через меню хода (решение 20)
+            note = strings.INV_COMBAT_POTION if in_combat and drinkable(found) else no_actions
+            description = "\n\n".join(part for part in (description, note) if part)
+        rows.append((label, description, actions))
+    return rows
 
 
 def spell_rows(game):

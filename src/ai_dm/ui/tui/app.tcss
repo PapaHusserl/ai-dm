@@ -185,6 +185,21 @@ SpellModal {
     border-top: solid $primary;
 }
 
+InvModal {
+    align: center middle;
+}
+
+#inv-list {
+    height: auto;
+    max-height: 14;
+}
+
+#inv-body {
+    height: auto;
+    max-height: 12;
+    border-top: solid $primary;
+}
+
 MoreModal {
     align: center middle;
 }
