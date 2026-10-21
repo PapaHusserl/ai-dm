@@ -392,9 +392,9 @@ class AwardXp(Request):
 
 
 class AdvanceTime(Request):
-    """Сдвинуть время на категорию или перевезти героя в локацию (путь по карте).
+    """Сдвинуть время на категорию, до цели или перевезти героя в локацию (путь по карте).
 
-    Нужно ровно одно из category и travel_to.
+    Нужно ровно одно из category, travel_to и until.
     """
 
     type: Literal["advance_time"]
@@ -408,8 +408,26 @@ class AdvanceTime(Request):
             'пусто = нет (не "none").'
         ),
     )
+    until: Literal["none", "morning", "long_rest", "hour"] = Field(
+        "none",
+        description=(
+            "Сдвиг до цели: morning (утро), long_rest (пока снова можно длинный отдых), "
+            "hour (час until_hour); none, если не до цели."
+        ),
+    )
+    until_hour: int = Field(-1, description="Час 0-23 для until=hour; иначе -1.")
     pace: Literal["slow", "normal", "fast"] = Field("normal", description="Темп пути.")
-    NEUTRAL: ClassVar[dict] = {"category": "none", "travel_to": ""}
+    NEUTRAL: ClassVar[dict] = {
+        "category": "none", "travel_to": "", "until": "none", "until_hour": -1,
+    }
+
+    @field_validator("until_hour")
+    @classmethod
+    def until_hour_in_day(cls, value):
+        # ge/le в strict-схему не попадают -- диапазон проверяем здесь
+        if not -1 <= value <= 23:
+            raise ValueError("until_hour: час 0-23 (-1 = нет)")
+        return value
 
     @field_validator("travel_to", mode="before")
     @classmethod

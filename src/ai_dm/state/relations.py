@@ -9,6 +9,13 @@ MEMORY_KINDS = (
     "spared", "saved", "helped", "gift", "promise", "betrayal", "insult", "threat", "theft",
     "harm", "kin_killed", "romance", "deal", "other", "friendship", "joke", "shared_deed", "battle",
 )
+# подписи видов для ленты (игроку не показываем сырой код)
+# (порядок -- как в MEMORY_KINDS)
+MEMORY_KIND_TITLES = dict(zip(MEMORY_KINDS, (
+    "пощада", "спасение", "помощь", "подарок", "обещание", "предательство", "оскорбление",
+    "угроза", "кража", "вред", "убийство близкого", "роман", "сделка", "другое", "дружба",
+    "шутка", "общее дело", "бой плечом к плечу",
+), strict=True))
 # тёплые виды: на вытеснении вес не ниже warm_min_weight; одна запись вида на сцену
 WARM_KINDS = ("romance", "friendship", "joke", "shared_deed", "battle")
 GOAL_KINDS = ("revenge", "life_debt", "debt", "gratitude", "love", "rivalry")

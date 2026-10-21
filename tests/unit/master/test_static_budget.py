@@ -21,6 +21,9 @@
 #   замер 20988; 21620 = 20988 + 3 %.
 #   Фикс Э10а П1 (2026-10-21): ориентир длины в «Стиле повествования» (narrator_rules.md);
 #   explore.total 20988 -> 21307 (rules 10530, tools 10777); порог 21620 не менялся.
+#   Фикс ЖП4 П2 (2026-10-22): поля until/until_hour в advance_time (131), фраза про until в
+#   «Время двигай…» и known_locations П1; порог 21620 превышен, замер 21663;
+#   22310 = 21663 + 3 %.
 #   Добавка narrator_rules_openai.md в замер не входит (она внутри system[0] только у openai).
 import json
 from importlib import resources
@@ -34,8 +37,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# Фикс ЖП3 П3: замер explore.total 20988 + 3 %.
-STATIC_MAX = 21620
+# Фикс ЖП4 П2: замер explore.total 21663 + 3 %.
+STATIC_MAX = 22310
 
 MODES = sorted(MODE_TOOLS)
 

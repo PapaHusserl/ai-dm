@@ -12,7 +12,12 @@ from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.memory import add_entry
-from ai_dm.state.relations import NPC_EVENT_TEXT_MAX, WARM_KINDS, NpcEvent
+from ai_dm.state.relations import (
+    MEMORY_KIND_TITLES,
+    NPC_EVENT_TEXT_MAX,
+    WARM_KINDS,
+    NpcEvent,
+)
 from ai_dm.state.world import NPC, Connection, DangerMark, GlobalEvent, Location, TradeProfile
 
 MASTER_DEATH_CAUSES = ("goal", "hazard")
@@ -185,12 +190,13 @@ def change_memory(ctx, npc, request, decision):
     scene = ctx.scene
     text = request.memory_text or ""
     short = shorten_text(text, NPC_EVENT_TEXT_MAX)
+    title = MEMORY_KIND_TITLES[request.memory_kind]
     if request.memory_kind in WARM_KINDS and has_kind(npc, scene, request.memory_kind):
         # отношение из этого запроса уже применено, дубль вида в сцене в память не пишется
         decision.status = "clamped"
         decision.report_tag = "duplicate-kind"
         decision.reason = f"{request.memory_kind} уже записан в этой сцене"
-        decision.log.append(f"{npc_label(npc)} уже помнит {request.memory_kind} в этой сцене")
+        decision.log.append(f"{npc_label(npc)} уже помнит это в этой сцене: {title}")
         decision.signal_to_master = (
             f"{npc_label(npc)} уже помнит {request.memory_kind} в этой сцене: "
             "повтор не записан, опиши по факту."
@@ -198,7 +204,7 @@ def change_memory(ctx, npc, request, decision):
         return
     event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
     remember(npc, scene, event, ctx.cfg.npc_memory)
-    decision.log.append(f"{npc_label(npc)} запомнил: {request.memory_kind}")
+    decision.log.append(f"{npc_label(npc)} запомнит это: {title}")
     if short != text:
         note = f"текст укорочен до {NPC_EVENT_TEXT_MAX}"
         decision.log.append(f"{npc_label(npc)}: {note}")

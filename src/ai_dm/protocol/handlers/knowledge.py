@@ -91,7 +91,7 @@ def knowledge_note(ctx, request):
     if not remember_fact(ctx.hero, entry, ctx.cfg.knowledge):
         return rejected("уже записано", "В журнале знаний это уже есть: не записывай повторно.")
     decision = Decision(
-        status="accepted", log=[f"Записано в журнал: {request.kind} {ref_name(ctx, request)}"]
+        status="accepted", log=[f"В журнал знаний (/lore): {ref_name(ctx, request)}"]
     )
     if short != text:
         note = f"текст укорочен до {KNOWLEDGE_TEXT_MAX}"

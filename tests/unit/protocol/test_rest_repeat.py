@@ -389,3 +389,115 @@ def test_short_rest_with_swap_inside_cooldown_is_still_swap_long_only(cfg, drago
     d = apply(ctx, req("rest", kind="short", prepared_swap=swap))
     assert isinstance(d, Invalid)
     assert d.code == "swap_long_only"
+
+
+# Фикс ЖП4 П2 (131): advance_time until=long_rest и next_long_rest_s
+
+def at(hours, minutes=0, day=1):
+    return day * DAY + hours * HOUR + minutes * 60
+
+
+def until_rest():
+    return req("advance_time", until="long_rest")
+
+
+def test_next_long_rest_s_is_end_plus_cooldown(registry, cfg):
+    from ai_dm.protocol.handlers.resources import next_long_rest_s
+
+    ctx = rested(registry, cfg, end_s=at(9, 50))
+    assert next_long_rest_s(ctx.hero, cfg) == at(21, 50)
+
+
+def test_next_long_rest_s_follows_configured_cooldown(registry, cfg):
+    from ai_dm.protocol.handlers.resources import next_long_rest_s
+
+    ctx = rested(registry, cfg, end_s=1000, cooldown="16h")
+    assert next_long_rest_s(ctx.hero, ctx.cfg) == 1000 + 16 * HOUR
+
+
+def test_next_long_rest_s_is_none_without_mark(registry, cfg):
+    from ai_dm.protocol.handlers.resources import next_long_rest_s
+
+    assert next_long_rest_s(rested(registry, cfg).hero, cfg) is None
+
+
+def test_next_long_rest_s_keeps_zero_mark(registry, cfg):
+    from ai_dm.protocol.handlers.resources import next_long_rest_s
+
+    ctx = rested(registry, cfg, end_s=0)
+    assert next_long_rest_s(ctx.hero, cfg) == 12 * HOUR
+
+
+def test_repeat_signal_suggests_until_long_rest(registry, cfg):
+    ctx = rested(registry, cfg, end_s=1000, now_s=2000)
+    signal = apply(ctx, long_req()).signal_to_master
+    assert "until: long_rest" in signal
+    assert "rest long" in signal
+
+
+def test_until_long_rest_moves_clock_to_cooldown_end(registry, cfg):
+    ctx = rested(registry, cfg, end_s=at(9, 50), now_s=at(20, 6))
+    d = apply(ctx, until_rest())
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == at(21, 50)
+
+
+def test_until_long_rest_result_and_log(registry, cfg):
+    ctx = rested(registry, cfg, end_s=at(9, 50), now_s=at(20, 6))
+    d = apply(ctx, until_rest())
+    seconds = at(21, 50) - at(20, 6)
+    assert d.result == {"seconds": seconds, "now_s": at(21, 50)}
+    assert d.log == [f"Время идёт: {seconds} с"]
+
+
+def test_until_long_rest_then_rest_long_in_same_turn(registry, cfg):
+    ctx = rested(registry, cfg, end_s=at(9, 50), now_s=at(20, 6), hp=3)
+    apply(ctx, until_rest())
+    d = apply(ctx, long_req())
+    assert d.status == "accepted"
+    assert ctx.hero.creature.hp_current == ctx.hero.creature.hp_max
+    assert ctx.bundle.world.clock.now_s == at(5, 50, day=2)
+
+
+def test_until_long_rest_with_one_second_left(registry, cfg):
+    end_s = 100_000
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 12 * HOUR - 1)
+    d = apply(ctx, until_rest())
+    assert d.status == "accepted"
+    assert d.result["seconds"] == 1
+
+
+def test_until_long_rest_without_mark_is_rejected(registry, cfg):
+    ctx = rested(registry, cfg, now_s=at(20))
+    d = apply(ctx, until_rest())
+    assert isinstance(d, Decision)
+    assert d.status == "rejected"
+    assert d.reason == "отдых уже можно"
+
+
+@pytest.mark.parametrize("delta", [0, HOUR])
+def test_until_long_rest_after_cooldown_is_rejected(delta, registry, cfg):
+    end_s = 100_000
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 12 * HOUR + delta)
+    assert apply(ctx, until_rest()).status == "rejected"
+
+
+def test_until_long_rest_rejection_has_no_tag_and_tells_rest_long(registry, cfg):
+    ctx = rested(registry, cfg, now_s=at(20))
+    d = apply(ctx, until_rest())
+    assert d.report_tag is None
+    assert "rest long" in d.signal_to_master
+    assert d.log == []
+
+
+def test_until_long_rest_rejection_keeps_clock_and_bundle(registry, cfg):
+    ctx = rested(registry, cfg, now_s=at(20))
+    before = dump(ctx)
+    apply(ctx, until_rest())
+    assert dump(ctx) == before
+
+
+def test_until_long_rest_at_zero_hp_still_moves_clock(registry, cfg):
+    ctx = rested(registry, cfg, end_s=at(9, 50), now_s=at(20, 6), hp=0)
+    assert apply(ctx, until_rest()).status == "accepted"
+    assert ctx.bundle.world.clock.now_s == at(21, 50)

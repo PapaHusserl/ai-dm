@@ -3,6 +3,7 @@ round_s = 6
 short_rest_s = 3600
 long_rest_s = 28800
 min_advance_s = 600
+morning_hour = 6
 
 [time.advance_categories]
 minute = 900

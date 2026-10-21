@@ -638,9 +638,183 @@ def test_advance_time_needs_exactly_one_of_category_and_travel(registry, cfg):
     before = dump(ctx)
     both = apply(ctx, req("advance_time", category="hour", travel_to="forest"))
     none = apply(ctx, req("advance_time"))
-    assert isinstance(both, Invalid) and both.code == "category_or_travel_to"
-    assert isinstance(none, Invalid) and none.code == "category_or_travel_to"
+    assert isinstance(both, Invalid) and both.code == "category_travel_to_or_until"
+    assert isinstance(none, Invalid) and none.code == "category_travel_to_or_until"
     assert dump(ctx) == before
+
+
+# Фикс ЖП4 П2 (131): advance_time until -- до утра, до часа, до длинного отдыха
+
+def clock_at(registry, cfg, now_s):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = now_s
+    return ctx
+
+
+def hm(hours, minutes=0, day=1):
+    return day * DAY + hours * 3600 + minutes * 60
+
+
+def until(**fields):
+    return req("advance_time", **fields)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"category": "hour", "until": "morning"},
+        {"travel_to": "forest", "until": "morning"},
+        {"category": "hour", "travel_to": "forest", "until": "morning"},
+    ],
+)
+def test_until_with_other_field_is_invalid(fields, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, until(**fields))
+    assert isinstance(d, Invalid)
+    assert d.code == "category_travel_to_or_until"
+    assert "category, travel_to и until" in d.message
+    assert dump(ctx) == before
+
+
+def test_until_neutral_values_are_none():
+    request = until(category="hour", until="none", until_hour=-1)
+    assert (request.until, request.until_hour) == (None, None)
+
+
+def test_until_neutral_in_schema_constant():
+    from ai_dm.protocol.requests import AdvanceTime
+
+    assert (AdvanceTime.NEUTRAL["until"], AdvanceTime.NEUTRAL["until_hour"]) == ("none", -1)
+
+
+def test_until_hour_above_23_is_schema_error():
+    with pytest.raises(ValueError):
+        until(until="hour", until_hour=25)
+
+
+def test_until_unknown_target_is_schema_error():
+    with pytest.raises(ValueError):
+        until(until="noon")
+
+
+def test_morning_hour_default_is_six(cfg):
+    assert cfg.time.morning_hour == 6
+
+
+@pytest.mark.parametrize("hour", [-1, 24])
+def test_morning_hour_out_of_range_is_config_error(hour):
+    from ai_dm.config.settings import load_rules_config
+
+    with pytest.raises(ValueError):
+        load_rules_config(f"[time]\nmorning_hour = {hour}\n")
+
+
+def test_morning_hour_follows_config(registry):
+    from ai_dm.config.settings import load_rules_config
+
+    ctx = clock_at(registry, load_rules_config("[time]\nmorning_hour = 8\n"), hm(5))
+    apply(ctx, until(until="morning"))
+    assert ctx.bundle.world.clock.now_s == hm(8)
+
+
+def test_until_morning_in_evening_goes_to_next_morning(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(20, 6))
+    d = apply(ctx, until(until="morning"))
+    assert d.status == "accepted"
+    assert d.result == {"seconds": 35640, "now_s": hm(6, day=2)}
+    assert ctx.bundle.world.clock.now_s == hm(6, day=2)
+
+
+def test_until_morning_log_is_time_line(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(20, 6))
+    assert apply(ctx, until(until="morning")).log == ["Время идёт: 35640 с"]
+
+
+def test_until_morning_before_dawn_is_same_day(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(5))
+    d = apply(ctx, until(until="morning"))
+    assert d.result["seconds"] == 3600
+    assert ctx.bundle.world.clock.now_s == hm(6)
+
+
+def test_until_morning_exactly_at_dawn_goes_to_tomorrow(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(6))
+    d = apply(ctx, until(until="morning"))
+    assert d.result["seconds"] == DAY
+    assert ctx.bundle.world.clock.now_s == hm(6, day=2)
+
+
+def test_until_morning_one_second_before_dawn(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(6) - 1)
+    assert apply(ctx, until(until="morning")).result["seconds"] == 1
+
+
+def test_until_morning_on_day_zero(registry, cfg):
+    ctx = clock_at(registry, cfg, 3600)
+    apply(ctx, until(until="morning"))
+    assert ctx.bundle.world.clock.now_s == 6 * 3600
+
+
+def test_until_hour_after_it_goes_to_tomorrow(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(7))
+    d = apply(ctx, until(until="hour", until_hour=6))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == hm(6, day=2)
+
+
+def test_until_hour_later_today(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(7, 30))
+    apply(ctx, until(until="hour", until_hour=18))
+    assert ctx.bundle.world.clock.now_s == hm(18)
+
+
+def test_until_hour_midnight(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(23))
+    apply(ctx, until(until="hour", until_hour=0))
+    assert ctx.bundle.world.clock.now_s == hm(0, day=2)
+
+
+def test_until_hour_ignores_morning_hour(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(5))
+    apply(ctx, until(until="hour", until_hour=9))
+    assert ctx.bundle.world.clock.now_s == hm(9)
+
+
+def test_until_hour_without_hour_is_invalid(registry, cfg):
+    ctx = clock_at(registry, cfg, hm(7))
+    before = dump(ctx)
+    d = apply(ctx, until(until="hour"))
+    assert isinstance(d, Invalid)
+    assert d.code == "until_hour_required"
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("target", ["morning", "long_rest"])
+def test_until_hour_with_other_target_is_invalid(target, registry, cfg):
+    ctx = clock_at(registry, cfg, hm(7))
+    before = dump(ctx)
+    d = apply(ctx, until(until=target, until_hour=9))
+    assert isinstance(d, Invalid)
+    assert d.code == "until_hour_only_with_hour"
+    assert dump(ctx) == before
+
+
+def test_until_hour_zero_is_a_real_hour(registry, cfg):
+    # until_hour=0 не «нет часа»: проверка по None, не по truthiness
+    ctx = clock_at(registry, cfg, hm(7))
+    assert apply(ctx, until(until="hour", until_hour=0)).status == "accepted"
+
+
+def test_until_ends_expired_concentration(registry, cfg):
+    from ai_dm.state.creature import Concentration
+
+    ctx = clock_at(registry, cfg, hm(20))
+    ctx.hero.creature.concentration = Concentration(spell_id="bless", circle=1, until_s=hm(21))
+    d = apply(ctx, until(until="morning"))
+    assert d.result["concentration_ended"] == "bless"
+    assert ctx.hero.creature.concentration is None
+    assert d.log[-1].startswith("Концентрация:")
 
 
 # Фикс ЖП4 (132): travel_to -- путь по карте через промежуточные локации

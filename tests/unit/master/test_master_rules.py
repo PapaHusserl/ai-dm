@@ -73,7 +73,7 @@ def test_rules_mention_only_known_tools():
             "bad_circle", "prepared_swap", "recent_turns",
         "memory_kind", "memory_text", "memory_last",
         "goal_kind", "goal_target", "goal_text", "goal_status",
-        "hit_dice", "known_locations", "travel_to",
+        "hit_dice", "known_locations", "travel_to", "until_hour", "long_rest",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []
@@ -355,3 +355,29 @@ def test_travel_to_schema_description_names_known_locations():
     tools = {d["name"]: d for d in tool_set("explore")}
     schema = json.dumps(tools["advance_time"], ensure_ascii=False)
     assert "known_locations" in schema
+
+
+# Фикс ЖП4 П2 (131): advance_time until
+
+def test_rules_time_section_mentions_until():
+    assert "`advance_time.until`" in xp_time_section()
+
+
+@pytest.mark.parametrize("word", ["`morning`", "`until_hour`", "`long_rest`"])
+def test_rules_time_section_names_until_targets(word):
+    assert word in xp_time_section()
+
+
+def test_rules_say_until_long_rest_then_rest_long():
+    text = xp_time_section()
+    at = text.index("`until: long_rest`")
+    assert "затем `rest long` в том же ходу" in text[at:at + 80]
+
+
+def test_advance_time_schema_has_until_fields():
+    from ai_dm.protocol.schema import tool_set
+
+    tools = {d["name"]: d for d in tool_set("explore")}
+    props = tools["advance_time"]["input_schema"]["properties"]
+    assert set(props["until"]["enum"]) == {"none", "morning", "long_rest", "hour"}
+    assert "until_hour" in props

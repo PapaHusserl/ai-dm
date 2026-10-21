@@ -115,7 +115,7 @@ def test_name_together_with_memory_logs_only_label(registry, cfg):
     ctx = ctx_with_survivor(registry, cfg)
     decision = rename(ctx, memory_kind="helped", memory_text="помог")
     assert SECRET_NAME not in text_of(decision)
-    assert f"{LABEL} запомнил: helped" in decision.log
+    assert f"{LABEL} запомнит это: помощь" in decision.log
 
 
 def test_name_together_with_gender_logs_only_label(registry, cfg):
@@ -389,7 +389,7 @@ def test_unfollow_log_uses_label(registry, cfg):
 def test_memory_log_uses_label(registry, cfg):
     ctx = hidden_named(registry, cfg)
     decision = update(ctx, memory_kind="helped", memory_text="помог")
-    assert decision.log == [f"{LABEL} запомнил: helped"]
+    assert decision.log == [f"{LABEL} запомнит это: помощь"]
 
 
 def test_long_memory_note_log_uses_label(registry, cfg):

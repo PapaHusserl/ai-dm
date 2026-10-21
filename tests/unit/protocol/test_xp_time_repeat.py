@@ -337,15 +337,24 @@ def test_both_category_and_travel_is_invalid(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
     d = apply(ctx, req("advance_time", category="hour", travel_to="forest"))
     assert isinstance(d, Invalid)
-    assert d.code == "category_or_travel_to"
-    assert "нужно ровно одно из category и travel_to" in d.message
+    assert d.code == "category_travel_to_or_until"
+    assert "нужно ровно одно из category, travel_to и until" in d.message
 
 
 def test_neither_category_nor_travel_is_invalid(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
     d = apply(ctx, req("advance_time"))
     assert isinstance(d, Invalid)
-    assert d.code == "category_or_travel_to"
+    assert d.code == "category_travel_to_or_until"
+
+
+def test_until_is_not_affected_by_hour_record(registry, cfg):
+    # time_repeated для until не применяется
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    ctx.bundle.world.clock.now_s = 5 * 3600
+    d = apply(ctx, req("advance_time", until="hour", until_hour=6))
+    assert d.status == "accepted"
+    assert d.log == [HOUR_LOG]
 
 
 def test_known_limitation_two_hours_in_one_turn_are_not_caught(registry, cfg):

@@ -276,6 +276,9 @@ ai-dm/
    - Категории `advance_time` — единственное число: `minute | hour | day | week | month`;
      значения по умолчанию: minute = 15 мин (900 с), hour = 1 ч (3600 с), day = сутки,
      week = 7 суток, month = длина текущего месяца календаря. (Аудит 1, P1: hour = 1 ч, 3600 с.)
+   - Сдвиг до цели `advance_time.until`: `morning` (час `[time] morning_hour`, 6), `hour` + `until_hour` (0–23;
+     час уже прошёл — завтра), `long_rest` (до `next_long_rest_s`; отдых уже можно — rejected); ровно одно из
+     `category`, `travel_to`, `until`.
    - Путешествие: `travel_seconds(distance_m: int, pace: str, cfg) -> int`, темпы SRD в конфиге
      `[time.travel_pace]` целыми метрами в час: slow = 3200, normal = 4800, fast = 6400
      (≈ 2 / 3 / 4 мили в час); результат округляется вверх до целой секунды; неизвестный темп — ошибка.

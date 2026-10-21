@@ -91,6 +91,29 @@ def test_accepted_log_mentions_entity_name(registry, cfg):
     assert any("Олдрик" in line for line in d.log)
 
 
+# Фикс ЖП4 П2 (130): строка ленты без кода вида
+
+def test_npc_note_log_line(registry, cfg):
+    ctx = knowledge_ctx(registry, cfg)
+    assert apply(ctx, note()).log == ["В журнал знаний (/lore): Олдрик"]
+
+
+def test_location_note_log_line(registry, cfg):
+    ctx = knowledge_ctx(registry, cfg)
+    assert apply(ctx, note(kind="location", ref="forest")).log == ["В журнал знаний (/lore): Лес"]
+
+
+def test_situation_note_log_keeps_slug(registry, cfg):
+    ctx = knowledge_ctx(registry, cfg)
+    d = apply(ctx, note(kind="situation", ref="plague_rumor"))
+    assert d.log == ["В журнал знаний (/lore): plague_rumor"]
+
+
+def test_note_log_has_no_kind_code(registry, cfg):
+    ctx = knowledge_ctx(registry, cfg)
+    assert not any("npc" in line for line in apply(ctx, note()).log)
+
+
 def test_accepted_has_no_signal_or_tag(registry, cfg):
     ctx = knowledge_ctx(registry, cfg)
     d = apply(ctx, note())

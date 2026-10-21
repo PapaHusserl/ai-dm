@@ -1,3 +1,4 @@
+from ai_dm.core.clock import DAY
 from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
@@ -751,22 +752,30 @@ def swap_invalid(ctx, request):
     return Invalid(code=problem[0], message=problem[1])
 
 
+def next_long_rest_s(hero, cfg):
+    # момент, с которого снова можно длинный отдых; None, если длинного отдыха ещё не было
+    end_s = hero.long_rest_end_s
+    if end_s is None:
+        return None
+    return end_s + Duration.parse(cfg.limits.long_rest_cooldown).seconds
+
+
 def rest_redundant(ctx, request):
     # длинный отдых раньше кулдауна от конца предыдущего: rejected до отдыха;
     # при 0 HP отдых по-прежнему отклоняет long_rest (Invalid)
     hero = ctx.hero
-    end_s = hero.long_rest_end_s
-    if request.kind != "long" or end_s is None or hero.creature.hp_current == 0:
+    next_s = next_long_rest_s(hero, ctx.cfg)
+    if request.kind != "long" or next_s is None or hero.creature.hp_current == 0:
         return None
     now_s = ctx.bundle.world.clock.now_s
-    next_s = end_s + Duration.parse(ctx.cfg.limits.long_rest_cooldown).seconds
     if now_s >= next_s:
         return None
     return rejected(
         "отдых уже был",
         f"Скажи игроку: длинный отдых снова возможен с {clock_text(next_s)}; сейчас можно "
         "короткий отдых (rest short) или просто подремать/подождать — время двигай "
-        "advance_time, HP и ресурсы при этом не восстанавливаются.",
+        "advance_time (until: long_rest — до момента, когда отдых снова можно, затем "
+        "rest long в том же ходу), HP и ресурсы при этом не восстанавливаются.",
         report_tag="rest_repeat",
     )
 
@@ -841,11 +850,52 @@ def time_by_category(ctx, request):
     return Decision(status="accepted", result=result, log=log)
 
 
-def advance_time(ctx, request):
-    if (request.category is None) == (request.travel_to is None):
+def time_until(ctx, request):
+    # сдвиг до цели: утро, час суток или момент, когда снова можно длинный отдых
+    hero = ctx.hero
+    world = ctx.bundle.world
+    now_s = world.clock.now_s
+    if request.until == "long_rest":
+        next_s = next_long_rest_s(hero, ctx.cfg)
+        if next_s is None or now_s >= next_s:
+            return rejected(
+                "отдых уже можно",
+                "Длинный отдых уже возможен: вызови rest long, время не двигай.",
+            )
+        target = next_s
+    else:
+        hour = ctx.cfg.time.morning_hour if request.until == "morning" else request.until_hour
+        target = now_s - now_s % DAY + hour * 3600
+        if target <= now_s:
+            target += DAY
+    seconds = target - now_s
+    world.clock.advance(seconds)
+    result = {"seconds": seconds, "now_s": world.clock.now_s}
+    log = [TIME_LOG.format(seconds)]
+    concentration_note(ctx, log, result)
+    return Decision(status="accepted", result=result, log=log)
+
+
+def until_invalid(request):
+    # until=hour требует час, час без until=hour лишний
+    if request.until == "hour" and request.until_hour is None:
+        return Invalid(code="until_hour_required", message="для until=hour нужен until_hour 0-23")
+    if request.until != "hour" and request.until_hour is not None:
         return Invalid(
-            code="category_or_travel_to", message="нужно ровно одно из category и travel_to"
+            code="until_hour_only_with_hour", message="until_hour задают только с until=hour"
         )
+    return None
+
+
+def advance_time(ctx, request):
+    chosen = [x for x in (request.category, request.travel_to, request.until) if x is not None]
+    if len(chosen) != 1:
+        return Invalid(
+            code="category_travel_to_or_until",
+            message="нужно ровно одно из category, travel_to и until",
+        )
+    if request.until is not None:
+        return until_invalid(request) or time_until(ctx, request)
     if request.category is not None:
         return time_by_category(ctx, request)
     return travel(ctx, request)

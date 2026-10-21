@@ -18,7 +18,7 @@ from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.requests import NpcUpdate
 from ai_dm.protocol.schema import tool_defs
 from ai_dm.rules.knowledge import shorten_text
-from ai_dm.state.relations import MEMORY_KINDS, NPC_EVENT_TEXT_MAX
+from ai_dm.state.relations import MEMORY_KIND_TITLES, MEMORY_KINDS, NPC_EVENT_TEXT_MAX
 
 # Ж3: общая обрезка вынесена в rules.knowledge.shorten_text(text, limit)
 shorten_memory_text = partial(shorten_text, limit=NPC_EVENT_TEXT_MAX)
@@ -308,7 +308,7 @@ def test_memory_text_over_limit_log_line(registry, cfg):
 def test_memory_text_over_limit_still_logs_remembered(registry, cfg):
     ctx = make_ctx(registry, cfg)
     d = remember_call(ctx, text="я" * 300)
-    assert "Олдрик запомнил: helped" in d.log
+    assert "Олдрик запомнит это: помощь" in d.log
 
 
 def test_memory_text_over_limit_event_is_recorded(registry, cfg):
@@ -552,7 +552,49 @@ def test_warm_kind_duplicate_has_reason_and_log(registry, cfg):
     remember_call(ctx, "joke")
     decision = remember_call(ctx, "joke")
     assert "joke" in decision.reason
-    assert any("уже помнит joke" in line for line in decision.log)
+    assert "Олдрик уже помнит это в этой сцене: шутка" in decision.log
+
+
+# Фикс ЖП4 П2 (130): подписи видов памяти в ленте вместо сырого кода
+
+def test_memory_log_uses_kind_title(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    assert remember_call(ctx, "joke").log == ["Олдрик запомнит это: шутка"]
+
+
+@pytest.mark.parametrize("kind", MEMORY_KINDS)
+def test_memory_log_has_title_not_code(kind, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    assert remember_call(ctx, kind).log == [f"Олдрик запомнит это: {MEMORY_KIND_TITLES[kind]}"]
+
+
+def test_warm_duplicate_log_has_no_kind_code(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "joke")
+    assert not any("joke" in line for line in remember_call(ctx, "joke").log)
+
+
+def test_every_memory_kind_has_title():
+    assert set(MEMORY_KIND_TITLES) == set(MEMORY_KINDS)
+
+
+def test_memory_kind_titles_are_distinct():
+    assert len(set(MEMORY_KIND_TITLES.values())) == len(MEMORY_KINDS)
+
+
+@pytest.mark.parametrize("kind", MEMORY_KINDS)
+def test_memory_kind_title_is_russian(kind):
+    title = MEMORY_KIND_TITLES[kind]
+    assert title and all(ch in "абвгдеёжзийклмнопрстуфхцчшщъыьэюя " for ch in title)
+
+
+@pytest.mark.parametrize("kind", MEMORY_KINDS)
+def test_memory_kind_title_has_no_remembered_word(kind):
+    assert "запомнил" not in MEMORY_KIND_TITLES[kind]
+
+
+def test_memory_kind_titles_samples():
+    assert (MEMORY_KIND_TITLES["joke"], MEMORY_KIND_TITLES["helped"]) == ("шутка", "помощь")
 
 
 def test_other_warm_kind_in_same_scene_is_written(registry, cfg):
