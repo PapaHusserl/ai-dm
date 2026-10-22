@@ -1,4 +1,5 @@
 from ai_dm.core.dice import roll_dice
+from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.resources import clamped
 from ai_dm.protocol.handlers.trade import short_of_money
@@ -8,6 +9,7 @@ from ai_dm.protocol.hints import allowed
 from ai_dm.rules import money
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
+from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.healing import heal
 
 # глагол лога по эффекту услуги
@@ -38,7 +40,7 @@ def service(ctx, request):
             "В этой сцене больше нельзя платить за услуги и торговать: опиши по факту.",
         )
     unit = service_rules.quote(kind, npc, world, ctx.cfg)
-    action = heal_service if kind.effect == "heal" else pay_service
+    action = {"heal": heal_service, "cure": cure_service}.get(kind.effect, pay_service)
     decision = action(ctx, request, npc, kind, unit)
     if isinstance(decision, Decision) and decision.status != "rejected" and scene is not None:
         scene.trades += 1
@@ -144,6 +146,33 @@ def paid(request, qty, result, log, cause="не хватило денег"):
             f"Оплачено только {qty} из {request.qty} ({cause}): опиши по факту.",
             result, log,
         )
+    return Decision(status="accepted", result=result, log=log)
+
+
+def cure_service(ctx, request, npc, kind, unit):
+    # снимает разом все состояния из kind.cures за одну цену; qty не важен
+    hero = ctx.hero
+    if hero.status == "dead":
+        return Invalid(code="hero_dead", message="герой мёртв: обряд снятия не нужен")
+    conditions = hero.creature.conditions
+    cured = [c.id for c in conditions if c.id in kind.cures]
+    if not cured:
+        return rejected(
+            "снимать нечего",
+            "На герое нет проклятия, которое снимает эта услуга: обряд не проведён, деньги не "
+            "списаны. Опиши по факту.",
+            report_tag="nothing_to_cure",
+        )
+    if hero.money_cp < unit:
+        return short_of_money(ctx, kind.name, unit)
+    money.spend_money(hero, unit)
+    conditions[:] = [c for c in conditions if c.id not in kind.cures]
+    event = DomainEvent(type="cured", data={"id": hero.id, "conditions": ",".join(cured)})
+    apply_events(ctx.bundle.world, [event])
+    ctx.events.append(event)
+    result = service_result(ctx, npc, request, unit, 1)
+    result["cured"] = cured
+    log = [f"Проклятие снято: {kind.name} у {npc.name} за {money.format_cp(unit)}"]
     return Decision(status="accepted", result=result, log=log)
 
 

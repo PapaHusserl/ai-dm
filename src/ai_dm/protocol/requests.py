@@ -275,6 +275,18 @@ class Damage(Request):
     NEUTRAL: ClassVar[dict] = {"failed_roll_ref": ""}
 
 
+class Curse(Request):
+    """Проклясть героя (реликвия, ведьма, осквернённое место, ловушка): только после его
+    проваленного броска этого хода. Снимается платной услугой храма.
+    """
+
+    type: Literal["curse"]
+    failed_roll_ref: str = Field(
+        description="roll_ref проваленного броска (проверка или спасбросок) этого хода."
+    )
+    cause: str = Field(description="Источник проклятия одной фразой, до 80 знаков.")
+
+
 class GiveItem(Request):
     """Дать герою предмет из реестра."""
 
@@ -1051,6 +1063,7 @@ REQUEST_MODELS = {
     "defeat_outcome": DefeatOutcome,
     "end_combat": EndCombat,
     "damage": Damage,
+    "curse": Curse,
     "give_item": GiveItem,
     "give_custom_item": GiveCustomItem,
     "use_item": UseItem,
@@ -1121,8 +1134,8 @@ VISIBLE_TYPES = tuple(
 
 MasterRequest = Annotated[
     SkillCheck | SavingThrow | StartCombat | PlayerAction | NpcAction | DefeatOutcome | EndCombat
-    | Damage | GiveItem | GiveCustomItem | UseItem | CastSpell | TakeItem | Trade | Haggle | Service
-    | Gold | AwardXp
+    | Damage | Curse | GiveItem | GiveCustomItem | UseItem | CastSpell | TakeItem | Trade | Haggle
+    | Service | Gold | AwardXp
     | AdvanceTime | Rest
     | WarnDanger
     | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | ChangeDeity

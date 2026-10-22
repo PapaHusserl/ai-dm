@@ -244,6 +244,49 @@ def test_frightened_does_not_affect_save(registry):
     assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
 
 
+# проклят (не SRD, У0 П3): помеха на проверки и спасброски, не на атаки
+
+def test_cursed_actor_checks_with_disadvantage(registry):
+    request = make_request("check", actor=make_creature("cursed"), skill="athletics")
+    result = roll(request, two_dice(), registry)
+    assert result.advantage == "disadvantage"
+    assert result.natural == 3
+
+
+def test_cursed_actor_saves_with_disadvantage(registry):
+    request = make_request("save", actor=make_creature("cursed"), ability="wis")
+    result = roll(request, two_dice(), registry)
+    assert result.advantage == "disadvantage"
+    assert result.natural == 3
+
+
+def test_cursed_does_not_affect_attack(registry):
+    result = roll(make_request(actor=make_creature("cursed")), ScriptedRng((20, 12)), registry)
+    assert result.advantage == "normal"
+
+
+def test_cursed_label_on_check_is_cursed_word(registry):
+    request = make_request("check", actor=make_creature("cursed"), skill="athletics")
+    assert roll(request, two_dice(), registry).disadvantage_from == ["проклят"]
+
+
+def test_cursed_label_on_save_is_cursed_word(registry):
+    request = make_request("save", actor=make_creature("cursed"), ability="wis")
+    assert roll(request, two_dice(), registry).disadvantage_from == ["проклят"]
+
+
+def test_cursed_target_does_not_change_attack_on_it(registry):
+    request = make_request(target=make_creature("cursed"))
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_cursed_and_advantage_effect_cancel_out(registry):
+    actor = make_creature("cursed")
+    actor.active_effects.append(modifier_effect("bless", target="saving_throw", mode="advantage"))
+    request = make_request("save", actor=actor, ability="wis")
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
 def test_invisible_actor_and_poisoned_cancel_out(registry):
     actor = make_creature("invisible", "poisoned")
     result = roll(make_request(actor=actor), ScriptedRng((20, 12)), registry)

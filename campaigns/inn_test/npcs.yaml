@@ -30,6 +30,7 @@
   - умеет исцелять молитвой
   services:
   - heal_temple
+  - uncurse_temple
 - id: barber_tobb
   name: Тобб Цирюльник
   gender: male

@@ -9,6 +9,8 @@
 #       (общий лимит с trade).
 #   heal: лечит героя бросками кости вида, при полных хитах -> rejected без списания,
 #       мёртвому герою -> Invalid.
+#   cure (П3): снимает состояния kind.cures разом за одну цену, qty всегда 1; нет состояния ->
+#       rejected nothing_to_cure без списания; нет денег -> short_of_money; мёртвому -> Invalid.
 #   haggle у NPC без лавки -- состояние во флаге haggle:<npc_id> (зарезервирован для set_flag),
 #       с лавкой -- торг общий на товары и услуги.
 #   npc_update/npc_create services: объединение без дублей, неизвестный id ->
@@ -20,6 +22,7 @@ from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.rules.derived import skill_bonus
 from ai_dm.rules.trade import DAY_S
+from ai_dm.state.creature import AppliedCondition
 from ai_dm.state.world import NPC, TradeProfile
 
 FAR = 10**9
@@ -545,6 +548,174 @@ def test_heal_price_follows_attitude(registry, cfg):
     ctx = heal_ctx(registry, cfg, hp=3, die=5)
     grok(ctx).attitude = 60
     assert buy(ctx, "heal_barber").result["price_cp"] == 45
+
+
+# cure (У0 П3): uncurse_temple снимает cursed за 2500 мм; нет проклятия -> nothing_to_cure
+
+def cure_ctx(registry, cfg, money=3000, cursed=True, service="uncurse_temple"):
+    ctx = service_ctx(registry, cfg, money=money, services=[service])
+    if cursed:
+        ctx.hero.creature.conditions.append(AppliedCondition(id="cursed", source="master:t1"))
+    return ctx
+
+
+def test_cure_removes_the_curse_and_spends_money(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.conditions == []
+    assert ctx.hero.money_cp == 500
+    assert d.result["cured"] == ["cursed"]
+    assert d.result["service_id"] == "uncurse_temple"
+    assert d.result["qty"] == 1
+    assert d.result["price_cp"] == 2500
+    assert d.result["total_cp"] == 2500
+    assert d.result["money_cp"] == 500
+
+
+def test_cure_log_says_curse_lifted_with_npc_and_price(registry, cfg):
+    d = buy(cure_ctx(registry, cfg), "uncurse_temple")
+    assert len(d.log) == 1
+    assert d.log[0].startswith("Проклятие снято")
+    assert "снятие проклятия" in d.log[0]
+    assert "Грок" in d.log[0]
+    assert "25 зм" in d.log[0]
+
+
+def test_cure_emits_cured_event(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    buy(ctx, "uncurse_temple")
+    [event] = [e for e in ctx.events if e.type == "cured"]
+    assert event.data == {"id": ctx.hero.id, "conditions": "cursed"}
+
+
+def test_cure_keeps_other_conditions(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    ctx.hero.creature.conditions.insert(0, AppliedCondition(id="poisoned"))
+    buy(ctx, "uncurse_temple")
+    assert [c.id for c in ctx.hero.creature.conditions] == ["poisoned"]
+
+
+def test_cure_spends_scene_trade(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    buy(ctx, "uncurse_temple")
+    assert ctx.scene.trades == 1
+
+
+def test_cure_with_qty_three_charges_once(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    d = buy(ctx, "uncurse_temple", 3)
+    assert d.status == "accepted"
+    assert d.result["qty"] == 1
+    assert ctx.hero.money_cp == 500
+
+
+def test_cure_exact_money_leaves_zero(registry, cfg):
+    ctx = cure_ctx(registry, cfg, money=2500)
+    assert buy(ctx, "uncurse_temple").status == "accepted"
+    assert ctx.hero.money_cp == 0
+
+
+def test_cure_price_follows_attitude(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    grok(ctx).attitude = 60
+    d = buy(ctx, "uncurse_temple")
+    assert d.result["price_cp"] == 2250
+    assert ctx.hero.money_cp == 750
+
+
+def test_cure_without_curse_is_rejected_without_charge(registry, cfg):
+    ctx = cure_ctx(registry, cfg, cursed=False)
+    before = dump(ctx)
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "rejected"
+    assert d.report_tag == "nothing_to_cure"
+    assert d.signal_to_master.endswith("Опиши по факту.")
+    assert dump(ctx) == before
+    assert ctx.events == []
+
+
+def test_cure_with_only_other_condition_is_rejected(registry, cfg):
+    ctx = cure_ctx(registry, cfg, cursed=False)
+    ctx.hero.creature.conditions.append(AppliedCondition(id="poisoned"))
+    d = buy(ctx, "uncurse_temple")
+    assert d.report_tag == "nothing_to_cure"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["poisoned"]
+    assert ctx.hero.money_cp == 3000
+
+
+def test_rejected_cure_does_not_spend_scene_trade(registry, cfg):
+    ctx = cure_ctx(registry, cfg, cursed=False)
+    buy(ctx, "uncurse_temple")
+    assert ctx.scene.trades == 0
+
+
+def test_cure_without_money_is_short_of_money_and_keeps_curse(registry, cfg):
+    ctx = cure_ctx(registry, cfg, money=2499)
+    before = dump(ctx)
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "rejected"
+    assert "на снятие проклятия" in d.signal_to_master
+    assert d.report_tag != "nothing_to_cure"
+    assert dump(ctx) == before
+    assert ctx.events == []
+
+
+def test_cure_nothing_to_cure_wins_over_no_money(registry, cfg):
+    d = buy(cure_ctx(registry, cfg, money=0, cursed=False), "uncurse_temple")
+    assert d.report_tag == "nothing_to_cure"
+
+
+def test_cure_dead_hero_is_invalid(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    ctx.hero.status = "dead"
+    before = dump(ctx)
+    d = buy(ctx, "uncurse_temple")
+    assert isinstance(d, Invalid)
+    assert d.code == "hero_dead"
+    assert dump(ctx) == before
+
+
+def test_cure_at_npc_without_the_service_is_unknown_service(registry, cfg):
+    ctx = cure_ctx(registry, cfg, service="heal_temple")
+    d = buy(ctx, "uncurse_temple")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_service"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["cursed"]
+
+
+def test_cure_at_npc_without_services_is_no_services(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=3000, services=[])
+    ctx.hero.creature.conditions.append(AppliedCondition(id="cursed"))
+    d = buy(ctx, "uncurse_temple")
+    assert isinstance(d, Invalid)
+    assert d.code == "no_services"
+
+
+def test_cure_cures_every_listed_condition_for_one_price(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    cfg_two = cfg.model_copy(deep=True)
+    cfg_two.services.kinds["uncurse_temple"].cures = ["cursed", "poisoned"]
+    ctx.cfg = cfg_two
+    ctx.hero.creature.conditions.append(AppliedCondition(id="poisoned"))
+    d = buy(ctx, "uncurse_temple")
+    assert d.result["cured"] == ["cursed", "poisoned"]
+    assert ctx.hero.creature.conditions == []
+    assert ctx.hero.money_cp == 500
+    [event] = [e for e in ctx.events if e.type == "cured"]
+    assert event.data["conditions"] == "cursed,poisoned"
+
+
+def test_cure_list_shows_uncurse_temple_price(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["uncurse_temple"])
+    assert prices(listing(ctx)) == {"uncurse_temple": 2500}
+
+
+def test_cure_does_not_roll_dice(registry, cfg):
+    ctx = cure_ctx(registry, cfg)
+    ctx.rng = ScriptedRng()
+    buy(ctx, "uncurse_temple")
+    assert ctx.rng.calls == []
 
 
 # haggle у NPC только с услугами

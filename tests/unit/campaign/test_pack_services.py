@@ -83,8 +83,23 @@ def test_inn_test_has_innkeeper_temple_and_barber(registry):
     by_id = {n.id: n for n in pack.npcs}
     assert "room_modest" in by_id["innkeeper_brum"].services
     assert "ale" in by_id["innkeeper_brum"].services
-    assert by_id["sister_ilda"].services == ["heal_temple"]
+    assert by_id["sister_ilda"].services == ["heal_temple", "uncurse_temple"]
     assert by_id["barber_tobb"].services == ["heal_barber"]
+
+
+def test_inn_test_has_cursed_chapel_reachable_from_the_forest(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    by_id = {loc.id: loc for loc in pack.locations}
+    assert "cursed_chapel" in by_id
+    assert "cursed_chapel" in [c.to for c in by_id["forest_edge"].connections]
+    assert "forest_edge" in [c.to for c in by_id["cursed_chapel"].connections]
+
+
+def test_inn_test_chapel_text_tells_master_to_ask_save_then_curse(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    chapel = next(loc for loc in pack.locations if loc.id == "cursed_chapel")
+    assert "спасбросок" in chapel.description
+    assert "curse" in chapel.description
 
 
 def test_inn_test_providers_stand_in_known_locations(registry):

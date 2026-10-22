@@ -141,8 +141,14 @@ def test_condition_exists(registry, condition_id):
     assert registry.has("condition", condition_id)
 
 
-def test_there_are_exactly_15_conditions(registry):
-    assert len(registry.ids("condition")) == 15
+def test_there_are_exactly_15_srd_conditions(registry):
+    ids = registry.ids("condition")
+    assert len([i for i in ids if registry.get("condition", i).source != "custom"]) == 15
+
+
+def test_cursed_is_the_only_custom_condition(registry):
+    ids = registry.ids("condition")
+    assert [i for i in ids if registry.get("condition", i).source == "custom"] == ["cursed"]
 
 
 @pytest.mark.parametrize("monster_id", MONSTERS)

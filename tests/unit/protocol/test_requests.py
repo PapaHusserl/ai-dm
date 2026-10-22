@@ -41,6 +41,7 @@ VALID = {
     "defeat_outcome": {"consequences": ["rob", "scar"], "scar_ability": "str", "scar_text": "шрам"},
     "end_combat": {"reason": "враги сдались"},
     "damage": {"severity": "deadly", "damage_type": "fire", "failed_roll_ref": "r1"},
+    "curse": {"failed_roll_ref": "r1", "cause": "проклятый оберег на алтаре"},
     "give_item": {"item_id": "potion_of_healing", "qty": 2},
     "give_custom_item": {
         "name": "Ржавый ключ", "description": "Ключ от ворот", "qty": 1, "weight_lb": 0.5,
@@ -90,8 +91,8 @@ def example(type_name):
     return {"type": type_name, **copy.deepcopy(VALID[type_name])}
 
 
-def test_there_are_39_request_types():
-    assert len(ALL_TYPES) == 39
+def test_there_are_40_request_types():
+    assert len(ALL_TYPES) == 40
     assert sorted(REQUEST_MODELS) == sorted(ALL_TYPES)
 
 
@@ -100,7 +101,7 @@ def test_examples_cover_every_type():
 
 
 def test_visible_hidden_and_npc_only_partition_all_types():
-    assert len(VISIBLE_TYPES) == 37
+    assert len(VISIBLE_TYPES) == 38
     assert sorted(HIDDEN_TYPES) == ["afterlife_action"]
     assert NPC_ONLY_TYPES == ("npc_action",)
     assert sorted(VISIBLE_TYPES + HIDDEN_TYPES + NPC_ONLY_TYPES) == sorted(ALL_TYPES)
@@ -109,8 +110,8 @@ def test_visible_hidden_and_npc_only_partition_all_types():
 def test_visible_set_matches_plan():
     plan = [
         "skill_check", "saving_throw", "start_combat", "player_action", "defeat_outcome",
-        "end_combat", "damage", "give_item", "give_custom_item", "use_item", "take_item", "gold",
-        "trade", "haggle", "service", "award_xp",
+        "end_combat", "damage", "curse", "give_item", "give_custom_item", "use_item", "take_item",
+        "gold", "trade", "haggle", "service", "award_xp",
         "advance_time",
         "rest", "set_flag", "npc_create", "location_create", "npc_update", "offer_choices",
         "end_scene", "end_chapter", "unsupported_action", "reveal_secret", "event_start",

@@ -1,8 +1,9 @@
 # Реестр услуг, партия П1 (docs/plan-u0.md): секция [services] конфига.
 #   ServicesConfig(extra="forbid"): paid_rest = true, kinds: dict[str, ServiceKind].
 #   ServiceKind(extra="forbid"): name, price_cp >= 0, unit (night|meal|hour|once),
-#       effect (lodging|meal|heal|rest_short), description,
-#       heal (кубики, parse_dice; обязателен при effect=heal).
+#       effect (lodging|meal|heal|rest_short|cure), description,
+#       heal (кубики, parse_dice; обязателен при effect=heal),
+#       cures (id состояний; обязателен непустым при effect=cure, П3).
 import pytest
 from pydantic import ValidationError
 
@@ -28,6 +29,7 @@ def test_default_kinds_present():
         "room_poor", "room_modest", "room_comfortable", "room_wealthy",
         "meal_poor", "meal_modest", "meal_comfortable", "ale", "wine_common",
         "heal_barber", "heal_temple", "bed_hour",
+        "uncurse_temple",
     }
 
 
@@ -97,7 +99,7 @@ def test_unknown_unit_is_error():
 
 def test_unknown_effect_is_error():
     with pytest.raises(ValidationError):
-        kind(effect="curse")
+        kind(effect="bless")
 
 
 def test_extra_field_is_error():
@@ -113,6 +115,57 @@ def test_custom_kind_loads_from_toml():
     loaded = load_rules_config(toml_text=toml).services.kinds
     assert loaded["massage"].price_cp == 30
     assert "room_modest" in loaded
+
+
+# cure (П3): effect = "cure" требует непустой cures
+
+def test_uncurse_temple_is_cure_of_cursed_for_25_gold():
+    temple = services().kinds["uncurse_temple"]
+    assert (temple.effect, temple.unit, temple.cures) == ("cure", "once", ["cursed"])
+    assert temple.price_cp == 2500
+    assert temple.name == "снятие проклятия"
+
+
+def test_cures_default_is_empty_for_other_effects():
+    assert kind().cures == []
+    assert services().kinds["heal_temple"].cures == []
+
+
+def test_cure_without_cures_is_error():
+    with pytest.raises(ValidationError):
+        kind(effect="cure", unit="once")
+
+
+def test_cure_with_empty_cures_is_error():
+    with pytest.raises(ValidationError):
+        kind(effect="cure", unit="once", cures=[])
+
+
+def test_cure_with_cures_is_accepted():
+    assert kind(effect="cure", unit="once", cures=["cursed"]).cures == ["cursed"]
+
+
+def test_cures_not_required_for_other_effects():
+    assert kind(effect="heal", unit="once", heal="1d8").cures == []
+
+
+def test_cure_kind_without_cures_in_toml_is_error():
+    toml = (
+        '[services.kinds.exorcism]\nname = "обряд"\nprice_cp = 1\nunit = "once"\n'
+        'effect = "cure"\n'
+    )
+    with pytest.raises(ValueError):
+        load_rules_config(toml_text=toml)
+
+
+def test_cure_kind_with_cures_in_toml_loads():
+    toml = (
+        '[services.kinds.exorcism]\nname = "обряд"\nprice_cp = 1\nunit = "once"\n'
+        'effect = "cure"\ncures = ["cursed", "poisoned"]\n'
+    )
+    assert load_rules_config(toml_text=toml).services.kinds["exorcism"].cures == [
+        "cursed", "poisoned",
+    ]
 
 
 def test_heal_kind_without_dice_in_toml_is_error():

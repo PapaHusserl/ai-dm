@@ -282,6 +282,16 @@ def sheet_stat_lines(hero, registry, width):
     return lines
 
 
+def condition_names(hero, registry):
+    # названия состояний героя строчными, без повторов, в порядке наложения
+    names = []
+    for applied in hero.creature.conditions:
+        name = registry.get("condition", applied.id).name.lower()
+        if name not in names:
+            names.append(name)
+    return names
+
+
 def pool_now(hero, registry, pool):
     # (текущее, максимум) пула ресурса героя
     maximum = resource_maxes(hero, registry).get(pool, 0)

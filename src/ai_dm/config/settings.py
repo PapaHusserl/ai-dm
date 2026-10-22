@@ -329,9 +329,11 @@ class ServiceKind(BaseModel):
     # цена за единицу в меди (до отношения и торга)
     price_cp: int = Field(ge=0)
     unit: Literal["night", "meal", "hour", "once"]
-    effect: Literal["lodging", "meal", "heal", "rest_short"]
+    effect: Literal["lodging", "meal", "heal", "rest_short", "cure"]
     # кубики лечения; обязательны при effect = heal
     heal: str = ""
+    # id состояний, которые снимает услуга; обязательны при effect = cure
+    cures: list[str] = []
     # текст вида для мастера (класс комнаты и т.п.)
     description: str = ""
 
@@ -339,6 +341,8 @@ class ServiceKind(BaseModel):
     def check_heal(self):
         if self.effect == "heal" and not self.heal:
             raise ValueError("услуга heal требует кубики в поле heal")
+        if self.effect == "cure" and not self.cures:
+            raise ValueError("услуга cure требует id состояний в поле cures")
         if self.heal:
             parse_dice(self.heal)
         return self

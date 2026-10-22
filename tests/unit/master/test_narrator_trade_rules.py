@@ -107,3 +107,19 @@ def test_rules_say_haggle_works_with_services_only_npc():
 
 def test_rules_send_new_services_to_npc_update_and_create():
     assert "`npc_update` или `npc_create` с `services`" in trade_section()
+
+
+# проклятие (У0 П3)
+
+def test_rules_say_curse_only_after_a_failed_roll():
+    text = rules_text()
+    assert "Проклятие (`curse`)" in text
+    assert "после провала `saving_throw` или `skill_check` этого хода" in text
+    assert "failed_roll_ref" in text
+
+
+def test_rules_say_curse_is_cursed_condition_removed_only_by_temple():
+    text = rules_text()
+    assert "cursed" in text
+    assert "отдых и смена дня его не снимают" in text
+    assert "Снимает только услуга храма" in text

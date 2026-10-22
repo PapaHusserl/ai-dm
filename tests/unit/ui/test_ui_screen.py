@@ -330,6 +330,51 @@ def test_status_line_is_the_same_as_in_simple(registry, tmp_path):
     assert status_line(app) == simple_status(app)
 
 
+def test_status_line_shows_cursed_after_hp(registry, tmp_path):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.state.creature import AppliedCondition
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    creature.conditions.append(AppliedCondition(id="cursed"))
+    expected = f"HP {creature.hp_current}/{creature.hp_max} · проклят · "
+    assert status_line(app).startswith(expected)
+
+
+def test_status_line_without_conditions_has_no_condition_part(registry, tmp_path):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    line = status_line(app)
+    assert line.startswith(f"HP {creature.hp_current}/{creature.hp_max} · ")
+    assert "проклят" not in line
+    assert " ·  · " not in line
+
+
+def test_status_line_lists_every_condition_once(registry, tmp_path):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.state.creature import AppliedCondition
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    creature.conditions.extend(AppliedCondition(id="cursed") for _ in range(2))
+    assert status_line(app).count("проклят") == 1
+
+
+def test_simple_status_line_shows_cursed_too(registry, tmp_path):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.state.creature import AppliedCondition
+    from ai_dm.ui.simple import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    hero_of(app.bundle).creature.conditions.append(AppliedCondition(id="cursed"))
+    assert " · проклят · " in status_line(app)
+
+
 def test_limit_state_off_by_default_is_ok(registry, tmp_path):
     from ai_dm.ui.screen import limit_state
 

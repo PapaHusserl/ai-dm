@@ -79,6 +79,15 @@ def test_registry_get_returns_model_with_id():
     assert registry.get("weapon", "longsword").id == "longsword"
 
 
+def test_builtin_srd_has_cursed_condition_card():
+    registry = load_registry()
+    assert registry.has("condition", "cursed")
+    card = registry.get("condition", "cursed")
+    assert card.name == "Проклят"
+    assert card.source == "custom"
+    assert card.description
+
+
 def test_registry_get_unknown_id_raises_key_error():
     registry = load_registry()
     with pytest.raises(KeyError):

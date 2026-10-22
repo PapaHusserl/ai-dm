@@ -38,12 +38,13 @@ from ai_dm.rules.spellcasting import (
     swap_prepared,
     swap_problem,
 )
-from ai_dm.state.creature import ActiveEffect, Expiry
+from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 from ai_dm.state.hero import InventoryEntry
 from ai_dm.state.memory import add_entry
 from ai_dm.state.world import CustomItem
 
 PREY_FEATURE = "hunters_prey"
+CURSED = "cursed"
 USE_EFFECTS = ("heal", "ac_bonus", "resist")
 # строки лога, по которым защиты от повтора находят прошлые начисления в outcomes
 XP_LOG = "Опыт: +"
@@ -58,19 +59,52 @@ def clamped(reason, signal, result, log):
     )
 
 
+def spent_fail_ref(ctx, roll_ref):
+    # True и тратит бросок, если roll_ref -- ещё не использованный провал этого хода
+    ref = ctx.rolls.get(roll_ref)
+    if ref is None or ref.outcome != "fail" or roll_ref in ctx.used_rolls:
+        return False
+    ctx.used_rolls.add(roll_ref)
+    return True
+
+
+def curse(ctx, request):
+    hero = ctx.hero
+    if hero.status == "dead":
+        return Invalid(code="hero_dead", message="герой мёртв, проклятие на него не накладывается")
+    conditions = hero.creature.conditions
+    if any(c.id == CURSED for c in conditions):
+        return rejected(
+            "герой уже проклят",
+            "Герой уже проклят: второе проклятие не накладывается. Опиши по факту.",
+            report_tag="already_cursed",
+        )
+    if not spent_fail_ref(ctx, request.failed_roll_ref):
+        return rejected(
+            "проклятие без проваленного броска этого хода",
+            "Проклятие возможно только после ещё не использованного проваленного броска этого "
+            "хода: проклятие не наложено. Опиши последствия по факту.",
+            report_tag="curse_needs_fail",
+        )
+    conditions.append(AppliedCondition(id=CURSED, source=f"master:t{ctx.turn_seq}"))
+    cause = request.cause.strip()[:80]
+    event = DomainEvent(type="cursed", data={"id": hero.id, "cause": cause})
+    apply_events(ctx.bundle.world, [event])
+    ctx.events.append(event)
+    return Decision(
+        status="accepted", result={"cursed": True, "cause": cause}, log=[f"Проклятие: {cause}"],
+    )
+
+
 def damage(ctx, request):
     hero = ctx.hero
     if hero.status == "dead":
         return Invalid(code="hero_dead", message="герой уже мёртв, урон по нему не применяется")
     severity = request.severity
     cut = False
-    if severity == "deadly":
-        ref = ctx.rolls.get(request.failed_roll_ref)
-        if ref is None or ref.outcome != "fail" or request.failed_roll_ref in ctx.used_rolls:
-            severity = "dangerous"
-            cut = True
-        else:
-            ctx.used_rolls.add(request.failed_roll_ref)
+    if severity == "deadly" and not spent_fail_ref(ctx, request.failed_roll_ref):
+        severity = "dangerous"
+        cut = True
     hazard = roll_hazard(
         hero, severity, request.damage_type, ctx.registry, ctx.rng,
         failed_save=(severity == "deadly"),

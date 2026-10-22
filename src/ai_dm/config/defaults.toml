@@ -258,6 +258,14 @@ heal = "2d8+4"
 price_cp = 200
 description = "молитва и возложение рук"
 
+[services.kinds.uncurse_temple]
+name = "снятие проклятия"
+unit = "once"
+effect = "cure"
+cures = ["cursed"]
+price_cp = 2500
+description = "обряд очищения в храме"
+
 [services.kinds.bed_hour]
 name = "час в постели"
 unit = "hour"

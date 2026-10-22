@@ -6,6 +6,7 @@ from ai_dm.core.clock import DAY
 from ai_dm.game.battle_map import battle_map_lines, part_hp, part_name
 from ai_dm.game.boundary import boundary_lines
 from ai_dm.game.scene import hero_of
+from ai_dm.game.sheet_text import condition_names
 from ai_dm.llm.cost import check_limit
 from ai_dm.rules.derived import ac_summary
 from ai_dm.rules.inventory import entry_name
@@ -48,8 +49,9 @@ def status_line(app):
     clock = app.bundle.world.clock
     minutes = clock.now_s % DAY // 60
     spent = app.ledger.report(app.now().astimezone().date()).session.total_nano / 1e9
+    conditions = "".join(f" · {name}" for name in condition_names(hero, app.registry))
     return (
-        f"HP {hero.creature.hp_current}/{hero.creature.hp_max} · "
+        f"HP {hero.creature.hp_current}/{hero.creature.hp_max}{conditions} · "
         f"{ac_summary(hero, app.registry, clock.now_s)} · "
         f"{clock.to_date()} {minutes // 60:02d}:{minutes % 60:02d} · сессия ${spent:.4f}"
     )

@@ -23,6 +23,7 @@ HANDLERS = {
     "defeat_outcome": combat.defeat_outcome,
     "end_combat": combat.end_combat,
     "damage": resources.damage,
+    "curse": resources.curse,
     "give_item": resources.give_item,
     "give_custom_item": resources.give_custom_item,
     "use_item": resources.use_item,
