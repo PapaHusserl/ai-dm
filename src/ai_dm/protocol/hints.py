@@ -1,3 +1,4 @@
+from ai_dm.rules.services import providers_here
 from ai_dm.rules.trade import assortment
 
 LIMIT = 20
@@ -38,6 +39,11 @@ def merchant_ids(world, location_id):
         npc.id for npc in world.npcs.values()
         if npc.trade is not None and npc.status == "alive" and npc.location_id == location_id
     ]
+
+
+def provider_ids(world, location_id):
+    # живые NPC с услугами в локации
+    return [npc.id for npc in providers_here(world, location_id)]
 
 
 def sold_ids(ctx, npc):

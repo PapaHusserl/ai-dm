@@ -540,6 +540,36 @@ def test_merchant_elsewhere_is_relevant(registry):
     assert "greta" in relevant_npcs(bundle)
 
 
+def test_reasons_provider_elsewhere_is_merchant_reason(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "grok", location_id="goblin_den", services=["room_modest"])
+    assert npc_reasons(bundle)["grok"] == {"merchant"}
+
+
+def test_reasons_provider_here_keeps_here(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "grok", location_id="vale", services=["room_modest"])
+    assert npc_reasons(bundle)["grok"] == {"here", "merchant"}
+
+
+def test_reasons_dead_provider_is_not_relevant(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "grok", location_id="goblin_den", services=["ale"], status="dead")
+    assert "grok" not in npc_reasons(bundle)
+
+
+def test_provider_elsewhere_is_relevant(registry):
+    bundle = make_bundle(registry)
+    add_npc(bundle, "grok", location_id="goblin_den", services=["ale"])
+    assert "grok" in relevant_npcs(bundle)
+
+
 def test_rank_npcs_merchant_is_removable(registry):
     from ai_dm.master.relevance import rank_npcs
 

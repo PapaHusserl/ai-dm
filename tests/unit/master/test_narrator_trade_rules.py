@@ -79,3 +79,31 @@ def test_rules_say_second_haggle_is_refused():
 def test_haggle_paragraph_is_inside_the_trade_section():
     section = rules_text().split("## Торговля")[1].split("\n## ")[0]
     assert "`haggle`" in section
+
+
+# услуги (У0 П1): абзац внутри раздела «Торговля»
+
+def trade_section():
+    return rules_text().split("## Торговля")[1].split("\n## ")[0]
+
+
+def test_services_paragraph_is_inside_the_trade_section():
+    assert "`service`" in trade_section()
+
+
+def test_rules_send_services_to_the_service_tool_not_gold():
+    assert "только инструментом `service`, не `gold`" in trade_section()
+
+
+def test_rules_describe_services_state_key_and_list_direction():
+    section = trade_section()
+    assert "ключе `services`" in section
+    assert "`direction` list" in section
+
+
+def test_rules_say_haggle_works_with_services_only_npc():
+    assert "Торг (`haggle`) работает и с NPC, у которых только услуги" in trade_section()
+
+
+def test_rules_send_new_services_to_npc_update_and_create():
+    assert "`npc_update` или `npc_create` с `services`" in trade_section()

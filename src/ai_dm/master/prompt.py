@@ -23,6 +23,7 @@ from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.npc_names import name_hidden
 from ai_dm.rules.rests import hit_dice_pools
 from ai_dm.rules.secrets import hidden_secrets
+from ai_dm.rules.services import haggle_slot, kinds_of, quote
 from ai_dm.rules.trade import (
     category_models,
     haggle_state,
@@ -33,6 +34,7 @@ from ai_dm.rules.trade import (
 DESCRIPTION_MAX = 120
 LOST_ITEMS_MAX = 5
 TRADE_STOCK_MAX = 25
+SERVICE_ITEMS_MAX = 8
 
 
 def clip(text, limit):
@@ -187,6 +189,34 @@ def trade_data(world, scene_npcs, ctx, level):
         for n in scene_npcs if "merchant" in n
     ]
     return {"trade": merchants} if merchants else {}
+
+
+def provider_data(npc, world, cfg):
+    # услуги NPC сцены: до SERVICE_ITEMS_MAX позиций с ценой (отношение и торг учтены)
+    items = [
+        {
+            "id": kind_id, "name": kind.name, "price_cp": quote(kind, npc, world, cfg),
+            "unit": kind.unit, **({"description": kind.description} if kind.description else {}),
+        }
+        for kind_id, kind in kinds_of(npc, cfg)[:SERVICE_ITEMS_MAX]
+    ]
+    data = {"npc_id": npc.id, "items": items}
+    if npc.trade is None:
+        data.update(haggle_state(haggle_slot(npc, world), world.clock.now_s))
+    return data
+
+
+def services_data(world, scene_npcs, cfg):
+    # ключ services: NPC сцены с услугами; пусто, если их нет
+    providers = [
+        provider_data(world.npcs[n["id"]], world, cfg) for n in scene_npcs if "services" in n
+    ]
+    return {"services": providers} if providers else {}
+
+
+def services_item(npc):
+    # поле services в записи NPC сцены: id услуг, только если они есть
+    return {"services": list(npc.services)} if npc.services else {}
 
 
 def monster_trait_notes(participants, registry):
@@ -513,6 +543,7 @@ class PromptBuilder:
                     item.update(survivor_data(npc))
                     if npc.trade is not None:
                         item["merchant"] = npc.trade.kind
+                    item.update(services_item(npc))
                     item.update(npc_memory_data(npc))
                     scene_npcs.append(item)
             scene_npcs.sort(key=lambda n: n["id"])
@@ -577,4 +608,5 @@ class PromptBuilder:
         data.update(self.knowledge_data(ctx, context_plan, scene_npcs))
         data.update(items_trail_data(world, session, ctx.registry))
         data.update(trade_data(world, scene_npcs, ctx, hero.sheet.level))
+        data.update(services_data(world, scene_npcs, ctx.cfg))
         return data

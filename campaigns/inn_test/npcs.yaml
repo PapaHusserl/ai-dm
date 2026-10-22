@@ -1,0 +1,44 @@
+- id: innkeeper_brum
+  name: Брум Лодочник
+  gender: male
+  named: true
+  key: false
+  location_id: copper_kettle
+  motive: Хочет, чтобы в зале было людно, а комнаты не пустовали.
+  means:
+  - хозяин трактира
+  - знает все дорожные слухи
+  services:
+  - room_poor
+  - room_modest
+  - room_comfortable
+  - room_wealthy
+  - meal_poor
+  - meal_modest
+  - meal_comfortable
+  - ale
+  - wine_common
+- id: sister_ilda
+  name: Сестра Ильда
+  gender: female
+  named: true
+  key: false
+  location_id: wayside_temple
+  motive: Лечит путников и просит за это на нужды храма.
+  means:
+  - жрица придорожного храма
+  - умеет исцелять молитвой
+  services:
+  - heal_temple
+- id: barber_tobb
+  name: Тобб Цирюльник
+  gender: male
+  named: true
+  key: false
+  location_id: barber_shop
+  motive: Подрабатывает перевязками и мазями, любит поговорить за работой.
+  means:
+  - цирюльник
+  - знает травы и перевязки
+  services:
+  - heal_barber

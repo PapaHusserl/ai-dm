@@ -1,0 +1,816 @@
+# Реестр услуг, партия П1 (docs/plan-u0.md): инструмент service{npc_id, direction, service_id, qty}
+# и связанные изменения trade/haggle/npc_update/npc_create.
+#   list -- позиции NPC с ценами (id, name, unit, price_cp, description), без оплаты, без
+#       траты scene.trades. buy -- проверки: бой -> Invalid in_combat, нет NPC -> unknown_npc,
+#       NPC не здесь -> npc_absent, нет services -> no_services, услуги нет у NPC ->
+#       unknown_service, qty < 1 -> bad_amount, attitude <= -50 -> rejected,
+#       scene.trades >= ops_per_scene -> rejected.
+#   qty урезается по деньгам (clamped); нет денег на одну -> rejected. Сделка тратит scene.trades
+#       (общий лимит с trade).
+#   heal: лечит героя бросками кости вида, при полных хитах -> rejected без списания,
+#       мёртвому герою -> Invalid.
+#   haggle у NPC без лавки -- состояние во флаге haggle:<npc_id> (зарезервирован для set_flag),
+#       с лавкой -- торг общий на товары и услуги.
+#   npc_update/npc_create services: объединение без дублей, неизвестный id ->
+#       Invalid unknown_service.
+import pytest
+from protocol_kit import ScriptedRng, combat_request, dump, make_ctx, req
+
+from ai_dm.protocol.apply import apply
+from ai_dm.protocol.decision import Decision, Invalid
+from ai_dm.rules.derived import skill_bonus
+from ai_dm.rules.trade import DAY_S
+from ai_dm.state.world import NPC, TradeProfile
+
+FAR = 10**9
+
+
+def service_ctx(
+    registry, cfg, money=1000, rng=None, services=("room_modest", "meal_modest"), **fields
+):
+    ctx = make_ctx(registry, cfg, rng)
+    ctx.hero.money_cp = money
+    fields.setdefault("location_id", "vale")
+    ctx.bundle.world.npcs["grok"] = NPC(
+        id="grok", name="Грок", means=["трактир"], services=list(services), **fields
+    )
+    return ctx
+
+
+def buy(ctx, service_id="meal_modest", qty=1, npc_id="grok"):
+    return apply(
+        ctx, req("service", npc_id=npc_id, direction="buy", service_id=service_id, qty=qty)
+    )
+
+
+def listing(ctx, npc_id="grok"):
+    return apply(ctx, req("service", npc_id=npc_id, direction="list", service_id="", qty=0))
+
+
+def prices(decision):
+    return {item["id"]: item["price_cp"] for item in decision.result["items"]}
+
+
+def grok(ctx):
+    return ctx.bundle.world.npcs["grok"]
+
+
+# list
+
+def test_list_shows_services_with_prices(registry, cfg):
+    d = listing(service_ctx(registry, cfg))
+    assert isinstance(d, Decision)
+    assert d.status == "accepted"
+    assert d.result["npc_id"] == "grok"
+    assert prices(d) == {"room_modest": 50, "meal_modest": 10}
+
+
+def test_list_item_has_name_unit_and_description(registry, cfg):
+    d = listing(service_ctx(registry, cfg, services=["room_modest"]))
+    item = d.result["items"][0]
+    assert item["name"] == "комната (скромная)"
+    assert item["unit"] == "night"
+    assert item["description"] == cfg.services.kinds["room_modest"].description
+
+
+def test_list_keeps_npc_order(registry, cfg):
+    d = listing(service_ctx(registry, cfg, services=["meal_modest", "ale", "room_modest"]))
+    assert [i["id"] for i in d.result["items"]] == ["meal_modest", "ale", "room_modest"]
+
+
+def test_list_does_not_spend_money_or_scene_trades(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    before = dump(ctx)
+    listing(ctx)
+    assert dump(ctx) == before
+    assert ctx.scene.trades == 0
+    assert ctx.events == []
+
+
+def test_list_works_at_the_scene_limit(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene
+    assert listing(ctx).status == "accepted"
+
+
+def test_list_prices_follow_attitude(registry, cfg):
+    d = listing(service_ctx(registry, cfg, attitude=60))
+    assert prices(d) == {"room_modest": 45, "meal_modest": 9}
+
+
+def test_list_works_with_no_money(registry, cfg):
+    assert listing(service_ctx(registry, cfg, money=0)).status == "accepted"
+
+
+# buy: успех
+
+def test_buy_spends_money_and_reports(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, "meal_modest", 3)
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 970
+    assert d.result["service_id"] == "meal_modest"
+    assert d.result["qty"] == 3
+    assert d.result["price_cp"] == 10
+    assert d.result["total_cp"] == 30
+    assert d.result["money_cp"] == 970
+
+
+def test_buy_log_names_service_npc_and_total(registry, cfg):
+    d = buy(service_ctx(registry, cfg), "meal_modest", 2)
+    assert len(d.log) == 1
+    assert "еда (скромная)" in d.log[0]
+    assert "x2" in d.log[0]
+    assert "Грок" in d.log[0]
+    assert "2 см" in d.log[0]
+
+
+def test_buy_meal_log_starts_with_meal_word(registry, cfg):
+    assert buy(service_ctx(registry, cfg), "meal_modest").log[0].startswith("Заказано")
+
+
+def test_buy_spends_one_scene_trade(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    buy(ctx, "meal_modest", 5)
+    assert ctx.scene.trades == 1
+
+
+def test_buy_without_scene_still_works(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.bundle.session.current_scene = None
+    assert buy(ctx).status == "accepted"
+
+
+def test_buy_price_follows_attitude(registry, cfg):
+    ctx = service_ctx(registry, cfg, attitude=60)
+    assert buy(ctx, "room_modest").result["price_cp"] == 45
+    assert ctx.hero.money_cp == 955
+
+
+def test_buy_exact_money_leaves_zero(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=10)
+    assert buy(ctx).status == "accepted"
+    assert ctx.hero.money_cp == 0
+
+
+def test_buy_without_haggle_has_no_haggle_percent(registry, cfg):
+    assert "haggle_percent" not in buy(service_ctx(registry, cfg)).result
+
+
+def test_buy_free_service_takes_requested_qty(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=0)
+    cfg_free = cfg.model_copy(deep=True)
+    cfg_free.services.kinds["meal_modest"].price_cp = 0
+    ctx.cfg = cfg_free
+    d = buy(ctx, "meal_modest", 3)
+    assert d.status == "accepted"
+    assert d.result["qty"] == 3
+
+
+def test_buy_qty_is_capped_by_give_item_max_qty(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=10**6)
+    d = buy(ctx, "meal_modest", cfg.limits.give_item_max_qty + 5)
+    assert d.result["qty"] == cfg.limits.give_item_max_qty
+    assert d.status == "clamped"
+    assert "лимит количества за раз" in d.signal_to_master
+    assert "не хватило денег" not in d.signal_to_master
+
+
+def test_buy_over_limit_and_money_blames_money(registry, cfg):
+    cap = cfg.limits.give_item_max_qty
+    ctx = service_ctx(registry, cfg, money=10 * (cap - 1))
+    d = buy(ctx, "meal_modest", cap + 5)
+    assert d.result["qty"] == cap - 1
+    assert "не хватило денег" in d.signal_to_master
+    assert "(не хватило денег)" in d.signal_to_master
+
+
+def test_buy_over_limit_with_money_exactly_for_limit_blames_limit(registry, cfg):
+    cap = cfg.limits.give_item_max_qty
+    ctx = service_ctx(registry, cfg, money=10 * cap)
+    d = buy(ctx, "meal_modest", cap + 5)
+    assert d.result["qty"] == cap
+    assert "(лимит количества за раз: " in d.signal_to_master
+
+
+def test_buy_free_service_over_limit_blames_limit(registry, cfg):
+    cap = cfg.limits.give_item_max_qty
+    ctx = service_ctx(registry, cfg, money=0)
+    cfg_free = cfg.model_copy(deep=True)
+    cfg_free.services.kinds["meal_modest"].price_cp = 0
+    ctx.cfg = cfg_free
+    d = buy(ctx, "meal_modest", cap + 5)
+    assert d.result["qty"] == cap
+    assert "лимит количества за раз" in d.signal_to_master
+
+
+def test_buy_one_cp_service_short_of_money_blames_money(registry, cfg):
+    cap = cfg.limits.give_item_max_qty
+    ctx = service_ctx(registry, cfg, money=cap - 1)
+    cfg_cheap = cfg.model_copy(deep=True)
+    cfg_cheap.services.kinds["meal_modest"].price_cp = 1
+    ctx.cfg = cfg_cheap
+    d = buy(ctx, "meal_modest", cap + 5)
+    assert d.result["qty"] == cap - 1
+    assert "(не хватило денег)" in d.signal_to_master
+
+
+def test_buy_without_money_names_the_service_in_signal(registry, cfg):
+    d = buy(service_ctx(registry, cfg, money=9), "meal_modest")
+    assert "на еда (скромная)" in d.signal_to_master
+
+
+def test_heal_over_limit_blames_limit(registry, cfg):
+    cap = cfg.limits.give_item_max_qty
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, rolls=[1] * (cap + 1), money=10**6)
+    ctx.hero.creature.hp_max = 10**4
+    d = buy(ctx, "heal_barber", cap + 1)
+    assert d.status == "clamped"
+    assert d.result["qty"] == cap
+    assert "лимит количества за раз" in d.signal_to_master
+
+
+# buy: урезание и нехватка денег
+
+def test_buy_is_clamped_by_money(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=25)
+    d = buy(ctx, "meal_modest", 3)
+    assert d.status == "clamped"
+    assert d.result["qty"] == 2
+    assert ctx.hero.money_cp == 5
+    assert d.signal_to_master
+    assert "x2" in d.log[0]
+
+
+def test_clamped_buy_still_spends_scene_trade(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=25)
+    buy(ctx, "meal_modest", 3)
+    assert ctx.scene.trades == 1
+
+
+def test_buy_without_money_for_one_is_rejected(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=9)
+    before = dump(ctx)
+    d = buy(ctx, "meal_modest")
+    assert d.status == "rejected"
+    assert d.signal_to_master
+    assert dump(ctx) == before
+    assert ctx.events == []
+
+
+def test_rejected_for_money_does_not_spend_scene_trade(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=0)
+    buy(ctx)
+    assert ctx.scene.trades == 0
+
+
+# buy: проверки
+
+def test_buy_in_combat_is_invalid(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    apply(ctx, combat_request())
+    before = dump(ctx)
+    d = buy(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code == "in_combat"
+    assert dump(ctx) == before
+
+
+def test_list_in_combat_is_invalid(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    apply(ctx, combat_request())
+    assert listing(ctx).code == "in_combat"
+
+
+def test_unknown_npc_is_invalid_with_provider_hint(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, npc_id="nobody")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_npc"
+    assert "grok" in d.message
+
+
+def test_npc_in_another_location_is_absent(registry, cfg):
+    ctx = service_ctx(registry, cfg, location_id="forest")
+    before = dump(ctx)
+    d = buy(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_absent"
+    assert dump(ctx) == before
+
+
+def test_npc_without_services_is_invalid_no_services(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    before = dump(ctx)
+    d = buy(ctx, npc_id="grakh")
+    assert isinstance(d, Invalid)
+    assert d.code == "no_services"
+    assert "grok" in d.message
+    assert dump(ctx) == before
+
+
+def test_merchant_without_services_is_no_services(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    grok(ctx).trade = TradeProfile(kind="general", purse_cp=100, restock_at_s=FAR)
+    assert buy(ctx).code == "no_services"
+
+
+def test_list_for_npc_without_services_is_no_services(registry, cfg):
+    assert listing(service_ctx(registry, cfg), npc_id="grakh").code == "no_services"
+
+
+def test_dead_provider_is_invalid(registry, cfg):
+    ctx = service_ctx(registry, cfg, status="dead")
+    d = buy(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code in ("unknown_npc", "npc_absent")
+
+
+def test_service_the_npc_does_not_provide_is_unknown(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    before = dump(ctx)
+    d = buy(ctx, "heal_temple")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_service"
+    assert "meal_modest" in d.message
+    assert dump(ctx) == before
+
+
+def test_service_id_missing_in_registry_is_unknown(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_modest", "no_such"])
+    d = buy(ctx, "no_such")
+    assert d.code == "unknown_service"
+    assert "no_such" not in d.message.split("допустимые id:")[1]
+
+
+@pytest.mark.parametrize("qty", [0, -1])
+def test_qty_below_one_is_invalid(registry, cfg, qty):
+    ctx = service_ctx(registry, cfg)
+    before = dump(ctx)
+    d = buy(ctx, qty=qty)
+    assert isinstance(d, Invalid)
+    assert d.code == "bad_amount"
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("attitude", [-50, -100])
+def test_hostile_provider_refuses(registry, cfg, attitude):
+    ctx = service_ctx(registry, cfg, attitude=attitude)
+    before = dump(ctx)
+    d = buy(ctx)
+    assert d.status == "rejected"
+    assert d.signal_to_master
+    assert dump(ctx) == before
+
+
+def test_hostile_provider_refuses_list_too(registry, cfg):
+    assert listing(service_ctx(registry, cfg, attitude=-50)).status == "rejected"
+
+
+def test_attitude_just_above_refusal_serves(registry, cfg):
+    assert buy(service_ctx(registry, cfg, attitude=-49)).status == "accepted"
+
+
+# лимит сцены
+
+def test_scene_limit_is_shared_20th_passes_21st_rejected(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene - 1
+    assert buy(ctx).status == "accepted"
+    assert ctx.scene.trades == cfg.trade.ops_per_scene
+    before = dump(ctx)
+    d = buy(ctx)
+    assert d.status == "rejected"
+    assert d.signal_to_master
+    assert d.signal_to_master.startswith("В этой сцене")
+    assert d.signal_to_master.endswith("опиши по факту.")
+    assert dump(ctx) == before
+
+
+def test_trade_deals_count_toward_service_limit(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=10**6)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Mara", means=["товары"], location_id="vale",
+        trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=FAR),
+    )
+    for _ in range(cfg.trade.ops_per_scene):
+        d = apply(ctx, req(
+            "trade", npc_id="mara", direction="buy", item_id="arrows", qty=1, quality="any"
+        ))
+        assert d.status == "accepted"
+    assert buy(ctx).status == "rejected"
+
+
+def test_service_deals_count_toward_trade_limit(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=10**6)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Mara", means=["товары"], location_id="vale",
+        trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=FAR),
+    )
+    for _ in range(cfg.trade.ops_per_scene):
+        assert buy(ctx).status == "accepted"
+    d = apply(ctx, req(
+        "trade", npc_id="mara", direction="buy", item_id="arrows", qty=1, quality="any"
+    ))
+    assert d.status == "rejected"
+
+
+# heal
+
+def heal_ctx(registry, cfg, hp, die, money=1000, service="heal_barber", rolls=None):
+    ctx = service_ctx(
+        registry, cfg, money=money, rng=ScriptedRng(d8=rolls or [die]), services=[service]
+    )
+    ctx.hero.creature.hp_max = 10
+    ctx.hero.creature.hp_current = hp
+    return ctx
+
+
+def test_heal_adds_rolled_hp_and_spends_money(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=3, die=5)
+    d = buy(ctx, "heal_barber")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.hp_current == 8
+    assert ctx.hero.money_cp == 950
+    assert d.result["healed"] == 5
+    assert d.result["hp"] == 8
+    assert d.result["hp_max"] == 10
+
+
+def test_heal_caps_at_max_hp(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=8, die=8)
+    d = buy(ctx, "heal_barber")
+    assert ctx.hero.creature.hp_current == 10
+    assert d.result["healed"] == 2
+
+
+def test_heal_log_has_hp_and_price(registry, cfg):
+    d = buy(heal_ctx(registry, cfg, hp=3, die=5), "heal_barber")
+    assert len(d.log) == 1
+    assert d.log[0].startswith("Лечение")
+    assert "+5 HP" in d.log[0]
+    assert "8/10" in d.log[0]
+    assert "5 см" in d.log[0]
+
+
+def test_heal_at_full_hp_is_rejected_without_charge(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=10, die=5)
+    before = dump(ctx)
+    d = buy(ctx, "heal_barber")
+    assert d.status == "rejected"
+    assert d.reason == "лечить нечего"
+    assert d.signal_to_master.startswith("Герой здоров")
+    assert d.signal_to_master.endswith("Опиши по факту.")
+    assert dump(ctx) == before
+    assert ctx.rng.calls == []
+
+
+def test_heal_without_money_is_rejected(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=3, die=5, money=49)
+    before = dump(ctx)
+    d = buy(ctx, "heal_barber")
+    assert d.status == "rejected"
+    assert "на лечение цирюльника" in d.signal_to_master
+    assert dump(ctx) == before
+
+
+def test_heal_to_dead_hero_is_invalid(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=0, die=5)
+    ctx.hero.status = "dead"
+    before = dump(ctx)
+    d = buy(ctx, "heal_barber")
+    assert isinstance(d, Invalid)
+    assert d.code == "hero_dead"
+    assert d.message.startswith("герой мёртв")
+    assert d.message.endswith("не нужна")
+    assert dump(ctx) == before
+
+
+def test_heal_spends_scene_trade(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=3, die=5)
+    buy(ctx, "heal_barber")
+    assert ctx.scene.trades == 1
+
+
+def test_rejected_heal_does_not_spend_scene_trade(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=10, die=5)
+    buy(ctx, "heal_barber")
+    assert ctx.scene.trades == 0
+    assert ctx.events == []
+
+
+def test_heal_qty_two_rolls_twice_and_charges_twice(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, rolls=[2, 3])
+    d = buy(ctx, "heal_barber", 2)
+    assert d.status == "accepted"
+    assert ctx.rng.calls == ["d8", "d8"]
+    assert ctx.hero.creature.hp_current == 6
+    assert ctx.hero.money_cp == 900
+    assert d.result["qty"] == 2
+    assert d.result["total_cp"] == 100
+    assert d.result["healed"] == 5
+    assert "+5 HP" in d.log[0]
+
+
+def test_heal_qty_stops_when_hp_is_full(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=7, die=0, rolls=[8, 8])
+    d = buy(ctx, "heal_barber", 2)
+    assert ctx.rng.calls == ["d8"]
+    assert ctx.hero.money_cp == 950
+    assert d.status == "clamped"
+    assert d.result["qty"] == 1
+    assert "(герой исцелён раньше)" in d.signal_to_master
+    assert "не хватило денег" not in d.signal_to_master
+
+
+def test_heal_qty_is_clamped_by_money(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, rolls=[1, 1], money=60)
+    d = buy(ctx, "heal_barber", 2)
+    assert d.status == "clamped"
+    assert d.result["qty"] == 1
+    assert ctx.hero.money_cp == 10
+    assert "не хватило денег" in d.signal_to_master
+
+
+def test_temple_heal_rolls_2d8_plus_4(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, service="heal_temple", rolls=[1, 1])
+    ctx.hero.creature.hp_max = 30
+    d = buy(ctx, "heal_temple")
+    assert d.result["healed"] == 6
+    assert ctx.hero.creature.hp_current == 7
+    assert ctx.hero.money_cp == 800
+
+
+def test_heal_price_follows_attitude(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=3, die=5)
+    grok(ctx).attitude = 60
+    assert buy(ctx, "heal_barber").result["price_cp"] == 45
+
+
+# haggle у NPC только с услугами
+
+def haggle_ctx(registry, cfg, total, **fields):
+    probe = service_ctx(registry, cfg)
+    face = total - skill_bonus(probe.hero, registry, "persuasion")
+    return service_ctx(registry, cfg, rng=ScriptedRng(d20=[face, face]), **fields)
+
+
+def haggle(ctx, npc_id="grok"):
+    return apply(ctx, req("haggle", npc_id=npc_id))
+
+
+def test_haggle_with_services_only_npc_rolls_and_sets_percent(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    d = haggle(ctx)
+    assert d.status == "accepted"
+    assert d.result["haggle_percent"] == -10
+    assert ctx.rng.calls == ["d20"]
+
+
+def test_haggle_with_services_only_npc_writes_flag(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    haggle(ctx)
+    assert ctx.bundle.world.flags["haggle:grok"] == "0:-10"
+    assert grok(ctx).trade is None
+
+
+def test_haggle_makes_list_prices_10_percent_cheaper(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    before = prices(listing(ctx))
+    haggle(ctx)
+    after = prices(listing(ctx))
+    assert before == {"room_modest": 50, "meal_modest": 10}
+    assert after == {"room_modest": 45, "meal_modest": 9}
+
+
+def test_haggle_makes_buy_cheaper_and_reports_percent(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    haggle(ctx)
+    d = buy(ctx, "room_modest")
+    assert d.result["price_cp"] == 45
+    assert d.result["haggle_percent"] == -10
+    assert ctx.hero.money_cp == 955
+
+
+def test_failed_haggle_makes_services_dearer(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 14)
+    haggle(ctx)
+    assert buy(ctx, "room_modest").result["price_cp"] == 55
+
+
+def test_second_haggle_same_day_is_rejected_without_roll(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    haggle(ctx)
+    before = dump(ctx)
+    d = haggle(ctx)
+    assert d.status == "rejected"
+    assert d.signal_to_master
+    assert ctx.rng.calls == ["d20"]
+    assert dump(ctx) == before
+
+
+def test_next_day_haggle_is_allowed_again_and_old_flag_is_ignored(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    haggle(ctx)
+    ctx.bundle.world.clock.advance(DAY_S)
+    assert prices(listing(ctx))["room_modest"] == 50
+    assert haggle(ctx).status == "accepted"
+    assert ctx.bundle.world.flags["haggle:grok"] == "1:-10"
+
+
+def test_haggle_does_not_spend_scene_trades_for_services_npc(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    haggle(ctx)
+    assert ctx.scene.trades == 0
+
+
+def test_haggle_with_merchant_and_services_shares_one_haggle(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    grok(ctx).trade = TradeProfile(kind="general", purse_cp=5000, restock_at_s=FAR)
+    haggle(ctx)
+    assert grok(ctx).trade.haggle_percent == -10
+    assert "haggle:grok" not in ctx.bundle.world.flags
+    assert prices(listing(ctx))["room_modest"] == 45
+    assert haggle(ctx).status == "rejected"
+
+
+def test_merchant_trade_haggle_applies_to_services(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 20)
+    grok(ctx).trade = TradeProfile(kind="general", purse_cp=5000, restock_at_s=FAR)
+    haggle(ctx)
+    assert buy(ctx, "room_modest").result["price_cp"] == 40
+
+
+def test_haggle_with_npc_without_trade_or_services_is_not_merchant(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    before = dump(ctx)
+    d = haggle(ctx, npc_id="grakh")
+    assert isinstance(d, Invalid)
+    assert d.code == "not_merchant"
+    assert dump(ctx) == before
+
+
+def test_haggle_unknown_npc_hint_lists_merchants_and_providers(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15)
+    d = haggle(ctx, npc_id="nobody")
+    assert d.code == "unknown_npc"
+    assert "grok" in d.message
+
+
+def test_haggle_hostile_services_npc_refuses(registry, cfg):
+    ctx = haggle_ctx(registry, cfg, 15, attitude=-50)
+    assert haggle(ctx).status == "rejected"
+    assert ctx.rng.calls == []
+
+
+def test_trade_with_services_only_npc_is_not_merchant(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req(
+        "trade", npc_id="grok", direction="buy", item_id="arrows", qty=1, quality="any"
+    ))
+    assert isinstance(d, Invalid)
+    assert d.code == "not_merchant"
+
+
+def test_set_flag_cannot_forge_haggle_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name="haggle:grok", value="0:-20"))
+    assert isinstance(d, Invalid) or d.status == "rejected"
+    assert "haggle:grok" not in ctx.bundle.world.flags
+
+
+# npc_update services
+
+def update(ctx, npc_id="grok", **fields):
+    return apply(ctx, req("npc_update", npc_id=npc_id, **fields))
+
+
+def create(ctx, npc_id="cook_1", **fields):
+    data = {"name": "Повар Ганс", "means": ["кухня"], "named": True}
+    data.update(fields)
+    return apply(ctx, req("npc_create", id=npc_id, **data))
+
+
+def test_update_adds_services_to_npc(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    d = update(ctx, services=["room_modest"])
+    assert d.status == "accepted"
+    assert grok(ctx).services == ["room_modest"]
+    assert d.result["services"] == ["room_modest"]
+
+
+def test_update_merges_without_duplicates_keeping_order(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_modest"])
+    update(ctx, services=["ale", "room_modest", "ale"])
+    assert grok(ctx).services == ["room_modest", "ale"]
+
+
+def test_update_repeat_of_same_id_does_not_duplicate(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_modest"])
+    update(ctx, services=["room_modest"])
+    assert grok(ctx).services == ["room_modest"]
+
+
+def test_update_never_removes_services(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_modest", "ale"])
+    update(ctx, services=["meal_modest"])
+    assert grok(ctx).services == ["room_modest", "ale", "meal_modest"]
+
+
+def test_update_logs_services(registry, cfg):
+    d = update(service_ctx(registry, cfg, services=[]), services=["room_modest", "ale"])
+    assert any("оказывает" in line and "room_modest, ale" in line for line in d.log)
+    assert any("Грок" in line for line in d.log)
+
+
+def test_update_unknown_service_is_invalid_and_changes_nothing(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    before = dump(ctx)
+    d = update(ctx, services=["room_modest", "castle"])
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_service"
+    assert "castle" in d.message
+    assert "room_modest" in d.message
+    assert dump(ctx) == before
+
+
+def test_update_with_only_services_is_not_empty(registry, cfg):
+    d = update(service_ctx(registry, cfg, services=[]), services=["ale"])
+    assert not (isinstance(d, Invalid) and d.code == "empty_update")
+
+
+def test_update_with_empty_services_alone_is_empty_update(registry, cfg):
+    d = update(service_ctx(registry, cfg), services=[])
+    assert isinstance(d, Invalid)
+    assert d.code == "empty_update"
+
+
+def test_update_allowed_for_key_npc(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = update(ctx, npc_id="grakh", services=["ale"])
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["grakh"].services == ["ale"]
+
+
+def test_update_services_have_no_scene_limit(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    ctx.scene.merchants_created = 5
+    assert update(ctx, services=["ale"]).status == "accepted"
+
+
+def test_update_services_together_with_trade_kind(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    d = update(ctx, services=["ale"], trade_kind="general")
+    assert d.status == "accepted"
+    assert grok(ctx).trade.kind == "general"
+    assert grok(ctx).services == ["ale"]
+
+
+def test_updated_npc_becomes_a_provider(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    update(ctx, services=["ale"])
+    assert prices(listing(ctx)) == {"ale": 4}
+
+
+def test_create_with_services(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = create(ctx, services=["meal_modest", "ale"])
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["cook_1"].services == ["meal_modest", "ale"]
+    assert any("оказывает" in line for line in d.log)
+
+
+def test_create_dedups_services(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    create(ctx, services=["ale", "ale"])
+    assert ctx.bundle.world.npcs["cook_1"].services == ["ale"]
+
+
+def test_create_without_services_has_none(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    create(ctx)
+    assert ctx.bundle.world.npcs["cook_1"].services == []
+
+
+def test_create_with_unknown_service_is_invalid_and_changes_nothing(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = create(ctx, services=["castle"])
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_service"
+    assert dump(ctx) == before
+
+
+def test_create_key_npc_with_services_is_allowed(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = create(ctx, key=True, services=["room_modest"])
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["cook_1"].services == ["room_modest"]
+
+
+def test_create_with_services_and_trade_kind(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    create(ctx, services=["ale"], trade_kind="general")
+    npc = ctx.bundle.world.npcs["cook_1"]
+    assert npc.trade.kind == "general"
+    assert npc.services == ["ale"]

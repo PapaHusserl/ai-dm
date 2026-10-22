@@ -1,0 +1,36 @@
+- id: copper_kettle
+  name: Трактир «Медный котёл»
+  description: Тёплый зал с длинными столами и камином, за стойкой дымится котёл; наверху сдаются комнаты разного достатка.
+  tags:
+  - таверна
+  connections:
+  - to: wayside_temple
+    distance_m: 60
+  - to: barber_shop
+    distance_m: 40
+  - to: forest_edge
+    distance_m: 400
+- id: wayside_temple
+  name: Придорожный храм
+  description: Небольшой каменный храм с приделом для больных; на алтаре горят свечи, пахнет воском и травами.
+  tags:
+  - храм
+  connections:
+  - to: copper_kettle
+    distance_m: 60
+- id: barber_shop
+  name: Цирюльня
+  description: Тесная лавка с зеркалом, тазами и пучками сушёных трав на балках.
+  tags:
+  - цирюльня
+  connections:
+  - to: copper_kettle
+    distance_m: 40
+- id: forest_edge
+  name: Опушка леса
+  description: Тихая опушка у дороги, поваленное дерево, кострище, дальше стена деревьев. Ни жилья, ни людей.
+  tags:
+  - лес
+  connections:
+  - to: copper_kettle
+    distance_m: 400

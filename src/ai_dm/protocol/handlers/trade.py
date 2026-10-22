@@ -13,6 +13,7 @@ from ai_dm.rules import checks, custom_items, money
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.inventory import add_item, entry_name, remove_item
+from ai_dm.rules.services import haggle_slot, save_haggle
 from ai_dm.state.hero import InventoryEntry
 
 
@@ -41,10 +42,10 @@ def trade(ctx, request):
 def haggle(ctx, request):
     now_s = ctx.bundle.world.clock.now_s
     npc = ctx.bundle.world.npcs.get(request.npc_id)
-    problem = merchant_base_problem(ctx, request, npc)
+    problem = merchant_base_problem(ctx, request, npc, "haggle")
     if problem is not None:
         return problem
-    profile = npc.trade
+    profile = haggle_slot(npc, ctx.bundle.world)
     if not trade_rules.can_haggle(profile, now_s):
         today = trade_rules.active_haggle(profile, now_s)
         return rejected(
@@ -60,6 +61,7 @@ def haggle(ctx, request):
     ref = ctx.add_roll(result, ctx.hero.id)
     percent = trade_rules.haggle_percent_for(result.outcome, result.total, dc, ctx.cfg)
     trade_rules.apply_haggle(profile, percent, now_s)
+    save_haggle(profile)
     return Decision(
         status="accepted",
         result={

@@ -69,7 +69,9 @@ def npc_create(ctx, request):
             code="unknown_location",
             message=f"нет локации {request.location_id!r}" + allowed(world.locations),
         )
-    problem = new_merchant_problem(ctx, request.trade_kind, request.key)
+    problem = new_merchant_problem(ctx, request.trade_kind, request.key) or services_problem(
+        ctx, request
+    )
     if problem is not None:
         return problem
     npc = NPC(
@@ -91,7 +93,28 @@ def npc_create(ctx, request):
     if request.trade_kind is not None:
         make_merchant(ctx, npc, request.trade_kind)
         decision.log.append(f"{npc.name} торгует: {request.trade_kind}")
+    if request.services is not None:
+        add_services(npc, request.services, decision)
     return decision
+
+
+def services_problem(ctx, request):
+    # Invalid, если среди услуг запроса есть id, которого нет в реестре услуг; иначе None
+    kinds = ctx.cfg.services.kinds
+    unknown = [kind_id for kind_id in request.services or [] if kind_id not in kinds]
+    if unknown:
+        return Invalid(
+            code="unknown_service",
+            message=f"нет услуг {', '.join(unknown)}" + allowed(kinds),
+        )
+    return None
+
+
+def add_services(npc, ids, decision):
+    # объединение без дублей, снятия услуг нет
+    npc.services += [kind_id for kind_id in dict.fromkeys(ids) if kind_id not in npc.services]
+    decision.log.append(f"{npc_label(npc)} оказывает: {', '.join(npc.services)}")
+    decision.result["services"] = list(npc.services)
 
 
 def new_merchant_problem(ctx, kind, key):
@@ -346,7 +369,7 @@ def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
-        "memory_kind", "memory_text", "name", *GOAL_FIELDS,
+        "memory_kind", "memory_text", "name", "services", *GOAL_FIELDS,
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -364,7 +387,10 @@ def update_problem(ctx, npc, request):
 def merchant_goal_problem(ctx, npc, request):
     # отдельная функция: пятый операнд цепочки в update_problem даёт smell «Complex binary
     # expression»
-    return merchant_update_problem(ctx, npc, request) or goal_problem(ctx, npc, request)
+    return (
+        merchant_update_problem(ctx, npc, request) or services_problem(ctx, request)
+        or goal_problem(ctx, npc, request)
+    )
 
 
 def name_problem(ctx, npc, request):
@@ -452,6 +478,8 @@ def npc_update(ctx, request):
         make_merchant(ctx, npc, request.trade_kind)
         decision.log.append(f"{npc_label(npc)} торгует: {request.trade_kind}")
         decision.result["trade_kind"] = request.trade_kind
+    if request.services is not None:
+        add_services(npc, request.services, decision)
     return decision
 
 

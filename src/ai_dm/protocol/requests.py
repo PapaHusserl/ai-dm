@@ -369,6 +369,18 @@ class Haggle(Request):
     npc_id: str = Field(description="Id NPC-торговца (в scene_npcs с merchant).")
 
 
+class Service(Request):
+    """Платная услуга NPC в локации героя: еда, питьё, лечение. Цену считает движок."""
+
+    type: Literal["service"]
+    npc_id: str = Field(description="Id NPC с услугами (в scene_npcs с services).")
+    direction: Literal["buy", "list"] = Field(
+        description="buy герой платит за услугу, list: показать услуги NPC с ценами (без оплаты)."
+    )
+    service_id: str = Field(description="Id услуги из services NPC; для list пусто.")
+    qty: int = Field(description="Сколько раз (порций, кружек, лечений); для list 0.")
+
+
 class Gold(Request):
     """Деньги героя: явная сумма, добыча с побеждённых по таблице или клад логова."""
 
@@ -489,8 +501,12 @@ class NpcCreate(Request):
     pronouns: str = Field(
         "", description="Местоимения/обращение, если отличаются от пола или важны; пусто = нет."
     )
+    services: list[str] = Field(
+        [], description="Id платных услуг NPC (ночлег, еда, лечение); пусто = нет."
+    )
     NEUTRAL: ClassVar[dict] = {
-        "motive": "", "location_id": "", "trade_kind": "none", "gender": "none", "pronouns": ""
+        "motive": "", "location_id": "", "trade_kind": "none", "gender": "none", "pronouns": "",
+        "services": [],
     }
 
 
@@ -567,9 +583,12 @@ class NpcUpdate(NpcUpdateBase):
         "", description="Настоящее имя безымянного выжившего боя (в состоянии unnamed); "
         "один раз; пусто = не менять."
     )
+    services: list[str] = Field(
+        [], description="Добавить NPC платные услуги (id видов); пусто = не менять."
+    )
     NEUTRAL: ClassVar[dict] = {
         **NpcUpdateBase.NEUTRAL, "trade_kind": "none", "memory_kind": "none", "memory_text": "",
-        "name": "",
+        "name": "", "services": [],
     }
 
 
@@ -1039,6 +1058,7 @@ REQUEST_MODELS = {
     "take_item": TakeItem,
     "trade": Trade,
     "haggle": Haggle,
+    "service": Service,
     "gold": Gold,
     "award_xp": AwardXp,
     "advance_time": AdvanceTime,
@@ -1101,8 +1121,8 @@ VISIBLE_TYPES = tuple(
 
 MasterRequest = Annotated[
     SkillCheck | SavingThrow | StartCombat | PlayerAction | NpcAction | DefeatOutcome | EndCombat
-    | Damage | GiveItem | GiveCustomItem | UseItem | CastSpell | TakeItem | Trade | Haggle | Gold
-    | AwardXp
+    | Damage | GiveItem | GiveCustomItem | UseItem | CastSpell | TakeItem | Trade | Haggle | Service
+    | Gold | AwardXp
     | AdvanceTime | Rest
     | WarnDanger
     | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | ChangeDeity

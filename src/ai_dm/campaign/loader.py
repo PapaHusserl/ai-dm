@@ -187,6 +187,14 @@ def ref_exists(target, ref, known, registry) -> bool:
     return ref in known[target]
 
 
+def unknown_service_errors(pack, base, kinds) -> list[str]:
+    # услуги NPC пака должны быть в реестре услуг ([services.kinds])
+    return [
+        f"{base / 'npcs.yaml'}: npc {npc.id!r}, поле services: неизвестная услуга {kind_id!r}"
+        for npc in pack.npcs for kind_id in npc.services if kind_id not in kinds
+    ]
+
+
 def check_pack_refs(pack, registry) -> list[str]:
     known = {
         "npc": {npc.id for npc in pack.npcs},
@@ -210,13 +218,15 @@ def check_pack_refs(pack, registry) -> list[str]:
                         f"{base / file}: {kind} {entity.id!r}, поле {field}: "
                         f"неизвестный {target} {ref!r}"
                     )
-    presets = load_rules_config().trade.presets
+    rules = load_rules_config()
+    presets = rules.trade.presets
     for npc in pack.npcs:
         if npc.trade is not None and npc.trade.kind not in presets:
             errors.append(
                 f"{base / 'npcs.yaml'}: npc {npc.id!r}, поле trade.kind: "
                 f"неизвестный пресет торговца {npc.trade.kind!r}"
             )
+    errors += unknown_service_errors(pack, base, rules.services.kinds)
     owners = {}
     for npc in pack.npcs:
         owners[npc.id] = npc.opportunity

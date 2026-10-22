@@ -323,6 +323,34 @@ class TradeConfig(BaseModel):
         return self
 
 
+class ServiceKind(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    # цена за единицу в меди (до отношения и торга)
+    price_cp: int = Field(ge=0)
+    unit: Literal["night", "meal", "hour", "once"]
+    effect: Literal["lodging", "meal", "heal", "rest_short"]
+    # кубики лечения; обязательны при effect = heal
+    heal: str = ""
+    # текст вида для мастера (класс комнаты и т.п.)
+    description: str = ""
+
+    @model_validator(mode="after")
+    def check_heal(self):
+        if self.effect == "heal" and not self.heal:
+            raise ValueError("услуга heal требует кубики в поле heal")
+        if self.heal:
+            parse_dice(self.heal)
+        return self
+
+
+class ServicesConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # долгий отдых там, где есть ночлег у NPC, только после оплаты (У0 П2)
+    paid_rest: bool = True
+    kinds: dict[str, ServiceKind] = {}
+
+
 class AgingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     step_percent: int = 10
@@ -359,6 +387,7 @@ class RulesConfig(BaseModel):
     encounter: EncounterConfig = EncounterConfig()
     loot: LootConfig = LootConfig()
     trade: TradeConfig = TradeConfig()
+    services: ServicesConfig = ServicesConfig()
     world: WorldConfig
 
 

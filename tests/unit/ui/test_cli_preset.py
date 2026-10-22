@@ -211,8 +211,10 @@ def test_preset_without_codename_has_no_parenthesis(tmp_path, monkeypatch):
     monkeypatch.setattr(cli_module, "load_presets", lambda: {"heroic": plain})
     _, out = interactive(tmp_path, ["1", "1", "/quit"])
     line = next(line for line in out.lines if "Безымянный" in line)
-    assert "в духе" not in line
-    assert "(" not in line
+    # хвост строки -- подсказка про другие паки, её названия могут быть со скобками
+    label = line.split(" — ")[0]
+    assert "в духе" not in label
+    assert "(" not in label
 
 
 def test_codename_is_not_in_world_tone(tmp_path):
@@ -667,7 +669,8 @@ def test_real_vale_menu_hints_romantic_and_grim_but_not_heroic(tmp_path):
             items[current] += " " + line
     assert "dusk_academy" in items[4]
     assert "drunk_dragon" in items[3]
-    assert "Лучше подходит" not in items[2]
+    # героическое: подсказка может называть другие героические паки, но не текущий (vale)
+    assert "(vale)" not in items[2]
     assert "Лучше подходит" not in items[1]
     assert "Лучше подходит" not in items[5]
 
@@ -684,7 +687,10 @@ def test_real_vale_with_grim_prints_drunk_dragon_command(tmp_path):
 
 def test_real_vale_with_heroic_prints_no_hint(tmp_path):
     _, out = real_cli(tmp_path, "--hero", "arn", "--preset", "heroic")
-    assert HINT not in out.text
+    # текущий пак vale сам героический: себя он не предлагает (другие героические паки -- можно)
+    assert command("vale", "heroic") not in flat(out)
+    assert "romantic" not in flat(out)
+    assert "grim" not in flat(out)
 
 
 def test_real_dusk_academy_with_romantic_prints_no_hint(tmp_path):

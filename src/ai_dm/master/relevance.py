@@ -40,7 +40,7 @@ def npc_reason_set(bundle, npc, location_id, text, nearby_ids) -> set[str]:
         reasons.add("said")
     if npc.location_id in nearby_ids and npc.location_id != location_id:
         reasons.add("nearby")
-    if npc.trade is not None:
+    if npc.trade is not None or npc.services:
         reasons.add("merchant")
     return reasons
 

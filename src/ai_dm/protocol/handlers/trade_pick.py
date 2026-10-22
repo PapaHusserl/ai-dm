@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.handlers.world import rejected
-from ai_dm.protocol.hints import allowed, item_ids, merchant_ids, sold_ids
+from ai_dm.protocol.hints import allowed, item_ids, merchant_ids, provider_ids, sold_ids
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.inventory import SLOTS, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
@@ -18,18 +18,18 @@ class Source:
     holder: object = None
 
 
-def merchant_base_problem(ctx, request, npc):
+def merchant_base_problem(ctx, request, npc, mode="trade"):
     # общая часть trade и haggle: бой, NPC, отказ торговать; qty (если есть) проверяет вызывающий
-    problem = scene_problem(ctx, request, npc)
+    problem = scene_problem(ctx, request, npc, mode)
     if problem is not None:
         return problem
     return refusal_problem(ctx, npc)
 
 
-def scene_problem(ctx, request, npc):
+def scene_problem(ctx, request, npc, mode="trade"):
     if ctx.bundle.session.active_combat is not None:
         return Invalid(code="in_combat", message="во время боя не торгуют")
-    return npc_problem(ctx, request, npc)
+    return npc_problem(ctx, request, npc, mode)
 
 
 def refusal_problem(ctx, npc):
@@ -51,8 +51,36 @@ def merchant_problem(ctx, request, npc):
     return refusal_problem(ctx, npc)
 
 
-def npc_problem(ctx, request, npc):
-    here = merchant_ids(ctx.bundle.world, ctx.hero.location_id)
+def role_ids(world, location_id, mode):
+    # кто в локации годится для режима: trade -- торговцы, service -- с услугами, haggle -- оба
+    traders = merchant_ids(world, location_id)
+    providers = provider_ids(world, location_id)
+    if mode == "trade":
+        return traders
+    if mode == "service":
+        return providers
+    return sorted(set(traders + providers))
+
+
+def role_problem(npc, mode, here):
+    # Invalid, если у NPC нет нужной роли (режимы: trade, service, haggle), иначе None
+    if mode == "service":
+        if npc.services:
+            return None
+        return Invalid(
+            code="no_services",
+            message=f"{npc.name} не оказывает услуг: сначала npc_update с services" + allowed(here),
+        )
+    if npc.trade is not None or (mode == "haggle" and npc.services):
+        return None
+    return Invalid(
+        code="not_merchant",
+        message=f"{npc.name} не торговец: сначала npc_update с trade_kind" + allowed(here),
+    )
+
+
+def npc_problem(ctx, request, npc, mode="trade"):
+    here = role_ids(ctx.bundle.world, ctx.hero.location_id, mode)
     if npc is None:
         return Invalid(
             code="unknown_npc", message=f"нет NPC {request.npc_id!r}" + allowed(here)
@@ -61,12 +89,7 @@ def npc_problem(ctx, request, npc):
         return Invalid(
             code="npc_absent", message=f"{npc.name} сейчас не здесь" + allowed(here)
         )
-    if npc.trade is None:
-        return Invalid(
-            code="not_merchant",
-            message=f"{npc.name} не торговец: сначала npc_update с trade_kind" + allowed(here),
-        )
-    return None
+    return role_problem(npc, mode, here)
 
 
 def category_problem(ctx, request, npc):

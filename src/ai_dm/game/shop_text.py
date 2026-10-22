@@ -7,9 +7,11 @@ from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
+from ai_dm.rules.services import haggle_slot, kinds_of, providers_here, quote
 
 SHOP_ROWS_MAX = 40
 NO_MERCHANT = "Здесь никто не торгует"
+UNIT_WORDS = {"night": "ночь", "meal": "порция", "hour": "час", "once": "раз"}
 
 
 def merchants_here(world, location_id):
@@ -86,8 +88,40 @@ def sell_lines(hero, world, registry, npc, cfg):
     return sorted(lines)
 
 
+def shop_npcs(world, location_id):
+    # торговцы, затем NPC только с услугами
+    providers = [npc for npc in providers_here(world, location_id) if npc.trade is None]
+    return merchants_here(world, location_id) + providers
+
+
+def shop_head(npc, world, cfg):
+    now_s = world.clock.now_s
+    if npc.trade is not None:
+        purse = format_cp(trade_rules.purse_now(npc.trade, now_s, cfg))
+        head = f"{shown_name(npc)} ({npc.trade.kind}) — кошелёк торговца: {purse}"
+    else:
+        head = f"{shown_name(npc)} — услуги"
+    haggle = trade_rules.haggle_state(haggle_slot(npc, world), now_s).get("haggle")
+    if haggle:
+        sign = "−" if haggle["percent"] < 0 else "+"
+        head += f"; торг: {sign}{abs(haggle['percent'])}% до конца дня"
+    return head
+
+
+def service_lines(npc, world, cfg):
+    # блок «Услуги:» NPC; пусто, если услуг нет
+    kinds = kinds_of(npc, cfg)
+    if not kinds:
+        return []
+    lines = ["  Услуги:"]
+    for _kind_id, kind in kinds:
+        price = format_cp(quote(kind, npc, world, cfg))
+        lines.append(f"    {kind.name} — {price} / {UNIT_WORDS[kind.unit]}")
+    return lines
+
+
 def shop_lines(hero, world, registry, cfg):
-    npcs = merchants_here(world, hero.location_id)
+    npcs = shop_npcs(world, hero.location_id)
     if not npcs:
         return [NO_MERCHANT]
     lines = []
@@ -97,16 +131,11 @@ def shop_lines(hero, world, registry, cfg):
         if trade_rules.refuses(npc.attitude, cfg):
             lines.append(f"{shown_name(npc)} отказывается торговать")
             continue
-        now_s = world.clock.now_s
-        purse = format_cp(trade_rules.purse_now(npc.trade, now_s, cfg))
-        head = f"{shown_name(npc)} ({npc.trade.kind}) — кошелёк торговца: {purse}"
-        haggle = trade_rules.haggle_state(npc.trade, now_s).get("haggle")
-        if haggle:
-            sign = "−" if haggle["percent"] < 0 else "+"
-            head += f"; торг: {sign}{abs(haggle['percent'])}% до конца дня"
-        lines.append(head)
-        level = hero.sheet.level
-        lines += shop_item_lines(sale_rows(npc, world, registry, level, cfg))
-        lines += sell_lines(hero, world, registry, npc, cfg)
+        lines.append(shop_head(npc, world, cfg))
+        if npc.trade is not None:
+            level = hero.sheet.level
+            lines += shop_item_lines(sale_rows(npc, world, registry, level, cfg))
+            lines += sell_lines(hero, world, registry, npc, cfg)
+        lines += service_lines(npc, world, cfg)
     lines.append(f"Деньги: {format_cp(hero.money_cp)}")
     return lines

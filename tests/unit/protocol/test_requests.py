@@ -51,6 +51,7 @@ VALID = {
     "take_item": {"item_id": "crowbar", "qty": 1, "why": "lost"},
     "trade": {"npc_id": "mara", "direction": "buy", "item_id": "arrows", "qty": 2},
     "haggle": {"npc_id": "mara"},
+    "service": {"npc_id": "grok", "direction": "buy", "service_id": "meal_modest", "qty": 2},
     "gold": {"direction": "gain", "kind": "loot_individual", "cr": "1/4"},
     "award_xp": {"scale": "medium", "reason": "нашёл тайник"},
     "advance_time": {"travel_to": "forest", "pace": "slow"},
@@ -89,8 +90,8 @@ def example(type_name):
     return {"type": type_name, **copy.deepcopy(VALID[type_name])}
 
 
-def test_there_are_38_request_types():
-    assert len(ALL_TYPES) == 38
+def test_there_are_39_request_types():
+    assert len(ALL_TYPES) == 39
     assert sorted(REQUEST_MODELS) == sorted(ALL_TYPES)
 
 
@@ -99,7 +100,7 @@ def test_examples_cover_every_type():
 
 
 def test_visible_hidden_and_npc_only_partition_all_types():
-    assert len(VISIBLE_TYPES) == 36
+    assert len(VISIBLE_TYPES) == 37
     assert sorted(HIDDEN_TYPES) == ["afterlife_action"]
     assert NPC_ONLY_TYPES == ("npc_action",)
     assert sorted(VISIBLE_TYPES + HIDDEN_TYPES + NPC_ONLY_TYPES) == sorted(ALL_TYPES)
@@ -109,7 +110,7 @@ def test_visible_set_matches_plan():
     plan = [
         "skill_check", "saving_throw", "start_combat", "player_action", "defeat_outcome",
         "end_combat", "damage", "give_item", "give_custom_item", "use_item", "take_item", "gold",
-        "trade", "haggle", "award_xp",
+        "trade", "haggle", "service", "award_xp",
         "advance_time",
         "rest", "set_flag", "npc_create", "location_create", "npc_update", "offer_choices",
         "end_scene", "end_chapter", "unsupported_action", "reveal_secret", "event_start",

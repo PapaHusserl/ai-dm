@@ -177,6 +177,93 @@ categories = ["gear", "valuable"]
 purse_cp = 3000
 buys = ["weapon", "armor", "ammo", "gear", "consumable", "clothing", "valuable"]
 
+# платные услуги NPC (service): ночлег, еда, лечение; цена в меди за единицу
+[services]
+paid_rest = true
+
+[services.kinds.room_poor]
+name = "комната (бедная)"
+unit = "night"
+effect = "lodging"
+price_cp = 10
+description = "тюфяк в общей комнате, шумно и сыро"
+
+[services.kinds.room_modest]
+name = "комната (скромная)"
+unit = "night"
+effect = "lodging"
+price_cp = 50
+description = "своя узкая комната с простой кроватью"
+
+[services.kinds.room_comfortable]
+name = "комната (удобная)"
+unit = "night"
+effect = "lodging"
+price_cp = 80
+description = "чистая комната с хорошей постелью и сундуком"
+
+[services.kinds.room_wealthy]
+name = "комната (богатая)"
+unit = "night"
+effect = "lodging"
+price_cp = 200
+description = "просторные покои с мягкой постелью и камином"
+
+[services.kinds.meal_poor]
+name = "еда (скудная)"
+unit = "meal"
+effect = "meal"
+price_cp = 2
+description = "хлеб и похлёбка"
+
+[services.kinds.meal_modest]
+name = "еда (скромная)"
+unit = "meal"
+effect = "meal"
+price_cp = 10
+description = "горячее блюдо с хлебом"
+
+[services.kinds.meal_comfortable]
+name = "еда (добротная)"
+unit = "meal"
+effect = "meal"
+price_cp = 20
+description = "сытный обед с мясом"
+
+[services.kinds.ale]
+name = "эль (кружка)"
+unit = "meal"
+effect = "meal"
+price_cp = 4
+
+[services.kinds.wine_common]
+name = "вино (бутылка)"
+unit = "meal"
+effect = "meal"
+price_cp = 20
+
+[services.kinds.heal_barber]
+name = "лечение цирюльника"
+unit = "once"
+effect = "heal"
+heal = "1d8"
+price_cp = 50
+description = "перевязка и целебные мази"
+
+[services.kinds.heal_temple]
+name = "исцеление в храме"
+unit = "once"
+effect = "heal"
+heal = "2d8+4"
+price_cp = 200
+description = "молитва и возложение рук"
+
+[services.kinds.bed_hour]
+name = "час в постели"
+unit = "hour"
+effect = "rest_short"
+price_cp = 5
+
 [limits.gold_explicit_max_cp_by_level]
 1 = 5000
 2 = 10000

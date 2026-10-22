@@ -70,6 +70,7 @@ def test_rules_mention_only_known_tools():
         "can_pray", "god_id", "hero_hidden", "spell_id", "game_summary", "improvised_thrown",
         "lost_items", "gear_looted", "purse_cp", "sell_factor", "min_cp", "max_cp", "total_cp",
         "cost_cp", "price_cp", "item_id", "trade_kind", "holder_npc_id", "haggle_percent",
+        "service_id",
             "bad_circle", "prepared_swap", "recent_turns",
         "memory_kind", "memory_text", "memory_last",
         "goal_kind", "goal_target", "goal_text", "goal_status",
