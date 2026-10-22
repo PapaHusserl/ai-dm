@@ -758,3 +758,107 @@ def test_external_source_sees_now_s(registry):
     modifiers.register(TimeSource())
     roll(make_request(now_s=1234), ScriptedRng((20, 10)), registry, modifiers=modifiers)
     assert seen == [1234]
+
+
+# У1 П1: target "ability_check", фильтр по часам, подпись «ухожен»
+
+def groomed(expires_at=None, ability="cha"):
+    params = {"target": "ability_check", "dice": "1d4", "consume": True}
+    if ability is not None:
+        params["ability"] = ability
+    expires = None if expires_at is None else Expiry(kind="seconds", value=expires_at)
+    return ActiveEffect(id="groomed", source="service:tobb", kind="modifier", params=params,
+                        expires=expires)
+
+
+def check_request(actor, ability="cha", **kwargs):
+    return make_request("check", actor=actor, ability=ability, skill="persuasion", **kwargs)
+
+
+def test_ability_check_effect_adds_die_to_check_of_that_ability(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed())
+    result = roll(check_request(actor), ScriptedRng((20, 10), (4, 3)), registry)
+    assert result.total == 10 + 5 + 3
+
+
+def test_ability_check_effect_label_is_groomed_word(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed())
+    result = roll(check_request(actor), ScriptedRng((20, 10), (4, 3)), registry)
+    assert "1d4 (3)" in result.log.text
+    assert "ухожен" in result.log.text
+
+
+def test_ability_check_effect_is_consumed_by_the_check(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed())
+    roll(check_request(actor), ScriptedRng((20, 10), (4, 3)), registry)
+    assert actor.active_effects == []
+
+
+def test_ability_check_effect_ignores_other_ability(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed())
+    result = roll(check_request(actor, ability="str"), ScriptedRng((20, 10)), registry)
+    assert result.total == 15
+    assert len(actor.active_effects) == 1
+
+
+def test_ability_check_effect_ignores_attack_and_save(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed())
+    roll(make_request(actor=actor), ScriptedRng((20, 10)), registry)
+    roll(make_request("save", actor=actor, ability="cha"), ScriptedRng((20, 10)), registry)
+    assert len(actor.active_effects) == 1
+
+
+def test_ability_check_effect_without_ability_param_applies_to_any_check(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed(ability=None))
+    result = roll(check_request(actor, ability="str"), ScriptedRng((20, 10), (4, 2)), registry)
+    assert result.total == 10 + 5 + 2
+
+
+def test_expired_seconds_effect_gives_no_modifier(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed(expires_at=1000))
+    result = roll(check_request(actor, now_s=1000), ScriptedRng((20, 10)), registry)
+    assert result.total == 15
+    assert len(actor.active_effects) == 1
+
+
+def test_not_yet_expired_seconds_effect_applies(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed(expires_at=1000))
+    result = roll(check_request(actor, now_s=999), ScriptedRng((20, 10), (4, 3)), registry)
+    assert result.total == 18
+
+
+def test_seconds_effect_without_now_s_applies_as_before(registry):
+    actor = make_creature()
+    actor.active_effects.append(groomed(expires_at=1000))
+    result = roll(check_request(actor), ScriptedRng((20, 10), (4, 3)), registry)
+    assert result.total == 18
+
+
+def test_expired_effect_on_target_gives_no_modifier(registry):
+    target = make_creature()
+    target.active_effects.append(
+        ActiveEffect(
+            id="dodge", source="x", kind="modifier",
+            params={"target": "attack_roll", "mode": "disadvantage", "side": "target"},
+            expires=Expiry(kind="seconds", value=50),
+        )
+    )
+    result = roll(make_request(target=target, now_s=60), two_dice(), registry)
+    assert result.advantage == "normal"
+
+
+def test_effect_without_expiry_applies_with_now_s(registry):
+    actor = make_creature()
+    actor.active_effects.append(
+        modifier_effect("sap", target="attack_roll", mode="disadvantage", consume=True)
+    )
+    result = roll(make_request(actor=actor, now_s=10**6), two_dice(), registry)
+    assert result.advantage == "disadvantage"

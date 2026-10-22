@@ -12,7 +12,7 @@ from ai_dm.rules.derived import (
     skill_bonus,
     skill_parts,
 )
-from ai_dm.rules.roll_pipeline import roll
+from ai_dm.rules.roll_pipeline import roll, source_label
 
 
 def bow_request(**kwargs):
@@ -182,3 +182,21 @@ def test_grey_save_parts_sum_equals_saving_throw_bonus(registry):
 def test_grey_save_without_proficiency_has_only_ability_part(registry):
     hero = make_ranger(registry)
     assert saving_throw_parts(hero, registry, "wis") == [("Мдр", 2)]
+
+
+# source_label (У1 П1): реестр -> слово из SOURCE_WORDS -> сам id
+
+def test_source_label_of_service_boon_is_a_word(registry):
+    assert source_label(registry, "groomed") == "ухожен"
+
+
+def test_source_label_of_known_source_word(registry):
+    assert source_label(registry, "sap") == "ослаблен"
+
+
+def test_source_label_of_unknown_source_is_raw_id(registry):
+    assert source_label(registry, "mystery_source") == "mystery_source"
+
+
+def test_source_label_prefers_registry_name_over_word(registry):
+    assert source_label(registry, "bless") == registry.get("spell", "bless").name

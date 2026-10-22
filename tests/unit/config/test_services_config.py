@@ -30,6 +30,8 @@ def test_default_kinds_present():
         "meal_poor", "meal_modest", "meal_comfortable", "ale", "wine_common",
         "heal_barber", "heal_temple", "bed_hour",
         "uncurse_temple",
+        "companion_cheap", "companion_common", "companion_fine",
+        "haircut", "shave", "bath", "bard_song", "fortune",
     }
 
 
@@ -166,6 +168,97 @@ def test_cure_kind_with_cures_in_toml_loads():
     assert load_rules_config(toml_text=toml).services.kinds["exorcism"].cures == [
         "cursed", "poisoned",
     ]
+
+
+# У1 П1: boon, intimate, risks, effect = "plain", romance_from, hygiene_days
+
+def test_unknown_boon_is_error():
+    with pytest.raises(ValidationError):
+        kind(boon="nope")
+
+
+def test_known_boons_are_accepted():
+    for boon in ("groomed", "inspired", "washed"):
+        assert kind(boon=boon).boon == boon
+
+
+def test_unknown_boon_in_toml_is_load_error():
+    toml = (
+        '[services.kinds.spa]\nname = "спа"\nprice_cp = 1\nunit = "once"\n'
+        'effect = "plain"\nboon = "nope"\n'
+    )
+    with pytest.raises(ValueError):
+        load_rules_config(toml_text=toml)
+
+
+def test_plain_effect_is_accepted():
+    assert kind(effect="plain", unit="once").effect == "plain"
+
+
+def test_boon_intimate_and_risks_defaults():
+    k = kind()
+    assert k.boon == ""
+    assert k.intimate is False
+    assert (k.risks.disease_dc, k.risks.theft_dc) == (0, 0)
+
+
+def test_risks_extra_field_is_error():
+    with pytest.raises(ValidationError):
+        kind(risks={"fire_dc": 5})
+
+
+def test_negative_risk_dc_is_error():
+    with pytest.raises(ValidationError):
+        kind(risks={"disease_dc": -1})
+
+
+def test_services_romance_and_hygiene_defaults():
+    assert services().romance_from == 90
+    assert services().hygiene_days == 7
+
+
+def test_bed_hour_costs_ten_copper():
+    assert services().kinds["bed_hour"].price_cp == 10
+
+
+def test_companion_classes_prices_and_risks():
+    kinds = services().kinds
+    names = ("companion_cheap", "companion_common", "companion_fine")
+    assert [kinds[k].price_cp for k in names] == [20, 100, 500]
+    risks = {k: (kinds[k].risks.disease_dc, kinds[k].risks.theft_dc) for k in names}
+    assert risks == {
+        "companion_cheap": (10, 12), "companion_common": (5, 7), "companion_fine": (0, 0),
+    }
+
+
+def test_companions_are_intimate_hourly_rest_with_inspiration():
+    for name in ("companion_cheap", "companion_common", "companion_fine"):
+        k = services().kinds[name]
+        assert (k.effect, k.unit, k.boon, k.intimate) == ("rest_short", "hour", "inspired", True)
+
+
+def test_haircut_and_shave_are_plain_groomed_once():
+    kinds = services().kinds
+    for name, price in (("haircut", 2), ("shave", 1)):
+        k = kinds[name]
+        assert (k.effect, k.unit, k.boon, k.price_cp, k.intimate) == (
+            "plain", "once", "groomed", price, False,
+        )
+
+
+def test_bath_is_plain_washed_for_ten_copper():
+    k = services().kinds["bath"]
+    assert (k.effect, k.unit, k.boon, k.price_cp) == ("plain", "once", "washed", 10)
+
+
+def test_bard_and_fortune_are_plain_without_boon():
+    kinds = services().kinds
+    assert (kinds["bard_song"].effect, kinds["bard_song"].boon, kinds["bard_song"].price_cp) == (
+        "plain", "", 10,
+    )
+    assert (kinds["fortune"].effect, kinds["fortune"].boon, kinds["fortune"].price_cp) == (
+        "plain", "", 50,
+    )
 
 
 def test_heal_kind_without_dice_in_toml_is_error():

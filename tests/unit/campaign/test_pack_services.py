@@ -84,7 +84,41 @@ def test_inn_test_has_innkeeper_temple_and_barber(registry):
     assert "room_modest" in by_id["innkeeper_brum"].services
     assert "ale" in by_id["innkeeper_brum"].services
     assert by_id["sister_ilda"].services == ["heal_temple", "uncurse_temple"]
-    assert by_id["barber_tobb"].services == ["heal_barber"]
+    assert by_id["barber_tobb"].services == ["heal_barber", "haircut", "shave"]
+
+
+def test_inn_test_innkeeper_has_bath(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    by_id = {n.id: n for n in pack.npcs}
+    assert "bath" in by_id["innkeeper_brum"].services
+
+
+def test_inn_test_has_two_companions_of_different_gender_in_the_tavern(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    companions = [
+        n for n in pack.npcs
+        if any(s.startswith("companion_") for s in n.services)
+    ]
+    assert {s for n in companions for s in n.services} == {"companion_cheap", "companion_common"}
+    assert {n.gender for n in companions} == {"female", "male"}
+    assert {n.location_id for n in companions} == {"copper_kettle"}
+
+
+def test_inn_test_has_no_fine_companion_pre_assigned(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    assert not [n for n in pack.npcs if "companion_fine" in n.services]
+
+
+def test_inn_test_has_a_bard_in_the_tavern(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    bards = [n for n in pack.npcs if "bard_song" in n.services]
+    assert [n.location_id for n in bards] == ["copper_kettle"]
+
+
+def test_inn_test_tavern_description_mentions_the_bathhouse(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    tavern = next(loc for loc in pack.locations if loc.id == "copper_kettle")
+    assert "банька" in tavern.description
 
 
 def test_inn_test_has_cursed_chapel_reachable_from_the_forest(registry):

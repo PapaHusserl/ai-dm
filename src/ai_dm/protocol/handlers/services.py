@@ -10,11 +10,13 @@ from ai_dm.rules import money
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
+from ai_dm.rules.boons import BOONS, grant_boon
 from ai_dm.rules.healing import heal
 
 # глагол лога по эффекту услуги
 LOG_WORDS = {
     "meal": "Заказано", "lodging": "Снято", "heal": "Лечение", "rest_short": "Оплачено",
+    "plain": "Оплачено",
 }
 
 
@@ -42,9 +44,22 @@ def service(ctx, request):
     unit = service_rules.quote(kind, npc, world, ctx.cfg)
     action = {"heal": heal_service, "cure": cure_service}.get(kind.effect, pay_service)
     decision = action(ctx, request, npc, kind, unit)
-    if isinstance(decision, Decision) and decision.status != "rejected" and scene is not None:
-        scene.trades += 1
+    if isinstance(decision, Decision) and decision.status != "rejected":
+        if kind.boon:
+            boon_and_risks(ctx, npc, kind, decision)
+        if scene is not None:
+            scene.trades += 1
     return decision
+
+
+def boon_and_risks(ctx, npc, kind, decision) -> None:
+    # бонус услуги после принятой оплаты: result, строка лога, сигнал мастеру
+    line, granted = grant_boon(ctx, kind.boon, npc)
+    decision.result["boon"] = kind.boon
+    decision.log.append(line)
+    if granted:
+        note = f"Герою достался бонус: {BOONS[kind.boon][0]}."
+        decision.signal_to_master = " ".join(x for x in (decision.signal_to_master, note) if x)
 
 
 def provider_problem(ctx, request, npc):

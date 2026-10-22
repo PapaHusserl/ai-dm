@@ -69,9 +69,15 @@ def test_quote_good_attitude_is_cheaper(cfg):
 
 
 def test_quote_rounds_up(cfg):
-    # 5 * 0.9 = 4.5 -> 5 (в пользу поставщика)
+    # 1 * 0.9 = 0.9 -> 1 (в пользу поставщика)
     npc = provider(attitude=60)
-    assert quote(cfg.services.kinds["bed_hour"], npc, make_world(), cfg) == 5
+    assert quote(cfg.services.kinds["shave"], npc, make_world(), cfg) == 1
+
+
+def test_quote_bed_hour_costs_ten_copper_and_nine_with_good_attitude(cfg):
+    kind = cfg.services.kinds["bed_hour"]
+    assert quote(kind, provider(), make_world(), cfg) == 10
+    assert quote(kind, provider(attitude=60), make_world(), cfg) == 9
 
 
 def test_quote_uses_flag_haggle_today(cfg):

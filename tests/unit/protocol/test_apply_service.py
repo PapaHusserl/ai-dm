@@ -978,7 +978,7 @@ def test_buy_rest_short_signal_points_to_rest_short(registry, cfg):
 def test_buy_rest_short_keeps_requested_qty(registry, cfg):
     ctx = service_ctx(registry, cfg, services=["bed_hour"])
     assert buy(ctx, "bed_hour", qty=2).result["qty"] == 2
-    assert ctx.hero.money_cp == 990
+    assert ctx.hero.money_cp == 980
 
 
 def test_set_flag_cannot_forge_lodging_flag(registry, cfg):
@@ -987,6 +987,200 @@ def test_set_flag_cannot_forge_lodging_flag(registry, cfg):
     assert isinstance(d, Invalid)
     assert d.code == "reserved_flag"
     assert "lodging:hero" not in ctx.bundle.world.flags
+
+
+# У1 П1: effect = "plain", бонусы услуг (boon), компания
+
+def barber_ctx(registry, cfg, money=1000, rng=None, services=("haircut", "shave")):
+    return service_ctx(registry, cfg, money=money, rng=rng, services=services)
+
+
+def effects(ctx, effect_id="groomed"):
+    return [e for e in ctx.hero.creature.active_effects if e.id == effect_id]
+
+
+def test_plain_service_spends_money_without_signal_or_boon(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["bard_song"])
+    d = buy(ctx, "bard_song")
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 990
+    assert d.signal_to_master is None
+    assert "boon" not in d.result
+    assert d.log[0].startswith("Оплачено")
+    assert ctx.hero.creature.active_effects == []
+
+
+def test_plain_service_spends_scene_trade(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["fortune"])
+    buy(ctx, "fortune")
+    assert ctx.scene.trades == 1
+
+
+def test_haircut_spends_two_copper_and_grants_groomed(registry, cfg):
+    ctx = barber_ctx(registry, cfg)
+    d = buy(ctx, "haircut")
+    assert ctx.hero.money_cp == 998
+    [effect] = effects(ctx)
+    assert effect.expires.kind == "seconds"
+    assert effect.expires.value == ctx.bundle.world.clock.now_s + 86400
+    assert d.result["boon"] == "groomed"
+
+
+def test_haircut_log_names_the_boon(registry, cfg):
+    d = buy(barber_ctx(registry, cfg), "haircut")
+    assert d.log[0].startswith("Оплачено")
+    assert "Бонус: ухожен" in d.log
+    assert "уже действует" not in d.log[-1]
+
+
+def test_haircut_signal_tells_master_about_boon(registry, cfg):
+    d = buy(barber_ctx(registry, cfg), "haircut")
+    assert "ухожен" in d.signal_to_master
+
+
+def test_shave_costs_one_copper_and_grants_groomed(registry, cfg):
+    ctx = barber_ctx(registry, cfg)
+    buy(ctx, "shave")
+    assert ctx.hero.money_cp == 999
+    assert len(effects(ctx)) == 1
+
+
+def test_second_haircut_charges_but_does_not_double_the_boon(registry, cfg):
+    ctx = barber_ctx(registry, cfg)
+    buy(ctx, "haircut")
+    d = buy(ctx, "haircut")
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 996
+    assert len(effects(ctx)) == 1
+    assert "уже действует" in d.log[-1]
+
+
+def test_second_groomed_service_signal_has_no_new_boon_note(registry, cfg):
+    ctx = barber_ctx(registry, cfg)
+    buy(ctx, "haircut")
+    d = buy(ctx, "shave")
+    assert not d.signal_to_master or "достался" not in d.signal_to_master
+
+
+def test_haircut_without_money_is_rejected_without_boon(registry, cfg):
+    ctx = barber_ctx(registry, cfg, money=1)
+    d = buy(ctx, "haircut")
+    assert d.status == "rejected"
+    assert effects(ctx) == []
+    assert ctx.hero.money_cp == 1
+    assert "boon" not in (d.result or {})
+
+
+def test_haircut_boon_applies_to_next_persuasion_check(registry, cfg):
+    ctx = barber_ctx(registry, cfg, rng=ScriptedRng(d20=[10], d4=[3]))
+    buy(ctx, "haircut")
+    d = apply(ctx, req("skill_check", skill="persuasion", category="medium"))
+    assert "1d4 (3)" in d.log[0]
+    assert "ухожен" in d.log[0]
+    assert effects(ctx) == []
+
+
+def test_haircut_boon_stays_after_athletics_check(registry, cfg):
+    ctx = barber_ctx(registry, cfg, rng=ScriptedRng(d20=[10]))
+    buy(ctx, "haircut")
+    d = apply(ctx, req("skill_check", skill="athletics", category="medium"))
+    assert "ухожен" not in d.log[0]
+    assert len(effects(ctx)) == 1
+
+
+def test_haircut_boon_is_gone_after_a_day(registry, cfg):
+    ctx = barber_ctx(registry, cfg, rng=ScriptedRng(d20=[10]))
+    buy(ctx, "haircut")
+    ctx.bundle.world.clock.advance(86400 + 1)
+    d = apply(ctx, req("skill_check", skill="persuasion", category="medium"))
+    assert "ухожен" not in d.log[0]
+
+
+def test_bath_marks_hero_washed_now(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["bath"])
+    ctx.bundle.world.clock.advance(5000)
+    d = buy(ctx, "bath")
+    assert ctx.bundle.world.flags[f"washed:{ctx.hero.id}"] == 5000
+    assert ctx.hero.money_cp == 990
+    assert d.result["boon"] == "washed"
+    assert "Бонус: чист" in d.log
+
+
+def test_bath_adds_no_active_effect(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["bath"])
+    buy(ctx, "bath")
+    assert ctx.hero.creature.active_effects == []
+
+
+def test_set_flag_cannot_forge_washed_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name="washed:hero", value="0"))
+    assert isinstance(d, Invalid)
+    assert d.code == "reserved_flag"
+
+
+def companion_ctx(registry, cfg, kind="companion_common", money=10000):
+    ctx = service_ctx(registry, cfg, money=money, services=[kind])
+    ctx.hero.heroic_inspiration = False
+    return ctx
+
+
+def test_companion_gives_inspiration_and_rest_short_signal(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    d = buy(ctx, "companion_common")
+    assert d.status == "accepted"
+    assert ctx.hero.heroic_inspiration is True
+    assert "rest short" in d.signal_to_master
+    assert d.result["boon"] == "inspired"
+    assert "Бонус: вдохновение" in d.log
+
+
+def test_companion_signal_joins_rest_short_and_boon_note_with_one_space(registry, cfg):
+    d = buy(companion_ctx(registry, cfg), "companion_common")
+    assert d.signal_to_master == (
+        "Платный отдых оплачен: теперь rest short в этом же ходу. "
+        "Герою достался бонус: вдохновение."
+    )
+
+
+def test_companion_prices_follow_the_classes(registry, cfg):
+    classes = (("companion_cheap", 20), ("companion_common", 100), ("companion_fine", 500))
+    for kind, price in classes:
+        ctx = companion_ctx(registry, cfg, kind)
+        buy(ctx, kind)
+        assert ctx.hero.money_cp == 10000 - price
+
+
+def test_companion_when_already_inspired_charges_and_says_so(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    ctx.hero.heroic_inspiration = True
+    d = buy(ctx, "companion_common")
+    assert ctx.hero.money_cp == 10000 - 100
+    assert ctx.hero.heroic_inspiration is True
+    assert "уже воодушевлён" in d.log[-1]
+    assert "rest short" in d.signal_to_master
+
+
+def test_companion_clamped_by_money_still_grants_boon(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_cheap", money=30)
+    d = buy(ctx, "companion_cheap", qty=2)
+    assert d.status == "clamped"
+    assert d.result["qty"] == 1
+    assert ctx.hero.heroic_inspiration is True
+
+
+def test_companion_without_money_gives_no_inspiration(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_common", money=99)
+    d = buy(ctx, "companion_common")
+    assert d.status == "rejected"
+    assert ctx.hero.heroic_inspiration is False
+
+
+def test_companion_over_scene_limit_gives_no_inspiration(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene
+    assert buy(ctx, "companion_common").status == "rejected"
+    assert ctx.hero.heroic_inspiration is False
 
 
 # npc_update services

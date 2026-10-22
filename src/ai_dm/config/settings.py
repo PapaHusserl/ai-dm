@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ai_dm.content.models.items import Rarity
+from ai_dm.core.boon_ids import BOON_IDS
 from ai_dm.core.dice import parse_dice
 from ai_dm.core.duration import Duration
 
@@ -323,19 +324,31 @@ class TradeConfig(BaseModel):
         return self
 
 
+class ServiceRisks(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # СЛ спасброска от болезни и от кражи; 0 -- последствия нет
+    disease_dc: int = Field(default=0, ge=0)
+    theft_dc: int = Field(default=0, ge=0)
+
+
 class ServiceKind(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     # цена за единицу в меди (до отношения и торга)
     price_cp: int = Field(ge=0)
     unit: Literal["night", "meal", "hour", "once"]
-    effect: Literal["lodging", "meal", "heal", "rest_short", "cure"]
+    effect: Literal["lodging", "meal", "heal", "rest_short", "cure", "plain"]
     # кубики лечения; обязательны при effect = heal
     heal: str = ""
     # id состояний, которые снимает услуга; обязательны при effect = cure
     cures: list[str] = []
     # текст вида для мастера (класс комнаты и т.п.)
     description: str = ""
+    # id бонуса герою после оплаты (rules/boons.py: BOONS); пусто -- без бонуса
+    boon: str = ""
+    # платная близость: память NPC и последствия (У1 П2, П3)
+    intimate: bool = False
+    risks: ServiceRisks = ServiceRisks()
 
     @model_validator(mode="after")
     def check_heal(self):
@@ -345,6 +358,8 @@ class ServiceKind(BaseModel):
             raise ValueError("услуга cure требует id состояний в поле cures")
         if self.heal:
             parse_dice(self.heal)
+        if self.boon and self.boon not in BOON_IDS:
+            raise ValueError(f"неизвестный boon {self.boon!r}: {list(BOON_IDS)}")
         return self
 
 
@@ -352,6 +367,10 @@ class ServicesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # долгий отдых там, где есть ночлег у NPC, только после оплаты (У0 П2)
     paid_rest: bool = True
+    # отношение NPC, с которого платная близость запоминается как роман (У1 П2)
+    romance_from: int = Field(default=90, ge=-100, le=100)
+    # дней без мытья до состояния «вонь» (У1 П3)
+    hygiene_days: int = Field(default=7, ge=0)
     kinds: dict[str, ServiceKind] = {}
 
 

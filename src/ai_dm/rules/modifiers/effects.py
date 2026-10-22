@@ -1,4 +1,4 @@
-from ai_dm.rules.creatures import creature_of
+from ai_dm.rules.creatures import creature_of, live_effects
 from ai_dm.rules.derived import ability_modifier
 from ai_dm.rules.modifiers.base import Modifier
 
@@ -9,6 +9,7 @@ OLD_AGE_ABILITIES = ("str", "dex", "con")
 EFFECT_TARGETS = {
     "attack_roll": ("attack",),
     "saving_throw": ("save", "death_save"),
+    "ability_check": ("check",),
 }
 
 
@@ -21,7 +22,7 @@ class EffectSource:
         if request.target is not None:
             holders.append(("target", creature_of(request.target)))
         for side, creature in holders:
-            for effect in creature.active_effects:
+            for effect in live_effects(creature, request.now_s):
                 if effect.kind == "old_age":
                     # -1 к характеристике за шаг старости: штраф -- разница модификаторов
                     holder = request.actor

@@ -103,3 +103,11 @@ cha  # unused variable (protocol/requests.py)
 until_s  # unused variable (state/creature.py: Concentration, TempForm)
 temp_hp_granted  # unused variable (state/creature.py)
 temp_form  # unused variable (state/creature.py)
+# У1 П1 (решение проектировщика 2026-10-23): конфиг под П2/П3 -- снять, когда появятся читатели
+disease_dc  # unused variable (config/settings.py: ServiceRisks) -- П3
+theft_dc  # unused variable (config/settings.py: ServiceRisks) -- П3
+intimate  # unused variable (config/settings.py: ServiceKind) -- П2
+risks  # unused variable (config/settings.py: ServiceKind) -- П3
+romance_from  # unused variable (config/settings.py: ServicesConfig) -- П2
+hygiene_days  # unused variable (config/settings.py: ServicesConfig) -- П3
+washed_at  # unused function (rules/hygiene.py) -- П3

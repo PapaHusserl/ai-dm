@@ -88,8 +88,23 @@ def test_service_lines_follow_npc_order(registry, tmp_path):
 
 def test_unit_words_for_hour_and_once(registry, tmp_path):
     lines = shop(make_inn(registry, tmp_path, services=["bed_hour", "heal_barber"]))
-    assert "    час в постели — 5 мм / час" in lines
+    assert "    час в постели — 1 см / час" in lines
     assert "    лечение цирюльника — 5 см / раз" in lines
+
+
+def test_shop_shows_companion_classes_and_bath(registry, tmp_path):
+    lines = shop(make_inn(
+        registry, tmp_path, services=["companion_cheap", "companion_common", "bath"]
+    ))
+    assert "    компания на час (простая) — 2 см / час" in lines
+    assert "    компания на час (обычная) — 1 зм / час" in lines
+    assert "    баня — 1 см / раз" in lines
+
+
+def test_shop_shows_haircut_and_shave_per_once(registry, tmp_path):
+    lines = shop(make_inn(registry, tmp_path, services=["haircut", "shave"]))
+    assert "    стрижка — 2 мм / раз" in lines
+    assert "    бритьё — 1 мм / раз" in lines
 
 
 def test_description_is_not_shown_in_shop(registry, tmp_path, cfg):

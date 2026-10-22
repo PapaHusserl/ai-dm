@@ -218,7 +218,10 @@ def effects_line(hero, registry, now_s: int) -> str:
     # «Действует: Каменная Кожа (+2 КД, сопр. рубящему/дробящему) до 03:12»; пусто, если нет
     order = []
     for effect in live_effects(hero.creature, now_s):
-        if effect.expires is None or effect.expires.kind != "seconds" or effect.kind == "spell":
+        if effect.expires is None or effect.expires.kind != "seconds":
+            continue
+        # заклинания и бонусы услуг (groomed) -- не предметы реестра
+        if effect.kind in ("spell", "modifier"):
             continue
         if effect.id not in order:
             order.append(effect.id)

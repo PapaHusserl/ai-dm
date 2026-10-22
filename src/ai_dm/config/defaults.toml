@@ -180,6 +180,10 @@ buys = ["weapon", "armor", "ammo", "gear", "consumable", "clothing", "valuable"]
 # платные услуги NPC (service): ночлег, еда, лечение; цена в меди за единицу
 [services]
 paid_rest = true
+# отношение NPC, с которого платная близость запоминается как роман
+romance_from = 90
+# дней без мытья до состояния «вонь»
+hygiene_days = 7
 
 [services.kinds.room_poor]
 name = "комната (бедная)"
@@ -270,7 +274,74 @@ description = "обряд очищения в храме"
 name = "час в постели"
 unit = "hour"
 effect = "rest_short"
-price_cp = 5
+price_cp = 10
+
+[services.kinds.companion_cheap]
+name = "компания на час (простая)"
+unit = "hour"
+effect = "rest_short"
+boon = "inspired"
+intimate = true
+price_cp = 20
+description = "простая девица или парень из зала, недорого и без затей"
+risks = { disease_dc = 10, theft_dc = 12 }
+
+[services.kinds.companion_common]
+name = "компания на час (обычная)"
+unit = "hour"
+effect = "rest_short"
+boon = "inspired"
+intimate = true
+price_cp = 100
+description = "ухоженная и приятная компания, знает своё ремесло"
+risks = { disease_dc = 5, theft_dc = 7 }
+
+[services.kinds.companion_fine]
+name = "компания на час (куртизанка/куртизан)"
+unit = "hour"
+effect = "rest_short"
+boon = "inspired"
+intimate = true
+price_cp = 500
+description = "изысканная компания с манерами и вкусом, о таких не судачат"
+
+[services.kinds.haircut]
+name = "стрижка"
+unit = "once"
+effect = "plain"
+boon = "groomed"
+price_cp = 2
+description = "аккуратная стрижка, герой выглядит иначе"
+
+[services.kinds.shave]
+name = "бритьё"
+unit = "once"
+effect = "plain"
+boon = "groomed"
+price_cp = 1
+description = "бритьё или стрижка бороды, герой выглядит иначе"
+
+[services.kinds.bath]
+name = "баня"
+unit = "once"
+effect = "plain"
+boon = "washed"
+price_cp = 10
+description = "горячая вода, мыло и веник"
+
+[services.kinds.bard_song]
+name = "песня барда"
+unit = "once"
+effect = "plain"
+price_cp = 10
+description = "песня или баллада на заказ"
+
+[services.kinds.fortune]
+name = "гадание"
+unit = "once"
+effect = "plain"
+price_cp = 50
+description = "гадание на картах, костях или воске"
 
 [limits.gold_explicit_max_cp_by_level]
 1 = 5000

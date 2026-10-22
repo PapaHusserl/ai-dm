@@ -8,6 +8,7 @@ from ai_dm.game.sheet_text import (
     SPELL_HINT,
     abilities_lines,
     condition_names,
+    effect_lines,
     fit,
     hooks_lines,
     inv_lines,
@@ -186,6 +187,9 @@ def cmd_sheet(app, arg):
     conditions = condition_names(hero, app.registry)
     if conditions:
         lines.append("Состояния: " + ", ".join(conditions))
+    boons = effect_lines(hero, now_s)
+    if boons:
+        lines.append("Эффекты: " + "; ".join(boons))
     concentration = app.runner.concentration_line()
     if concentration:
         lines.append(concentration)

@@ -1,9 +1,13 @@
 import textwrap
 
 from ai_dm.content.models.common import ABILITIES, SKILLS
+from ai_dm.core.clock import DAY
+from ai_dm.rules.boons import BOONS
+from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.derived import (
     ability_mod,
     always_prepared,
+    clock_text,
     free_cast_pool,
     hero_effects,
     passive_perception,
@@ -290,6 +294,34 @@ def condition_names(hero, registry):
         if name not in names:
             names.append(name)
     return names
+
+
+def boon_effects(hero, now_s):
+    # действующие бонусы услуг героя: [(название, конец в секундах мира или None)]
+    result = []
+    for effect in live_effects(hero.creature, now_s):
+        if effect.id in BOONS and effect.expires is not None:
+            result.append((BOONS[effect.id][0], effect.expires.value))
+    if hero.heroic_inspiration:
+        result.append((BOONS["inspired"][0], None))
+    return result
+
+
+def effect_lines(hero, now_s):
+    # «ухожен (до 07:00, завтра)», «вдохновение» -- для строки «Эффекты:» в /sheet
+    lines = []
+    for name, until in boon_effects(hero, now_s):
+        if until is None:
+            lines.append(name)
+            continue
+        when = f"до {clock_text(until)}"
+        days = until // DAY - now_s // DAY
+        if days == 1:
+            when += ", завтра"
+        elif days > 1:
+            when += f", через {days} дн."
+        lines.append(f"{name} ({when})")
+    return lines
 
 
 def pool_now(hero, registry, pool):

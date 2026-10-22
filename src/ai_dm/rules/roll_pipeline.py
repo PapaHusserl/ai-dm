@@ -19,6 +19,7 @@ REROLL_WORDS = {"luck": "удача", "heroic_inspiration": "вдохновен�
 SOURCE_WORDS = {
     "dodge": "уклонение", "help": "помощь", "divine_favor": "молитва", "divine_curse": "кара",
     "sap": "ослаблен", "vex": "досада", "improvised_advantage": "импровизация",
+    "groomed": "ухожен",
 }
 
 OUTCOME_WORDS = {
@@ -285,11 +286,12 @@ def roll_d20(request, rng, registry, mods, decisions, rerollers) -> RollResult:
 
 
 def source_label(registry, source) -> str:
-    # подпись слагаемого от источника-модификатора: название заклинания/умения/черты или сам id
+    # подпись слагаемого от источника-модификатора: название заклинания/умения/черты, слово из
+    # SOURCE_WORDS или сам id
     for kind in ("spell", "feature", "feat"):
         if registry.has(kind, source):
             return registry.get(kind, source).name
-    return source
+    return SOURCE_WORDS.get(source, source)
 
 
 def bonus_terms(request) -> list[RollTerm]:

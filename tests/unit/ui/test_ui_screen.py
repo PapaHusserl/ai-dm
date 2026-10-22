@@ -365,6 +365,67 @@ def test_status_line_lists_every_condition_once(registry, tmp_path):
     assert status_line(app).count("проклят") == 1
 
 
+def groomed_effect(until):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    return ActiveEffect(
+        id="groomed", source="service:tobb", kind="modifier",
+        params={"target": "ability_check", "ability": "cha", "dice": "1d4", "consume": True},
+        expires=Expiry(kind="seconds", value=until),
+    )
+
+
+def test_status_line_shows_groomed_after_hp(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    creature.active_effects.append(groomed_effect(app.bundle.world.clock.now_s + 3600))
+    assert status_line(app).startswith(f"HP {creature.hp_current}/{creature.hp_max} · ухожен · ")
+
+
+def test_status_line_shows_inspiration(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    hero_of(app.bundle).heroic_inspiration = True
+    expected = f"HP {creature.hp_current}/{creature.hp_max} · вдохновение · "
+    assert status_line(app).startswith(expected)
+
+
+def test_status_line_puts_conditions_before_boons(registry, tmp_path):
+    from ai_dm.state.creature import AppliedCondition
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    hero = hero_of(app.bundle)
+    hero.creature.conditions.append(AppliedCondition(id="cursed"))
+    hero.creature.active_effects.append(groomed_effect(app.bundle.world.clock.now_s + 3600))
+    hero.heroic_inspiration = True
+    assert " · проклят · ухожен · вдохновение · " in status_line(app)
+
+
+def test_status_line_drops_expired_groomed(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    creature = hero_of(app.bundle).creature
+    creature.active_effects.append(groomed_effect(app.bundle.world.clock.now_s))
+    assert "ухожен" not in status_line(app)
+
+
+def test_status_line_without_boons_has_no_boon_words(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    hero_of(app.bundle).heroic_inspiration = False
+    line = status_line(app)
+    assert "ухожен" not in line
+    assert "вдохновение" not in line
+    assert " ·  · " not in line
+
+
 def test_simple_status_line_shows_cursed_too(registry, tmp_path):
     from ai_dm.game.scene import hero_of
     from ai_dm.state.creature import AppliedCondition

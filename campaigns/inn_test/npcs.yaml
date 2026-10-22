@@ -18,6 +18,7 @@
   - meal_comfortable
   - ale
   - wine_common
+  - bath
 - id: sister_ilda
   name: Сестра Ильда
   gender: female
@@ -43,3 +44,41 @@
   - знает травы и перевязки
   services:
   - heal_barber
+  - haircut
+  - shave
+- id: companion_liss
+  name: Лисса
+  gender: female
+  named: true
+  key: false
+  location_id: copper_kettle
+  motive: Зарабатывает на жизнь в зале трактира, копит на свою комнату.
+  means:
+  - продаёт компанию на час постояльцам
+  - знает, кто сколько тратит
+  services:
+  - companion_cheap
+- id: companion_marek
+  name: Марек
+  gender: male
+  named: true
+  key: false
+  location_id: copper_kettle
+  motive: Хочет хорошо жить и не оставаться в должниках.
+  means:
+  - продаёт компанию на час постояльцам
+  - умеет поддержать разговор
+  services:
+  - companion_common
+- id: bard_tilda
+  name: Тильда Струна
+  gender: female
+  named: true
+  key: false
+  location_id: copper_kettle
+  motive: Поёт по заказу за монету и собирает новые истории.
+  means:
+  - бродячая певица с лютней
+  - знает баллады и дорожные слухи
+  services:
+  - bard_song
