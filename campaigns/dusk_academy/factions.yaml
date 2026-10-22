@@ -1,0 +1,13 @@
+- id: mainland_ferry
+  name: Паром с материка
+  motive: Привозить на остров новых людей.
+  members:
+  - francis
+  - knox
+  opportunity:
+  - id: arrival
+    # заглушка: срок и активацию ставит scripts/migrate_dusk_ferry.py (спящий триггер)
+    if: {time_after: 0}
+    then: "С утренним паромом сошли Господин Франциск (francis) и Нокс Велар (knox). Выполни npc_update francis → location_id academy (первым делом он идёт к ректору, магистру Эдит Гримсдоттир, и ни с кем из героев не знаком) и npc_update knox → location_id academy (ищет в Академии брата Люциана). Затем одна world_notice visible: с материка прибыл паром, на пирс сошли двое приезжих."
+    once: true
+    state: disabled
