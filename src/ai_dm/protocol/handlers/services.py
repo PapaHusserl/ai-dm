@@ -101,7 +101,16 @@ def short_cause(ctx, request, unit):
 
 
 def pay_service(ctx, request, npc, kind, unit):
-    # ночлег, еда, платный отдых: только деньги и лог (ночлег и отдых -- У0 П2)
+    # еда, ночлег, платный отдых: деньги и лог; ночлег ещё и флаг для rest long
+    world = ctx.bundle.world
+    if kind.effect == "lodging":
+        if service_rules.lodging_paid(world, ctx.hero.id, ctx.cfg):
+            return rejected(
+                "ночлег уже оплачен",
+                "Ночлег на сегодня уже оплачен: повторно не плати, вызови rest long.",
+            )
+        # комната снимается на одну ночь, qty не важен
+        request = request.model_copy(update={"qty": 1})
     qty = affordable_qty(ctx, request, unit)
     if qty == 0:
         return short_of_money(ctx, kind.name, unit)
@@ -112,7 +121,20 @@ def pay_service(ctx, request, npc, kind, unit):
         f"{LOG_WORDS[kind.effect]}: {kind.name} x{qty} у {npc.name} за "
         f"{money.format_cp(unit * qty)}"
     ]
-    return paid(request, qty, result, log, cause)
+    signal = None
+    if kind.effect == "lodging":
+        flag = f"{service_rules.LODGING_FLAG}:{ctx.hero.id}"
+        world.flags[flag] = trade_rules.day_of(world.clock.now_s)
+        log[0] = (
+            f"Ночлег оплачен: {kind.name} у {npc.name} — {money.format_cp(unit * qty)}"
+        )
+        signal = "Ночлег оплачен: теперь rest long в этом же ходу."
+    elif kind.effect == "rest_short":
+        signal = "Платный отдых оплачен: теперь rest short в этом же ходу."
+    decision = paid(request, qty, result, log, cause)
+    if decision.status == "accepted":
+        decision.signal_to_master = signal
+    return decision
 
 
 def paid(request, qty, result, log, cause="не хватило денег"):

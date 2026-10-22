@@ -679,6 +679,145 @@ def test_set_flag_cannot_forge_haggle_flag(registry, cfg):
     assert "haggle:grok" not in ctx.bundle.world.flags
 
 
+# У0 П2: ночлег (флаг lodging:<hero>), платный отдых
+
+def test_buy_lodging_sets_flag_to_today(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.bundle.world.clock.advance(DAY_S * 2 + 10)
+    buy(ctx, "room_modest")
+    assert ctx.bundle.world.flags["lodging:hero"] == 2
+
+
+def test_buy_lodging_spends_money(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, "room_modest")
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 950
+
+
+def test_buy_lodging_log_is_one_line_with_total(registry, cfg):
+    d = buy(service_ctx(registry, cfg), "room_modest")
+    assert len(d.log) == 1
+    assert d.log[0].startswith("Ночлег оплачен")
+    assert "комната (скромная)" in d.log[0]
+    assert "Грок" in d.log[0]
+    assert "5 см" in d.log[0]
+
+
+def test_buy_lodging_signal_points_to_rest_long(registry, cfg):
+    d = buy(service_ctx(registry, cfg), "room_modest")
+    assert d.signal_to_master == "Ночлег оплачен: теперь rest long в этом же ходу."
+
+
+def test_buy_lodging_qty_is_forced_to_one(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, "room_modest", qty=3)
+    assert d.result["qty"] == 1
+    assert d.result["total_cp"] == 50
+    assert ctx.hero.money_cp == 950
+
+
+def test_buy_lodging_twice_same_day_is_rejected(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    buy(ctx, "room_modest")
+    d = buy(ctx, "room_modest")
+    assert d.status == "rejected"
+    assert d.reason == "ночлег уже оплачен"
+    assert "rest long" in d.signal_to_master
+
+
+def test_second_lodging_signal_text_tells_not_to_pay_again(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    buy(ctx, "room_modest")
+    d = buy(ctx, "room_modest")
+    assert d.signal_to_master == (
+        "Ночлег на сегодня уже оплачен: повторно не плати, вызови rest long."
+    )
+
+
+def test_second_lodging_does_not_charge_or_spend_scene_trade(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    buy(ctx, "room_modest")
+    money, trades = ctx.hero.money_cp, ctx.scene.trades
+    buy(ctx, "room_modest")
+    assert ctx.hero.money_cp == money
+    assert ctx.scene.trades == trades
+
+
+def test_other_room_same_day_is_also_rejected(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_poor", "room_modest"])
+    buy(ctx, "room_modest")
+    assert buy(ctx, "room_poor").status == "rejected"
+    assert ctx.hero.money_cp == 950
+
+
+def test_lodging_next_day_can_be_paid_again(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    buy(ctx, "room_modest")
+    ctx.bundle.world.clock.advance(DAY_S + 7 * 3600)
+    d = buy(ctx, "room_modest")
+    assert d.status == "accepted"
+    assert ctx.bundle.world.flags["lodging:hero"] == 1
+
+
+def test_lodging_after_midnight_before_morning_is_still_paid(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.bundle.world.clock.advance(20 * 3600)
+    buy(ctx, "room_modest")
+    ctx.bundle.world.clock.advance(8 * 3600)
+    assert buy(ctx, "room_modest").reason == "ночлег уже оплачен"
+
+
+def test_lodging_without_money_sets_no_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=10)
+    d = buy(ctx, "room_modest")
+    assert d.status == "rejected"
+    assert "lodging:hero" not in ctx.bundle.world.flags
+    assert ctx.hero.money_cp == 10
+
+
+def test_lodging_over_scene_limit_sets_no_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene
+    assert buy(ctx, "room_modest").status == "rejected"
+    assert "lodging:hero" not in ctx.bundle.world.flags
+
+
+def test_list_lodging_does_not_set_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    listing(ctx)
+    assert "lodging:hero" not in ctx.bundle.world.flags
+
+
+def test_buy_meal_sets_no_lodging_flag_and_no_signal(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, "meal_modest")
+    assert "lodging:hero" not in ctx.bundle.world.flags
+    assert d.signal_to_master is None
+
+
+def test_buy_rest_short_signal_points_to_rest_short(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["bed_hour"])
+    d = buy(ctx, "bed_hour")
+    assert d.status == "accepted"
+    assert d.signal_to_master == "Платный отдых оплачен: теперь rest short в этом же ходу."
+    assert "lodging:hero" not in ctx.bundle.world.flags
+
+
+def test_buy_rest_short_keeps_requested_qty(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["bed_hour"])
+    assert buy(ctx, "bed_hour", qty=2).result["qty"] == 2
+    assert ctx.hero.money_cp == 990
+
+
+def test_set_flag_cannot_forge_lodging_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name="lodging:hero", value="0"))
+    assert isinstance(d, Invalid)
+    assert d.code == "reserved_flag"
+    assert "lodging:hero" not in ctx.bundle.world.flags
+
+
 # npc_update services
 
 def update(ctx, npc_id="grok", **fields):

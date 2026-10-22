@@ -1,6 +1,7 @@
 from ai_dm.rules import trade as trade_rules
 
 HAGGLE_FLAG = "haggle"
+LODGING_FLAG = "lodging"
 
 
 class FlagHaggle:
@@ -52,3 +53,23 @@ def providers_here(world, location_id) -> list:
         npc for npc in world.npcs.values()
         if npc.services and npc.status == "alive" and npc.location_id == location_id
     ]
+
+
+def lodging_here(world, location_id, cfg) -> list:
+    # [(NPC, id, ServiceKind)] ночлега у живых NPC в локации (по цене, дешёвый первым)
+    found = [
+        (npc, kind_id, kind)
+        for npc in providers_here(world, location_id)
+        for kind_id, kind in kinds_of(npc, cfg)
+        if kind.effect == "lodging"
+    ]
+    return sorted(found, key=lambda item: quote(item[2], item[0], world, cfg))
+
+
+def lodging_paid(world, hero_id, cfg) -> bool:
+    # ночлег героя оплачен на ночь: флаг -- день оплаты, действует до утра (morning_hour) следующего
+    day = world.flags.get(f"{LODGING_FLAG}:{hero_id}")
+    if not isinstance(day, int) or isinstance(day, bool):
+        return False
+    until_s = (day + 1) * trade_rules.DAY_S + cfg.time.morning_hour * 3600
+    return world.clock.now_s < until_s

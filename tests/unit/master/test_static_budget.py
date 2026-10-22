@@ -24,6 +24,8 @@
 #   Фикс ЖП4 П2 (2026-10-22): поля until/until_hour в advance_time (131), фраза про until в
 #   «Время двигай…» и known_locations П1; порог 21620 превышен, замер 21663;
 #   22310 = 21663 + 3 %.
+#   У0 П2 (2026-10-22): абзац про ночлег (два шага: service, затем rest long) в narrator_rules.md,
+#   цена фичи принята в П1; порог 22310 превышен, замер 22418; 23090 = 22418 + 3 %.
 #   Добавка narrator_rules_openai.md в замер не входит (она внутри system[0] только у openai).
 import json
 from importlib import resources
@@ -37,8 +39,8 @@ from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
-# Фикс ЖП4 П2: замер explore.total 21663 + 3 %.
-STATIC_MAX = 22310
+# У0 П2: замер explore.total 22418 + 3 %.
+STATIC_MAX = 23090
 
 MODES = sorted(MODE_TOOLS)
 

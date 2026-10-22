@@ -24,7 +24,7 @@ from ai_dm.protocol.decision import Decision, Invalid
 
 RESERVED = [
     "npc_dead:aldric", "hero_dead:hero", "visited:forest", "combat_ended:c1",
-    "item_gained:crowbar",
+    "item_gained:crowbar", "lodging:hero",
 ]
 
 

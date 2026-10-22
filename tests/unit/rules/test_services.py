@@ -4,11 +4,19 @@
 #   providers_here(world, location_id) -- живые NPC с услугами в локации.
 #   haggle_slot(npc, world) -- профиль лавки, если он есть, иначе FlagHaggle по флагу haggle:<npc>.
 #   FlagHaggle: состояние "<день>:<процент>" во флаге мира; save_haggle пишет только FlagHaggle.
+#   lodging_here(world, location_id, cfg) -- [(NPC, id, ServiceKind)] ночлега у живых NPC локации,
+#       по цене (quote), дешёвый первым. lodging_paid(world, hero_id, cfg) -- флаг lodging:<hero_id>
+#       (день оплаты, int) действует до morning_hour следующего дня (У0 П2).
+import pytest
+
 from ai_dm.core.rng import Rng
 from ai_dm.rules.services import (
+    LODGING_FLAG,
     FlagHaggle,
     haggle_slot,
     kinds_of,
+    lodging_here,
+    lodging_paid,
     providers_here,
     quote,
     save_haggle,
@@ -190,3 +198,127 @@ def test_save_haggle_leaves_flags_alone_for_shop_profile():
     apply_haggle(profile, -10, 0)
     save_haggle(haggle_slot(provider(trade=profile), world))
     assert world.flags == {}
+
+
+# lodging_here (У0 П2): [(NPC, id, kind)] ночлега у живых NPC локации, дешёвый первым
+
+def test_lodging_here_returns_npc_id_and_kind(cfg):
+    world = make_world()
+    npc = provider("grok", services=["room_modest"], location_id="inn")
+    world.npcs["grok"] = npc
+    assert lodging_here(world, "inn", cfg) == [
+        (npc, "room_modest", cfg.services.kinds["room_modest"])
+    ]
+
+
+def test_lodging_here_skips_non_lodging_services(cfg):
+    world = make_world()
+    world.npcs["grok"] = provider("grok", services=["meal_modest", "ale"], location_id="inn")
+    assert lodging_here(world, "inn", cfg) == []
+
+
+def test_lodging_here_sorted_by_price_cheapest_first(cfg):
+    world = make_world()
+    world.npcs["grok"] = provider(
+        "grok", services=["room_wealthy", "room_modest", "room_poor"], location_id="inn"
+    )
+    assert [kind_id for _, kind_id, _ in lodging_here(world, "inn", cfg)] == [
+        "room_poor", "room_modest", "room_wealthy"
+    ]
+
+
+def test_lodging_here_sorts_across_npcs_by_their_own_quote(cfg):
+    # у Дока отношение хорошее: 50 * 0.9 = 45 дешевле 50 у Грока
+    world = make_world()
+    world.npcs["grok"] = provider("grok", services=["room_modest"], location_id="inn")
+    world.npcs["doc"] = provider("doc", services=["room_modest"], location_id="inn", attitude=60)
+    assert [npc.id for npc, _, _ in lodging_here(world, "inn", cfg)] == ["doc", "grok"]
+
+
+def test_lodging_here_skips_other_location(cfg):
+    world = make_world()
+    world.npcs["grok"] = provider("grok", services=["room_modest"], location_id="forest")
+    assert lodging_here(world, "inn", cfg) == []
+
+
+def test_lodging_here_skips_dead_provider(cfg):
+    world = make_world()
+    world.npcs["grok"] = provider(
+        "grok", services=["room_modest"], location_id="inn", status="dead"
+    )
+    assert lodging_here(world, "inn", cfg) == []
+
+
+def test_lodging_here_skips_unknown_service_ids(cfg):
+    world = make_world()
+    world.npcs["grok"] = provider("grok", services=["no_such"], location_id="inn")
+    assert lodging_here(world, "inn", cfg) == []
+
+
+# lodging_paid: флаг lodging:<hero_id> = день оплаты; действует до morning_hour следующего дня
+
+MORNING_S = 6 * 3600
+
+
+def test_lodging_paid_false_without_flag(cfg):
+    assert lodging_paid(make_world(), "hero", cfg) is False
+
+
+def test_lodging_paid_true_for_todays_flag(cfg):
+    world = make_world()
+    world.flags["lodging:hero"] = 0
+    assert lodging_paid(world, "hero", cfg) is True
+
+
+def test_lodging_paid_true_after_midnight_before_morning(cfg):
+    world = make_world()
+    world.flags["lodging:hero"] = 0
+    world.clock.advance(DAY_S + MORNING_S - 1)
+    assert lodging_paid(world, "hero", cfg) is True
+
+
+def test_lodging_paid_false_exactly_at_morning(cfg):
+    world = make_world()
+    world.flags["lodging:hero"] = 0
+    world.clock.advance(DAY_S + MORNING_S)
+    assert lodging_paid(world, "hero", cfg) is False
+
+
+def test_lodging_paid_false_for_old_flag(cfg):
+    world = make_world()
+    world.flags["lodging:hero"] = 0
+    world.clock.advance(DAY_S * 3)
+    assert lodging_paid(world, "hero", cfg) is False
+
+
+def test_lodging_paid_true_on_second_day_with_that_days_flag(cfg):
+    world = make_world()
+    world.clock.advance(DAY_S + 5)
+    world.flags["lodging:hero"] = 1
+    assert lodging_paid(world, "hero", cfg) is True
+
+
+def test_lodging_paid_payment_at_2am_lasts_until_next_days_morning(cfg):
+    # текущее поведение: флаг -- день оплаты, оплата в 02:00 действует до 06:00 следующих суток
+    world = make_world()
+    world.clock.advance(2 * 3600)
+    world.flags["lodging:hero"] = 0
+    world.clock.advance(DAY_S + MORNING_S - 2 * 3600 - 1)
+    assert lodging_paid(world, "hero", cfg) is True
+
+
+def test_lodging_paid_is_per_hero(cfg):
+    world = make_world()
+    world.flags["lodging:hero"] = 0
+    assert lodging_paid(world, "other", cfg) is False
+
+
+@pytest.mark.parametrize("value", ["0", 0.0, True, None, "x"])
+def test_lodging_paid_non_int_flag_is_unpaid(cfg, value):
+    world = make_world()
+    world.flags["lodging:hero"] = value
+    assert lodging_paid(world, "hero", cfg) is False
+
+
+def test_lodging_flag_name():
+    assert LODGING_FLAG == "lodging"

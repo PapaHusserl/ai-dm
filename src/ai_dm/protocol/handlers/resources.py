@@ -6,6 +6,8 @@ from ai_dm.protocol.handlers.loot_gear import gold_loot
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed, item_ids, reachable_ids
 from ai_dm.rules import custom_items, divine, loot, money, rests, time_ops, xp
+from ai_dm.rules import services as service_rules
+from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.cast_checks import default_cast_check_registry
 from ai_dm.rules.damage import roll_hazard
@@ -780,10 +782,43 @@ def rest_redundant(ctx, request):
     )
 
 
+def lodging_unpaid(ctx, request):
+    # длинный отдых там, где NPC сдаёт комнаты, только после оплаты ночлега; нет денег даже на
+    # самую дешёвую комнату -- отдых свободен (мастер решает сюжетно)
+    hero = ctx.hero
+    world = ctx.bundle.world
+    if request.kind != "long" or not ctx.cfg.services.paid_rest:
+        return None
+    options = service_rules.lodging_here(world, hero.location_id, ctx.cfg)
+    if not options or service_rules.lodging_paid(world, hero.id, ctx.cfg):
+        return None
+    options = [
+        item for item in options
+        if hero.money_cp >= service_rules.quote(item[2], item[0], world, ctx.cfg)
+    ]
+    if not options:
+        return None
+    willing = [item for item in options if not trade_rules.refuses(item[0].attitude, ctx.cfg)]
+    if not willing:
+        return rejected(
+            "комнату не сдадут",
+            "Здесь герою комнату не сдадут (хозяин отказывает): скажи игроку, что отдыхать "
+            "нужно в другом месте.",
+            report_tag="rest_unpaid",
+        )
+    npc, kind_id, kind = willing[0]
+    return rejected(
+        "ночлег платный",
+        f"Ночлег платный: сначала service buy {kind_id} у {npc.id} (или другая комната из "
+        "service list), затем rest long в этом же ходу.",
+        report_tag="rest_unpaid",
+    )
+
+
 def rest(ctx, request):
     hero = ctx.hero
     world = ctx.bundle.world
-    for check in (rest_redundant, swap_invalid, prey_invalid):
+    for check in (rest_redundant, lodging_unpaid, swap_invalid, prey_invalid):
         invalid = check(ctx, request)
         if invalid is not None:
             return invalid
@@ -802,6 +837,7 @@ def rest(ctx, request):
             log = [f"Короткий отдых: восстановлено {healed} HP"]
         else:
             rests.long_rest(hero, ctx.registry, world.clock, ctx.cfg)
+            world.flags.pop(f"{service_rules.LODGING_FLAG}:{hero.id}", None)
             log = ["Длинный отдых: HP и ресурсы восстановлены"]
     except ValueError as error:
         return Invalid(code="rest_impossible", message=str(error))

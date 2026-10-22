@@ -8,9 +8,10 @@ FLAG_BY_EVENT = {
 }
 
 # префиксы флагов, которые ставит только движок (set_flag их отклоняет): автофлаги событий,
-# danger: (warn_danger), hoard: (клад логова взят), haggle: (торг с NPC без лавки, услуги)
+# danger: (warn_danger), hoard: (клад логова взят), haggle: (торг с NPC без лавки, услуги),
+# lodging: (ночлег героя оплачен, день)
 RESERVED_FLAG_PREFIXES = [prefix for prefix, _ in FLAG_BY_EVENT.values()] + [
-    "danger", "hoard", "haggle"
+    "danger", "hoard", "haggle", "lodging"
 ]
 
 
