@@ -806,7 +806,7 @@ def test_info_command_opens_modal_with_reply_and_esc_closes_it(registry, tmp_pat
     if command == "/model":
         words = "Модель рассказчика"  # живой прогон 1: окно /model -- список выбора
     if command == "/inv":
-        words = "Предмет (Enter"  # 96а П2: окно /inv -- список предметов с действиями
+        words = "Предмет (←/→ — раздел"  # Фикс ЖП4 П3: окно /inv -- вкладки-разделы
     app, _ = tui.app(registry, tmp_path / "main")
 
     async def steps(app, pilot):

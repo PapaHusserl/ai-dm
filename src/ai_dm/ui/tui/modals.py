@@ -3,7 +3,7 @@ from textual.app import App
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, OptionList, RichLog, Static
+from textual.widgets import Button, DataTable, OptionList, RichLog, Static, Tab, Tabs
 from textual.widgets.option_list import Option
 
 from ai_dm.art import art_for_event
@@ -145,36 +145,58 @@ class SpellModal(ModalScreen):
 
 
 class InvModal(ModalScreen):
-    # инвентарь: список предметов и описание; Enter -- первое действие предмета, e/l/u/r/d -- своё;
+    # инвентарь: вкладки-разделы, список предметов и описание; ←/→ -- раздел,
+    # Enter -- первое действие предмета, e/l/u/r/d -- своё;
     # результат -- действие (клавиша, подсказка, строка /inv, эхо) или None
-    BINDINGS = [Binding("escape", "close", strings.KEY_CLOSE, show=False)] + [
-        Binding(key, f"act('{key}')", show=False) for key in ("e", "l", "u", "r", "d")
-    ]
+    BINDINGS = [
+        Binding("escape", "close", strings.KEY_CLOSE, show=False),
+        Binding("left", "tab(-1)", show=False),
+        Binding("right", "tab(1)", show=False),
+    ] + [Binding(key, f"act('{key}')", show=False) for key in ("e", "l", "u", "r", "d")]
 
-    def __init__(self, title, rows):
+    def __init__(self, title, tabs):
         super().__init__()
         self.title_text = title
-        self.rows = list(rows)
+        self.tabs = list(tabs)
+        self.rows = []
 
     def compose(self):
         with Vertical(id="modal"):
             yield Static(Text(strings.INV_PICK), id="inv-title")
+            names = enumerate(name for name, _ in self.tabs)
+            yield Tabs(*(Tab(name, id=f"inv-tab-{index}") for index, name in names), id="inv-tabs")
             yield OptionList(id="inv-list")
             with VerticalScroll(id="inv-body"):
                 yield Static(id="inv-description")
 
     def on_mount(self):
         self.query_one("#modal").border_title = self.title_text
+        self.query_one("#inv-list", OptionList).focus()
+        self.fill(0)
+
+    def fill(self, index):
+        # список -- строки вкладки index; подсветка и описание первой строки
+        self.rows = list(self.tabs[index][1]) if self.tabs else []
         menu = self.query_one("#inv-list", OptionList)
+        menu.clear_options()
         for number, row in enumerate(self.rows, 1):
             menu.add_option(Text(f"{number}. {row[0]}"))
-        menu.focus()
         if self.rows:
             menu.highlighted = 0
             self.show_description(0)
 
+    def on_tabs_tab_activated(self, event):
+        self.fill(int(event.tab.id.removeprefix("inv-tab-")))
+
+    def action_tab(self, step):
+        tabs = self.query_one("#inv-tabs", Tabs)
+        if step > 0:
+            tabs.action_next_tab()
+        else:
+            tabs.action_previous_tab()
+
     def show_description(self, index):
-        _, description, actions = self.rows[index]
+        _, description, actions, _ = self.rows[index]
         hints = " · ".join(f"{key} — {hint}" for key, hint, _, _ in actions)
         text = "\n\n".join(part for part in (description, hints) if part)
         self.query_one("#inv-description", Static).update(Text(text))

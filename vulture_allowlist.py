@@ -91,6 +91,8 @@ highlighted  # unused attribute
 on_option_list_option_highlighted  # unused method
 action_complete  # unused method
 action_act  # unused method (96а П2: клавиши InvModal, решение проектировщика 2026-10-21)
+on_tabs_tab_activated  # unused method (Фикс ЖП4 П3: вкладки InvModal, решение 19)
+action_tab  # unused method (Фикс ЖП4 П3: ←/→ в InvModal, решение 19)
 # постоянно: поля схемы инструмента hero_sheet (AbilityScores), читаются через model_dump
 con  # unused variable (protocol/requests.py)
 str_  # unused variable (protocol/requests.py)

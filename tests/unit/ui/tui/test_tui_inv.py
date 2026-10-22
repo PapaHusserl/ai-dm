@@ -23,8 +23,10 @@ from protocol_kit import make_bundle  # noqa: E402
 from ai_dm.content.models.common import EffectSpec  # noqa: E402
 from ai_dm.rules.inventory import add_item, find_item  # noqa: E402
 from ai_dm.ui.session import PlaySession  # noqa: E402
+from ai_dm.ui.tui import strings  # noqa: E402
 from ai_dm.ui.tui.app import AiDmApp  # noqa: E402
 from ai_dm.ui.tui.blocks import inv_actions_of, inv_rows  # noqa: E402
+from ai_dm.ui.tui.inv_sections import SECTIONS, inv_section, inv_tabs  # noqa: E402
 from ai_dm.ui.tui.modals import InvModal, TextModal  # noqa: E402
 
 ERROR = "Ошибка хода"
@@ -87,15 +89,23 @@ async def open_inv(tui, app, pilot):
     await tui.submit(app, pilot, "/inv")
 
 
+def active_tab(app):
+    return str(app.screen.query_one("#inv-tabs").active_tab.label)
+
+
 async def highlight(app, pilot, label):
-    # стрелками вниз до строки с подписью
-    start = app.screen.query_one("#inv-list").highlighted
+    # вкладки клавишей → до вкладки со строкой, затем стрелками вниз до строки с подписью
+    for _ in range(len(app.screen.tabs)):
+        if any(row[0] == label for row in app.screen.rows):
+            break
+        await pilot.press("right")
+        await pilot.pause()
     for _ in range(len(app.screen.rows)):
-        if label in option_texts(app)[app.screen.query_one("#inv-list").highlighted]:
+        if option_texts(app)[app.screen.query_one("#inv-list").highlighted].endswith(f". {label}"):
             return
         await pilot.press("down")
         await pilot.pause()
-    raise AssertionError(f"нет строки {label} (старт {start})")
+    raise AssertionError(f"нет строки {label} (вкладка {active_tab(app)})")
 
 
 async def finish(app, pilot):
@@ -133,7 +143,16 @@ def test_row_of_unknown_item_id_keeps_the_id_without_actions(registry, tmp_path)
     game.bundle.heroes[0].inventory.append(
         type(game.bundle.heroes[0].inventory[0])(item_id="ghost_item", qty=1, cost_cp=0)
     )
-    assert ("ghost_item", "", []) in inv_rows(game)
+    assert ("ghost_item", "", [], "Снаряжение") in inv_rows(game)
+
+
+def test_unknown_item_id_first_keeps_the_rest_of_rows(registry, tmp_path):
+    # хвост 127: неизвестный id первым -- остальные строки на месте
+    game = hero_game(registry, tmp_path)
+    inventory = game.bundle.heroes[0].inventory
+    inventory.insert(0, type(inventory[0])(item_id="ghost_item", qty=1, cost_cp=0))
+    assert labels(game)[0] == "ghost_item"
+    assert "Копьё" in labels(game)
 
 
 def test_unworn_weapon_offers_equip_and_left_hand(registry, tmp_path):
@@ -251,6 +270,14 @@ def test_description_falls_back_to_effect_texts(registry, tmp_path):
     assert row_of(game, "Светящийся камень")[1].startswith("+1 КД")
 
 
+def test_armor_without_description_and_effects_gives_empty_description(registry, tmp_path):
+    # у брони нет поля effects -- описание не падает и пустое
+    kind, model = find_item(registry, "chain_mail")
+    bare = model.model_copy(update={"description": ""})
+    game = hero_game(registry.with_items({kind: [bare]}), tmp_path)
+    assert row_of(game, "★ Кольчуга")[1] == ""
+
+
 def test_inv_actions_of_in_combat_drops_armor_unequip(registry, tmp_path, tui):
     app, game = fight_app(registry, tmp_path)
     found = find_item(registry, "chain_mail")
@@ -311,6 +338,81 @@ def test_in_combat_blocked_left_hand_and_shield_are_not_offered(registry, tmp_pa
     assert "l" not in [a[0] for a in row_of(game, "★ Длинный меч")[2]]
 
 
+# inv_section / inv_tabs
+
+def variant(registry, item_id, **update):
+    kind, model = find_item(registry, item_id)
+    return kind, model.model_copy(update=update)
+
+
+def test_section_worn_armor_is_worn_not_armor(registry):
+    assert inv_section(find_item(registry, "chain_mail"), ["armor"]) == "Надето"
+
+
+def test_section_weapon(registry):
+    assert inv_section(find_item(registry, "spear"), []) == "Оружие"
+
+
+def test_section_armor_in_pack(registry):
+    assert inv_section(find_item(registry, "chain_mail"), []) == "Доспехи"
+
+
+def test_section_ammo(registry):
+    assert inv_section(variant(registry, "arrows", ammo_for=["longbow"]), []) == "Боеприпасы"
+
+
+def test_section_potion_is_consumable(registry):
+    assert inv_section(find_item(registry, "potion_of_healing"), []) == "Расходники"
+
+
+def test_section_item_without_category_is_gear(registry):
+    assert inv_section(variant(registry, "arrows", category=""), []) == "Снаряжение"
+
+
+def test_section_unworn_clothing_is_gear(registry):
+    assert inv_section(find_item(registry, "robe"), []) == "Снаряжение"
+
+
+def test_section_valuable(registry):
+    assert inv_section(variant(registry, "robe", category="valuable"), []) == "Ценности"
+
+
+def test_section_quest(registry):
+    assert inv_section(variant(registry, "robe", category="quest"), []) == "Сюжетное"
+
+
+def test_section_unknown_id_is_gear():
+    assert inv_section(None, []) == "Снаряжение"
+
+
+def test_sections_with_worn_and_gear_cover_exactly_inv_tabs():
+    names = set(SECTIONS.values()) | {"Надето", "Снаряжение"}
+    assert names == set(strings.INV_TABS)
+
+
+def test_tabs_drop_empty_sections():
+    rows = [("a", "", [], "Оружие"), ("b", "", [], "Сюжетное")]
+    assert [name for name, _ in inv_tabs(rows)] == ["Оружие", "Сюжетное"]
+
+
+def test_tabs_follow_inv_tabs_order_not_row_order():
+    rows = [("a", "", [], "Ценности"), ("b", "", [], "Надето"), ("c", "", [], "Боеприпасы")]
+    assert [name for name, _ in inv_tabs(rows)] == ["Надето", "Боеприпасы", "Ценности"]
+
+
+def test_tabs_keep_inventory_order_inside_a_tab():
+    rows = [("b", "", [], "Оружие"), ("x", "", [], "Надето"), ("a", "", [], "Оружие")]
+    assert inv_tabs(rows)[1] == ("Оружие", [rows[0], rows[2]])
+
+
+def test_tabs_of_protocol_hero_start_with_worn(registry, tmp_path):
+    game = hero_game(registry, tmp_path)
+    tabs = inv_tabs(inv_rows(game))
+    assert tabs[0][0] == "Надето"
+    assert {"★ Кольчуга", "★ Щит", "★ Длинный меч"} <= {row[0] for row in tabs[0][1]}
+    assert "Копьё" in [row[0] for row in dict(tabs)["Оружие"]]
+
+
 # окно
 
 def test_inv_opens_window_with_numbered_items(registry, tmp_path, tui):
@@ -322,8 +424,86 @@ def test_inv_opens_window_with_numbered_items(registry, tmp_path, tui):
 
     depth, is_inv, texts = run(app, steps)
     assert (depth, is_inv) == (2, True)
-    assert texts[0] == f"1. {labels(game)[0]}"
-    assert len(texts) == len(labels(game))
+    first = inv_tabs(inv_rows(game))[0][1]
+    assert texts == [f"{number}. {row[0]}" for number, row in enumerate(first, 1)]
+
+
+def test_inv_window_title_and_body_have_their_ids(registry, tmp_path, tui):
+    app, _ = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_inv(tui, app, pilot)
+        title = tui.flat(str(app.screen.query_one("#inv-title").render()))
+        return title, len(app.screen.query("#inv-body"))
+
+    title, bodies = run(app, steps)
+    assert title == strings.INV_PICK
+    assert bodies == 1
+
+
+def test_inv_window_without_tabs_opens_empty(registry, tmp_path, tui):
+    app, _ = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        app.push_screen(InvModal("Инвентарь", []))
+        await pilot.pause()
+        return isinstance(app.screen, InvModal), option_texts(app)
+
+    assert run(app, steps) == (True, [])
+
+
+def test_inv_window_first_active_tab_is_worn(registry, tmp_path, tui):
+    app, _ = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_inv(tui, app, pilot)
+        return active_tab(app), option_texts(app)
+
+    tab, texts = run(app, steps)
+    assert tab == "Надето"
+    assert all("★" in text for text in texts)
+
+
+def test_inv_window_tabs_are_non_empty_sections_in_order(registry, tmp_path, tui):
+    app, game = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_inv(tui, app, pilot)
+        return [str(tab.label) for tab in app.screen.query("#inv-tabs Tab")]
+
+    assert run(app, steps) == [name for name, _ in inv_tabs(inv_rows(game))]
+
+
+def test_tab_key_refills_list_with_next_tab_rows(registry, tmp_path, tui):
+    app, game = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_inv(tui, app, pilot)
+        await pilot.press("right")
+        await pilot.pause()
+        menu = app.screen.query_one("#inv-list")
+        return active_tab(app), option_texts(app), menu.highlighted, description(tui, app)
+
+    tab, texts, highlighted, text = run(app, steps)
+    name, rows = inv_tabs(inv_rows(game))[1]
+    assert tab == name
+    assert texts == [f"{number}. {row[0]}" for number, row in enumerate(rows, 1)]
+    assert highlighted == 0
+    assert rows[0][1] in text
+
+
+def test_left_key_returns_to_previous_tab(registry, tmp_path, tui):
+    app, _ = inv_app(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_inv(tui, app, pilot)
+        await pilot.press("right")
+        await pilot.pause()
+        await pilot.press("left")
+        await pilot.pause()
+        return active_tab(app)
+
+    assert run(app, steps) == "Надето"
 
 
 def test_inv_window_shows_description_of_highlighted_item(registry, tmp_path, tui):

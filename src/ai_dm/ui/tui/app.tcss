@@ -189,6 +189,10 @@ InvModal {
     align: center middle;
 }
 
+#inv-tabs {
+    height: 2;
+}
+
 #inv-list {
     height: auto;
     max-height: 14;

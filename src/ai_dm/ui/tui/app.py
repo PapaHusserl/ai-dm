@@ -21,6 +21,7 @@ from ai_dm.ui.screen import limit_percent, picture_state, scene_mark, sound_stat
 from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.blocks import inv_rows, map_lines, modal_lines, pickable, spell_rows
+from ai_dm.ui.tui.inv_sections import inv_tabs
 from ai_dm.ui.tui.modals import (
     CostModal,
     InvModal,
@@ -466,7 +467,7 @@ class AiDmApp(App):
         elif modal_text and command == "/spells" and self.can_cast_by_menu():
             self.push_screen(SpellModal(title, spell_rows(self.game)), self.spell_chosen)
         elif modal_text and command == "/inv" and self.can_pick_item():
-            self.push_screen(InvModal(title, inv_rows(self.game)), self.inv_chosen)
+            self.push_screen(InvModal(title, inv_tabs(inv_rows(self.game))), self.inv_chosen)
         elif modal_text and command == "/model":
             # выбор модели рассказчика: окно со списком; ответ -- ключ или None (Esc)
             info = self.game.adapter.info()

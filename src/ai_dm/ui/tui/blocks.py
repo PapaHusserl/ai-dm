@@ -7,6 +7,7 @@ from ai_dm.rules.spellcasting import free_cast_left, spell_kind
 from ai_dm.ui.format import INERT_NOTE, wrap_block
 from ai_dm.ui.screen import combat_map_lines
 from ai_dm.ui.tui import strings
+from ai_dm.ui.tui.inv_sections import inv_section
 
 
 def pickable(game, session, choices):
@@ -78,7 +79,8 @@ def inv_actions_of(game, item_id, found, worn):
 
 
 def inv_rows(game):
-    # строки окна /inv: (подпись, описание, действия); действия -- подкоманды /inv, второго пути нет
+    # строки окна /inv: (подпись, описание, действия, вкладка);
+    # действия -- подкоманды /inv, второго пути нет
     hero = hero_of(game.bundle)
     registry = game.registry
     in_combat = game.bundle.session.active_combat is not None
@@ -87,7 +89,7 @@ def inv_rows(game):
     for item_id, qty in item_totals(hero).items():
         found = find_item(registry, item_id)
         if found is None:
-            rows.append((item_id, "", []))
+            rows.append((item_id, "", [], inv_section(None, [])))
             continue
         item = found[1]
         worn = [slot for slot in SLOTS if getattr(hero.equipped, slot) == item_id]
@@ -98,7 +100,7 @@ def inv_rows(game):
             # зелье в бою -- через меню хода (решение 20)
             note = strings.INV_COMBAT_POTION if in_combat and drinkable(found) else no_actions
             description = "\n\n".join(part for part in (description, note) if part)
-        rows.append((label, description, actions))
+        rows.append((label, description, actions, inv_section(found, worn)))
     return rows
 
 
