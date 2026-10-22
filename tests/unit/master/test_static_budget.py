@@ -40,7 +40,8 @@ from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
 # У0 П2: замер explore.total 22418 + 3 %.
-STATIC_MAX = 23090
+# У1 П2: фраза о платной близости, решение 30 (23090 -> 23150).
+STATIC_MAX = 23150
 
 MODES = sorted(MODE_TOOLS)
 

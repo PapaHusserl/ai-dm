@@ -1183,6 +1183,126 @@ def test_companion_over_scene_limit_gives_no_inspiration(registry, cfg):
     assert ctx.hero.heroic_inspiration is False
 
 
+# У1 П2: платная близость -- флаг paid_company и память deal
+
+def deals(ctx):
+    return [e for m in grok(ctx).memory for e in m.events if e.kind == "deal"]
+
+
+def test_intimate_buy_sets_paid_company_flag(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    buy(ctx, "companion_common")
+    assert ctx.bundle.world.flags["paid_company:hero:grok"] is True
+
+
+def test_intimate_buy_writes_deal_event_with_service_name(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    buy(ctx, "companion_common")
+    [event] = deals(ctx)
+    assert event.text == "купил(а) услугу: компания на час (обычная)"
+    assert event.turn_seq == ctx.turn_seq
+
+
+def test_intimate_buy_log_mentions_memory(registry, cfg):
+    d = buy(companion_ctx(registry, cfg), "companion_common")
+    assert any("запомнит это" in line and "Грок" in line for line in d.log)
+
+
+def test_second_intimate_buy_in_scene_writes_one_deal(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    buy(ctx, "companion_common")
+    d = buy(ctx, "companion_common")
+    assert len(deals(ctx)) == 1
+    assert not any("запомнит это" in line for line in d.log)
+    assert ctx.bundle.world.flags["paid_company:hero:grok"] is True
+
+
+def test_purchase_then_romance_at_low_attitude_leaves_one_deal(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    grok(ctx).attitude = 40
+    buy(ctx, "companion_common")
+    apply(ctx, req("npc_update", npc_id="grok", memory_kind="romance", memory_text="остался"))
+    assert [e.kind for m in grok(ctx).memory for e in m.events] == ["deal"]
+
+
+def test_intimate_buy_sets_exactly_one_paid_company_flag_keyed_by_hero(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    buy(ctx, "companion_common")
+    flags = {name for name in ctx.bundle.world.flags if name.startswith("paid_company")}
+    assert flags == {"paid_company:hero:grok"}
+
+
+def test_intimate_buy_in_new_scene_writes_new_deal(registry, cfg):
+    from ai_dm.state.scene import SceneState
+
+    ctx = companion_ctx(registry, cfg)
+    buy(ctx, "companion_common")
+    ctx.bundle.session.current_scene = SceneState(id="scene_2", started_at_s=500)
+    buy(ctx, "companion_common")
+    assert len(deals(ctx)) == 2
+
+
+def test_intimate_buy_without_scene_sets_flag_without_memory(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    ctx.bundle.session.current_scene = None
+    assert buy(ctx, "companion_common").status == "accepted"
+    assert ctx.bundle.world.flags["paid_company:hero:grok"] is True
+    assert deals(ctx) == []
+
+
+def test_clamped_intimate_buy_still_remembers(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_cheap", money=30)
+    d = buy(ctx, "companion_cheap", qty=2)
+    assert d.status == "clamped"
+    assert len(deals(ctx)) == 1
+    assert ctx.bundle.world.flags["paid_company:hero:grok"] is True
+
+
+def test_rejected_intimate_buy_sets_no_flag_and_no_memory(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_common", money=99)
+    assert buy(ctx, "companion_common").status == "rejected"
+    assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+    assert deals(ctx) == []
+
+
+def test_intimate_buy_over_scene_limit_sets_no_flag(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene
+    buy(ctx, "companion_common")
+    assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+
+
+def test_non_intimate_services_set_no_paid_company_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["meal_modest", "haircut", "bath"])
+    for service_id in ("meal_modest", "haircut", "bath"):
+        buy(ctx, service_id)
+    assert not [name for name in ctx.bundle.world.flags if name.startswith("paid_company")]
+    assert deals(ctx) == []
+
+
+def test_list_of_intimate_service_sets_no_flag(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    listing(ctx)
+    assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+
+
+def test_intimate_buy_deal_does_not_block_romance_at_high_attitude(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    grok(ctx).attitude = cfg.services.romance_from
+    buy(ctx, "companion_common")
+    d = apply(ctx, req("npc_update", npc_id="grok", memory_kind="romance", memory_text="остался"))
+    assert d.status == "accepted"
+    assert [e.kind for m in grok(ctx).memory for e in m.events] == ["deal", "romance"]
+
+
+def test_set_flag_cannot_forge_paid_company_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name="paid_company:hero:grok", value="true"))
+    assert isinstance(d, Invalid)
+    assert d.code == "reserved_flag"
+    assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+
+
 # npc_update services
 
 def update(ctx, npc_id="grok", **fields):

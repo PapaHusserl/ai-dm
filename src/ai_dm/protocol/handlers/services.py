@@ -4,7 +4,7 @@ from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.resources import clamped
 from ai_dm.protocol.handlers.trade import short_of_money
 from ai_dm.protocol.handlers.trade_pick import refusal_problem, scene_problem
-from ai_dm.protocol.handlers.world import rejected
+from ai_dm.protocol.handlers.world import npc_label, rejected
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules import money
 from ai_dm.rules import services as service_rules
@@ -12,6 +12,8 @@ from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.boons import BOONS, grant_boon
 from ai_dm.rules.healing import heal
+from ai_dm.rules.npc_memory import has_kind, remember
+from ai_dm.state.relations import MEMORY_KIND_TITLES, NpcEvent
 
 # глагол лога по эффекту услуги
 LOG_WORDS = {
@@ -45,11 +47,24 @@ def service(ctx, request):
     action = {"heal": heal_service, "cure": cure_service}.get(kind.effect, pay_service)
     decision = action(ctx, request, npc, kind, unit)
     if isinstance(decision, Decision) and decision.status != "rejected":
+        if kind.intimate:
+            remember_deal(ctx, npc, kind, decision)
         if kind.boon:
             boon_and_risks(ctx, npc, kind, decision)
         if scene is not None:
             scene.trades += 1
     return decision
+
+
+def remember_deal(ctx, npc, kind, decision) -> None:
+    # платная близость: флаг для romance_gate и сделка в памяти NPC (одна на сцену)
+    ctx.bundle.world.flags[f"{service_rules.PAID_COMPANY_FLAG}:{ctx.hero.id}:{npc.id}"] = True
+    scene = ctx.scene
+    if scene is None or has_kind(npc, scene, "deal"):
+        return
+    event = NpcEvent(kind="deal", turn_seq=ctx.turn_seq, text=f"купил(а) услугу: {kind.name}")
+    if remember(npc, scene, event, ctx.cfg.npc_memory) is not None:
+        decision.log.append(f"{npc_label(npc)} запомнит это: {MEMORY_KIND_TITLES['deal']}")
 
 
 def boon_and_risks(ctx, npc, kind, decision) -> None:

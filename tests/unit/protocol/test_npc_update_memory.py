@@ -637,3 +637,165 @@ def test_warm_battle_written_by_engine_blocks_master_duplicate(registry, cfg):
     remember(npc, ctx.bundle.session.current_scene, NpcEvent(kind="battle", turn_seq=1, text="бой"),
              cfg.npc_memory)
     assert remember_call(ctx, "battle").report_tag == "duplicate-kind"
+
+
+# У1 П2: платная близость -- не роман (romance_gate в change_memory)
+
+def paid_ctx(registry, cfg, attitude=40, paid=True):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = attitude
+    if paid:
+        ctx.bundle.world.flags["paid_company:hero:aldric"] = True
+    return ctx
+
+
+def test_paid_romance_below_threshold_is_written_as_deal(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40)
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["deal"]
+
+
+def test_paid_romance_below_threshold_is_clamped_with_tag_and_signal(registry, cfg):
+    d = remember_call(paid_ctx(registry, cfg, 40), "romance")
+    assert (d.status, d.report_tag) == ("clamped", "paid_not_romance")
+    assert "сделка" in d.signal_to_master
+    assert str(cfg.services.romance_from) in d.signal_to_master
+    assert any("сделку" in line for line in d.log)
+
+
+def test_paid_romance_keeps_text_of_the_event(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40)
+    remember_call(ctx, "romance", "ночь в комнате")
+    assert memory(ctx)[0].events[0].text == "ночь в комнате"
+
+
+def test_paid_romance_at_threshold_is_romance(registry, cfg):
+    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    d = remember_call(ctx, "romance")
+    assert d.status == "accepted"
+    assert kinds(ctx) == ["romance"]
+
+
+def test_paid_romance_one_below_threshold_is_deal(registry, cfg):
+    ctx = paid_ctx(registry, cfg, cfg.services.romance_from - 1)
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["deal"]
+
+
+def test_romance_without_paid_flag_is_romance_at_low_attitude(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40, paid=False)
+    d = remember_call(ctx, "romance")
+    assert d.status == "accepted"
+    assert kinds(ctx) == ["romance"]
+
+
+def test_paid_flag_of_another_npc_does_not_gate(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40, paid=False)
+    ctx.bundle.world.flags["paid_company:hero:grakh"] = True
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["romance"]
+
+
+def test_paid_flag_of_another_hero_does_not_gate(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40, paid=False)
+    ctx.bundle.world.flags["paid_company:other_hero:aldric"] = True
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["romance"]
+
+
+@pytest.mark.parametrize("kind", ["friendship", "helped", "deal"])
+def test_paid_flag_does_not_change_other_kinds(registry, cfg, kind):
+    ctx = paid_ctx(registry, cfg, 40)
+    d = remember_call(ctx, kind)
+    assert d.status == "accepted"
+    assert kinds(ctx) == [kind]
+
+
+def test_attitude_delta_from_same_request_counts_for_memory_gate(registry, cfg):
+    # отношение применяется до памяти: 80 + 10 = 90 -- порог пройден в том же запросе
+    ctx = paid_ctx(registry, cfg, 80)
+    remember_call(ctx, "romance", attitude_delta=10)
+    assert kinds(ctx) == ["romance"]
+
+
+def test_attitude_delta_not_reaching_threshold_still_deal(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 70)
+    remember_call(ctx, "romance", attitude_delta=10)
+    assert kinds(ctx) == ["deal"]
+    assert ctx.bundle.world.npcs["aldric"].attitude == 80
+
+
+def test_second_paid_romance_in_scene_gives_one_deal(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40)
+    remember_call(ctx, "romance")
+    d = remember_call(ctx, "romance")
+    assert kinds(ctx) == ["deal"]
+    assert (d.status, d.report_tag) == ("clamped", "paid_not_romance")
+    assert any("уже помнит сделку в этой сцене" in line for line in d.log)
+
+
+def test_paid_romance_after_purchase_deal_in_same_scene_writes_no_second_deal(registry, cfg):
+    from ai_dm.rules.npc_memory import remember
+    from ai_dm.state.relations import NpcEvent
+
+    ctx = paid_ctx(registry, cfg, 40)
+    npc = ctx.bundle.world.npcs["aldric"]
+    remember(npc, ctx.bundle.session.current_scene,
+             NpcEvent(kind="deal", turn_seq=1, text="купил(а) услугу"), cfg.npc_memory)
+    d = remember_call(ctx, "romance")
+    assert kinds(ctx) == ["deal"]
+    assert d.report_tag == "paid_not_romance"
+
+
+@pytest.mark.parametrize("start, delta, spent, expected", [
+    (50, 5, 0, 55),
+    (50, -5, 0, 45),
+    (50, 50, 0, 60),
+    (50, -50, 0, 40),
+    (50, 10, 15, 55),
+    (50, -10, 15, 45),
+    (50, 10, 20, 50),
+    (95, 10, 0, 100),
+    (-95, -10, 0, -100),
+    (50, 0, 0, 50),
+    (50, 1, 0, 51),
+    (50, -1, 0, 49),
+])
+def test_wanted_attitude_forecast(registry, cfg, start, delta, spent, expected):
+    from ai_dm.protocol.handlers.world import wanted_attitude
+
+    ctx = make_ctx(registry, cfg)
+    npc = ctx.bundle.world.npcs["aldric"]
+    npc.attitude = start
+    ctx.attitude_spent["aldric"] = spent
+    assert wanted_attitude(ctx, npc, delta) == expected
+    assert npc.attitude == start
+
+
+def test_wanted_attitude_without_spent_entry_uses_full_scene_limit(registry, cfg):
+    from ai_dm.protocol.handlers.world import wanted_attitude
+
+    wide = cfg.model_copy(deep=True)
+    wide.attitude.step = wide.attitude.per_scene
+    ctx = make_ctx(registry, wide)
+    npc = ctx.bundle.world.npcs["aldric"]
+    npc.attitude = 0
+    ctx.attitude_spent.pop("aldric", None)
+    assert wanted_attitude(ctx, npc, wide.attitude.per_scene) == wide.attitude.per_scene
+
+
+def test_paid_romance_reason_names_the_cause(registry, cfg):
+    d = remember_call(paid_ctx(registry, cfg, 40), "romance")
+    assert d.reason == "платная близость не роман"
+
+
+def test_romance_at_threshold_after_deal_in_scene_is_written(registry, cfg):
+    from ai_dm.rules.npc_memory import remember
+    from ai_dm.state.relations import NpcEvent
+
+    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    npc = ctx.bundle.world.npcs["aldric"]
+    remember(npc, ctx.bundle.session.current_scene,
+             NpcEvent(kind="deal", turn_seq=1, text="купил(а) услугу"), cfg.npc_memory)
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["deal", "romance"]

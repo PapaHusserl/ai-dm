@@ -2,6 +2,8 @@ from ai_dm.rules import trade as trade_rules
 
 HAGGLE_FLAG = "haggle"
 LODGING_FLAG = "lodging"
+# герой платил NPC за близость: romance в памяти пишется только с порога отношения (У1 П2)
+PAID_COMPANY_FLAG = "paid_company"
 
 
 class FlagHaggle:

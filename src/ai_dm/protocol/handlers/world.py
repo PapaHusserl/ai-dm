@@ -8,6 +8,7 @@ from ai_dm.rules.npc_memory import events_full, has_kind, refresh_weight, rememb
 from ai_dm.rules.npc_names import looks_like_kind, shown_name
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
+from ai_dm.rules.services import PAID_COMPANY_FLAG
 from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.gender import GENDER_WORDS
@@ -184,13 +185,18 @@ def location_create(ctx, request):
     )
 
 
-def change_attitude(ctx, npc, delta, decision):
-    spent = ctx.attitude_spent
-    left = max(0, ctx.cfg.attitude.per_scene - spent.get(npc.id, 0))
+def wanted_attitude(ctx, npc, delta) -> int:
+    # отношение после сдвига delta с учётом шага, остатка за сцену и границ ±100
+    left = max(0, ctx.cfg.attitude.per_scene - ctx.attitude_spent.get(npc.id, 0))
     amount = min(abs(delta), ctx.cfg.attitude.step, left)
     wanted = amount if delta > 0 else -amount
+    return max(-100, min(100, npc.attitude + wanted))
+
+
+def change_attitude(ctx, npc, delta, decision):
+    spent = ctx.attitude_spent
     before = npc.attitude
-    npc.attitude = max(-100, min(100, npc.attitude + wanted))
+    npc.attitude = wanted_attitude(ctx, npc, delta)
     # лимит сцены и лог -- по фактическому изменению (у предела ±100 оно меньше)
     applied = npc.attitude - before
     spent[npc.id] = spent.get(npc.id, 0) + abs(applied)
@@ -207,25 +213,49 @@ def change_attitude(ctx, npc, delta, decision):
         )
 
 
+def romance_gate(ctx, npc, delta=0) -> bool:
+    # текущий герой платил этому NPC за близость, а отношение (с поправкой delta, как в
+    # change_attitude) ниже порога романа (У1 П2)
+    paid = ctx.bundle.world.flags.get(f"{PAID_COMPANY_FLAG}:{ctx.hero.id}:{npc.id}")
+    attitude = wanted_attitude(ctx, npc, delta)
+    return bool(paid) and attitude < ctx.cfg.services.romance_from
+
+
 def change_memory(ctx, npc, request, decision):
     # событие в память NPC о герое (сцена обязательна: проверено в memory_problem);
     # вес новой записи -- потраченное за сцену отношение (звать после change_attitude)
     scene = ctx.scene
     text = request.memory_text or ""
     short = shorten_text(text, NPC_EVENT_TEXT_MAX)
-    title = MEMORY_KIND_TITLES[request.memory_kind]
-    if request.memory_kind in WARM_KINDS and has_kind(npc, scene, request.memory_kind):
+    kind = request.memory_kind
+    if kind == "romance" and romance_gate(ctx, npc):
+        # платная близость до порога -- сделка, не роман; отношение уже применено
+        kind = "deal"
+        decision.status = "clamped"
+        decision.report_tag = "paid_not_romance"
+        decision.reason = "платная близость не роман"
+        decision.log.append(f"{npc_label(npc)} запомнит это как сделку")
+        decision.signal_to_master = (
+            f"Для {npc_label(npc)} это сделка, роман — при отношении "
+            f"≥ {ctx.cfg.services.romance_from}: записано как сделка, опиши по факту."
+        )
+        if has_kind(npc, scene, "deal"):
+            # deal не тёплый вид: дубль защитой сцены не отсекается
+            decision.log[-1] = f"{npc_label(npc)} уже помнит сделку в этой сцене"
+            return
+    title = MEMORY_KIND_TITLES[kind]
+    if kind in WARM_KINDS and has_kind(npc, scene, kind):
         # отношение из этого запроса уже применено, дубль вида в сцене в память не пишется
         decision.status = "clamped"
         decision.report_tag = "duplicate-kind"
-        decision.reason = f"{request.memory_kind} уже записан в этой сцене"
+        decision.reason = f"{kind} уже записан в этой сцене"
         decision.log.append(f"{npc_label(npc)} уже помнит это в этой сцене: {title}")
         decision.signal_to_master = (
-            f"{npc_label(npc)} уже помнит {request.memory_kind} в этой сцене: "
+            f"{npc_label(npc)} уже помнит {kind} в этой сцене: "
             "повтор не записан, опиши по факту."
         )
         return
-    event = NpcEvent(kind=request.memory_kind, turn_seq=ctx.turn_seq, text=short)
+    event = NpcEvent(kind=kind, turn_seq=ctx.turn_seq, text=short)
     remember(npc, scene, event, ctx.cfg.npc_memory)
     decision.log.append(f"{npc_label(npc)} запомнит это: {title}")
     if short != text:
@@ -310,6 +340,16 @@ def goal_problem(ctx, npc, request):
             code="unknown_goal_target",
             message=f"нет мишени {target!r}; goal_target — id героя или NPC"
             + allowed(ctx.bundle.world.npcs),
+        )
+    if request.goal_kind == "love" and request.goal_status is None and (
+        target not in ctx.bundle.world.npcs
+        and romance_gate(ctx, npc, request.attitude_delta or 0)
+    ):
+        return rejected(
+            "платная близость не роман",
+            f"Цель love на героя у {npc_label(npc)} не поставлена: для NPC это сделка, "
+            f"роман — при отношении ≥ {ctx.cfg.services.romance_from}.",
+            report_tag="paid_not_romance",
         )
     return goal_state_problem(npc, request, target)
 

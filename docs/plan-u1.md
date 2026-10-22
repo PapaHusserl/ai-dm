@@ -46,6 +46,12 @@
     (рекомендация мамы).
 28. 2026-10-23: `make dead` — поля конфига под П2/П3 (`disease_dc`, `theft_dc`, `intimate`, `risks`, `romance_from`,
     `hygiene_days`) и `washed_at` — «Временно в allowlist»; снять в П2/П3, когда появятся читатели.
+29. 2026-10-23: потеря при краже (к решению 18) — 1к4×10 % кошелька, не больше 10 зм (вариант папы) — утверждено.
+30. 2026-10-23: П2 — статический промпт 23122 > STATIC_MAX 23090 из-за фразы о платной близости — «Поднять порог»
+    (≈ 23150, причина в комментарии теста).
+31. 2026-10-23: гейт цели `love` учитывает `attitude_delta` того же запроса (прогнозное отношение, с границами
+    `change_attitude`) — «Учитывать прибавку» (рекомендация мамы).
+32. 2026-10-23: флаг платной близости привязать к герою — «Сделать в П2» (мама рекомендовала BACKLOG).
 
 ## Правки по ревью
 
@@ -65,6 +71,23 @@
 - Проверки: `make cov` 98,03 % (20964 passed, 1 xfailed, 39 мин), smells 199, `make dead` — после решения 28.
 - Расход П1 (токены субагентов): kaban ≈ 112k (opus), doeba ≈ 127k (opus), мутанты doeba ≈ 56k (sonnet),
   мама ≈ 52k, свекровь ≈ 56k, папа (ROADMAP) ≈ 61k.
+
+**П2** (ревью мамы-кабана и аудит свекрови 2026-10-23; свекровь — «чисто»):
+- STATIC_MAX 23090 → 23150 (решение 30; правка доебы в test_static_budget).
+- Гейт цели `love` — прогнозное отношение с `attitude_delta` запроса (step, остаток per_scene, ±100) — решение 31.
+- Флаг `paid_company:<hero>:<npc>` вместо `paid_company:<npc>` — решение 32.
+- Дубль `deal` в сцене (покупка + `romance`→`deal`): `deal` не в WARM_KINDS — добавлена проверка `has_kind` в ветке
+  гейта (условный пункт мамы, условие подтвердил кабан).
+- Повтор мамы: общий `wanted_attitude(ctx, npc, delta)` для `change_attitude` и `romance_gate` (кабан); слабый тест
+  флага другого героя усилен (доеба).
+- Мутанты (doeba, sonnet): 12 выживших → 8 убиты тестами, 1 эквивалентный (`wanted_attitude` 24, `delta >= 0`),
+  3 на старой строке `change_attitude` → BACKLOG 158.
+- Повтор 3 мамы/свекрови — «можно мержить»/«чисто». Не взято (не блокирует): ожидания `test_wanted_attitude_forecast`
+  зашиты под `step=10`, `per_scene=20` — выразить через `cfg.attitude` при следующей правке файла.
+- Проверки: cov 98,04 % (21033 passed, 1 xfailed), smells 199, dead ок; STATIC_MAX 23150 (решение 30).
+- Расход П2 (токены субагентов): kaban ≈ 79k (opus), doeba ≈ 98k (opus), мутанты doeba ≈ 36k (sonnet),
+  мама ≈ 37k, свекровь ≈ 40k (без повтора 3 и архитектора).
+- Свекровь, на заметку: гейт `love` только при создании цели (`goal_status is None`) — техническое сужение У5 кабаном.
 
 Груминг: отчёты свинопаса и аудита свекрови — в scratchpad сессии 2026-10-22 (не в репо).
 
@@ -321,7 +344,7 @@ hygiene_days = 7         # решение 16: столько дней без м�
 
 - У1. Имена: `boon`, `intimate`, `risks` (`disease_dc`, `theft_dc`), `effect = "plain"`, `romance_from`,
   `hygiene_days`; бонусы `groomed` («ухожен»), `inspired` («вдохновение»), `washed`; состояния `diseased` («болен»),
-  `smelly` («вонь», `source = "hygiene"`); флаги `paid_company:<npc_id>`, `washed:<hero_id>`; коды `paid_not_romance`,
+  `smelly` («вонь», `source = "hygiene"`); флаги `paid_company:<hero_id>:<npc_id>` (решение 32), `washed:<hero_id>`; коды `paid_not_romance`,
   `boon_active`; события `diseased`, `robbed`, `smelly`, `washed`; источник эффекта/состояния `service:<npc_id>`.
 - У2. Срок `groomed` — `Expiry(kind="seconds", value=now_s + 86400)`; проверка истечения — в `EffectSource` и в
   показе; чистки по таймеру нет (как у `lodging_paid`).

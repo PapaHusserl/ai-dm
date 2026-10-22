@@ -1035,3 +1035,12 @@ updated: 2026-10-23
 `old_age`, `break`/`continue`, `EFFECT_TARGETS.get` default), `game.commands.cmd_sheet` (61 — экипировка, состояния,
 концентрация, заклинания, шрамы, боги), `rules.inventory.effects_line` (61 — возможно убиваются
 `tests/unit/ui/test_ui_effects_visible.py`, вне прогона партии, не проверено).
+
+## 158. Выжившие мутанты на старых строках (У1 П2)
+status: idea
+priority: low
+updated: 2026-10-23
+
+(разбор мутантов У1 П2, правило 4 AGENTS — docs/plan-u1.md)
+`protocol.handlers.world.change_attitude` 20–22 — строка `decision.result["attitude"] = npc.attitude` (None и порча
+ключа): ключ `result["attitude"]` ни один тест не проверяет.

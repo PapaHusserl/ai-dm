@@ -899,3 +899,133 @@ def test_world_kill_by_hero_gives_revenge_to_kin(registry, cfg):
     )
     assert decision.status == "accepted"
     assert [g.kind for g in kin.goals] == ["revenge"]
+
+
+# У1 П2: цель love на героя у NPC, которому платили, -- до порога романа отклоняется
+
+def paid_ctx(registry, cfg, attitude=40, paid=True):
+    ctx = make_ctx(registry, cfg)
+    aldric(ctx).attitude = attitude
+    if paid:
+        ctx.bundle.world.flags["paid_company:hero:aldric"] = True
+    return ctx
+
+
+def test_love_goal_on_hero_after_payment_below_threshold_is_rejected(registry, cfg):
+    ctx = paid_ctx(registry, cfg)
+    d = update(ctx, goal_kind="love")
+    assert d.status == "rejected"
+    assert d.report_tag == "paid_not_romance"
+    assert str(cfg.services.romance_from) in d.signal_to_master
+    assert aldric(ctx).goals == []
+
+
+def test_rejected_love_goal_changes_nothing(registry, cfg):
+    ctx = paid_ctx(registry, cfg)
+    before = dump(ctx)
+    update(ctx, goal_kind="love")
+    assert dump(ctx) == before
+
+
+def test_love_goal_with_explicit_hero_target_is_rejected_too(registry, cfg):
+    d = update(paid_ctx(registry, cfg), goal_kind="love", goal_target=HERO)
+    assert d.report_tag == "paid_not_romance"
+
+
+def test_love_goal_at_threshold_is_set(registry, cfg):
+    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    assert update(ctx, goal_kind="love").status == "accepted"
+    assert [g.kind for g in aldric(ctx).goals] == ["love"]
+
+
+def test_love_goal_without_payment_is_set_at_low_attitude(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40, paid=False)
+    assert update(ctx, goal_kind="love").status == "accepted"
+
+
+def test_other_goal_kind_after_payment_is_set(registry, cfg):
+    ctx = paid_ctx(registry, cfg)
+    assert update(ctx, goal_kind="debt").status == "accepted"
+
+
+def test_love_goal_on_another_npc_after_payment_is_set(registry, cfg):
+    ctx = paid_ctx(registry, cfg)
+    assert update(ctx, goal_kind="love", goal_target="grakh").status == "accepted"
+
+
+def test_closing_love_goal_after_payment_is_not_gated(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 95)
+    update(ctx, goal_kind="love")
+    aldric(ctx).attitude = 40
+    assert update(ctx, goal_kind="love", goal_status="done").status == "accepted"
+
+
+def test_love_goal_gate_counts_attitude_delta_of_same_request(registry, cfg):
+    # прогноз отношения: 80 + 10 = 90 -- порог пройден, цель ставится
+    ctx = paid_ctx(registry, cfg, 80)
+    d = update(ctx, goal_kind="love", attitude_delta=10)
+    assert d.status == "accepted"
+    assert aldric(ctx).attitude == 90
+    assert [g.kind for g in aldric(ctx).goals] == ["love"]
+
+
+def test_love_goal_forecast_below_threshold_is_rejected_and_attitude_untouched(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 79)
+    d = update(ctx, goal_kind="love", attitude_delta=10)
+    assert (d.status, d.report_tag) == ("rejected", "paid_not_romance")
+    assert aldric(ctx).attitude == 79
+    assert aldric(ctx).goals == []
+
+
+def test_love_goal_forecast_clamps_delta_to_step(registry, cfg):
+    # delta 50 урезается до step (10): 70 + 10 = 80 < 90
+    ctx = paid_ctx(registry, cfg, 70)
+    d = update(ctx, goal_kind="love", attitude_delta=50)
+    assert d.report_tag == "paid_not_romance"
+
+
+def test_love_goal_forecast_clamps_delta_to_scene_remainder(registry, cfg):
+    # за сцену уже потрачено per_scene - 5: 85 + min(10, 5) = 90 -- проходит; при 84 -- нет
+    ctx = paid_ctx(registry, cfg, 85)
+    ctx.attitude_spent["aldric"] = cfg.attitude.per_scene - 5
+    d = update(ctx, goal_kind="love", attitude_delta=10)
+    assert d.status != "rejected"
+    assert aldric(ctx).attitude == 90
+    ctx = paid_ctx(registry, cfg, 84)
+    ctx.attitude_spent["aldric"] = cfg.attitude.per_scene - 5
+    assert update(ctx, goal_kind="love", attitude_delta=10).report_tag == "paid_not_romance"
+
+
+def test_love_goal_forecast_with_exhausted_scene_limit_ignores_delta(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 85)
+    ctx.attitude_spent["aldric"] = cfg.attitude.per_scene
+    assert update(ctx, goal_kind="love", attitude_delta=10).report_tag == "paid_not_romance"
+
+
+def test_love_goal_negative_delta_lowers_forecast(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 92)
+    d = update(ctx, goal_kind="love", attitude_delta=-5)
+    assert d.report_tag == "paid_not_romance"
+
+
+def test_love_goal_without_delta_forecast_is_current_attitude(registry, cfg):
+    ctx = paid_ctx(registry, cfg, cfg.services.romance_from - 1)
+    assert update(ctx, goal_kind="love").report_tag == "paid_not_romance"
+
+
+def test_rejected_love_goal_reason_names_the_cause(registry, cfg):
+    assert update(paid_ctx(registry, cfg), goal_kind="love").reason == "платная близость не роман"
+
+
+def test_love_goal_flag_of_another_hero_does_not_gate(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 40, paid=False)
+    ctx.bundle.world.flags["paid_company:other_hero:aldric"] = True
+    assert update(ctx, goal_kind="love").status == "accepted"
+
+
+def test_world_role_love_goal_after_payment_is_rejected(registry, cfg):
+    ctx = world_ctx(registry, cfg)
+    ctx.bundle.world.flags["paid_company:hero:aldric"] = True
+    aldric(ctx).attitude = 40
+    d = apply(ctx, world_update(goal_kind="love"))
+    assert d.report_tag == "paid_not_romance"
