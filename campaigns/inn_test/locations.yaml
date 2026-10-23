@@ -8,6 +8,8 @@
     distance_m: 60
   - to: barber_shop
     distance_m: 40
+  - to: main_square
+    distance_m: 50
   - to: forest_edge
     distance_m: 400
 - id: wayside_temple
@@ -25,6 +27,18 @@
   - цирюльня
   connections:
   - to: copper_kettle
+    distance_m: 40
+  - to: main_square
+    distance_m: 40
+- id: main_square
+  name: Главная площадь
+  description: Небольшая мощёная площадь у перекрёстка с колодцем посередине; здесь сходятся путники, а у колодца раскинула свой столик гадалка.
+  tags:
+  - площадь
+  connections:
+  - to: copper_kettle
+    distance_m: 50
+  - to: barber_shop
     distance_m: 40
 - id: forest_edge
   name: Опушка леса

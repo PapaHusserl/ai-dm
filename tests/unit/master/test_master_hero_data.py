@@ -280,3 +280,58 @@ def test_hero_data_shows_the_second_circle_slots_when_the_hero_has_them(registry
     hero.sheet.primary.level = 5
     sync_resources(hero, registry)
     assert hero_data(ctx)["spell_slots"]["2"] == {"current": 2, "max": 2}
+
+
+# У1 П3ф: boons -- живые бонусы услуг [{id, until_s}], ключ только при непустом списке;
+# heroic_inspiration: True -- только если есть
+
+def boon_effect(effect_id="groomed", until_s=5000, kind="modifier"):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    return ActiveEffect(
+        id=effect_id, source="service:brum", kind=kind,
+        expires=Expiry(kind="seconds", value=until_s),
+    )
+
+
+def test_hero_data_shows_live_boon_with_id_and_until(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(boon_effect("groomed", 5000))
+    assert hero_data(ctx)["boons"] == [{"id": "groomed", "until_s": 5000}]
+
+
+def test_hero_data_hides_expired_boon(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(boon_effect("groomed", 5000))
+    ctx.bundle.world.clock.advance(5000)
+    assert "boons" not in hero_data(ctx)
+
+
+def test_hero_data_without_effects_has_no_boons_key(registry, cfg):
+    assert "boons" not in hero_data(make_ctx(registry, cfg))
+
+
+def test_hero_data_boons_skip_non_boon_effects(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(boon_effect("sap", 5000))
+    ctx.hero.creature.active_effects.append(boon_effect("vex", 5000))
+    assert "boons" not in hero_data(ctx)
+
+
+def test_hero_data_boons_keep_only_boon_among_mixed_effects(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(boon_effect("sap", 5000))
+    ctx.hero.creature.active_effects.append(boon_effect("washed", 7000))
+    assert hero_data(ctx)["boons"] == [{"id": "washed", "until_s": 7000}]
+
+
+def test_hero_data_has_heroic_inspiration_when_true(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.heroic_inspiration = True
+    assert hero_data(ctx)["heroic_inspiration"] is True
+
+
+def test_hero_data_has_no_heroic_inspiration_key_when_false(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.heroic_inspiration = False
+    assert "heroic_inspiration" not in hero_data(ctx)

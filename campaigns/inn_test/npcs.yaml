@@ -82,3 +82,15 @@
   - знает баллады и дорожные слухи
   services:
   - bard_song
+- id: fortune_teller_mara
+  name: Мара Гадалка
+  gender: female
+  named: true
+  key: false
+  location_id: main_square
+  motive: Гадает путникам за монету и любит, когда ей верят на слово.
+  means:
+  - гадалка с колодой потёртых карт
+  - читает судьбу по картам, костям и воску
+  services:
+  - fortune

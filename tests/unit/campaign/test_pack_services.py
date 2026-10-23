@@ -136,6 +136,33 @@ def test_inn_test_chapel_text_tells_master_to_ask_save_then_curse(registry):
     assert "curse" in chapel.description
 
 
+def test_inn_test_has_main_square_linked_both_ways(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    by_id = {loc.id: loc for loc in pack.locations}
+    assert by_id["main_square"].name == "Главная площадь"
+    for other in ("copper_kettle", "barber_shop"):
+        assert other in [c.to for c in by_id["main_square"].connections]
+        assert "main_square" in [c.to for c in by_id[other].connections]
+
+
+def test_inn_test_square_distances_match_both_ways(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    by_id = {loc.id: loc for loc in pack.locations}
+
+    def dist(src, dst):
+        return next(c.distance_m for c in by_id[src].connections if c.to == dst)
+
+    assert dist("copper_kettle", "main_square") == dist("main_square", "copper_kettle") == 50
+    assert dist("barber_shop", "main_square") == dist("main_square", "barber_shop") == 40
+
+
+def test_inn_test_mara_tells_fortunes_on_the_square(registry):
+    pack = load(ROOT / "campaigns" / "inn_test", registry)
+    mara = next(n for n in pack.npcs if n.id == "fortune_teller_mara")
+    assert mara.location_id == "main_square"
+    assert mara.services == ["fortune"]
+
+
 def test_inn_test_providers_stand_in_known_locations(registry):
     pack = load(ROOT / "campaigns" / "inn_test", registry)
     locations = {loc.id for loc in pack.locations}

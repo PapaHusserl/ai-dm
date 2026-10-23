@@ -16,6 +16,8 @@ from ai_dm.master.leaks import cut_leaks
 from ai_dm.master.relevance import nearby_locations, npc_reasons, rank_npcs
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
+from ai_dm.rules.boons import BOONS
+from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.knowledge import prompt_entries
@@ -140,6 +142,15 @@ def lost_items_data(world):
             },
         }
         for c in lost[:LOST_ITEMS_MAX]
+    ]
+
+
+def boons_data(hero, now_s):
+    # живые бонусы услуг с концом срока (секунды мира); вдохновение -- отдельным флагом
+    return [
+        {"id": e.id, "until_s": e.expires.value}
+        for e in live_effects(hero.creature, now_s)
+        if e.id in BOONS and e.expires is not None
     ]
 
 
@@ -582,6 +593,11 @@ class PromptBuilder:
         }
         hero_data.update(self.sheet_data(hero, ctx.registry))
         hero_data.update(identity_data(hero))
+        boons = boons_data(hero, world.clock.now_s)
+        if boons:
+            hero_data["boons"] = boons
+        if hero.heroic_inspiration:
+            hero_data["heroic_inspiration"] = True
         if hero.motive:
             hero_data["motive"] = hero.motive
         if hero.means:

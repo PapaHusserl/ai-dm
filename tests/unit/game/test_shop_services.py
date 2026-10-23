@@ -107,6 +107,11 @@ def test_shop_shows_haircut_and_shave_per_once(registry, tmp_path):
     assert "    бритьё — 1 мм / раз" in lines
 
 
+def test_shop_shows_fortune_of_mara(registry, tmp_path):
+    lines = shop(make_inn(registry, tmp_path, services=["fortune"]))
+    assert "    гадание — 5 см / раз" in lines
+
+
 def test_description_is_not_shown_in_shop(registry, tmp_path, cfg):
     lines = shop(make_inn(registry, tmp_path, services=["room_modest"]))
     assert not row(lines, cfg.services.kinds["room_modest"].description)
