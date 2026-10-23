@@ -1,0 +1,17 @@
+id: composite_longbow_bound
+name: Композитный лук следопыта (бандаж Вингтейла)
+category: martial
+kind: ranged
+damage_dice: 1d8+1
+damage_type: piercing
+cost_cp: 5000
+properties:
+- ammunition
+- heavy
+- two_handed
+mastery: slow
+range_normal_ft: 190
+range_long_ft: 760
+description: Ясеневый композитный лук Грея, доработанный Вингтейлом — диагональный бандаж из вепрьих жил на клею
+  из чешуи и хрящей. Не теряет хлёсткости на холоде, бьёт дальше и сильнее (+40 фт дальности, +1 к урону).
+source: campaign:drunk_dragon
