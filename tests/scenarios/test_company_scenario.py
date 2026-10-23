@@ -8,6 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "unit" / "game"))
 
+import game_kit  # noqa: E402
+import pytest  # noqa: E402
 from game_kit import OPUS, SAVED_AT, make_app, settings  # noqa: E402
 from slots_kit import WORLD_TEXT  # noqa: E402
 
@@ -15,6 +17,21 @@ from ai_dm.game.scene import hero_of  # noqa: E402
 from ai_dm.game.starter import new_world  # noqa: E402
 from ai_dm.llm.mock import ScriptedAdapter  # noqa: E402
 from ai_dm.state.world import NPC  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def no_risks(monkeypatch):
+    # У1 П3: покупка не бросает спасброски кражи и болезни -- сценарий про память и порог романа
+    base = game_kit.settings
+
+    def patched():
+        loaded = base()
+        risks = loaded.rules.services.kinds["companion_common"].risks
+        risks.disease_dc = 0
+        risks.theft_dc = 0
+        return loaded
+
+    monkeypatch.setattr(game_kit, "settings", patched)
 
 
 def buy_call():

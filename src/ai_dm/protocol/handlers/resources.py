@@ -62,7 +62,10 @@ def clamped(reason, signal, result, log):
 def spent_fail_ref(ctx, roll_ref):
     # True и тратит бросок, если roll_ref -- ещё не использованный провал этого хода
     ref = ctx.rolls.get(roll_ref)
-    if ref is None or ref.outcome != "fail" or roll_ref in ctx.used_rolls:
+    if (
+        ref is None or ref.outcome != "fail" or roll_ref in ctx.used_rolls
+        or roll_ref in ctx.engine_rolls
+    ):
         return False
     ctx.used_rolls.add(roll_ref)
     return True

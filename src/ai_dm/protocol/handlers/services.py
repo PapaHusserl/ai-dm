@@ -2,18 +2,22 @@ from ai_dm.core.dice import roll_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.resources import clamped
+from ai_dm.protocol.handlers.service_extras import boon_and_risks, remember_deal
 from ai_dm.protocol.handlers.trade import short_of_money
 from ai_dm.protocol.handlers.trade_pick import refusal_problem, scene_problem
-from ai_dm.protocol.handlers.world import npc_label, rejected
+from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules import money
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
-from ai_dm.rules.boons import BOONS, grant_boon
 from ai_dm.rules.healing import heal
-from ai_dm.rules.npc_memory import has_kind, remember
-from ai_dm.state.relations import MEMORY_KIND_TITLES, NpcEvent
+
+# что снято обрядом -> слово в заголовке лога
+CURE_TITLES = {
+    ("cursed",): "Проклятие снято", ("diseased",): "Болезнь снята",
+    ("cursed", "diseased"): "Проклятие и болезнь сняты",
+}
 
 # глагол лога по эффекту услуги
 LOG_WORDS = {
@@ -49,32 +53,11 @@ def service(ctx, request):
     if isinstance(decision, Decision) and decision.status != "rejected":
         if kind.intimate:
             remember_deal(ctx, npc, kind, decision)
-        if kind.boon:
+        if kind.boon or kind.intimate:
             boon_and_risks(ctx, npc, kind, decision)
         if scene is not None:
             scene.trades += 1
     return decision
-
-
-def remember_deal(ctx, npc, kind, decision) -> None:
-    # платная близость: флаг для romance_gate и сделка в памяти NPC (одна на сцену)
-    ctx.bundle.world.flags[f"{service_rules.PAID_COMPANY_FLAG}:{ctx.hero.id}:{npc.id}"] = True
-    scene = ctx.scene
-    if scene is None or has_kind(npc, scene, "deal"):
-        return
-    event = NpcEvent(kind="deal", turn_seq=ctx.turn_seq, text=f"купил(а) услугу: {kind.name}")
-    if remember(npc, scene, event, ctx.cfg.npc_memory) is not None:
-        decision.log.append(f"{npc_label(npc)} запомнит это: {MEMORY_KIND_TITLES['deal']}")
-
-
-def boon_and_risks(ctx, npc, kind, decision) -> None:
-    # бонус услуги после принятой оплаты: result, строка лога, сигнал мастеру
-    line, granted = grant_boon(ctx, kind.boon, npc)
-    decision.result["boon"] = kind.boon
-    decision.log.append(line)
-    if granted:
-        note = f"Герою достался бонус: {BOONS[kind.boon][0]}."
-        decision.signal_to_master = " ".join(x for x in (decision.signal_to_master, note) if x)
 
 
 def provider_problem(ctx, request, npc):
@@ -202,7 +185,9 @@ def cure_service(ctx, request, npc, kind, unit):
     ctx.events.append(event)
     result = service_result(ctx, npc, request, unit, 1)
     result["cured"] = cured
-    log = [f"Проклятие снято: {kind.name} у {npc.name} за {money.format_cp(unit)}"]
+    known = tuple(c for c in ("cursed", "diseased") if c in cured)
+    title = CURE_TITLES.get(known, "Состояние снято")
+    log = [f"{title}: {kind.name} у {npc.name} за {money.format_cp(unit)}"]
     return Decision(status="accepted", result=result, log=log)
 
 

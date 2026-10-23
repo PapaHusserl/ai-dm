@@ -121,9 +121,11 @@ def test_custom_kind_loads_from_toml():
 
 # cure (П3): effect = "cure" требует непустой cures
 
-def test_uncurse_temple_is_cure_of_cursed_for_25_gold():
+def test_uncurse_temple_is_cure_of_cursed_and_diseased_for_25_gold():
     temple = services().kinds["uncurse_temple"]
-    assert (temple.effect, temple.unit, temple.cures) == ("cure", "once", ["cursed"])
+    assert (temple.effect, temple.unit, temple.cures) == (
+        "cure", "once", ["cursed", "diseased"]
+    )
     assert temple.price_cp == 2500
     assert temple.name == "снятие проклятия"
 
@@ -249,6 +251,22 @@ def test_haircut_and_shave_are_plain_groomed_once():
 def test_bath_is_plain_washed_for_ten_copper():
     k = services().kinds["bath"]
     assert (k.effect, k.unit, k.boon, k.price_cp) == ("plain", "once", "washed", 10)
+
+
+def test_comfortable_and_wealthy_rooms_give_washed_boon():
+    kinds = services().kinds
+    assert kinds["room_comfortable"].boon == "washed"
+    assert kinds["room_wealthy"].boon == "washed"
+
+
+def test_poor_and_modest_rooms_give_no_boon():
+    kinds = services().kinds
+    assert kinds["room_poor"].boon == ""
+    assert kinds["room_modest"].boon == ""
+
+
+def test_uncurse_temple_description_mentions_disease():
+    assert "болезн" in services().kinds["uncurse_temple"].description
 
 
 def test_bard_and_fortune_are_plain_without_boon():

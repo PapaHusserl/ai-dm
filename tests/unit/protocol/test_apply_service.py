@@ -20,9 +20,10 @@ from protocol_kit import ScriptedRng, combat_request, dump, make_ctx, req
 
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision, Invalid
-from ai_dm.rules.derived import skill_bonus
+from ai_dm.rules.derived import saving_throw_bonus, skill_bonus
 from ai_dm.rules.trade import DAY_S
 from ai_dm.state.creature import AppliedCondition
+from ai_dm.state.relations import NpcGoal
 from ai_dm.state.world import NPC, TradeProfile
 
 FAR = 10**9
@@ -706,6 +707,19 @@ def test_cure_cures_every_listed_condition_for_one_price(registry, cfg):
     assert event.data["conditions"] == "cursed,poisoned"
 
 
+def test_cure_of_other_condition_uses_generic_log_title(registry, cfg):
+    ctx = cure_ctx(registry, cfg, cursed=False)
+    cfg_poison = cfg.model_copy(deep=True)
+    cfg_poison.services.kinds["uncurse_temple"].cures = ["poisoned"]
+    ctx.cfg = cfg_poison
+    ctx.hero.creature.conditions.append(AppliedCondition(id="poisoned"))
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "accepted"
+    assert d.result["cured"] == ["poisoned"]
+    assert d.log[0].startswith("Состояние снято")
+    assert ctx.hero.creature.conditions == []
+
+
 def test_cure_list_shows_uncurse_temple_price(registry, cfg):
     ctx = service_ctx(registry, cfg, services=["uncurse_temple"])
     assert prices(listing(ctx)) == {"uncurse_temple": 2500}
@@ -1119,8 +1133,11 @@ def test_set_flag_cannot_forge_washed_flag(registry, cfg):
     assert d.code == "reserved_flag"
 
 
-def companion_ctx(registry, cfg, kind="companion_common", money=10000):
-    ctx = service_ctx(registry, cfg, money=money, services=[kind])
+def companion_ctx(registry, cfg, kind="companion_common", money=10000, rng=None):
+    # по умолчанию все спасброски последствий (У1 П3) удаются: d20 = 20
+    if rng is None:
+        rng = ScriptedRng(d20=[20] * 8)
+    ctx = service_ctx(registry, cfg, money=money, rng=rng, services=[kind])
     ctx.hero.heroic_inspiration = False
     return ctx
 
@@ -1157,7 +1174,7 @@ def test_companion_when_already_inspired_charges_and_says_so(registry, cfg):
     d = buy(ctx, "companion_common")
     assert ctx.hero.money_cp == 10000 - 100
     assert ctx.hero.heroic_inspiration is True
-    assert "уже воодушевлён" in d.log[-1]
+    assert any("уже воодушевлён" in line for line in d.log)
     assert "rest short" in d.signal_to_master
 
 
@@ -1301,6 +1318,357 @@ def test_set_flag_cannot_forge_paid_company_flag(registry, cfg):
     assert isinstance(d, Invalid)
     assert d.code == "reserved_flag"
     assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+
+
+# У1 П3: последствия платной близости (ревность -> кража -> болезнь), вонь и лечение болезни
+
+def face(ctx, ability, dc, ok):
+    # грань d20, при которой спасбросок удаётся (total == СЛ) или проваливается (total == СЛ - 1)
+    bonus = saving_throw_bonus(ctx.hero, ctx.registry, ability)
+    return dc - bonus if ok else dc - bonus - 1
+
+
+def risky_ctx(registry, cfg, theft_ok, disease_ok, kind="companion_cheap", d4=(2,), money=10000):
+    # companion_cheap: кража СЛ 12 (Мдр), болезнь СЛ 10 (Тел); порядок бросков: кража, болезнь
+    probe = companion_ctx(registry, cfg, kind, money)
+    risks = cfg.services.kinds[kind].risks
+    faces = [
+        face(probe, "wis", risks.theft_dc, theft_ok),
+        face(probe, "con", risks.disease_dc, disease_ok),
+    ]
+    rng = ScriptedRng(d20=faces, d4=list(d4))
+    return companion_ctx(registry, cfg, kind, money, rng=rng)
+
+
+def sick(ctx):
+    return [c for c in ctx.hero.creature.conditions if c.id == "diseased"]
+
+
+def add_lover(ctx, attitude=50):
+    ctx.bundle.world.npcs["lira"] = NPC(
+        id="lira", name="Лира", means=["спутница"], location_id="vale", follows=ctx.hero.id,
+        attitude=attitude, goals=[NpcGoal(kind="love", target=ctx.hero.id, since_s=0)],
+    )
+    return ctx.bundle.world.npcs["lira"]
+
+
+def test_all_saves_passed_gives_no_consequences_key(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, True)
+    d = buy(ctx, "companion_cheap")
+    assert "consequences" not in d.result
+    assert sick(ctx) == []
+    assert ctx.hero.money_cp == 10000 - 20
+
+
+def test_both_saves_are_rolled_and_logged_for_the_player(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, True)
+    d = buy(ctx, "companion_cheap")
+    assert ctx.rng.calls == ["d20", "d20"]
+    saves = [line for line in d.log if line.startswith("Спасбросок")]
+    assert len(saves) == 2
+    assert "Мдр" in saves[0]
+    assert "Тел" in saves[1]
+
+
+def test_disease_fail_sets_diseased_and_reports(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, False)
+    d = buy(ctx, "companion_cheap")
+    [condition] = sick(ctx)
+    assert condition.source == "service:grok"
+    assert d.result["consequences"] == ["diseased"]
+    assert f"{ctx.hero.name}: болезнь" in d.log
+    assert "болезнь" in d.signal_to_master
+    assert any(e.type == "diseased" for e in ctx.events)
+
+
+def test_theft_fail_takes_money_and_reports(registry, cfg):
+    # кошелёк после оплаты 1000 мм, 20 % = 200 мм
+    ctx = risky_ctx(registry, cfg, False, True, d4=(2,), money=1020)
+    d = buy(ctx, "companion_cheap")
+    assert d.result["consequences"] == ["robbed"]
+    assert ctx.hero.money_cp == 800
+    assert "Кошелёк полегчал на 2 зм" in d.log
+    assert "Кошелёк" in d.signal_to_master
+    assert sick(ctx) == []
+
+
+def test_theft_percent_is_taken_from_the_wallet_after_the_price(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, True, d4=(1,), money=1220)
+    buy(ctx, "companion_cheap")
+    assert ctx.hero.money_cp == 1200 - 120
+
+
+def test_consequence_order_is_jealousy_theft_disease(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False)
+    add_lover(ctx)
+    d = buy(ctx, "companion_cheap")
+    assert d.result["consequences"] == ["jealousy", "robbed", "diseased"]
+
+
+def test_consequence_signals_are_joined_with_single_spaces(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False)
+    d = buy(ctx, "companion_cheap")
+    assert d.signal_to_master.startswith(
+        "Платный отдых оплачен: теперь rest short в этом же ходу. "
+        "Герою достался бонус: вдохновение. Кошелёк героя полегчал"
+    )
+    assert "  " not in d.signal_to_master
+    assert "подхватил болезнь" in d.signal_to_master
+
+
+def test_jealousy_through_service_lowers_lover_attitude_and_remembers(registry, cfg):
+    ctx = companion_ctx(registry, cfg)
+    lira = add_lover(ctx)
+    d = buy(ctx, "companion_common")
+    assert d.result["consequences"] == ["jealousy"]
+    assert lira.attitude == 40
+    assert [e.kind for m in lira.memory for e in m.events] == ["betrayal"]
+    assert any("Лира" in line and "измена раскрыта" in line for line in d.log)
+
+
+def test_jealousy_comes_before_the_saves_in_the_log(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, True)
+    add_lover(ctx)
+    d = buy(ctx, "companion_cheap")
+    jealous = next(i for i, line in enumerate(d.log) if "измена раскрыта" in line)
+    first_save = next(i for i, line in enumerate(d.log) if line.startswith("Спасбросок"))
+    assert jealous < first_save
+
+
+def test_consequence_rolls_lists_refs_of_both_saves_in_order(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, True)
+    d = buy(ctx, "companion_cheap")
+    refs = d.result["consequence_rolls"]
+    assert len(refs) == 2
+    assert refs[0] != refs[1]
+    assert [ctx.rolls[r].outcome for r in refs] == ["success", "success"]
+
+
+def test_consequence_rolls_are_engine_rolls(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False)
+    d = buy(ctx, "companion_cheap")
+    assert set(d.result["consequence_rolls"]) == ctx.engine_rolls
+    assert [ctx.rolls[r].outcome for r in d.result["consequence_rolls"]] == ["fail", "fail"]
+
+
+def test_consequence_rolls_absent_without_risks(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_fine", rng=ScriptedRng())
+    d = buy(ctx, "companion_fine")
+    assert "consequence_rolls" not in d.result
+    assert ctx.engine_rolls == set()
+
+
+def test_jealousy_alone_adds_no_consequence_rolls(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_fine", rng=ScriptedRng())
+    add_lover(ctx)
+    d = buy(ctx, "companion_fine")
+    assert "consequence_rolls" not in d.result
+
+
+def test_failed_service_save_ref_does_not_curse(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, False)
+    d = buy(ctx, "companion_cheap")
+    ref = d.result["consequence_rolls"][1]
+    c = apply(ctx, req("curse", failed_roll_ref=ref, cause="злой обряд"))
+    assert c.status == "rejected"
+    assert c.report_tag == "curse_needs_fail"
+    assert ref not in ctx.used_rolls
+    assert [x.id for x in ctx.hero.creature.conditions] == ["diseased"]
+
+
+def test_failed_service_save_ref_cannot_make_damage_deadly(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, False)
+    d = buy(ctx, "companion_cheap")
+    ref = d.result["consequence_rolls"][1]
+    ctx.rng = ScriptedRng(d10=[5, 5])
+    hit = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
+    assert hit.status == "clamped"
+    assert ref not in ctx.used_rolls
+
+
+def test_qty_two_checks_once_per_purchase(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False, d4=(1,))
+    d = buy(ctx, "companion_cheap", qty=2)
+    assert d.result["qty"] == 2
+    assert ctx.rng.calls == ["d20", "d4", "d20"]
+    assert len(sick(ctx)) == 1
+    assert d.result["consequences"] == ["robbed", "diseased"]
+
+
+def test_fine_companion_has_no_risks_and_rolls_nothing(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_fine", rng=ScriptedRng())
+    d = buy(ctx, "companion_fine")
+    assert d.status == "accepted"
+    assert ctx.rng.calls == []
+    assert "consequences" not in d.result
+
+
+def test_fine_companion_still_triggers_jealousy(registry, cfg):
+    ctx = companion_ctx(registry, cfg, "companion_fine", rng=ScriptedRng())
+    lira = add_lover(ctx)
+    d = buy(ctx, "companion_fine")
+    assert d.result["consequences"] == ["jealousy"]
+    assert lira.attitude == 40
+
+
+def test_non_intimate_services_roll_no_saves(registry, cfg):
+    ctx = service_ctx(
+        registry, cfg, rng=ScriptedRng(), services=["bath", "haircut", "meal_modest"]
+    )
+    add_lover(ctx)
+    for service_id in ("bath", "haircut", "meal_modest"):
+        d = buy(ctx, service_id)
+        assert "consequences" not in d.result
+    assert ctx.rng.calls == []
+    assert ctx.bundle.world.npcs["lira"].attitude == 50
+
+
+def test_rejected_intimate_buy_has_no_consequences(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False, money=19)
+    add_lover(ctx)
+    d = buy(ctx, "companion_cheap")
+    assert d.status == "rejected"
+    assert ctx.rng.calls == []
+    assert ctx.bundle.world.npcs["lira"].attitude == 50
+    assert sick(ctx) == []
+
+
+def test_clamped_intimate_buy_still_has_consequences(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, False, money=30)
+    d = buy(ctx, "companion_cheap", qty=2)
+    assert d.status == "clamped"
+    assert d.result["consequences"] == ["diseased"]
+
+
+def test_listing_intimate_service_rolls_nothing(registry, cfg):
+    ctx = companion_ctx(registry, cfg, rng=ScriptedRng())
+    add_lover(ctx)
+    listing(ctx)
+    assert ctx.rng.calls == []
+    assert ctx.bundle.world.npcs["lira"].attitude == 50
+
+
+def test_theft_does_not_touch_the_boon(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, True)
+    d = buy(ctx, "companion_cheap")
+    assert ctx.hero.heroic_inspiration is True
+    assert d.result["boon"] == "inspired"
+
+
+# лечение болезни храмом (решение 34)
+
+def temple_ctx(registry, cfg, *conditions, money=3000):
+    ctx = service_ctx(registry, cfg, money=money, services=["uncurse_temple"])
+    ctx.hero.creature.conditions.extend(AppliedCondition(id=c) for c in conditions)
+    return ctx
+
+
+def test_temple_cures_diseased(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "diseased")
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.conditions == []
+    assert d.result["cured"] == ["diseased"]
+    assert ctx.hero.money_cp == 500
+
+
+def test_temple_cure_of_disease_logs_disease_lifted(registry, cfg):
+    d = buy(temple_ctx(registry, cfg, "diseased"), "uncurse_temple")
+    assert d.log[0].startswith("Болезнь снята")
+    assert "Грок" in d.log[0]
+    assert "25 зм" in d.log[0]
+
+
+def test_temple_cure_of_curse_still_logs_curse_lifted(registry, cfg):
+    d = buy(temple_ctx(registry, cfg, "cursed"), "uncurse_temple")
+    assert d.log[0].startswith("Проклятие снято")
+
+
+def test_temple_cures_curse_and_disease_for_one_price(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "cursed", "diseased")
+    d = buy(ctx, "uncurse_temple")
+    assert d.result["cured"] == ["cursed", "diseased"]
+    assert ctx.hero.creature.conditions == []
+    assert ctx.hero.money_cp == 500
+    assert d.log[0].startswith("Проклятие и болезнь сняты")
+
+
+def test_temple_cure_event_names_diseased(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "diseased")
+    buy(ctx, "uncurse_temple")
+    [event] = [e for e in ctx.events if e.type == "cured"]
+    assert event.data == {"id": ctx.hero.id, "conditions": "diseased"}
+
+
+def test_temple_does_not_cure_smelly(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "smelly")
+    d = buy(ctx, "uncurse_temple")
+    assert d.report_tag == "nothing_to_cure"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
+    assert ctx.hero.money_cp == 3000
+
+
+# вонь: баня и удобные комнаты (решение 23, Р9б)
+
+def smelly_ctx(registry, cfg, service):
+    ctx = service_ctx(registry, cfg, services=[service])
+    ctx.hero.creature.conditions.append(AppliedCondition(id="smelly", source="hygiene"))
+    return ctx
+
+
+def test_bath_removes_smelly(registry, cfg):
+    ctx = smelly_ctx(registry, cfg, "bath")
+    d = buy(ctx, "bath")
+    assert ctx.hero.creature.conditions == []
+    assert "Бонус: чист — вонь смыта" in d.log
+
+
+def test_comfortable_room_removes_smelly_and_marks_washed(registry, cfg):
+    ctx = smelly_ctx(registry, cfg, "room_comfortable")
+    ctx.bundle.world.clock.advance(5000)
+    d = buy(ctx, "room_comfortable")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.conditions == []
+    assert ctx.bundle.world.flags[f"washed:{ctx.hero.id}"] == 5000
+    assert d.result["boon"] == "washed"
+
+
+def test_wealthy_room_removes_smelly(registry, cfg):
+    ctx = smelly_ctx(registry, cfg, "room_wealthy")
+    buy(ctx, "room_wealthy")
+    assert ctx.hero.creature.conditions == []
+
+
+@pytest.mark.parametrize("room", ["room_poor", "room_modest"])
+def test_cheap_rooms_keep_smelly(registry, cfg, room):
+    ctx = smelly_ctx(registry, cfg, room)
+    buy(ctx, room)
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
+    assert f"washed:{ctx.hero.id}" not in ctx.bundle.world.flags
+
+
+def test_comfortable_room_keeps_lodging_flag_and_signal(registry, cfg):
+    ctx = smelly_ctx(registry, cfg, "room_comfortable")
+    d = buy(ctx, "room_comfortable")
+    assert ctx.bundle.world.flags["lodging:hero"] == 0
+    assert d.signal_to_master.startswith("Ночлег оплачен: теперь rest long в этом же ходу.")
+
+
+def test_rejected_comfortable_room_keeps_smelly(registry, cfg):
+    ctx = smelly_ctx(registry, cfg, "room_comfortable")
+    ctx.hero.money_cp = 10
+    d = buy(ctx, "room_comfortable")
+    assert d.status == "rejected"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
+
+
+def test_second_comfortable_room_same_day_is_rejected_and_keeps_smelly(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_comfortable"])
+    buy(ctx, "room_comfortable")
+    ctx.hero.creature.conditions.append(AppliedCondition(id="smelly"))
+    d = buy(ctx, "room_comfortable")
+    assert d.status == "rejected"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
 
 
 # npc_update services

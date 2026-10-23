@@ -369,7 +369,7 @@ class ServicesConfig(BaseModel):
     paid_rest: bool = True
     # отношение NPC, с которого платная близость запоминается как роман (У1 П2)
     romance_from: int = Field(default=90, ge=-100, le=100)
-    # дней без мытья до состояния «вонь» (У1 П3)
+    # дней без мытья до состояния «вонь» (У1 П3); 0 -- гигиена выключена
     hygiene_days: int = Field(default=7, ge=0)
     kinds: dict[str, ServiceKind] = {}
 

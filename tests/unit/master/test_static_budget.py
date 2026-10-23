@@ -41,7 +41,8 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 
 # У0 П2: замер explore.total 22418 + 3 %.
 # У1 П2: фраза о платной близости, решение 30 (23090 -> 23150).
-STATIC_MAX = 23150
+# У1 П3: абзац «Услуги» -- последствия компании и «вонь», решение 33 (замер 23235; 23150 -> 23240).
+STATIC_MAX = 23240
 
 MODES = sorted(MODE_TOOLS)
 

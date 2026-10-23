@@ -146,9 +146,10 @@ def test_there_are_exactly_15_srd_conditions(registry):
     assert len([i for i in ids if registry.get("condition", i).source != "custom"]) == 15
 
 
-def test_cursed_is_the_only_custom_condition(registry):
+def test_custom_conditions_are_cursed_diseased_and_smelly(registry):
     ids = registry.ids("condition")
-    assert [i for i in ids if registry.get("condition", i).source == "custom"] == ["cursed"]
+    custom = [i for i in ids if registry.get("condition", i).source == "custom"]
+    assert sorted(custom) == ["cursed", "diseased", "smelly"]
 
 
 @pytest.mark.parametrize("monster_id", MONSTERS)

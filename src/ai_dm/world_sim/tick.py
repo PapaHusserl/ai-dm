@@ -1,6 +1,6 @@
 from ai_dm.core.clock import DAY, GameClock
 from ai_dm.state.memory import add_entry
-from ai_dm.world_sim import aging, events, hazard, mortality
+from ai_dm.world_sim import aging, events, hazard, hygiene, mortality
 
 
 def at_day(world, day) -> GameClock:
@@ -34,6 +34,7 @@ def tick_days(bundle, rng, cfg, registry) -> list:
         at = day * DAY
         result += mortality.roll_day(bundle, rng, at)
         result += hazard.roll_hazards(bundle, rng, cfg, registry, at)
+        result += hygiene.roll_day(bundle, cfg, at)
         result += events.close_events(bundle, at)
         season = at_day(world, day).season()
         if season != sim.last_season:

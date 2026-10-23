@@ -203,15 +203,17 @@ description = "своя узкая комната с простой кроват
 name = "комната (удобная)"
 unit = "night"
 effect = "lodging"
+boon = "washed"
 price_cp = 80
-description = "чистая комната с хорошей постелью и сундуком"
+description = "чистая комната с хорошей постелью, сундуком и лоханью для мытья"
 
 [services.kinds.room_wealthy]
 name = "комната (богатая)"
 unit = "night"
 effect = "lodging"
+boon = "washed"
 price_cp = 200
-description = "просторные покои с мягкой постелью и камином"
+description = "просторные покои с мягкой постелью, камином и лоханью для мытья"
 
 [services.kinds.meal_poor]
 name = "еда (скудная)"
@@ -266,9 +268,9 @@ description = "молитва и возложение рук"
 name = "снятие проклятия"
 unit = "once"
 effect = "cure"
-cures = ["cursed"]
+cures = ["cursed", "diseased"]
 price_cp = 2500
-description = "обряд очищения в храме"
+description = "обряд очищения в храме: снимает проклятие и болезнь"
 
 [services.kinds.bed_hour]
 name = "час в постели"

@@ -1044,3 +1044,22 @@ updated: 2026-10-23
 (разбор мутантов У1 П2, правило 4 AGENTS — docs/plan-u1.md)
 `protocol.handlers.world.change_attitude` 20–22 — строка `decision.result["attitude"] = npc.attitude` (None и порча
 ключа): ключ `result["attitude"]` ни один тест не проверяет.
+
+## 159. Вес памяти «измена» после смены отношения в той же сцене
+status: idea
+priority: low
+updated: 2026-10-23
+
+(ревью мамы У1 П3, круг 2 — docs/plan-u1.md) Ревность ставит записи `betrayal` вес `max(weight, |applied|)`, но если
+мастер потом в той же сцене меняет отношение этому NPC, `refresh_weight` перезаписывает вес — запись может снова
+вытесняться первой. Чинить через `max` в `refresh_weight` — только отдельным решением: функция общая.
+
+## 160. Выжившие мутанты на старых строках (У1 П3)
+status: idea
+priority: low
+updated: 2026-10-23
+
+(разбор мутантов У1 П3, правило 4 AGENTS — docs/plan-u1.md)
+`world_sim.tick.tick_days` 3, 20, 39, 40, 41, 91, 105 — проверка первого тика, `count <= 0`, текст «Мир прожит без
+подробностей», `result +=` для events и aging. `protocol.handlers.services.cure_service` 11, 12, 23–27 (тексты
+исключений `Invalid`), 59 (`apply_events`).

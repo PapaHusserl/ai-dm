@@ -14,7 +14,7 @@ from ai_dm.core.boon_ids import BOON_IDS
 from ai_dm.protocol.apply import apply
 from ai_dm.rules.boons import BOONS, grant_boon
 from ai_dm.rules.hygiene import washed_at
-from ai_dm.state.creature import ActiveEffect, Expiry
+from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 from ai_dm.state.world import NPC
 
 DAY = 86400
@@ -150,6 +150,61 @@ def test_washed_adds_no_active_effect(registry, cfg):
     ctx, npc = make(registry, cfg)
     grant_boon(ctx, "washed", npc)
     assert ctx.hero.creature.active_effects == []
+
+
+# У1 П3: washed снимает «вонь»
+
+def smelly_ctx(registry, cfg, *others):
+    ctx, npc = make(registry, cfg, now_s=4321)
+    conditions = ctx.hero.creature.conditions
+    conditions.extend(AppliedCondition(id=c) for c in others)
+    conditions.append(AppliedCondition(id="smelly", source="hygiene"))
+    return ctx, npc
+
+
+def test_washed_removes_smelly(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg)
+    grant_boon(ctx, "washed", npc)
+    assert ctx.hero.creature.conditions == []
+
+
+def test_washed_with_smelly_says_stench_is_washed_off(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg)
+    line, granted = grant_boon(ctx, "washed", npc)
+    assert granted is True
+    assert line == "Бонус: чист — вонь смыта"
+
+
+def test_washed_with_smelly_still_marks_the_time(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg)
+    grant_boon(ctx, "washed", npc)
+    assert washed_at(ctx.bundle.world, ctx.hero.id) == 4321
+
+
+def test_washed_keeps_other_conditions(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg, "poisoned", "cursed")
+    grant_boon(ctx, "washed", npc)
+    assert [c.id for c in ctx.hero.creature.conditions] == ["poisoned", "cursed"]
+
+
+def test_washed_without_smelly_line_has_no_stench_note(registry, cfg):
+    ctx, npc = make(registry, cfg)
+    ctx.hero.creature.conditions.append(AppliedCondition(id="poisoned"))
+    line, _granted = grant_boon(ctx, "washed", npc)
+    assert line == "Бонус: чист"
+    assert [c.id for c in ctx.hero.creature.conditions] == ["poisoned"]
+
+
+def test_groomed_does_not_remove_smelly(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg)
+    grant_boon(ctx, "groomed", npc)
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
+
+
+def test_inspired_does_not_remove_smelly(registry, cfg):
+    ctx, npc = smelly_ctx(registry, cfg)
+    grant_boon(ctx, "inspired", npc)
+    assert [c.id for c in ctx.hero.creature.conditions] == ["smelly"]
 
 
 # Бонус в связке с проверкой Харизмы (конвейер бросков)

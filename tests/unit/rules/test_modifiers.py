@@ -280,6 +280,64 @@ def test_cursed_target_does_not_change_attack_on_it(registry):
     assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
 
 
+# болен (не SRD, У1 П3): как отравление -- помеха на атаки и проверки, не на спасброски
+
+def test_diseased_actor_attacks_with_disadvantage(registry):
+    result = roll(make_request(actor=make_creature("diseased")), two_dice(), registry)
+    assert result.advantage == "disadvantage"
+    assert result.natural == 3
+
+
+def test_diseased_actor_checks_with_disadvantage(registry):
+    request = make_request("check", actor=make_creature("diseased"), skill="athletics")
+    assert roll(request, two_dice(), registry).advantage == "disadvantage"
+
+
+def test_diseased_does_not_affect_save(registry):
+    request = make_request("save", actor=make_creature("diseased"), ability="con")
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_diseased_label_is_sick_word(registry):
+    request = make_request("check", actor=make_creature("diseased"), skill="athletics")
+    assert roll(request, two_dice(), registry).disadvantage_from == ["болен"]
+
+
+# вонь (не SRD, У1 П3): помеха только на проверки Харизмы
+
+def test_smelly_actor_charisma_check_has_disadvantage(registry):
+    request = make_request(
+        "check", actor=make_creature("smelly"), skill="persuasion", ability="cha"
+    )
+    result = roll(request, two_dice(), registry)
+    assert result.advantage == "disadvantage"
+    assert result.natural == 3
+
+
+def test_smelly_label_on_charisma_check_is_stench_word(registry):
+    request = make_request(
+        "check", actor=make_creature("smelly"), skill="persuasion", ability="cha"
+    )
+    assert roll(request, two_dice(), registry).disadvantage_from == ["вонь"]
+
+
+def test_smelly_does_not_affect_strength_check(registry):
+    request = make_request(
+        "check", actor=make_creature("smelly"), skill="athletics", ability="str"
+    )
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_smelly_does_not_affect_charisma_save(registry):
+    request = make_request("save", actor=make_creature("smelly"), ability="cha")
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_smelly_does_not_affect_attack(registry):
+    result = roll(make_request(actor=make_creature("smelly")), ScriptedRng((20, 12)), registry)
+    assert result.advantage == "normal"
+
+
 def test_cursed_and_advantage_effect_cancel_out(registry):
     actor = make_creature("cursed")
     actor.active_effects.append(modifier_effect("bless", target="saving_throw", mode="advantage"))

@@ -27,6 +27,8 @@ class TurnContext:
         self.roll_actors = {}
         # roll_ref, уже потраченные на смертельное последствие: один бросок -- одно последствие
         self.used_rolls = set()
+        # roll_ref бросков движка (последствия услуг): не годятся как failed_roll_ref
+        self.engine_rolls = set()
         self.events = []
         self.marks = []
         self.chapter_title = None
@@ -85,10 +87,12 @@ class TurnContext:
             return self.own_favor_spent
         return self.scene.favor_spent
 
-    def add_roll(self, result, actor_id=None) -> str:
+    def add_roll(self, result, actor_id=None, *, engine=False) -> str:
         ref = f"r{len(self.rolls) + 1}"
         self.rolls[ref] = result
         self.roll_actors[ref] = actor_id
+        if engine:
+            self.engine_rolls.add(ref)
         return ref
 
 

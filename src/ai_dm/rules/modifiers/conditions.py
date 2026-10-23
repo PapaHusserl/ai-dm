@@ -30,6 +30,7 @@ CONDITION_WORDS = {
     "prone": "лежит", "paralyzed": "паралич", "unconscious": "без сознания",
     "stunned": "оглушён", "petrified": "окаменел", "blinded": "ослеплён",
     "restrained": "опутан", "invisible": "невидим", "frightened": "страх", "cursed": "проклят",
+    "diseased": "болен", "smelly": "вонь",
 }
 
 # состояния SRD 5.2, влияющие на броски; остальные (charmed, deafened) на конвейер не влияют
@@ -76,6 +77,10 @@ CONDITION_RULES = {
     "frightened": [Rule("actor", ("attack", "check"), "disadvantage")],
     # не SRD: проклятие мастера, помеха на проверки характеристик и спасброски (без атак)
     "cursed": [Rule("actor", ("check", "save"), "disadvantage")],
+    # не SRD: болезнь от платной близости, как отравление (У1 П3)
+    "diseased": [Rule("actor", ("attack", "check"), "disadvantage")],
+    # не SRD: неделя без мытья, помеха на проверки Харизмы (У1 П3)
+    "smelly": [Rule("actor", ("check",), "disadvantage", abilities=("cha",))],
 }
 
 
