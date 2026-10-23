@@ -25,7 +25,7 @@ from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.npc_names import name_hidden
 from ai_dm.rules.rests import hit_dice_pools
 from ai_dm.rules.secrets import hidden_secrets
-from ai_dm.rules.services import haggle_slot, kinds_of, quote
+from ai_dm.rules.services import haggle_slot, kinds_of
 from ai_dm.rules.trade import (
     category_models,
     haggle_state,
@@ -203,10 +203,10 @@ def trade_data(world, scene_npcs, ctx, level):
 
 
 def provider_data(npc, world, cfg):
-    # услуги NPC сцены: до SERVICE_ITEMS_MAX позиций с ценой (отношение и торг учтены)
+    # услуги NPC сцены: до SERVICE_ITEMS_MAX позиций без цен (цену мастер узнаёт через service list)
     items = [
         {
-            "id": kind_id, "name": kind.name, "price_cp": quote(kind, npc, world, cfg),
+            "id": kind_id, "name": kind.name,
             "unit": kind.unit, **({"description": kind.description} if kind.description else {}),
         }
         for kind_id, kind in kinds_of(npc, cfg)[:SERVICE_ITEMS_MAX]

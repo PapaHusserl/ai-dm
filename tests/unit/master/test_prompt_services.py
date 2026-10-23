@@ -1,9 +1,11 @@
 # Реестр услуг, партия П1 (docs/plan-u0.md, У6): контекст мастера.
 #   scene_npcs[i]["services"] = id услуг NPC -- только у NPC с услугами (живые, в сцене);
 #   data["services"] -- список поставщиков сцены по порядку scene_npcs (по id):
-#       {"npc_id", "items": [{"id", "name", "price_cp", "unit", "description"?}], "haggle"?};
+#       {"npc_id", "items": [{"id", "name", "unit", "description"?}], "haggle"?};
+#       цен в items нет (BACKLOG 164): их мастер узнаёт через service list, он считает с
+#       отношением и торгом -- эти тесты смотрят цены там;
 #       ключа нет, если в сцене нет NPC с услугами (другая локация, мёртвые -- нет);
-#   items: не больше 8 позиций, цена с отношением и торгом, description только если он есть;
+#   items: не больше 8 позиций, description только если он есть;
 #   haggle ({"percent"}) у поставщика без лавки, если сегодня торговались (состояние во флаге);
 #       у NPC с лавкой торг виден в ключе trade, в services его нет.
 import json
@@ -11,6 +13,8 @@ import json
 from master_kit import app_cfg, make_ctx
 
 from ai_dm.master.prompt import SERVICE_ITEMS_MAX, PromptBuilder
+from ai_dm.protocol.apply import apply
+from ai_dm.protocol.requests import Service
 from ai_dm.rules.trade import DAY_S
 from ai_dm.state.world import NPC, TradeProfile
 
@@ -34,6 +38,12 @@ def data_of(ctx):
 
 def services_of(ctx):
     return data_of(ctx)["services"]
+
+
+def listed_price(ctx, npc_id="grok"):
+    # цена первой позиции в ответе инструмента service list
+    request = Service(type="service", npc_id=npc_id, direction="list", service_id="", qty=1)
+    return apply(ctx, request).result["items"][0]["price_cp"]
 
 
 def scene_npc(ctx, npc_id):
@@ -138,7 +148,7 @@ def test_item_fields(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_provider(ctx, services=["room_modest"])
     assert services_of(ctx)[0]["items"] == [{
-        "id": "room_modest", "name": "комната (скромная)", "price_cp": 50, "unit": "night",
+        "id": "room_modest", "name": "комната (скромная)", "unit": "night",
         "description": cfg.services.kinds["room_modest"].description,
     }]
 
@@ -147,8 +157,21 @@ def test_item_without_description_has_no_description_key(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_provider(ctx, services=["ale"])
     assert services_of(ctx)[0]["items"] == [
-        {"id": "ale", "name": "эль (кружка)", "price_cp": 4, "unit": "meal"}
+        {"id": "ale", "name": "эль (кружка)", "unit": "meal"}
     ]
+
+
+def test_items_carry_no_prices(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, services=ALL_KINDS)
+    assert all("price_cp" not in item for item in services_of(ctx)[0]["items"])
+
+
+def test_state_text_has_no_service_price_key(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, services=["room_modest"])
+    request = PromptBuilder(app_cfg()).build(ctx, "Осматриваюсь.", "explore")
+    assert "price_cp" not in request.messages[0].content[0].text
 
 
 def test_items_keep_npc_order(registry, cfg):
@@ -188,7 +211,8 @@ def test_entry_has_exactly_the_documented_keys(registry, cfg):
 def test_prices_follow_good_attitude(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_provider(ctx, services=["room_modest"], attitude=60)
-    assert services_of(ctx)[0]["items"][0]["price_cp"] == 45
+    assert listed_price(ctx) == 45
+    assert "price_cp" not in services_of(ctx)[0]["items"][0]
 
 
 def test_no_haggle_key_without_haggle(registry, cfg):
@@ -202,7 +226,8 @@ def test_flag_haggle_changes_prices_and_shows_percent(registry, cfg):
     add_provider(ctx, services=["room_modest"])
     ctx.bundle.world.flags["haggle:grok"] = "0:-10"
     entry = services_of(ctx)[0]
-    assert entry["items"][0]["price_cp"] == 45
+    assert listed_price(ctx) == 45
+    assert "price_cp" not in entry["items"][0]
     assert entry["haggle"] == {"percent": -10}
 
 
@@ -211,7 +236,7 @@ def test_failed_flag_haggle_shows_plus(registry, cfg):
     add_provider(ctx, services=["room_modest"])
     ctx.bundle.world.flags["haggle:grok"] = "0:10"
     entry = services_of(ctx)[0]
-    assert entry["items"][0]["price_cp"] == 55
+    assert listed_price(ctx) == 55
     assert entry["haggle"] == {"percent": 10}
 
 
@@ -221,7 +246,7 @@ def test_yesterdays_flag_haggle_is_ignored(registry, cfg):
     ctx.bundle.world.flags["haggle:grok"] = "0:-20"
     ctx.bundle.world.clock.advance(DAY_S)
     entry = services_of(ctx)[0]
-    assert entry["items"][0]["price_cp"] == 50
+    assert listed_price(ctx) == 50
     assert "haggle" not in entry
 
 
@@ -229,7 +254,7 @@ def test_other_npc_flag_does_not_affect_prices(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_provider(ctx, services=["room_modest"])
     ctx.bundle.world.flags["haggle:other"] = "0:-20"
-    assert services_of(ctx)[0]["items"][0]["price_cp"] == 50
+    assert listed_price(ctx) == 50
 
 
 def test_shop_profile_haggle_prices_services_but_key_stays_in_trade(registry, cfg):
@@ -237,6 +262,6 @@ def test_shop_profile_haggle_prices_services_but_key_stays_in_trade(registry, cf
     profile = TradeProfile(kind="general", purse_cp=100, haggle_percent=-20, haggle_day=0)
     add_provider(ctx, services=["room_modest"], trade=profile)
     entry = services_of(ctx)[0]
-    assert entry["items"][0]["price_cp"] == 40
+    assert listed_price(ctx) == 40
     assert "haggle" not in entry
     assert data_of(ctx)["trade"][0]["haggle"] == {"percent": -20}

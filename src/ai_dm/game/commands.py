@@ -1,4 +1,4 @@
-from ai_dm.game import difficulty, inv_actions, tone
+from ai_dm.game import difficulty, inv_actions, shop_actions, tone
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
 from ai_dm.game.lore_text import lore_lines
@@ -249,6 +249,8 @@ def cmd_inv(app, arg):
 
 
 def cmd_shop(app, arg):
+    if arg:
+        return shop_actions.run(app, arg)
     hero = hero_of(app.bundle)
     lines = shop_lines(hero, app.bundle.world, app.registry, app.settings.rules)
     return app.reply(fit(lines, app.settings.app.ui.width))
