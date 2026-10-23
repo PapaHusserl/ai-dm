@@ -245,6 +245,106 @@ def test_merge_does_not_overwrite_existing_tags(tmp_path, registry):
     assert bundle.world.npcs[npc_id].tags == ["undead"]
 
 
+# услуги NPC пака в живых мирах (У1 П4): fill_npc_services в merge_new
+
+def services_pack(tmp_path, registry, services=("ale",)):
+    def edit(files):
+        files["npcs.yaml"][0]["services"] = list(services)
+
+    return v2_pack(tmp_path, registry, edit)
+
+
+def test_merge_fills_empty_services_of_existing_pack_npc(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    merge(bundle, services_pack(tmp_path, registry))
+    assert bundle.world.npcs["aldric"].services == ["ale"]
+
+
+def test_services_fill_is_reported(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    report = merge(bundle, services_pack(tmp_path, registry))
+    assert report.added == ["services:aldric"]
+
+
+def test_services_fill_writes_no_chronicle_entry(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    merge(bundle, services_pack(tmp_path, registry))
+    assert bundle.chronicle.entries == []
+
+
+def test_merge_does_not_overwrite_existing_services(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.npcs["aldric"].services = ["bath"]
+    report = merge(bundle, services_pack(tmp_path, registry))
+    assert bundle.world.npcs["aldric"].services == ["bath"]
+    assert "services:aldric" not in report.added
+
+
+def test_ai_npc_with_pack_id_gets_no_services(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.npcs["aldric"].origin = "ai"
+    report = merge(bundle, services_pack(tmp_path, registry))
+    assert bundle.world.npcs["aldric"].services == []
+    assert "services:aldric" not in report.added
+
+
+def test_services_fill_is_idempotent(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    pack = services_pack(tmp_path, registry)
+    merge(bundle, pack)
+    after_first = bundle.model_dump()
+    report = merge(bundle, pack)
+    assert report.added == []
+    assert bundle.model_dump() == after_first
+
+
+def test_pack_without_services_fills_nothing(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    report = merge(bundle, v2_pack(tmp_path, registry, lambda files: None))
+    assert report.added == []
+    assert bundle.world.npcs["aldric"].services == []
+
+
+def test_services_fill_goes_on_after_npc_with_services(tmp_path, registry):
+    def edit(files):
+        for npc in files["npcs.yaml"]:
+            npc["services"] = ["ale"]
+
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.npcs["aldric"].services = ["bath"]
+    merge(bundle, v2_pack(tmp_path, registry, edit))
+    assert bundle.world.npcs["guard"].services == ["ale"]
+
+
+def test_services_fill_skips_npc_missing_in_world(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    del bundle.world.npcs["aldric"]
+    merge(bundle, services_pack(tmp_path, registry))
+    assert bundle.world.npcs["aldric"].services == ["ale"]
+
+
+def test_filled_services_are_a_copy_of_pack_list(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    pack = services_pack(tmp_path, registry)
+    merge(bundle, pack)
+    bundle.world.npcs["aldric"].services.append("bath")
+    assert next(n for n in pack.npcs if n.id == "aldric").services == ["ale"]
+
+
+def test_fill_npc_services_alone_touches_only_services(tmp_path, registry):
+    from ai_dm.campaign.merge import MergeReport, fill_npc_services
+
+    bundle = v1_bundle(tmp_path, registry)
+    before = bundle.world.npcs["aldric"].model_dump()
+    report = MergeReport()
+    fill_npc_services(bundle.world, services_pack(tmp_path, registry), report)
+    after = bundle.world.npcs["aldric"].model_dump()
+    assert after.pop("services") == ["ale"]
+    before.pop("services")
+    assert after == before
+    assert report.added == ["services:aldric"]
+
+
 # пол из пака у миров до К0-фикс-б (Ф1, BACKLOG 43): fill_identity в merge_new
 
 def gender_pack(tmp_path, registry, gender="female", pronouns="она, госпожа", hero_gender=None,

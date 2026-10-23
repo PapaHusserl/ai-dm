@@ -58,11 +58,18 @@ def test_vale_locations_are_tagged_by_data(location_id):
     ("drunk_dragon", "wolf_teeth_pass", "nature"),
     ("drunk_dragon", "sanctuary_of_dawn", "town"),
     ("drunk_dragon", "city", "town"),
+    ("drunk_dragon", "bathhouse_city", "town"),
     ("drunk_dragon", "iron_ridge", "nature"),
     ("drunk_dragon", "heather_wastes", "nature"),
 ])
 def test_location_theme(pack, location_id, theme):
     assert theme_of(pack, location_id) == theme
+
+
+def test_dusk_hot_springs_theme_is_that_of_misty_haven():
+    theme = theme_of("dusk_academy", "hot_springs_haven")
+    assert theme is not None
+    assert theme == theme_of("dusk_academy", "misty_haven")
 
 
 def test_deep_shaft_does_not_inherit_mountain_theme_from_parent():

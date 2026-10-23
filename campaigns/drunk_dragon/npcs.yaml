@@ -241,6 +241,9 @@
   location_id: sanctuary_of_dawn
   species_id: human
   notes: 'Роль: Жрец Латандра, Святилище Рассвета. Вид: человек. Сейчас: Святилище Рассвета (в гл. II не упоминается). Связи: grey: союзник.'
+  services:
+  - heal_temple
+  - uncurse_temple
   origin: pack
 - id: grok_innkeeper
   name: Грок (трактирщик «Пьяного Дракона»)
@@ -259,6 +262,15 @@
   - Имя «мастер Грок» прозвучало только в гл. II из уст Мило
   location_id: tavern_drunken_dragon
   notes: 'Роль: Хозяин таверны «Пьяный Дракон». Вид: полуорк (одноглазый, грузный). Сейчас: Таверна «Пьяный Дракон». Связи: milo: работодатель/опекун; grey: благодарный должник.'
+  services:
+  - room_poor
+  - room_modest
+  - room_comfortable
+  - meal_poor
+  - meal_modest
+  - meal_comfortable
+  - ale
+  - wine_common
   origin: pack
 - id: hek
   name: Хэк
@@ -716,4 +728,109 @@
   location_id: viper_island
   species_id: human
   notes: 'Роль: Командир заслона на Гадючьем Острове. Вид: человек. Сейчас: Мёртв.'
+  origin: pack
+- id: bath_keeper_city
+  name: Маман (хозяйка «Хамама от Маман»)
+  gender: female
+  named: true
+  key: false
+  motive: Держит лучшую баню Города и любит, когда гости уходят распаренными и разговорчивыми.
+  means:
+  - банный двор с парной и купелью
+  - слышит все сплетни Верхнего и Нижнего города
+  location_id: bathhouse_city
+  species_id: human
+  services:
+  - bath
+  origin: pack
+- id: barber_city
+  name: Ульрих Бритва
+  gender: male
+  named: true
+  key: false
+  motive: Бреет, стрижёт и штопает раны в Сером Квартале, копит на собственную лавку.
+  means:
+  - цирюльник и костоправ
+  - знает травы и перевязки
+  location_id: grey_quarter
+  species_id: human
+  services:
+  - heal_barber
+  - haircut
+  - shave
+  origin: pack
+- id: companion_rosa
+  name: Роза
+  gender: female
+  named: true
+  key: false
+  motive: Зарабатывает на жизнь в зале «Пьяного Дракона» и мечтает уехать из Города.
+  means:
+  - продаёт компанию на час постояльцам
+  - знает, кто сколько тратит
+  location_id: tavern_drunken_dragon
+  species_id: human
+  services:
+  - companion_cheap
+  origin: pack
+- id: companion_damian
+  name: Дамиан
+  gender: male
+  named: true
+  key: false
+  motive: Хочет жить не хуже купцов, которых развлекает, и не остаться в должниках.
+  means:
+  - продаёт компанию на час постояльцам
+  - умеет поддержать разговор
+  location_id: tavern_drunken_dragon
+  species_id: human
+  services:
+  - companion_common
+  origin: pack
+- id: bard_yanek
+  name: Янек Лютня
+  gender: male
+  named: true
+  key: false
+  motive: Поёт в «Пьяном Драконе» за монету и собирает баллады о Грее и Топях.
+  means:
+  - бродячий певец с лютней
+  - знает баллады и дорожные слухи
+  location_id: tavern_drunken_dragon
+  species_id: human
+  services:
+  - bard_song
+  origin: pack
+- id: fortune_teller_vedana
+  name: Бабка Ведана
+  gender: female
+  named: true
+  key: false
+  motive: Гадает в Сером Квартале за монету и любит, когда ей верят на слово.
+  means:
+  - гадалка с колодой потёртых карт
+  - читает судьбу по картам, костям и воску
+  location_id: grey_quarter
+  species_id: human
+  services:
+  - fortune
+  origin: pack
+- id: innkeeper_mossy_boulder
+  name: Агата (хозяйка «Мшистого Валуна»)
+  gender: female
+  named: true
+  key: false
+  motive: Чтобы путники в Чернолесье ночевали под крышей, а не в лесу.
+  means:
+  - постоялый двор у ратуши с баней во дворе
+  - знает всех в деревне
+  location_id: chernolesye
+  species_id: human
+  services:
+  - room_poor
+  - room_modest
+  - meal_poor
+  - meal_modest
+  - ale
+  - bath
   origin: pack

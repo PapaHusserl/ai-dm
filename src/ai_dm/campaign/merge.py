@@ -47,6 +47,16 @@ def fill_npc_gender(world, pack, report) -> None:
         report.added.append(f"gender:{npc.id}")
 
 
+def fill_npc_services(world, pack, report) -> None:
+    # услуги NPC пака в живых мирах (У1 П4): заполняем только пустое поле
+    for npc in pack.npcs:
+        old = world.npcs.get(npc.id)
+        if old is None or old.origin != "pack" or old.services or not npc.services:
+            continue
+        old.services = list(npc.services)
+        report.added.append(f"services:{npc.id}")
+
+
 def preset_choices(hero, pack):
     # выборы пресета пака с полом, имя и класс совпадают с героем; иначе None
     key = (hero.name, hero.sheet.class_id)
@@ -104,6 +114,7 @@ def merge_new(bundle, pack) -> MergeReport:
         if old is not None and old.origin == "pack" and not old.tags and npc.tags:
             old.tags = list(npc.tags)
             report.added.append(f"tags:{npc.id}")
+    fill_npc_services(world, pack, report)
     fill_identity(bundle, pack, report)
     world.campaign_version = pack.manifest.version
     # миры этапа 2 мигрируют с пустым текстом мира: берём из пака, только если пуст

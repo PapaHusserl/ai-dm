@@ -43,7 +43,8 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # У1 П2: фраза о платной близости, решение 30 (23090 -> 23150).
 # У1 П3: абзац «Услуги» -- последствия компании и «вонь», решение 33 (замер 23235; 23150 -> 23240).
 # 164: пометка о покупке из окна /shop, services без цен (замер 23325; 23240 -> 23340).
-STATIC_MAX = 23340
+# У1 П4: `hero.boons` в правилах, решение Р5 (замер 23370; 23340 -> 23380).
+STATIC_MAX = 23380
 
 MODES = sorted(MODE_TOOLS)
 
@@ -61,6 +62,10 @@ def rules_text():
 @pytest.mark.parametrize("mode", MODES)
 def test_static_total_is_within_threshold(mode):
     assert builder().static_tokens(mode)["total"] <= STATIC_MAX
+
+
+def test_rules_explain_hero_boons():
+    assert "hero.boons" in rules_text()
 
 
 @pytest.mark.parametrize("mode", MODES)

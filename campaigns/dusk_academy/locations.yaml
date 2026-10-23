@@ -9,12 +9,14 @@
 - id: misty_haven
   name: Туманная Гавань
   parent_id: dusk_cape
-  description: Городок у залива — мокрая брусчатка, фонари, чайная и книжная лавка.
+  description: Городок у залива — мокрая брусчатка, фонари, чайная и книжная лавка; у скал — купальня «Горячие источники», на площади — цирюльня.
   tags:
   - городок
   connections:
   - to: dusk_cape
     distance_m: 1000
+  - to: hot_springs_haven
+    distance_m: 200
   - to: ferry_pier
     distance_m: 300
   - to: rain_teahouse
@@ -41,6 +43,15 @@
   connections:
   - to: misty_haven
     distance_m: 100
+- id: hot_springs_haven
+  name: Горячие источники
+  parent_id: misty_haven
+  description: Купальня у скал над заливом — из камня бьют тёплые источники, над каменными чашами стоит пар и пахнет можжевельником.
+  tags:
+  - баня
+  connections:
+  - to: misty_haven
+    distance_m: 200
 - id: academy
   name: Академия Сумеречного Мыса
   parent_id: dusk_cape

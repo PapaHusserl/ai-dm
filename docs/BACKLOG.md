@@ -1181,3 +1181,11 @@ updated: 2026-10-23
 `rest kind=long`, движок отказывает («отдых уже был», `protocol/handlers/resources.py:803–818`), модель повторяет тот же
 вызов в том же ходу (дважды). Игрок: рассказ без восстановления, без явной ошибки. Хвост закрытого 100; после У0 П2
 (платный ночлег) отказов `rest long` станет больше.
+
+## 174. Мутант merge_new 27 — запись added при догрузке пака
+status: idea
+priority: low
+updated: 2026-10-23
+
+(mutmut У1 П4, docs/plan-u1.md) `ai_dm.campaign.merge.x_merge_new__mutmut_27` выжил: `report.added.append(f"{kind}:{entity.id}")`
+→ `append(None)` в цикле `adds` не ловится тестами. Строка старая, не из П4.

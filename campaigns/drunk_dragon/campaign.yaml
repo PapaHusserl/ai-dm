@@ -1,6 +1,6 @@
 id: drunk_dragon
 name: Пьяный Дракон
-version: '1'
+version: '2'
 start:
   date: '0001-10-05'
   time: '23:50'

@@ -59,6 +59,46 @@
   means:
   - хозяйка чайной
   - травяные чаи и старые легенды
+  services:
+  - meal_poor
+  - meal_modest
+- id: bath_keeper_haven
+  name: Хильда Тёплый Камень
+  gender: female
+  named: true
+  key: false
+  location_id: hot_springs_haven
+  motive: Бережёт горячие источники и рада каждому, кто пришёл отогреться после дождя.
+  means:
+  - хозяйка купальни «Горячие источники»
+  - знает, у каких чаш вода целебная
+  services:
+  - bath
+- id: barber_haven
+  name: Освин Ножницы
+  gender: male
+  named: true
+  key: false
+  location_id: misty_haven
+  motive: Стрижёт студентов и рыбаков и знает о каждом чуть больше, чем ему рассказывают.
+  means:
+  - цирюльник на площади Гавани
+  - болтлив и наблюдателен
+  services:
+  - haircut
+  - shave
+- id: fortune_teller_haven
+  name: Тётушка Мирта
+  gender: female
+  named: true
+  key: false
+  location_id: ferry_pier
+  motive: Гадает приезжим на пирсе и иногда видит в воске то же, что Селена — в своих видениях.
+  means:
+  - гадалка с колодой карт и свечным воском
+  - помнит старые легенды острова
+  services:
+  - fortune
 - id: francis
   name: Господин Франциск
   gender: male
