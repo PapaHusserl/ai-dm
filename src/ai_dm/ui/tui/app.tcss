@@ -155,6 +155,19 @@ ModelModal {
     max-height: 20;
 }
 
+NpcModal {
+    align: center middle;
+}
+
+#npc-list {
+    height: auto;
+    max-height: 20;
+}
+
+QtyModal {
+    align: center middle;
+}
+
 LoreModal {
     align: center middle;
 }

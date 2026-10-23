@@ -22,7 +22,8 @@ def merchants_here(world, location_id):
 
 
 def sale_rows(npc, world, registry, level, cfg):
-    # (порядок группы, имя, цена): сначала купленное у героя, затем ассортимент пресета
+    # (порядок группы, имя, цена, qty, группа, id, качество): сначала купленное у героя,
+    # затем ассортимент пресета
     rows = []
     now_s = world.clock.now_s
     for entry in npc.trade.stock:
@@ -30,19 +31,21 @@ def sale_rows(npc, world, registry, level, cfg):
         if kind == "item" and model.magic and rarity_exceeds_cap(model, level, cfg):
             continue
         price = trade_rules.merchant_buy_quote(entry.cost_cp, npc, now_s, cfg)
-        rows.append((-1, entry_name(entry, registry), price, entry.qty, inv_group(kind, model)))
+        group = inv_group(kind, model)
+        name = entry_name(entry, registry)
+        rows.append((-1, name, price, entry.qty, group, entry.item_id, entry.quality))
     for custom in world.custom_items.values():
         holder = custom.holder
         if holder is None or holder.kind != "npc" or holder.ref != npc.id:
             continue
         kind, model = find_item(registry, custom.id)
         price = trade_rules.merchant_buy_quote(holder.cost_cp, npc, now_s, cfg)
-        rows.append((-1, model.name, price, holder.qty, inv_group(kind, model)))
+        rows.append((-1, model.name, price, holder.qty, inv_group(kind, model), custom.id, None))
     preset = cfg.trade.presets[npc.trade.kind]
     for item_id, _base in trade_rules.assortment(registry, preset, level, cfg):
         kind, model = find_item(registry, item_id)
         price = trade_rules.merchant_buy_quote(model.cost_cp, npc, now_s, cfg)
-        rows.append((0, model.name, price, 0, inv_group(kind, model)))
+        rows.append((0, model.name, price, 0, inv_group(kind, model), item_id, None))
     return rows
 
 
@@ -52,7 +55,7 @@ def shop_item_lines(rows):
     rows = sorted(rows, key=lambda r: (order.index(r[4]), r[0], r[1]))
     lines = []
     group = None
-    for _, name, price, qty, key in rows[:SHOP_ROWS_MAX]:
+    for _, name, price, qty, key, *_ in rows[:SHOP_ROWS_MAX]:
         if key != group:
             group = key
             lines.append(f"  {titles[key]}:")
@@ -65,10 +68,11 @@ def shop_item_lines(rows):
     return lines
 
 
-def sell_lines(hero, world, registry, npc, cfg):
-    # что герой может продать этому торговцу; свободные экземпляры считает sellable_stacks
+def sell_rows(hero, world, registry, npc, cfg):
+    # (id, имя, цена, свободных): что герой может продать этому торговцу;
+    # свободные экземпляры считает sellable_stacks
     preset = cfg.trade.presets[npc.trade.kind]
-    lines = []
+    rows = []
     for entry in hero.inventory:
         found = find_item(registry, entry.item_id)
         if found is None:
@@ -83,8 +87,15 @@ def sell_lines(hero, world, registry, npc, cfg):
             continue
         price = trade_rules.sell_quote(entry.cost_cp, npc.attitude, cfg)
         if price > 0:
-            tail = f" x{free}" if free > 1 else ""
-            lines.append(f"Продать: {entry_name(entry, registry)}{tail} — {format_cp(price)}")
+            rows.append((entry.item_id, entry_name(entry, registry), price, free))
+    return rows
+
+
+def sell_lines(hero, world, registry, npc, cfg):
+    lines = []
+    for _item_id, name, price, free in sell_rows(hero, world, registry, npc, cfg):
+        tail = f" x{free}" if free > 1 else ""
+        lines.append(f"Продать: {name}{tail} — {format_cp(price)}")
     return sorted(lines)
 
 

@@ -3,7 +3,7 @@ from textual.app import App
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, OptionList, RichLog, Static, Tab, Tabs
+from textual.widgets import Button, DataTable, Input, OptionList, RichLog, Static, Tab, Tabs
 from textual.widgets.option_list import Option
 
 from ai_dm.art import art_for_event
@@ -153,6 +153,7 @@ class InvModal(ModalScreen):
         Binding("left", "tab(-1)", show=False),
         Binding("right", "tab(1)", show=False),
     ] + [Binding(key, f"act('{key}')", show=False) for key in ("e", "l", "u", "r", "d")]
+    PICK = strings.INV_PICK
 
     def __init__(self, title, tabs):
         super().__init__()
@@ -162,7 +163,7 @@ class InvModal(ModalScreen):
 
     def compose(self):
         with Vertical(id="modal"):
-            yield Static(Text(strings.INV_PICK), id="inv-title")
+            yield Static(Text(self.PICK), id="inv-title")
             names = enumerate(name for name, _ in self.tabs)
             yield Tabs(*(Tab(name, id=f"inv-tab-{index}") for index, name in names), id="inv-tabs")
             yield OptionList(id="inv-list")
@@ -197,7 +198,7 @@ class InvModal(ModalScreen):
 
     def show_description(self, index):
         _, description, actions, _ = self.rows[index]
-        hints = " · ".join(f"{key} — {hint}" for key, hint, _, _ in actions)
+        hints = " · ".join(f"{key} — {hint}" for key, hint, *_ in actions)
         text = "\n\n".join(part for part in (description, hints) if part)
         self.query_one("#inv-description", Static).update(Text(text))
 
@@ -215,6 +216,82 @@ class InvModal(ModalScreen):
             if action[0] == key:
                 self.dismiss(action)
                 return
+
+    def action_close(self):
+        self.dismiss(None)
+
+
+class ShopModal(InvModal):
+    # торговля: те же вкладки и список, что у инвентаря; у строки одно действие -- Enter;
+    # результат -- действие (клавиша, подсказка, команда с {qty}, эхо, потолок количества) или None
+    BINDINGS = [
+        Binding("escape", "close", strings.KEY_CLOSE, show=False),
+        Binding("left", "tab(-1)", show=False),
+        Binding("right", "tab(1)", show=False),
+    ]
+    PICK = strings.SHOP_PICK
+
+
+class NpcModal(ModalScreen):
+    # у кого торговать: клик, цифра или Enter; rows -- (id NPC, подпись); результат -- id или None
+    BINDINGS = [Binding("escape", "close", strings.KEY_CLOSE, show=False)] + [
+        Binding(str(number), f"pick({number})", show=False) for number in range(1, 10)
+    ]
+
+    def __init__(self, title, rows):
+        super().__init__()
+        self.title_text = title
+        self.rows = list(rows)
+
+    def compose(self):
+        with Vertical(id="modal"):
+            yield Static(Text(strings.SHOP_NPC_PICK), id="npc-title")
+            yield OptionList(id="npc-list")
+
+    def on_mount(self):
+        self.query_one("#modal").border_title = self.title_text
+        menu = self.query_one("#npc-list", OptionList)
+        for number, row in enumerate(self.rows, 1):
+            menu.add_option(Text(f"{number}. {row[1]}"))
+        menu.highlighted = 0
+        menu.focus()
+
+    def on_option_list_option_selected(self, event):
+        self.dismiss(self.rows[event.option_index][0])
+
+    def action_pick(self, number):
+        if number <= len(self.rows):
+            self.dismiss(self.rows[number - 1][0])
+
+    def action_close(self):
+        self.dismiss(None)
+
+
+class QtyModal(ModalScreen):
+    # сколько покупать, продавать или оплачивать: целое в 1..cap; Enter -- число, Esc -- None
+    BINDINGS = [Binding("escape", "close", strings.KEY_CLOSE, show=False)]
+
+    def __init__(self, title, name, cap):
+        super().__init__()
+        self.title_text = title
+        self.label = name
+        self.cap = cap
+
+    def compose(self):
+        with Vertical(id="modal"):
+            text = f"{self.label}\n{strings.SHOP_QTY.format(cap=self.cap)}"
+            yield Static(Text(text), id="qty-title")
+            yield Input(value="1", type="integer", id="qty-input")
+
+    def on_mount(self):
+        self.query_one("#modal").border_title = self.title_text
+        self.query_one("#qty-input", Input).focus()
+
+    def on_input_submitted(self, event):
+        # событие не уходит к полю ввода хода в приложении
+        event.stop()
+        if event.value.isdigit() and 1 <= int(event.value) <= self.cap:
+            self.dismiss(int(event.value))
 
     def action_close(self):
         self.dismiss(None)

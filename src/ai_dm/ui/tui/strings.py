@@ -55,6 +55,16 @@ INV_PICK = (
 INV_TABS = (
     "Надето", "Оружие", "Боеприпасы", "Доспехи", "Расходники", "Снаряжение", "Ценности", "Сюжетное",
 )
+SHOP_PICK = "Товар или услуга (←/→ — раздел, Enter — выбрать, Esc — закрыть):"
+SHOP_NPC_PICK = "У кого (цифра, щелчок или Enter, Esc — закрыть):"
+SHOP_SELL = "Продать"
+SHOP_SELL_TAB = SHOP_SELL
+SHOP_SERVICE_TAB = "Услуги"
+SHOP_TABS = INV_TABS[1:] + (SHOP_SELL_TAB, SHOP_SERVICE_TAB)
+SHOP_BUY = "Купить"
+SHOP_SERVICE = "Оплатить"
+SHOP_QTY = "Сколько? (1–{cap}, Enter — подтвердить, Esc — назад)"
+SHOP_ECHO = "{verb}: {name} ({npc})"
 INV_EQUIP = "Надеть"
 INV_EQUIP_LEFT = "В левую руку"
 INV_UNEQUIP = "Снять"

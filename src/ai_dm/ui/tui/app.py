@@ -15,22 +15,28 @@ from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.game.commands import HELP, cost_report
 from ai_dm.game.lore_text import find_entity, lore_groups
 from ai_dm.game.scene import hero_of
+from ai_dm.game.shop_text import shop_head, shop_npcs
+from ai_dm.rules.trade import refuses
 from ai_dm.ui.combat_menu import MenuState
 from ai_dm.ui.format import head_lines, inert_lines
 from ai_dm.ui.screen import limit_percent, picture_state, scene_mark, sound_state
 from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.blocks import inv_rows, map_lines, modal_lines, pickable, spell_rows
-from ai_dm.ui.tui.inv_sections import inv_tabs
+from ai_dm.ui.tui.inv_sections import inv_tabs, shop_tabs
 from ai_dm.ui.tui.modals import (
     CostModal,
     InvModal,
     LoreModal,
     ModelModal,
     MoreModal,
+    NpcModal,
+    QtyModal,
+    ShopModal,
     SpellModal,
     TextModal,
 )
+from ai_dm.ui.tui.shop_blocks import shop_rows
 from ai_dm.ui.tui.widgets import (
     Choices,
     CombatLog,
@@ -45,7 +51,10 @@ from ai_dm.ui.tui.widgets import (
 COMMAND_SUGGESTER = SuggestFromList([f"/{name}" for name in HELP], case_sensitive=True)
 WIDE = 120
 PANEL_WIDTH = 54
-MODALS = (TextModal, ModelModal, SpellModal, InvModal, MoreModal, LoreModal)
+MODALS = (
+    TextModal, ModelModal, SpellModal, InvModal, ShopModal, MoreModal, LoreModal, NpcModal,
+    QtyModal,
+)
 
 
 class AiDmApp(App):
@@ -445,8 +454,8 @@ class AiDmApp(App):
         words = line.split()
         command = words[0] if words else ""
         title = strings.MODAL_TITLES.get(command)
-        if command in ("/model", "/inv") and len(words) > 1:
-            # смена модели и действие с предметом -- строками в ленту, окно только без аргументов
+        if command in ("/model", "/inv", "/shop") and len(words) > 1:
+            # смена модели, действие с предметом и сделка -- строками в ленту, окно без аргументов
             title = None
         modal_text = []
         if title is not None:
@@ -468,6 +477,8 @@ class AiDmApp(App):
             self.push_screen(SpellModal(title, spell_rows(self.game)), self.spell_chosen)
         elif modal_text and command == "/inv" and self.can_pick_item():
             self.push_screen(InvModal(title, inv_tabs(inv_rows(self.game))), self.inv_chosen)
+        elif modal_text and command == "/shop" and self.can_shop():
+            self.open_shop(title)
         elif modal_text and command == "/model":
             # выбор модели рассказчика: окно со списком; ответ -- ключ или None (Esc)
             info = self.game.adapter.info()
@@ -517,6 +528,62 @@ class AiDmApp(App):
             return
         self.write_echo(action[3])
         self.start_turn(action[2])
+
+    def shop_targets(self):
+        # у кого можно торговать здесь: торговцы и NPC с услугами, кроме отказавшихся
+        world = self.game.bundle.world
+        cfg = self.game.settings.rules
+        npcs = shop_npcs(world, hero_of(self.game.bundle).location_id)
+        return [npc for npc in npcs if not refuses(npc.attitude, cfg)]
+
+    def can_shop(self):
+        # окно торговли -- вне боя, когда ход можно начать и есть у кого покупать
+        if self.game.pending is not None or self.session.limit_menu:
+            return False
+        if self.game.bundle.session.active_combat is not None:
+            return False
+        return bool(self.shop_targets())
+
+    def open_shop(self, title):
+        npcs = self.shop_targets()
+        if len(npcs) == 1:
+            self.show_shop(npcs[0].id)
+            return
+        world = self.game.bundle.world
+        cfg = self.game.settings.rules
+        rows = [(npc.id, shop_head(npc, world, cfg)) for npc in npcs]
+        self.push_screen(NpcModal(title, rows), self.npc_chosen)
+
+    def npc_chosen(self, npc_id):
+        if npc_id is None:
+            self.query_one("#input", Input).focus()
+            return
+        self.show_shop(npc_id)
+
+    def show_shop(self, npc_id):
+        npc = self.game.bundle.world.npcs[npc_id]
+        modal = ShopModal(strings.MODAL_TITLES["/shop"], shop_tabs(shop_rows(self.game, npc)))
+        self.push_screen(modal, lambda action: self.shop_chosen(npc_id, action))
+
+    def shop_chosen(self, npc_id, action):
+        if action is None:
+            self.query_one("#input", Input).focus()
+            return
+        _key, _hint, template, echo, cap = action
+        if cap <= 1:
+            # одну штуку (или отказ движка при cap 0) количество не спрашиваем
+            self.write_echo(echo)
+            self.start_turn(template.format(qty=1))
+            return
+        modal = QtyModal(strings.MODAL_TITLES["/shop"], echo, cap)
+        self.push_screen(modal, lambda qty: self.qty_chosen(npc_id, action, qty))
+
+    def qty_chosen(self, npc_id, action, qty):
+        if qty is None:
+            self.show_shop(npc_id)
+            return
+        self.write_echo(f"{action[3]} x{qty}")
+        self.start_turn(action[2].format(qty=qty))
 
     def model_chosen(self, key):
         if key is None:

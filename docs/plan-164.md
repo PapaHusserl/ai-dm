@@ -314,12 +314,37 @@ test_prompt_services.py`; `test_static_budget.py`):
   `apply_shop_11/16/17/18/19` эквивалентны (умолчания `Trade.quality`, `TurnContext.base_registry`/`mode`) — доеба.
 - Замеры: prompt-budget explore.total 23235 → 23325 (`STATIC_MAX` 23340), cov 98,06 %, smells 199, dead чисто.
 
+П2 (2026-10-23):
+- Отступления кабана, технические, приняты по аудиту свекрови: `shop_rows` и строки вкладок — в новом
+  `ui/tui/shop_blocks.py` (в `blocks.py` smells дали бы 200); команда действия — шаблон с `{qty}` (порядок «кол-во,
+  качество» для `parse`); колбэки `shop_chosen(npc_id, action)`/`qty_chosen(npc_id, action, qty)` — Esc из количества
+  возвращает к тому же NPC (Р4); пятый элемент действия — `cap`, при `cap ≤ 1` количество не спрашивается, при `cap 0`
+  отказ даёт движок.
+- Эхо в ленте — «Купить: Колчан (Мара)», при количестве «… (Мара) x2», имя без склонения — отличие от Р5; решение
+  проектировщика 2026-10-23: «как сейчас».
+- Доеба: `QtyModal.__init__` писал `self.name` (свойство Textual без сеттера) — окно падало; кабан: `self.label`.
+- Мама → кабан: у `ShopModal` свои BINDINGS без букв; описание во вкладке «Продать» с эффектами, как у «Купить»
+  (общая функция); `ShopModal` явно в `MODALS`; одна константа «Продать».
+- mutmut (doeba sonnet): 111 выживших → убито тестами 15 (в т.ч. `shop_chosen_14` — по тексту команды, т.к. движок
+  сам режет количество до запаса/денег), эквивалентны 16 (селекторы `query_one` в `shop_chosen`/`npc_chosen`/
+  `NpcModal.on_mount`/`show_description`; `shop_item_lines_16`, `sale_rows_68`, `goods_rows_74`), 80 старых веток
+  `finish_turn` — BACKLOG 166 (продолжение 127). Повторный прогон подтвердил. Тесты после разбора — повторное ревью и аудит.
+- Мама (3-й круг) → doeba: тест NpcModal переименован (стрелка+Enter, не клик); лимит из `give_item_max_qty`, не 20;
+  строки ищутся по тексту команды, а не по подписи с ценой.
+- Пустой `cat >>` из bash у doeba (дважды, файл не менялся) — нарушение правила «только Edit/Write», отмечено.
+
 ## Итог
 
 П1 (2026-10-23, 17:20–18:00): kaban opus 85k + правка 1k; kaban-doeba opus 94k + правка 1k; разбор мутантов
 kaban-doeba sonnet 35k; mama-kaban opus 44k + повтор 20k; kaban-svekrov opus 40k + повтор 21k. Тесты: +47
 (`test_shop_actions.py`), 8 переписаны (`test_prompt_services.py`); полный прогон 21266 passed. Риск 2 остаётся:
 броски последствий покупки из окна видны только строками в ленте, панели `#rolls` нет.
+
+П2 (2026-10-23, 18:10–20:38): kaban opus 117k + правки 1k/6k; kaban-doeba opus 115k + правки 9k/6k; разбор мутантов
+kaban-doeba sonnet 79k + 2k; mama-kaban opus 31k + 3k/10k/0,5k (4 круга); kaban-svekrov opus 45k + 8k/4k/10k (4 круга).
+Тесты: новые `test_shop_rows.py`, `test_tui_shop_blocks.py`, `test_tui_shop_modal.py`, переделан 1 в `test_tui_shop.py`;
+полный прогон 21373 passed, cov 98,07 %, smells 199, dead чисто. Находки: вдохновение не тратится — BACKLOG 165;
+старые мутанты `finish_turn` — BACKLOG 166. Вживую не проверены количество и выбор из нескольких NPC — живой прогон.
 
 ## Смета (кабан-тесть, режим 1)
 
