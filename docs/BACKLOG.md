@@ -1155,7 +1155,7 @@ updated: 2026-10-23
 
 ## 171. choices_retry — рассказчик кончает ход вопросом без offer_choices
 status: idea
-priority: low
+priority: high
 updated: 2026-10-23
 
 (разбор репортов dusk_academy 2026-10-23) 13 ходов (+5 в группе overflow; t837, t841, t903, t958, t978…; gemini-4-argon,
@@ -1164,7 +1164,7 @@ gemini-3.8-flash): текст кончается вопросом, `offer_choice
 
 ## 172. duplicate-kind — повтор romance/joke в сцене
 status: idea
-priority: low
+priority: high
 updated: 2026-10-23
 
 (разбор репортов dusk_academy 2026-10-23) 12 ходов (t846, t855, t869…, t1015), почти все — романтические сцены Люциана:
@@ -1174,7 +1174,7 @@ updated: 2026-10-23
 
 ## 173. rest_repeat — повтор rest long после отказа в том же ходу
 status: idea
-priority: medium
+priority: high
 updated: 2026-10-23
 
 (разбор репортов dusk_academy 2026-10-23) t860, t864, t1002 (gemini-3.8-flash): на «лечь в кровать» рассказчик зовёт
