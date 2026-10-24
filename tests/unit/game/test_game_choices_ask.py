@@ -46,7 +46,18 @@ def test_question_turn_gets_choices_retry(registry, cfg, tmp_path):
 def test_ask_is_in_the_request(registry, cfg, tmp_path):
     _, adapter, _ = asked([text_step(QUESTION), tools_step(OFFER)], registry, cfg, tmp_path)
     last = adapter.requests[1].messages[-1]
-    assert [b.text for b in last.content if isinstance(b, Text)] == [CHOICES_ASK]
+    texts = [b.text for b in last.content if isinstance(b, Text)]
+    assert len(texts) == 1
+    assert texts[0].endswith(CHOICES_ASK)
+    assert QUESTION in texts[0]
+    assert "Фраза игрока: Иду" in texts[0]
+
+
+def test_ask_request_is_cheap_one_message_one_tool(registry, cfg, tmp_path):
+    _, adapter, _ = asked([text_step(QUESTION), tools_step(OFFER)], registry, cfg, tmp_path)
+    ask = adapter.requests[1]
+    assert len(ask.messages) == 1
+    assert [t.name for t in ask.tools] == ["offer_choices"]
 
 
 def test_turn_record_has_offer_choices_and_offer_is_fresh(registry, cfg, tmp_path):
@@ -113,7 +124,7 @@ def fight(registry, cfg, tmp_path):
 def asks_in(adapter):
     return [
         b for r in adapter.requests for m in r.messages for b in m.content
-        if isinstance(b, Text) and b.text == CHOICES_ASK
+        if isinstance(b, Text) and b.text.endswith(CHOICES_ASK)
     ]
 
 

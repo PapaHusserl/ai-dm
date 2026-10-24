@@ -7,8 +7,8 @@ from pydantic import ValidationError
 from ai_dm.llm.cost import cost_nano, pick_price
 from ai_dm.llm.errors import LlmFatal, RetriesExhausted
 from ai_dm.llm.retry import call_with_retries
-from ai_dm.llm.types import Message, Text, ToolCall, ToolResult
-from ai_dm.master.leaks import MARKED_LINE, cut_leaks
+from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolCall, ToolResult
+from ai_dm.master.leaks import MARKED_LINE, cut_choice_head, cut_leaks, looks_like_plan
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.render import render_tool_result
@@ -53,6 +53,13 @@ CHOICES_ASK = (
     "Ход кончился вопросом к игроку или списком вариантов, а `offer_choices` не вызван. "
     "Вызови `offer_choices` с этими вариантами (два или три коротких, по смыслу разных); "
     "текст сцены не повторяй."
+)
+CHOICES_SYSTEM = "Ты предлагаешь игроку 2–3 варианта действия по тексту хода."
+
+# подсказка, когда текст нарратора -- план сцены, а не рассказ
+PLAN_NOTE = (
+    "Это план, а не рассказ. Игрок видит текст ответа как есть: напиши сцену повествованием, "
+    "без заданий себе и названий инструментов."
 )
 
 # подсказка при пустом ответе по режиму (world -- по роли)
@@ -143,6 +150,8 @@ class MasterResult:
         self.invalid_count = 0
         self.accepted = set()
         self.leaked_choices = None
+        # рассказ кончался заголовком вариантов («Варианты действий:»), строка срезана
+        self.choices_announced = False
 
 
 class MasterSession:
@@ -323,6 +332,7 @@ class MasterSession:
             cleaned, result.leaked_choices = cut_leaks(
                 narration, choices_taken="offer_choices" in result.accepted
             )
+            cleaned, result.choices_announced = cut_choice_head(cleaned)
             if cleaned != narration and "leak_cleaned" not in result.report_tags:
                 result.report_tags.append("leak_cleaned")
             narration = cleaned
@@ -342,7 +352,9 @@ class MasterSession:
         # рассказ кончился вопросом или списком, а offer_choices в ходу не принят
         if "offer_choices" in result.accepted:
             return False
-        return self.choices_allowed(ctx, mode) and ends_with_choice(result.narration)
+        if not self.choices_allowed(ctx, mode):
+            return False
+        return ends_with_choice(result.narration) or result.choices_announced
 
     def apply_leaked_choices(self, ctx, result, executor, mode):
         # варианты из утёкшего JSON применяются как вызов модели, без платного повтора
@@ -365,12 +377,15 @@ class MasterSession:
         if announces_combat(result.narration):
             result.report_tags.append("combat_announced")
 
-    def ask_choices(self, ctx, req, response, run_id, plan, executor, mode, result):
-        # один служебный вызов: рассказ уже принят, нужен только offer_choices
-        messages = list(req.messages)
-        messages.append(Message(role="assistant", content=response.content))
-        messages.append(Message(role="user", content=[Text(text=CHOICES_ASK)]))
-        req = req.model_copy(update={"messages": messages})
+    def ask_choices(self, ctx, req, user_input, run_id, plan, executor, mode, result):
+        # один дешёвый вызов: рассказ уже принят, в контексте только он и фраза игрока
+        text = f"Фраза игрока: {user_input}\n\nТекст хода:\n{result.narration}\n\n{CHOICES_ASK}"
+        req = ChatRequest(
+            role=req.role, model=req.model, system=[SystemBlock(text=CHOICES_SYSTEM)],
+            tools=[t for t in req.tools if t.name == "offer_choices"],
+            messages=[Message(role="user", content=[Text(text=text)])],
+            max_tokens=req.max_tokens,
+        )
         result.report_tags.append("choices_retry")
         try:
             answer = self.call(ctx, req, run_id, plan)
@@ -476,12 +491,15 @@ class MasterSession:
                 note = self.empty_note(mode, result, required, required_done)
             elif required is not None and not required_done:
                 note = f"Нужно вызвать инструмент {required}. Вызови его."
+            elif self.role == "narrator" and looks_like_plan("\n\n".join(texts)):
+                note = PLAN_NOTE
+                result.report_tags.append("plan_leak")
             if note is None:
                 result.texts += texts
                 result = self.finish(result)
                 self.apply_leaked_choices(ctx, result, executor, mode)
                 if self.choices_missing(ctx, result, mode):
-                    self.ask_choices(ctx, req, response, run_id, plan, executor, mode, result)
+                    self.ask_choices(ctx, req, user_input, run_id, plan, executor, mode, result)
                 self.tag_missing_combat(ctx, result, mode)
                 return result
             self.count_invalid(result, "Модель не смогла дать корректный ответ.")

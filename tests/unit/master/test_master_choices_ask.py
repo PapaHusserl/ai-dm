@@ -14,7 +14,15 @@ from master_kit import (
 )
 
 from ai_dm.llm.types import Text
-from ai_dm.master.session import CHOICES_ASK, MasterResult, TurnFailed, ends_with_choice
+from ai_dm.master.leaks import looks_like_plan
+from ai_dm.master.session import (
+    CHOICES_ASK,
+    CHOICES_SYSTEM,
+    PLAN_NOTE,
+    MasterResult,
+    TurnFailed,
+    ends_with_choice,
+)
 from ai_dm.protocol.apply import apply
 
 QUESTION = "Ты стоишь у двери.\n\nОткрыть её?"
@@ -139,31 +147,52 @@ def test_question_without_offer_makes_one_more_call(tmp_path, registry, cfg):
     assert len(adapter.requests) == 2
 
 
-def test_ask_request_appends_assistant_and_user_ask(tmp_path, registry, cfg):
+def test_ask_request_is_one_user_message_with_input_narration_and_ask(tmp_path, registry, cfg):
     adapter, _, _ = go([text_step(QUESTION), tools_step(offer_call())], tmp_path, registry, cfg)
-    first, second = adapter.requests
-    assert len(second.messages) == len(first.messages) + 2
-    assistant, user = second.messages[-2], second.messages[-1]
-    assert assistant.role == "assistant"
-    assert [b.text for b in assistant.content] == [QUESTION]
+    second = adapter.requests[1]
+    assert len(second.messages) == 1
+    user = second.messages[0]
     assert user.role == "user"
     assert [type(b) for b in user.content] == [Text]
-    assert user.content[0].text == CHOICES_ASK
+    assert user.content[0].text == f"Фраза игрока: Иду.\n\nТекст хода:\n{QUESTION}\n\n{CHOICES_ASK}"
 
 
-def test_ask_messages_have_no_cache_and_first_message_is_unchanged(tmp_path, registry, cfg):
+def test_ask_request_has_no_state_json_and_no_cache(tmp_path, registry, cfg):
     adapter, _, _ = go([text_step(QUESTION), tools_step(offer_call())], tmp_path, registry, cfg)
     first, second = adapter.requests
-    assert second.messages[0] == first.messages[0]
-    assert second.messages[-2].cache is False
-    assert second.messages[-1].cache is False
+    assert second.messages[0] != first.messages[0]
+    assert "combat" not in second.messages[0].content[0].text
+    assert second.messages[0].cache is False
+    assert all(block.cache is False for block in second.system)
 
 
-def test_ask_after_tool_round_keeps_history(tmp_path, registry, cfg):
+def test_ask_request_system_is_short_choices_instruction(tmp_path, registry, cfg):
+    adapter, _, _ = go([text_step(QUESTION), tools_step(offer_call())], tmp_path, registry, cfg)
+    second = adapter.requests[1]
+    assert [b.text for b in second.system] == [CHOICES_SYSTEM]
+
+
+def test_ask_request_has_only_offer_choices_tool(tmp_path, registry, cfg):
+    adapter, _, _ = go([text_step(QUESTION), tools_step(offer_call())], tmp_path, registry, cfg)
+    first, second = adapter.requests
+    assert len(first.tools) > 1
+    assert [t.name for t in second.tools] == ["offer_choices"]
+
+
+def test_ask_request_keeps_role_model_and_max_tokens(tmp_path, registry, cfg):
+    adapter, _, _ = go([text_step(QUESTION), tools_step(offer_call())], tmp_path, registry, cfg)
+    first, second = adapter.requests
+    assert (second.role, second.model, second.max_tokens) == (
+        first.role, first.model, first.max_tokens
+    )
+
+
+def test_ask_after_tool_round_has_no_history(tmp_path, registry, cfg):
     steps = [tools_step(flag_call("a", "c1")), text_step(QUESTION), tools_step(offer_call())]
     adapter, _, _ = go(steps, tmp_path, registry, cfg)
     assert len(adapter.requests) == 3
-    assert len(adapter.requests[2].messages) == len(adapter.requests[1].messages) + 2
+    assert len(adapter.requests[2].messages) == 1
+    assert QUESTION in adapter.requests[2].messages[0].content[0].text
 
 
 # приписка: результат
@@ -604,6 +633,134 @@ def test_apply_leaked_choices_runs_round_when_allowed(tmp_path, registry, cfg, m
     session.apply_leaked_choices(make_ctx(registry, cfg, mode="explore"), result, apply, "explore")
     assert len(calls) == 1
     assert calls[0][1][0].input["choices"] == ["А", "Б"]
+
+
+# Фикс dusk П3 (171): заголовок вариантов без самих вариантов
+
+HEAD_TAIL = SCENE + "\n\nИгрок получает варианты действий:"
+
+
+def test_choices_head_is_cut_and_ask_is_made(tmp_path, registry, cfg):
+    adapter, result, ctx = go([text_step(HEAD_TAIL), tools_step(offer_call())], tmp_path,
+                              registry, cfg)
+    assert result.narration == SCENE
+    assert result.choices_announced is True
+    assert len(adapter.requests) == 2
+    assert "choices_retry" in result.report_tags
+    assert "leak_cleaned" in result.report_tags
+    assert ctx.bundle.session.offered_choices == ["Бежать", "Драться"]
+
+
+def test_choices_head_ask_request_has_cut_narration(tmp_path, registry, cfg):
+    adapter, _, _ = go([text_step(HEAD_TAIL), tools_step(offer_call())], tmp_path, registry, cfg)
+    text = adapter.requests[1].messages[0].content[0].text
+    assert f"Текст хода:\n{SCENE}\n\n{CHOICES_ASK}" in text
+    assert "получает варианты" not in text
+
+
+def test_choices_head_is_cut_but_not_asked_when_offer_accepted(tmp_path, registry, cfg):
+    steps = [tools_step(offer_call()), text_step(HEAD_TAIL)]
+    adapter, result, _ = go(steps, tmp_path, registry, cfg)
+    assert result.narration == SCENE
+    assert len(adapter.requests) == 2
+    assert "choices_retry" not in result.report_tags
+
+
+def test_choices_head_is_not_asked_in_combat_narrate_while_fight_goes_on(
+    tmp_path, registry, cfg
+):
+    adapter = scripted([text_step(HEAD_TAIL), text_step("лишний")])
+    session, _, _, _ = make_session(adapter, tmp_path)
+    ctx = combat_ctx(registry, cfg, "combat_narrate")
+    result = session.run(ctx, "Бью.", apply, "combat_narrate")
+    assert len(adapter.requests) == 1
+    assert "choices_retry" not in result.report_tags
+
+
+def test_choices_head_for_other_role_is_untouched(tmp_path, registry, cfg):
+    adapter, result, _ = go([text_step(HEAD_TAIL)], tmp_path, registry, cfg, role="world")
+    assert result.narration == HEAD_TAIL
+    assert result.choices_announced is False
+    assert len(adapter.requests) == 1
+
+
+def test_ordinary_text_has_choices_announced_false(tmp_path, registry, cfg):
+    _, result, _ = go([text_step("Ты идёшь дальше.")], tmp_path, registry, cfg)
+    assert result.choices_announced is False
+
+
+def test_master_result_starts_with_choices_announced_false():
+    assert MasterResult().choices_announced is False
+
+
+# Фикс dusk П3 (141): ответ-план вместо рассказа
+
+PLAN = "Опиши:\n1. Герой входит в зал.\n2. Стражник заступает дорогу.\n\nСделай `end_combat`."
+
+
+def test_plan_answer_is_retried_with_plan_note(tmp_path, registry, cfg):
+    adapter, result, _ = go([text_step(PLAN), text_step(SCENE)], tmp_path, registry, cfg)
+    assert len(adapter.requests) == 2
+    note = adapter.requests[1].messages[-1]
+    assert note.role == "user"
+    assert [b.text for b in note.content] == [PLAN_NOTE]
+    assert adapter.requests[1].messages[-2].role == "assistant"
+
+
+def test_plan_answer_is_not_committed_and_tagged(tmp_path, registry, cfg):
+    _, result, _ = go([text_step(PLAN), text_step(SCENE)], tmp_path, registry, cfg)
+    assert result.narration == SCENE
+    assert result.texts == [SCENE]
+    assert result.report_tags == ["plan_leak"]
+    assert result.invalid_count == 1
+
+
+def test_plan_after_tool_round_is_retried(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call("a", "c1")), text_step(PLAN), text_step(SCENE)]
+    adapter, result, _ = go(steps, tmp_path, registry, cfg)
+    assert len(adapter.requests) == 3
+    assert result.narration == SCENE
+    assert "plan_leak" in result.report_tags
+
+
+def test_three_plans_in_a_row_fail_the_turn(tmp_path, registry, cfg):
+    steps = [text_step(PLAN), text_step(PLAN), text_step(PLAN)]
+    with pytest.raises(TurnFailed) as info:
+        go(steps, tmp_path, registry, cfg)
+    assert info.value.reason == "invalid"
+
+
+def test_two_plans_then_story_is_accepted(tmp_path, registry, cfg):
+    steps = [text_step(PLAN), text_step(PLAN), text_step(SCENE)]
+    adapter, result, _ = go(steps, tmp_path, registry, cfg)
+    assert len(adapter.requests) == 3
+    assert result.invalid_count == 2
+    assert result.report_tags.count("plan_leak") == 2
+
+
+def test_story_with_numbered_list_is_not_a_plan(tmp_path, registry, cfg):
+    story = "Лира кивает.\n\n1. Бежать\n2. Драться"
+    adapter, result, _ = go([text_step(story), tools_step(offer_call())], tmp_path, registry, cfg)
+    assert "plan_leak" not in result.report_tags
+    assert result.invalid_count == 0
+    assert len(adapter.requests) == 2
+
+
+def test_plan_text_for_world_role_is_not_retried(tmp_path, registry, cfg):
+    adapter, result, _ = go([text_step(PLAN)], tmp_path, registry, cfg, role="world")
+    assert len(adapter.requests) == 1
+    assert "plan_leak" not in result.report_tags
+
+
+def test_plan_text_with_accepted_offer_in_one_answer_is_committed_as_is(tmp_path, registry, cfg):
+    # известная дыра (BACKLOG 179): ранний выход после offer_choices не проверяет текст на план
+    assert looks_like_plan(PLAN) is True
+    adapter, result, _ = go([tools_step(offer_call(), text=PLAN)], tmp_path, registry, cfg)
+    assert len(adapter.requests) == 1
+    assert "offer_choices" in result.accepted
+    assert result.texts == [PLAN]
+    assert result.report_tags == []
+    assert result.invalid_count == 0
 
 
 def test_rejected_leak_apply_does_not_break_the_turn(tmp_path, registry, cfg):

@@ -45,7 +45,7 @@ class EndingAdapter(ReactiveAdapter):
         return "".join(b.text for b in request.messages[-1].content if isinstance(b, Text))
 
     def complete(self, request):
-        if self.last_text(request) == CHOICES_ASK:
+        if self.last_text(request).endswith(CHOICES_ASK):
             self.requests.append(request.model_copy(deep=True))
             return self.answer_ask(request)
         response = super().complete(request)
@@ -77,7 +77,7 @@ def fight_adapter(**kw):
 def asks_in(adapter):
     return [
         r for r in adapter.requests
-        if any(isinstance(b, Text) and b.text == CHOICES_ASK for b in r.messages[-1].content)
+        if any(isinstance(b, Text) and b.text.endswith(CHOICES_ASK) for b in r.messages[-1].content)
     ]
 
 

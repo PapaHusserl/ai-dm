@@ -16,8 +16,10 @@ OFFER = {
 }
 
 
-def result_of(narration=QUESTION, accepted=()):
-    return SimpleNamespace(narration=narration, accepted=list(accepted))
+def result_of(narration=QUESTION, accepted=(), announced=False):
+    return SimpleNamespace(
+        narration=narration, accepted=list(accepted), choices_announced=announced
+    )
 
 
 def missing(registry, cfg, tmp_path, mode, outcome=None, role="narrator", **kw):
@@ -56,6 +58,27 @@ def test_not_missing_when_text_has_no_question(registry, cfg, tmp_path):
     ) is False
 
 
+def test_missing_when_choices_head_was_cut_even_without_question(registry, cfg, tmp_path):
+    assert missing(
+        registry, cfg, tmp_path, "combat_narrate", "victory", narration="Гоблины мертвы.",
+        announced=True,
+    ) is True
+
+
+def test_not_missing_when_choices_head_was_cut_but_offer_accepted(registry, cfg, tmp_path):
+    assert missing(
+        registry, cfg, tmp_path, "combat_narrate", "victory", narration="Гоблины мертвы.",
+        announced=True, accepted=["offer_choices"],
+    ) is False
+
+
+def test_not_missing_when_choices_head_was_cut_while_combat_goes_on(registry, cfg, tmp_path):
+    assert missing(
+        registry, cfg, tmp_path, "combat_narrate", None, narration="Гоблины мертвы.",
+        announced=True,
+    ) is False
+
+
 def test_not_missing_for_other_role(registry, cfg, tmp_path):
     assert missing(registry, cfg, tmp_path, "combat_narrate", "victory", role="world") is False
 
@@ -90,7 +113,7 @@ def narrate(steps, registry, cfg, tmp_path, outcome="victory"):
 def test_victory_question_makes_one_more_call_with_ask(registry, cfg, tmp_path):
     adapter, _, _ = narrate([text_step(QUESTION), tools_step(OFFER)], registry, cfg, tmp_path)
     assert len(adapter.requests) == 2
-    assert adapter.requests[1].messages[-1].content[0].text == CHOICES_ASK
+    assert adapter.requests[1].messages[-1].content[0].text.endswith(CHOICES_ASK)
 
 
 def test_victory_ask_offers_choices_and_tags_turn(registry, cfg, tmp_path):

@@ -3,7 +3,7 @@
 # результатам», хвостовой список при принятом offer_choices, HTML-теги.
 import pytest
 
-from ai_dm.master.leaks import LEAK_LINE, cut_leaks
+from ai_dm.master.leaks import LEAK_LINE, cut_choice_head, cut_leaks, looks_like_plan
 
 SCENE = "Лира кивает и отводит взгляд."
 
@@ -244,3 +244,162 @@ def test_clean_text_whitespace_is_not_stripped():
 
 def test_empty_text():
     assert cut_leaks("") == ("", None)
+
+
+# 141/171 (Фикс dusk П3): cut_choice_head -- заголовок вариантов последней строкой
+
+@pytest.mark.parametrize("head", [
+    "Игрок получает варианты действий:",
+    "Варианты:",
+    "Выбор за тобой:",
+    "Варианты действий:  ",
+])
+def test_choice_head_last_line_is_cut(head):
+    assert cut_choice_head(f"{SCENE}\n\n{head}") == (SCENE, True)
+
+
+def test_choice_head_trailing_blank_lines_are_ignored():
+    assert cut_choice_head(f"{SCENE}\n\nВарианты:\n\n") == (SCENE, True)
+
+
+def test_choice_head_cuts_only_the_last_line_of_multiline_text():
+    assert cut_choice_head("Раз.\nДва.\nВарианты:") == ("Раз.\nДва.", True)
+
+
+def test_choice_head_only_line_gives_empty_text():
+    assert cut_choice_head("Варианты:") == ("", True)
+
+
+def test_choice_head_with_leading_marker_is_cut():
+    assert cut_choice_head(f"{SCENE}\n\n**Варианты:") == (SCENE, True)
+
+
+def test_choice_head_case_is_ignored():
+    assert cut_choice_head(f"{SCENE}\n\nВАРИАНТЫ:") == (SCENE, True)
+
+
+def test_ordinary_last_line_is_kept():
+    text = f"{SCENE}\n\nОн ждал ответа."
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_not_last_line_is_kept():
+    text = f"{SCENE}\n\nВарианты:\n\nЛира молчит."
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_with_list_after_it_is_kept():
+    text = f"{SCENE}\n\nВарианты:\n- А\n- Б"
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_without_colon_is_kept():
+    text = f"{SCENE}\n\nВарианты"
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_with_text_after_colon_is_kept():
+    text = f"{SCENE}\n\nВарианты: бежать или драться"
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_with_long_phrase_before_colon_is_kept():
+    text = f"{SCENE}\n\nВарианты " + "а" * 41 + ":"
+    assert cut_choice_head(text) == (text, False)
+
+
+def test_choice_head_with_phrase_of_40_chars_before_colon_is_cut():
+    text = f"{SCENE}\n\nВарианты" + "а" * 40 + ":"
+    assert cut_choice_head(text) == (SCENE, True)
+
+
+def test_choice_head_in_empty_text():
+    assert cut_choice_head("") == ("", False)
+
+
+# 141 (Фикс dusk П3): looks_like_plan -- план сцены вместо рассказа
+
+PLAN_T492 = (
+    "Опиши:\n"
+    "1. Герой входит в зал.\n"
+    "2. Стражник заступает дорогу.\n"
+    "5. Гоблины падают.\n\n"
+    "Инструменты gold и advance_time были отклонены.\n\n"
+    "Сделай `end_combat`."
+)
+
+
+def test_plan_t492_sample_is_a_plan():
+    assert looks_like_plan(PLAN_T492) is True
+
+
+def test_plan_head_with_two_marked_lines_is_a_plan():
+    assert looks_like_plan("Опиши:\n- Зал\n- Стражник") is True
+
+
+def test_plan_head_with_text_before_it_is_a_plan():
+    assert looks_like_plan("Ход.\n\nОпиши встречу:\n1. Зал\n2) Стражник") is True
+
+
+def test_plan_head_with_blank_lines_between_items_is_a_plan():
+    assert looks_like_plan("Опиши:\n\n- Зал\n\n- Стражник") is True
+
+
+def test_plan_head_with_one_marked_line_is_not_a_plan():
+    assert looks_like_plan("Опиши:\n- Зал") is False
+
+
+def test_plan_head_without_list_is_not_a_plan():
+    assert looks_like_plan("Опиши:\nЗал большой.\nСтражник хмур.") is False
+
+
+def test_plan_list_before_head_is_not_a_plan():
+    assert looks_like_plan("- Зал\n- Стражник\n\nОпиши:") is False
+
+
+def test_plan_head_without_colon_is_not_a_plan():
+    assert looks_like_plan("Опиши зал\n- Зал\n- Стражник") is False
+
+
+def test_plan_story_with_list_at_the_end_is_not_a_plan():
+    assert looks_like_plan("Лира кивает.\n\n- Бежать\n- Драться") is False
+
+
+def test_plan_npc_asks_to_describe_without_list_is_not_a_plan():
+    assert looks_like_plan("— Опиши мне, что ты видел, — просит стражник.") is False
+
+
+def test_plan_describe_inside_replica_with_colon_and_one_item_is_not_a_plan():
+    text = "Стражник хмурится.\n\n— Опиши, что ты видел:\n— Я видел волка."
+    assert looks_like_plan(text) is False
+
+
+def test_plan_describe_not_at_line_start_is_not_a_plan():
+    assert looks_like_plan("Лира: опиши, что видел:\n- Зал\n- Стражник") is False
+
+
+@pytest.mark.parametrize("text", [
+    "Инструмент gold отклонён.",
+    "Эти инструменты недоступны в режиме.",
+    "Отклонён вызов, инструмент не подходит.",
+    "Недоступен инструмент advance_time.",
+    "Сделай `end_combat`.",
+])
+def test_plan_tool_talk_is_a_plan(text):
+    assert looks_like_plan(text) is True
+
+
+def test_plan_tool_word_alone_is_not_a_plan():
+    assert looks_like_plan("Кузнец берёт инструмент и бьёт по железу.") is False
+
+
+def test_plan_rejection_alone_is_not_a_plan():
+    assert looks_like_plan("Стража отклонила просьбу героя.") is False
+
+
+def test_plan_do_without_backticks_is_not_a_plan():
+    assert looks_like_plan("Сделай end_combat.") is False
+
+
+def test_plan_empty_text_is_not_a_plan():
+    assert looks_like_plan("") is False

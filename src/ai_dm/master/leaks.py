@@ -98,6 +98,41 @@ def cut_tail_list(text):
     return "\n".join(lines[:start])
 
 
+# последняя строка-заголовок «Игрок получает варианты действий:» без самих вариантов
+CHOICE_HEAD = re.compile(
+    r"^[^\w]*(?:игрок\s+)?(?:получает\s+)?(?:варианты|выбор)[^:\n]{0,40}:\s*$", re.I
+)
+# строка «Опиши …:» -- задание самому себе, дальше идёт список
+PLAN_HEAD = re.compile(r"^\W*Опиши\b[^\n]*:\s*$")
+# разговор модели о своих инструментах: «инструмент … отклонён», «Сделай `end_combat`»
+PLAN_TOOL = re.compile(
+    r"инструмент[^\n]{0,80}(?:отклон|недоступ)|(?:отклон|недоступ)[^\n]{0,80}инструмент"
+    r"|Сделай\s+`\w+`",
+    re.I,
+)
+
+
+def cut_choice_head(text):
+    # заголовок вариантов последней строкой -> (текст без него, найден ли)
+    lines = text.rstrip().split("\n")
+    if not lines or not CHOICE_HEAD.match(lines[-1]):
+        return text, False
+    return "\n".join(lines[:-1]).rstrip(), True
+
+
+def looks_like_plan(text):
+    # текст хода -- план сцены («Опиши:» + задания) или разговор об отклонённых инструментах
+    if PLAN_TOOL.search(text):
+        return True
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if PLAN_HEAD.match(line):
+            tail = [x for x in lines[i + 1:] if x.strip()]
+            if sum(1 for x in tail if MARKED_LINE.match(x)) >= 2:
+                return True
+    return False
+
+
 def cut_leaks(text, choices_taken=False):
     """Служебный текст в рассказе -> (чистый текст, варианты из утёкшего JSON | None).
 
