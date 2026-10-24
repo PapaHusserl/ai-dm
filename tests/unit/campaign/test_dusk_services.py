@@ -42,8 +42,8 @@ def test_pack_loads_without_errors():
     assert pack_errors(DUSK_DIR, dusk_registry()) is None
 
 
-def test_pack_version_is_three(pack):
-    assert pack.manifest.version == "3"
+def test_pack_version_is_four(pack):
+    assert pack.manifest.version == "4"
 
 
 def test_every_service_id_is_known(pack):
@@ -126,7 +126,7 @@ def test_merge_gives_ruth_meals_and_adds_new_npcs(pack):
     assert set(NEW_NPCS) <= set(bundle.world.npcs)
     assert "hot_springs_haven" in bundle.world.locations
     assert report.conflicts == []
-    assert bundle.world.campaign_version == "3"
+    assert bundle.world.campaign_version == "4"
 
 
 def test_second_merge_into_old_world_is_empty(pack):

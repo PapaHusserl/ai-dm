@@ -1,6 +1,6 @@
 id: dusk_academy
 name: Академия Сумеречного Мыса
-version: "3"
+version: "4"
 start:
   date: "0001-09-01"
   time: "17:30"
