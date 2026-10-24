@@ -217,8 +217,9 @@ def test_end_scene_turn_closes_scene(story):
     assert story.snap["D2"]["result"].committed is True
 
 
-def test_new_scene_has_no_mood(story):
-    assert story.snap["E"]["mood"] == ""
+def test_new_scene_keeps_mood_when_place_and_npcs_same(story):
+    # Р5 (142): end_scene без смены места и ухода NPC метку не снимает
+    assert story.snap["E"]["mood"] == "romance"
 
 
 # /lore

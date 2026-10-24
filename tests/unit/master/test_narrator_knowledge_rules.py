@@ -65,8 +65,13 @@ def test_section_describes_romance_and_none():
     assert "`none`" in text
 
 
-def test_section_says_mood_drops_with_new_scene():
-    assert "С новой сценой метка слетает сама" in section()
+def test_section_says_mood_drops_with_new_scene_on_place_or_npc_change():
+    phrase = "С новой сценой метка слетает, если сменились место или кто-то из NPC сцены ушёл"
+    assert phrase in section()
+
+
+def test_section_says_mood_stays_with_same_place_and_npcs():
+    assert "при тех же месте и NPC остаётся" in section()
 
 
 def test_section_limits_requests_to_non_combat():

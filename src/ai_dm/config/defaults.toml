@@ -122,6 +122,8 @@ xp_awards_per_scene = 1
 time_repeat_turns = 2
 # кулдаун повторного длинного отдыха от конца предыдущего
 long_rest_cooldown = "12h"
+# движок сам ждёт до конца кулдауна и проводит длинный отдых, если ждать не дольше
+long_rest_wait_max = "8h"
 
 # сюжетные предметы мастера (give_custom_item)
 [custom_items]

@@ -11,7 +11,27 @@ def hero_of(bundle):
     raise KeyError(bundle.manifest.current_hero_id)
 
 
-def start_scene(bundle) -> SceneState:
+def scene_npc_ids(bundle) -> set[str]:
+    # живые NPC в локации героя (тот же отбор, что scene_npcs в промпте)
+    location_id = hero_of(bundle).location_id
+    return {
+        npc.id for npc in bundle.world.npcs.values()
+        if npc.status == "alive" and npc.location_id == location_id
+    }
+
+
+def mood_carries(bundle, old, npcs_before) -> bool:
+    # метка старой сцены переносится: она есть, локация та же, все NPC сцены на месте
+    if old is None or not old.scene_mood or npcs_before is None:
+        return False
+    if old.location_id != hero_of(bundle).location_id:
+        return False
+    return npcs_before <= scene_npc_ids(bundle)
+
+
+def start_scene(bundle, npcs_before=None) -> SceneState:
+    # npcs_before -- NPC сцены до границы: метка scene_mood переносится, если локация та же
+    # и все они на месте
     old = bundle.session.current_scene
     number = 1
     if old is not None:
@@ -20,6 +40,8 @@ def start_scene(bundle) -> SceneState:
     scene = SceneState(
         id=f"scene_{number}", started_at_s=bundle.world.clock.now_s, location_id=location_id
     )
+    if mood_carries(bundle, old, npcs_before):
+        scene.scene_mood = old.scene_mood
     bundle.session.current_scene = scene
     return scene
 

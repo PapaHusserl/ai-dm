@@ -206,8 +206,10 @@ class LimitsConfig(BaseModel):
     time_repeat_turns: int = Field(default=2, ge=0)
     # кулдаун повторного длинного отдыха от конца предыдущего (строка Duration)
     long_rest_cooldown: str = "12h"
+    # сколько движок ждёт сам до конца кулдауна, чтобы провести длинный отдых (строка Duration)
+    long_rest_wait_max: str = "8h"
 
-    @field_validator("long_rest_cooldown")
+    @field_validator("long_rest_cooldown", "long_rest_wait_max")
     @classmethod
     def check_cooldown(cls, value: str) -> str:
         Duration.parse(value)

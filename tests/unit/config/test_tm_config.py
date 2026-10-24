@@ -104,3 +104,26 @@ def test_model_defaults_without_the_keys():
     del data["long_rest_cooldown"]
     model = LimitsConfig.model_validate(data)
     assert (model.gold_repeat_turns, model.long_rest_cooldown) == (3, "12h")
+
+
+# Фикс dusk П2 (173): long_rest_wait_max -- сколько движок ждёт сам до конца кулдауна
+
+def test_default_long_rest_wait_max_is_eight_hours():
+    assert limits().long_rest_wait_max == "8h"
+
+
+def test_model_default_long_rest_wait_max_without_the_key():
+    data = load_rules_config().limits.model_dump()
+    del data["long_rest_wait_max"]
+    assert LimitsConfig.model_validate(data).long_rest_wait_max == "8h"
+
+
+@pytest.mark.parametrize("value", ["6h", "90m", "1d", "0h"])
+def test_override_long_rest_wait_max(value):
+    assert limits(f'[limits]\nlong_rest_wait_max = "{value}"\n').long_rest_wait_max == value
+
+
+@pytest.mark.parametrize("value", ["", "8", "часов", "1.5h", "-1h"])
+def test_garbage_long_rest_wait_max_is_rejected(value):
+    with pytest.raises(ValidationError):
+        limits(f'[limits]\nlong_rest_wait_max = "{value}"\n')

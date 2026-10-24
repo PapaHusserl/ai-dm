@@ -45,7 +45,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # 164: пометка о покупке из окна /shop, services без цен (замер 23325; 23240 -> 23340).
 # У1 П4: `hero.boons` в правилах, решение Р5 (замер 23370; 23340 -> 23380).
 # Фикс dusk П1 (170): фраза о location_create, решение 4/Р4 (замер 23445; 23380 -> 23460).
-STATIC_MAX = 23460
+# Фикс dusk П2 (142): правило scene_mood -- метка переносится, если те же место и NPC
+# (narrator_rules.md:124; замер 23475; 23460 -> 23490).
+STATIC_MAX = 23490
 
 MODES = sorted(MODE_TOOLS)
 

@@ -799,24 +799,42 @@ def next_long_rest_s(hero, cfg):
     return end_s + Duration.parse(cfg.limits.long_rest_cooldown).seconds
 
 
-def rest_redundant(ctx, request):
-    # длинный отдых раньше кулдауна от конца предыдущего: rejected до отдыха;
-    # при 0 HP отдых по-прежнему отклоняет long_rest (Invalid)
+def rest_wait_s(ctx, request):
+    # сколько секунд до конца кулдауна длинного отдыха; None, если ждать нечего
+    # (не длинный отдых, отдыха ещё не было, 0 HP -- его отклоняет long_rest, кулдаун прошёл)
     hero = ctx.hero
     next_s = next_long_rest_s(hero, ctx.cfg)
     if request.kind != "long" or next_s is None or hero.creature.hp_current == 0:
         return None
-    now_s = ctx.bundle.world.clock.now_s
-    if now_s >= next_s:
+    wait_s = next_s - ctx.bundle.world.clock.now_s
+    return wait_s if wait_s > 0 else None
+
+
+def rest_redundant(ctx, request):
+    # длинный отдых раньше кулдауна, и ждать дольше long_rest_wait_max: rejected до отдыха;
+    # при меньшем ожидании отдых ждёт сам (wait_for_long_rest)
+    wait_s = rest_wait_s(ctx, request)
+    if wait_s is None or wait_s <= Duration.parse(ctx.cfg.limits.long_rest_wait_max).seconds:
         return None
+    next_s = ctx.bundle.world.clock.now_s + wait_s
     return rejected(
         "отдых уже был",
         f"Скажи игроку: длинный отдых снова возможен с {clock_text(next_s)}; сейчас можно "
         "короткий отдых (rest short) или просто подремать/подождать — время двигай "
         "advance_time (until: long_rest — до момента, когда отдых снова можно, затем "
         "rest long в том же ходу), HP и ресурсы при этом не восстанавливаются.",
-        report_tag="rest_repeat",
     )
+
+
+def wait_for_long_rest(ctx, request):
+    # длинный отдых в кулдауне, ждать не дольше long_rest_wait_max: часы идут до конца
+    # кулдауна; возвращает момент, до которого герой ждал, или None
+    wait_s = rest_wait_s(ctx, request)
+    if wait_s is None:
+        return None
+    clock = ctx.bundle.world.clock
+    clock.advance(wait_s)
+    return clock.now_s
 
 
 def lodging_unpaid(ctx, request):
@@ -859,6 +877,7 @@ def rest(ctx, request):
         invalid = check(ctx, request)
         if invalid is not None:
             return invalid
+    waited_s = wait_for_long_rest(ctx, request)
     hit_dice = request.hit_dice or 0
     cut = False
     if request.kind == "short" and hit_dice > 0:
@@ -876,6 +895,8 @@ def rest(ctx, request):
             rests.long_rest(hero, ctx.registry, world.clock, ctx.cfg)
             world.flags.pop(f"{service_rules.LODGING_FLAG}:{hero.id}", None)
             log = ["Длинный отдых: HP и ресурсы восстановлены"]
+            if waited_s is not None:
+                log.insert(0, f"Герой ждал до {clock_text(waited_s)}")
     except ValueError as error:
         return Invalid(code="rest_impossible", message=str(error))
     result = {"hp": hero.creature.hp_current, "now_s": world.clock.now_s}
@@ -888,6 +909,15 @@ def rest(ctx, request):
             f"Потрачено только {hit_dice} костей хитов вместо {request.hit_dice}: "
             "опиши отдых по факту.",
             result, log,
+        )
+    if waited_s is not None:
+        return Decision(
+            status="clamped", reason="отдых в кулдауне",
+            signal_to_master=(
+                f"Отдых начался в {clock_text(waited_s)} (герой ждал конца кулдауна): "
+                "опиши по факту."
+            ),
+            result=result, log=log,
         )
     return Decision(status="accepted", result=result, log=log)
 

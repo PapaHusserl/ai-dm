@@ -1,6 +1,6 @@
 # Бэклог
 R7 (утверждена 2026-10-17): статус и место в очереди пунктов — docs/plan-roadmap-r7.md, разделы 2–4; закрытые пункты — docs/done/.
-Следующий номер — 175 (5а перенумерован в 72).
+Следующий номер — 177 (5а перенумерован в 72).
 
 ## 1. Уровни выше 5
 status: planned
@@ -1092,3 +1092,14 @@ updated: 2026-10-24
 `change_attitude` 20–22 (`result["attitude"]` не проверяется); `location_create` 16–23 (нет теста на связь с
 несуществующей локацией — `unknown_location` для `spec.to`), 32–33 (текст `bad_amount`), 53 (`description or ""`),
 90, 94, 95 (`result={"location_id": …}` не проверяется).
+
+## 176. Мутанты rest / finish_boundary на старых строках
+status: idea
+priority: low
+updated: 2026-10-24
+
+(mutmut Фикс dusk П2, docs/plan-fix-dusk.md) Выжили на строках, не тронутых партией. `protocol/handlers/resources.py`:
+`rest_redundant` 19, 21, 23, 24 (текст отказа); `rest` 17 (`cut = False`), 19, 23, 24 (условие `short and hit_dice
+> 0`), 77 (`str(error)` в `rest_impossible`), 113, 114 (текст «опиши отдых по факту»). `game/boundary.py`
+`finish_boundary` 9, 10, 22, 29, 34, 35, 40, 56, 77, 78, 80 (`cfg`/`registry` → None в вызовах, `chapter_closed`,
+`notices`, `result.error`).

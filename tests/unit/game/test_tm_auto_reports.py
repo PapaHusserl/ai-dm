@@ -96,27 +96,16 @@ def test_gold_repeat_does_not_add_money_to_the_hero(registry, tmp_path):
 
 # rest_repeat
 
-def test_rest_repeat_tag_is_in_reply_turn(registry, tmp_path):
+# с BACKLOG 173 отказ повторного отдыха без тега и без авто-репорта
+
+def test_rest_repeat_has_no_tag_in_reply_turn(registry, tmp_path):
     _, first, second = two_rest_turns(registry, tmp_path, auto_reports=True)
     assert first.turn.report_tags == []
-    assert second.turn.report_tags == ["rest_repeat"]
+    assert second.turn.report_tags == []
 
 
-def test_rest_repeat_writes_one_report(registry, tmp_path):
+def test_rest_repeat_writes_no_report(registry, tmp_path):
     two_rest_turns(registry, tmp_path, auto_reports=True)
-    found = issues(tmp_path)
-    assert len(found) == 1
-    assert found[0].name.endswith("-t2-rest_repeat")
-
-
-def test_rest_repeat_report_meta_has_tag(registry, tmp_path):
-    two_rest_turns(registry, tmp_path, auto_reports=True)
-    assert meta_of(issues(tmp_path)[0])["tags"] == ["rest_repeat"]
-
-
-def test_rest_repeat_with_auto_reports_off_has_tag_but_no_file(registry, tmp_path):
-    _, _, second = two_rest_turns(registry, tmp_path, auto_reports=False)
-    assert second.turn.report_tags == ["rest_repeat"]
     assert issues(tmp_path) == []
 
 
@@ -184,12 +173,12 @@ def test_time_repeat_writes_one_report_with_tag(registry, tmp_path):
 
 def test_both_tags_in_one_turn_make_one_report(registry, tmp_path):
     steps = [
-        tools_step(gold_call(2000), rest_call()), text_step("Кошель и сон."),
-        tools_step(gold_call(2000), rest_call()), text_step("Опять."),
+        tools_step(gold_call(2000), xp_call()), text_step("Кошель и опыт."),
+        tools_step(gold_call(2000), xp_call()), text_step("Опять."),
     ]
     app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
-    app.handle("Обыскать и отдохнуть")
+    app.handle("Обыскать и учиться")
     second = app.handle("Ещё раз")
-    assert set(second.turn.report_tags) == {"gold_repeat", "rest_repeat"}
+    assert set(second.turn.report_tags) == {"gold_repeat", "xp_repeat"}
     assert len(issues(tmp_path)) == 1
-    assert set(meta_of(issues(tmp_path)[0])["tags"]) == {"gold_repeat", "rest_repeat"}
+    assert set(meta_of(issues(tmp_path)[0])["tags"]) == {"gold_repeat", "xp_repeat"}

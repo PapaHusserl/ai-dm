@@ -265,13 +265,14 @@ def test_rejected_gold_repeat_adds_report_tag(registry, cfg, tmp_path):
     assert second.report_tags == ["gold_repeat"]
 
 
-def test_rejected_rest_repeat_adds_report_tag(registry, cfg, tmp_path):
+def test_rejected_rest_repeat_adds_no_report_tag(registry, cfg, tmp_path):
+    # отказ повторного отдыха -- обычный мягкий отказ, без тега и авто-репорта (BACKLOG 173)
     steps = [
         tools_step(rest_call()), text_step("Спишь."), tools_step(rest_call()), text_step("Снова."),
     ]
     rig = rig_of(registry, cfg, tmp_path, steps)
     rig.runner.play("Отдыхаю")
-    assert rig.runner.play("Снова отдыхаю").report_tags == ["rest_repeat"]
+    assert rig.runner.play("Снова отдыхаю").report_tags == []
 
 
 # следующий ход видит итоги в запросе

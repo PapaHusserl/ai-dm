@@ -1,4 +1,4 @@
-# ТМ (мини-партия #20): ход с отклонённым повтором (gold_repeat, rest_repeat) воспроизводится
+# ТМ (мини-партия #20): ход с отклонённым повтором (gold_repeat, xp_repeat) воспроизводится
 # (--replay-report, код 0, «Состояние совпало»): снимок состояния перед ходом уже содержит записи
 # памяти с outcomes / money_delta_cp / long_rest_end_s.
 import sys
@@ -18,8 +18,11 @@ GOLD = {
     },
 }
 GOLD_AGAIN = {**GOLD, "id": "g2"}
-REST = {"id": "r1", "name": "rest", "input": {"type": "rest", "kind": "long"}}
-REST_AGAIN = {**REST, "id": "r2"}
+XP = {
+    "id": "x1", "name": "award_xp",
+    "input": {"type": "award_xp", "scale": "minor", "reason": "цель"},
+}
+XP_AGAIN = {**XP, "id": "x2"}
 
 
 def reports_of(root):
@@ -52,15 +55,16 @@ def test_gold_repeat_turn_replays(registry, tmp_path):
     assert MATCH in out.lines
 
 
-def test_rest_repeat_turn_replays(registry, tmp_path):
+def test_xp_repeat_turn_replays(registry, tmp_path):
+    # отказ повторного отдыха больше не даёт тега (BACKLOG 173) -- берём другой повтор
     steps = [
-        tools_step(REST), text_step("Ты просыпаешься отдохнувшим."),
-        tools_step(REST_AGAIN), text_step("Ты уже выспался."),
+        tools_step(XP), text_step("Ты чему-то научился."),
+        tools_step(XP_AGAIN), text_step("Больше нечему."),
     ]
     root, _, reply = played_twice(registry, tmp_path, steps)
-    assert reply.turn.report_tags == ["rest_repeat"]
+    assert reply.turn.report_tags == ["xp_repeat"]
     path = reports_of(root)[-1]
-    assert path.name.endswith("rest_repeat")
+    assert path.name.endswith("xp_repeat")
     code, out = replay(path, tmp_path / "cfg")
     assert code == 0, out.text
     assert MATCH in out.lines

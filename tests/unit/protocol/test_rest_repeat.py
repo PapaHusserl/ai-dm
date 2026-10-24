@@ -106,10 +106,10 @@ def test_repeat_right_after_rest_is_rejected(registry, cfg):
     assert d.status == "rejected"
 
 
-def test_repeat_has_report_tag_rest_repeat(registry, cfg):
+def test_repeat_has_no_report_tag(registry, cfg):
     ctx = rested(registry, cfg)
     apply(ctx, long_req())
-    assert apply(ctx, long_req()).report_tag == "rest_repeat"
+    assert apply(ctx, long_req()).report_tag is None
 
 
 def test_repeat_is_rejected_not_invalid(registry, cfg):
@@ -175,9 +175,10 @@ def test_signal_next_time_follows_configured_cooldown(registry, cfg):
 
 # граница кулдауна
 
-def test_one_second_before_the_boundary_is_rejected(registry, cfg):
+def test_just_over_wait_limit_before_the_boundary_is_rejected(registry, cfg):
+    # до конца кулдауна 8 ч 1 с -- больше long_rest_wait_max
     end_s = 100_000
-    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 12 * HOUR - 1)
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 4 * HOUR - 1)
     assert apply(ctx, long_req()).status == "rejected"
 
 
@@ -213,9 +214,9 @@ def test_cooldown_zero_hours_never_blocks(registry, cfg):
     assert apply(ctx, long_req()).status == "accepted"
 
 
-def test_cooldown_sixteen_hours_rejects_at_twelve(registry, cfg):
+def test_cooldown_sixteen_hours_rejects_at_four(registry, cfg):
     end_s = 100_000
-    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 12 * HOUR, cooldown="16h")
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + 4 * HOUR, cooldown="16h")
     assert apply(ctx, long_req()).status == "rejected"
 
 
@@ -227,7 +228,7 @@ def test_cooldown_sixteen_hours_accepts_at_sixteen(registry, cfg):
 
 def test_cooldown_in_days_is_parsed(registry, cfg):
     end_s = 100_000
-    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + DAY - 1, cooldown="1d")
+    ctx = rested(registry, cfg, end_s=end_s, now_s=end_s + DAY - 8 * HOUR - 1, cooldown="1d")
     assert apply(ctx, long_req()).status == "rejected"
 
 
@@ -362,14 +363,14 @@ def test_bad_swap_inside_cooldown_is_rejected_not_invalid(cfg, dragon):
     d = apply(ctx, long_req(prepared_swap={"drop": ["no_such_spell"], "take": ["longstrider"]}))
     assert not isinstance(d, Invalid)
     assert d.status == "rejected"
-    assert d.report_tag == "rest_repeat"
+    assert d.reason == "отдых уже был"
 
 
 def test_bad_prey_inside_cooldown_is_rejected_not_invalid(cfg, dragon):
     ctx = dragon_ctx(cfg, dragon, 1000, 2000)
     d = apply(ctx, long_req(prey_swap="no_such_prey"))
     assert not isinstance(d, Invalid)
-    assert d.report_tag == "rest_repeat"
+    assert d.reason == "отдых уже был"
 
 
 def test_bad_swap_after_cooldown_is_invalid(cfg, dragon):
@@ -501,3 +502,193 @@ def test_until_long_rest_at_zero_hp_still_moves_clock(registry, cfg):
     ctx = rested(registry, cfg, end_s=at(9, 50), now_s=at(20, 6), hp=0)
     assert apply(ctx, until_rest()).status == "accepted"
     assert ctx.bundle.world.clock.now_s == at(21, 50)
+
+
+# Фикс dusk П2 (173): ожидание до конца кулдауна <= long_rest_wait_max (8h) движок берёт на себя
+
+END_S = 100_000
+NEXT_S = END_S + 12 * HOUR
+
+
+def waiting(registry, cfg, wait_s, wait_max=None, hp=None):
+    # кулдаун кончается через wait_s секунд от текущего момента
+    if wait_max is not None:
+        cfg = load_rules_config(f'[limits]\nlong_rest_wait_max = "{wait_max}"\n')
+    return rested(registry, cfg, end_s=END_S, now_s=NEXT_S - wait_s, hp=hp)
+
+
+def test_short_wait_is_slept_through_clock_ends_after_the_rest(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR)
+    apply(ctx, long_req())
+    assert ctx.bundle.world.clock.now_s == NEXT_S + cfg.time.long_rest_s
+
+
+def test_short_wait_rest_marks_the_end(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR)
+    apply(ctx, long_req())
+    assert ctx.hero.long_rest_end_s == NEXT_S + cfg.time.long_rest_s
+
+
+def test_short_wait_heals_the_hero(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR, hp=3)
+    apply(ctx, long_req())
+    assert ctx.hero.creature.hp_current == ctx.hero.creature.hp_max
+
+
+def test_short_wait_is_clamped_without_tag(registry, cfg):
+    d = apply(waiting(registry, cfg, 4 * HOUR), long_req())
+    assert isinstance(d, Decision)
+    assert d.status == "clamped"
+    assert d.report_tag is None
+
+
+def test_short_wait_signal_names_the_start_time(registry, cfg):
+    d = apply(waiting(registry, cfg, 4 * HOUR), long_req())
+    assert clock_text(NEXT_S) in d.signal_to_master
+
+
+def test_short_wait_reason_is_cooldown_rest(registry, cfg):
+    d = apply(waiting(registry, cfg, 4 * HOUR), long_req())
+    assert d.reason == "отдых в кулдауне"
+
+
+def test_short_wait_signal_text(registry, cfg):
+    d = apply(waiting(registry, cfg, 4 * HOUR), long_req())
+    assert d.signal_to_master == (
+        f"Отдых начался в {clock_text(NEXT_S)} (герой ждал конца кулдауна): "
+        "опиши по факту."
+    )
+
+
+def test_short_wait_log_says_hero_waited_first(registry, cfg):
+    d = apply(waiting(registry, cfg, 4 * HOUR), long_req())
+    assert d.log[0] == f"Герой ждал до {clock_text(NEXT_S)}"
+    assert d.log[1] == "Длинный отдых: HP и ресурсы восстановлены"
+
+
+def test_short_wait_result_has_final_clock(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR)
+    d = apply(ctx, long_req())
+    assert d.result["now_s"] == ctx.bundle.world.clock.now_s
+
+
+def test_wait_of_exactly_the_limit_is_slept_through(registry, cfg):
+    d = apply(waiting(registry, cfg, 8 * HOUR), long_req())
+    assert d.status == "clamped"
+
+
+def test_wait_one_second_over_the_limit_is_rejected(registry, cfg):
+    d = apply(waiting(registry, cfg, 8 * HOUR + 1), long_req())
+    assert d.status == "rejected"
+    assert d.report_tag is None
+
+
+def test_wait_over_the_limit_signal_names_next_time(registry, cfg):
+    d = apply(waiting(registry, cfg, 11 * HOUR), long_req())
+    assert clock_text(NEXT_S) in d.signal_to_master
+
+
+def test_wait_over_the_limit_changes_nothing(registry, cfg):
+    ctx = waiting(registry, cfg, 11 * HOUR, hp=3)
+    before = dump(ctx)
+    apply(ctx, long_req())
+    assert dump(ctx) == before
+
+
+def test_one_second_wait_is_slept_through(registry, cfg):
+    ctx = waiting(registry, cfg, 1)
+    assert apply(ctx, long_req()).status == "clamped"
+    assert ctx.bundle.world.clock.now_s == NEXT_S + cfg.time.long_rest_s
+
+
+def test_no_wait_on_the_boundary_is_plain_accepted(registry, cfg):
+    d = apply(waiting(registry, cfg, 0), long_req())
+    assert d.status == "accepted"
+    assert not any("ждал" in line for line in d.log)
+
+
+def test_wait_limit_follows_config(registry, cfg):
+    assert apply(waiting(registry, cfg, 4 * HOUR, wait_max="3h"), long_req()).status == "rejected"
+
+
+def test_wait_limit_config_allows_longer_wait(registry, cfg):
+    d = apply(waiting(registry, cfg, 11 * HOUR, wait_max="12h"), long_req())
+    assert d.status == "clamped"
+
+
+def test_wait_limit_zero_rejects_any_wait(registry, cfg):
+    assert apply(waiting(registry, cfg, 1, wait_max="0h"), long_req()).status == "rejected"
+
+
+def test_short_rest_in_cooldown_does_not_wait(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR)
+    now = ctx.bundle.world.clock.now_s
+    d = apply(ctx, req("rest", kind="short"))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == now + cfg.time.short_rest_s
+
+
+def test_zero_hp_with_short_wait_is_invalid_and_clock_stays(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR, hp=0)
+    before = dump(ctx)
+    d = apply(ctx, long_req())
+    assert isinstance(d, Invalid)
+    assert d.code == "rest_impossible"
+    assert dump(ctx) == before
+
+
+def test_waited_rest_applies_prey_swap(cfg, dragon):
+    ctx = dragon_ctx(cfg, dragon, END_S, NEXT_S - 4 * HOUR)
+    d = apply(ctx, long_req(prey_swap="horde_breaker"))
+    assert d.status == "clamped"
+    assert ctx.hero.sheet.feature_choices["hunters_prey"] == ["horde_breaker"]
+
+
+def test_bad_swap_with_short_wait_is_invalid_and_clock_stays(cfg, dragon):
+    ctx = dragon_ctx(cfg, dragon, END_S, NEXT_S - 4 * HOUR)
+    before = dump(ctx)
+    d = apply(ctx, long_req(prey_swap="no_such_prey"))
+    assert isinstance(d, Invalid)
+    assert dump(ctx) == before
+
+
+def test_second_rest_right_after_waited_one_is_rejected(registry, cfg):
+    ctx = waiting(registry, cfg, 4 * HOUR)
+    apply(ctx, long_req())
+    assert apply(ctx, long_req()).status == "rejected"
+
+
+def test_rest_wait_s_none_for_short_and_unmarked_and_past(registry, cfg):
+    from ai_dm.protocol.handlers.resources import rest_wait_s
+
+    assert rest_wait_s(waiting(registry, cfg, HOUR), req("rest", kind="short")) is None
+    assert rest_wait_s(rested(registry, cfg), long_req()) is None
+    assert rest_wait_s(waiting(registry, cfg, 0), long_req()) is None
+
+
+def test_rest_wait_s_is_seconds_to_cooldown_end(registry, cfg):
+    from ai_dm.protocol.handlers.resources import rest_wait_s
+
+    assert rest_wait_s(waiting(registry, cfg, 5 * HOUR), long_req()) == 5 * HOUR
+
+
+def test_rest_wait_s_none_at_zero_hp(registry, cfg):
+    from ai_dm.protocol.handlers.resources import rest_wait_s
+
+    assert rest_wait_s(waiting(registry, cfg, HOUR, hp=0), long_req()) is None
+
+
+def test_wait_for_long_rest_moves_clock_and_returns_it(registry, cfg):
+    from ai_dm.protocol.handlers.resources import wait_for_long_rest
+
+    ctx = waiting(registry, cfg, 3 * HOUR)
+    assert wait_for_long_rest(ctx, long_req()) == NEXT_S
+    assert ctx.bundle.world.clock.now_s == NEXT_S
+
+
+def test_wait_for_long_rest_without_wait_returns_none(registry, cfg):
+    from ai_dm.protocol.handlers.resources import wait_for_long_rest
+
+    ctx = rested(registry, cfg, now_s=500)
+    assert wait_for_long_rest(ctx, long_req()) is None
+    assert ctx.bundle.world.clock.now_s == 500

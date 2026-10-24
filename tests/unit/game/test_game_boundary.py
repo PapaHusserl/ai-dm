@@ -240,7 +240,7 @@ def test_failure_in_step_3_keeps_state_as_after_autosave(registry, cfg, tmp_path
     import ai_dm.game.boundary as boundary
     from ai_dm.master.session import TurnFailed
 
-    def broken(bundle):
+    def broken(bundle, npcs_before=None):
         raise TurnFailed("fatal", "сбой границы")
 
     monkeypatch.setattr(boundary, "start_scene", broken)
@@ -259,7 +259,7 @@ def test_failure_in_step_3_rolls_back_chapter(registry, cfg, tmp_path, monkeypat
     import ai_dm.game.boundary as boundary
     from ai_dm.master.session import TurnFailed
 
-    def broken(bundle):
+    def broken(bundle, npcs_before=None):
         raise TurnFailed("fatal", "сбой границы")
 
     monkeypatch.setattr(boundary, "start_scene", broken)
@@ -268,6 +268,99 @@ def test_failure_in_step_3_rolls_back_chapter(registry, cfg, tmp_path, monkeypat
     bundle = rig.runner.bundle
     assert bundle.session.current_chapter.number == 1
     assert bundle.memory.chapters == []
+
+
+# Фикс dusk П2 (173): множество NPC сцены снимается до tick_days/call_world, метка переносится
+
+def mood_pending(registry, cfg, mood="romance"):
+    from ai_dm.game.boundary import close_boundary
+
+    bundle = chapter_bundle(registry)
+    bundle.session.current_scene.scene_mood = mood
+    close_boundary(bundle, cfg, "end_scene")
+    return bundle
+
+
+def test_finish_boundary_passes_scene_npcs_to_start_scene(registry, cfg, monkeypatch):
+    import ai_dm.game.boundary as boundary
+
+    seen = {}
+
+    def spy(bundle, npcs_before=None):
+        seen["npcs"] = npcs_before
+        return boundary_start(bundle, npcs_before=npcs_before)
+
+    boundary_start = boundary.start_scene
+    monkeypatch.setattr(boundary, "start_scene", spy)
+    bundle = mood_pending(registry, cfg)
+    boundary.finish_boundary(bundle, cfg, registry)
+    assert seen["npcs"] == {"grakh"}
+
+
+def test_finish_boundary_carries_mood_to_new_scene(registry, cfg):
+    from ai_dm.game.boundary import finish_boundary
+
+    bundle = mood_pending(registry, cfg)
+    result = finish_boundary(bundle, cfg, registry)
+    assert result.error is None
+    assert result.bundle.session.current_scene.id == "scene_2"
+    assert result.bundle.session.current_scene.scene_mood == "romance"
+
+
+def test_finish_boundary_without_mood_leaves_new_scene_empty(registry, cfg):
+    from ai_dm.game.boundary import finish_boundary
+
+    bundle = mood_pending(registry, cfg, mood="")
+    assert finish_boundary(bundle, cfg, registry).bundle.session.current_scene.scene_mood == ""
+
+
+def test_npc_leaving_during_boundary_drops_mood(registry, cfg, monkeypatch):
+    # снимок NPC взят до tick_days: ушедший за границу NPC снимает метку
+    import ai_dm.game.boundary as boundary
+
+    def tick(work, cfg, registry):
+        work.world.npcs["grakh"].location_id = "forest"
+
+    monkeypatch.setattr(boundary, "tick_days", tick)
+    bundle = mood_pending(registry, cfg)
+    scene = boundary.finish_boundary(bundle, cfg, registry).bundle.session.current_scene
+    assert scene.scene_mood == ""
+
+
+def test_npc_killed_during_boundary_drops_mood(registry, cfg, monkeypatch):
+    import ai_dm.game.boundary as boundary
+
+    def tick(work, cfg, registry):
+        work.world.npcs["grakh"].status = "dead"
+
+    monkeypatch.setattr(boundary, "tick_days", tick)
+    bundle = mood_pending(registry, cfg)
+    scene = boundary.finish_boundary(bundle, cfg, registry).bundle.session.current_scene
+    assert scene.scene_mood == ""
+
+
+def test_npc_arriving_during_boundary_keeps_mood(registry, cfg, monkeypatch):
+    import ai_dm.game.boundary as boundary
+
+    def tick(work, cfg, registry):
+        work.world.npcs["aldric"].location_id = "vale"
+
+    monkeypatch.setattr(boundary, "tick_days", tick)
+    bundle = mood_pending(registry, cfg)
+    scene = boundary.finish_boundary(bundle, cfg, registry).bundle.session.current_scene
+    assert scene.scene_mood == "romance"
+
+
+def test_hero_moving_during_boundary_drops_mood(registry, cfg, monkeypatch):
+    import ai_dm.game.boundary as boundary
+
+    def tick(work, cfg, registry):
+        work.heroes[0].location_id = "forest"
+
+    monkeypatch.setattr(boundary, "tick_days", tick)
+    bundle = mood_pending(registry, cfg)
+    scene = boundary.finish_boundary(bundle, cfg, registry).bundle.session.current_scene
+    assert scene.scene_mood == ""
 
 
 def pending_slot(registry, cfg, tmp_path):

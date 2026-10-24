@@ -289,12 +289,34 @@ def test_cooldown_beats_payment_and_charges_nothing(registry, cfg):
     pay(ctx)
     money = ctx.hero.money_cp
     d = long_rest(ctx)
-    assert d.report_tag == "rest_repeat"
+    assert d.reason == "отдых уже был"
     assert ctx.hero.money_cp == money
+
+
+def test_unpaid_lodging_beats_short_wait_and_clock_stays(registry, cfg):
+    # до конца кулдауна 4 ч (движок бы подождал), но ночлег не оплачен: отказ без сдвига часов
+    ctx = inn_ctx(registry, cfg)
+    ctx.hero.long_rest_end_s = 1000
+    ctx.bundle.world.clock.now_s = 1000 + 8 * 3600
+    d = long_rest(ctx)
+    assert d.reason == "ночлег платный"
+    assert ctx.bundle.world.clock.now_s == 1000 + 8 * 3600
+
+
+def test_paid_lodging_with_short_wait_waits_and_clears_flag(registry, cfg):
+    ctx = inn_ctx(registry, cfg)
+    ctx.hero.long_rest_end_s = 1000
+    ctx.bundle.world.clock.now_s = 1000 + 8 * 3600
+    pay(ctx)
+    d = long_rest(ctx)
+    assert d.status == "clamped"
+    assert f"lodging:{ctx.hero.id}" not in flags(ctx)
 
 
 def test_cooldown_rejection_without_payment_is_rest_repeat_not_unpaid(registry, cfg):
     ctx = inn_ctx(registry, cfg)
     ctx.hero.long_rest_end_s = 1000
     ctx.bundle.world.clock.now_s = 1000
-    assert long_rest(ctx).report_tag == "rest_repeat"
+    d = long_rest(ctx)
+    assert d.reason == "отдых уже был"
+    assert d.report_tag is None

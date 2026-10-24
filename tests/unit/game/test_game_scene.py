@@ -51,6 +51,165 @@ def test_scene_ids_keep_counting(registry):
     assert bundle.session.current_scene.id == "scene_3"
 
 
+# Фикс dusk П2 (173): scene_npc_ids и перенос метки scene_mood (npcs_before)
+
+def moody(registry, mood="romance"):
+    # сцена в «vale» с меткой; в локации героя живёт grakh
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.scene_mood = mood
+    return bundle
+
+
+def test_scene_npc_ids_are_alive_npcs_in_hero_location(registry):
+    from ai_dm.game.scene import scene_npc_ids
+
+    assert scene_npc_ids(make_bundle(registry)) == {"grakh"}
+
+
+def test_scene_npc_ids_skip_dead(registry):
+    from ai_dm.game.scene import scene_npc_ids
+
+    bundle = make_bundle(registry)
+    bundle.world.npcs["grakh"].status = "dead"
+    assert scene_npc_ids(bundle) == set()
+
+
+def test_scene_npc_ids_skip_other_location(registry):
+    from ai_dm.game.scene import scene_npc_ids
+
+    bundle = make_bundle(registry)
+    bundle.world.npcs["grakh"].location_id = "forest"
+    assert scene_npc_ids(bundle) == set()
+
+
+def test_scene_npc_ids_follow_hero_location(registry):
+    from ai_dm.game.scene import scene_npc_ids
+
+    bundle = make_bundle(registry)
+    bundle.heroes[0].location_id = "forest"
+    assert scene_npc_ids(bundle) == set()
+
+
+def test_scene_npc_ids_do_not_change_bundle(registry):
+    from ai_dm.game.scene import scene_npc_ids
+
+    bundle = make_bundle(registry)
+    before = bundle.model_dump_json()
+    scene_npc_ids(bundle)
+    assert bundle.model_dump_json() == before
+
+
+def test_start_scene_carries_mood_when_place_and_npcs_same(registry):
+    from ai_dm.game.scene import scene_npc_ids, start_scene
+
+    bundle = moody(registry)
+    assert start_scene(bundle, npcs_before=scene_npc_ids(bundle)).scene_mood == "romance"
+
+
+def test_start_scene_carries_exact_mood_string(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry, mood="custom")
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == "custom"
+
+
+def test_start_scene_carries_mood_with_empty_npc_set(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    bundle.world.npcs["grakh"].status = "dead"
+    assert start_scene(bundle, npcs_before=set()).scene_mood == "romance"
+
+
+def test_start_scene_without_npcs_before_does_not_carry(registry):
+    from ai_dm.game.scene import start_scene
+
+    assert start_scene(moody(registry)).scene_mood == ""
+
+
+def test_start_scene_drops_mood_when_location_changed(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    bundle.heroes[0].location_id = "forest"
+    assert start_scene(bundle, npcs_before=set()).scene_mood == ""
+
+
+def test_start_scene_drops_mood_when_scene_npc_left(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    bundle.world.npcs["grakh"].location_id = "forest"
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == ""
+
+
+def test_start_scene_drops_mood_when_scene_npc_died(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    bundle.world.npcs["grakh"].status = "dead"
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == ""
+
+
+def test_start_scene_drops_mood_when_scene_npc_vanished_from_world(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    del bundle.world.npcs["grakh"]
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == ""
+
+
+def test_start_scene_keeps_mood_when_newcomer_arrived(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    bundle.world.npcs["aldric"].location_id = "vale"
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == "romance"
+
+
+def test_start_scene_does_not_carry_empty_mood(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry, mood="")
+    assert start_scene(bundle, npcs_before={"grakh"}).scene_mood == ""
+
+
+def test_start_scene_first_scene_has_no_mood(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = make_bundle(registry, with_scene=False)
+    assert start_scene(bundle, npcs_before=set()).scene_mood == ""
+
+
+def test_start_scene_carry_does_not_touch_old_scene_object(registry):
+    from ai_dm.game.scene import start_scene
+
+    bundle = moody(registry)
+    old = bundle.session.current_scene
+    new = start_scene(bundle, npcs_before={"grakh"})
+    assert new is not old
+    assert old.scene_mood == "romance"
+    assert new.id == "scene_2"
+
+
+def test_end_scene_keeps_romance_for_same_place_and_npc(registry, cfg, tmp_path):
+    bundle = moody(registry)
+    steps = [tools_step(end_scene_call()), text_step("Конец сцены.")]
+    rig, _ = play(registry, cfg, tmp_path, steps, bundle=bundle)
+    scene = rig.runner.bundle.session.current_scene
+    assert scene.id == "scene_2"
+    assert scene.scene_mood == "romance"
+
+
+def test_travel_drops_mood_with_new_scene(registry, cfg, tmp_path):
+    bundle = moody(registry)
+    steps = [tools_step(advance_call(travel_to="forest")), text_step("Лес.")]
+    rig, _ = play(registry, cfg, tmp_path, steps, bundle=bundle)
+    scene = rig.runner.bundle.session.current_scene
+    assert scene.id == "scene_2"
+    assert scene.scene_mood == ""
+
+
 def check(bundle, cfg, **kw):
     from ai_dm.game.scene import check_close
 

@@ -1,6 +1,6 @@
 from ai_dm.core.clock import DAY
 from ai_dm.core.rng import Rng
-from ai_dm.game.scene import close_scene, ensure_chapter, start_scene
+from ai_dm.game.scene import close_scene, ensure_chapter, scene_npc_ids, start_scene
 from ai_dm.llm.errors import LlmError
 from ai_dm.master.session import TurnFailed, soft_failure
 from ai_dm.persistence.store import save_auto
@@ -223,6 +223,7 @@ def finish_boundary(
     work = bundle.model_copy(deep=True)
     result = BoundaryResult(bundle)
     try:
+        present = scene_npc_ids(work)
         summarize_scene(work, cfg, registry, summarizer, run_id, result)
         tick_days(work, cfg, registry)
         check = check_triggers(work, cfg, registry)
@@ -231,7 +232,7 @@ def finish_boundary(
         call_world(work, cfg, registry, check, world, run_id, result)
         result.chapter_closed = close_chapter(work, cfg, registry, summarizer, run_id, result)
         work.session.boundary_pending = False
-        start_scene(work)
+        start_scene(work, npcs_before=present)
         # scene_count считает сцены главы, включая текущую
         work.session.current_chapter.scene_count += 1
         result.notices = deliver_notices(work)
