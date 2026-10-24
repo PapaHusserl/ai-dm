@@ -143,7 +143,11 @@ def test_default_scene_section():
 def test_default_attitude_section():
     attitude = load_rules_config().attitude
     assert attitude.step == 10
-    assert attitude.per_scene == 20
+    assert attitude.per_scene == 30
+
+
+def test_default_locations_section():
+    assert load_rules_config().locations.inside_max_m == 500
 
 
 def test_default_limits_section():

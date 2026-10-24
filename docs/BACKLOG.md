@@ -1082,3 +1082,13 @@ updated: 2026-10-23
 
 (mutmut У1 П4, docs/plan-u1.md) `ai_dm.campaign.merge.x_merge_new__mutmut_27` выжил: `report.added.append(f"{kind}:{entity.id}")`
 → `append(None)` в цикле `adds` не ловится тестами. Строка старая, не из П4.
+
+## 175. Мутанты location_create / change_attitude на старых строках
+status: idea
+priority: low
+updated: 2026-10-24
+
+(mutmut Фикс dusk П1, docs/plan-fix-dusk.md) Выжили на строках, не тронутых партией, `protocol/handlers/world.py`:
+`change_attitude` 20–22 (`result["attitude"]` не проверяется); `location_create` 16–23 (нет теста на связь с
+несуществующей локацией — `unknown_location` для `spec.to`), 32–33 (текст `bad_amount`), 53 (`description or ""`),
+90, 94, 95 (`result={"location_id": …}` не проверяется).

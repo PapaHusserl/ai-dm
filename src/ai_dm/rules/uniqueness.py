@@ -39,10 +39,29 @@ def check_location(world, location, heroes) -> list[str]:
         conflicts.append(f"id {location.id!r} уже занят (NPC, фракция, бог, локация или герой)")
     name = norm(location.name)
     for other in world.locations.values():
-        if other.parent_id == location.parent_id and norm(other.name) == name:
-            conflicts.append(f"в этом месте уже есть локация с именем {location.name!r}")
+        if norm(other.name) == name:
+            conflicts.append(f"имя {location.name!r} уже у локации {other.id!r}")
             break
     return conflicts
+
+
+def inside_of(world, parent_id, other_id) -> bool:
+    # other_id -- сам parent_id, его потомок любой глубины или его предок (по цепочке parent_id)
+    if other_id == parent_id:
+        return True
+    return climbs_to(world, other_id, parent_id) or climbs_to(world, parent_id, other_id)
+
+
+def climbs_to(world, start_id, target_id) -> bool:
+    # target_id среди предков start_id; цикл parent_id не зацикливает
+    seen = set()
+    current = world.locations.get(start_id)
+    while current is not None and current.parent_id and current.parent_id not in seen:
+        if current.parent_id == target_id:
+            return True
+        seen.add(current.parent_id)
+        current = world.locations.get(current.parent_id)
+    return False
 
 
 def check_faction(world, faction, heroes) -> list[str]:

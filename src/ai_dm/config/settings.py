@@ -152,6 +152,12 @@ class AttitudeConfig(BaseModel):
     per_scene: int
 
 
+class LocationsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # связь новой локации с местом внутри её родителя не длиннее этого, метров; наружу без лимита
+    inside_max_m: int = Field(default=500, gt=0)
+
+
 class NpcMemoryConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # сцен в памяти одного NPC о герое; новая сцена вытесняет сцену с наименьшим весом
@@ -399,6 +405,7 @@ class RulesConfig(BaseModel):
     saves: SavesConfig
     scene: SceneConfig
     attitude: AttitudeConfig
+    locations: LocationsConfig = LocationsConfig()
     npc_memory: NpcMemoryConfig = NpcMemoryConfig()
     knowledge: KnowledgeConfig = KnowledgeConfig()
     favor: FavorConfig = FavorConfig()

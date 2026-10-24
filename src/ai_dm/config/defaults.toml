@@ -84,7 +84,11 @@ max_per_chapter = 15
 
 [attitude]
 step = 10
-per_scene = 20
+per_scene = 30
+
+# новые локации (BACKLOG 170): связи внутри родителя не длиннее inside_max_m метров
+[locations]
+inside_max_m = 500
 
 # память NPC о герое: сцены с событиями (BACKLOG 79)
 [npc_memory]

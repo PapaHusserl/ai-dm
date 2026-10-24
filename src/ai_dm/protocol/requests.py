@@ -527,8 +527,8 @@ class LocationCreate(Request):
 
     type: Literal["location_create"]
     id: str = Field(description="Уникальный id локации.")
-    name: str = Field(description="Название; в одном родителе уникально.")
-    parent_id: str = Field("", description="Id родительской локации; пусто = нет.")
+    name: str = Field(description="Название; уникально во всём мире.")
+    parent_id: str = Field("", description="Id родительской локации; обязателен.")
     description: str = Field("", description="Описание локации; пусто = нет.")
     connections: list[ConnectionSpec] = Field(
         [], description="Связи с другими локациями; пусто = нет."

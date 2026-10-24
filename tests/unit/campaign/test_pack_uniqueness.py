@@ -69,12 +69,12 @@ def test_npc_with_hero_name_is_dropped(tmp_path, registry):
     assert "Герой" in conflict_of(conflicts, "double").reason
 
 
-def test_same_location_name_under_different_parents_is_ok(tmp_path, registry):
+def test_same_location_name_under_different_parents_is_dropped(tmp_path, registry):
     files = default_files()
     files["locations.yaml"].append({"id": "tavern_2", "name": "Таверна", "parent_id": "cellar"})
     accepted, conflicts = collect(tmp_path, registry, files)
-    assert conflicts == []
-    assert "tavern_2" in ids(accepted.locations)
+    assert "tavern_2" not in ids(accepted.locations)
+    assert conflict_of(conflicts, "tavern_2").kind == "location"
 
 
 def test_same_location_name_under_one_parent_is_dropped(tmp_path, registry):

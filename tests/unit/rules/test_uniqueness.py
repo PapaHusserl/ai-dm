@@ -8,14 +8,14 @@
 #         * имя именованного NPC (named=True) уникально среди именованных NPC, героев, богов
 #           (world.pantheon) и фракций (world.factions) -- одно общее пространство имён;
 #           безымянные NPC (named=False) могут повторять имена («Стражник»)
-#         * имя локации уникально в пределах parent_id (None -- верхний уровень);
-#           в разных родителях одинаковое имя можно
+#         * имя локации уникально во всём мире (родитель не важен); конфликт называет id
+#           существующей локации
 #         * имена сравниваются без учёта регистра и пробелов по краям
 #         * несколько нарушений -- несколько строк (id и имя -- по строке на каждое)
 from types import SimpleNamespace
 
 from ai_dm.core.rng import Rng
-from ai_dm.rules.uniqueness import check_location, check_npc
+from ai_dm.rules.uniqueness import check_location, check_npc, inside_of
 from ai_dm.state.world import NPC, Faction, God, Location, WorldState
 
 HEROES = [SimpleNamespace(id="hero", name="Арн")]
@@ -118,9 +118,11 @@ def test_same_name_in_same_parent_is_conflict():
     assert "Таверна" in conflicts[0]
 
 
-def test_same_name_in_other_parent_is_allowed():
+def test_same_name_in_other_parent_is_conflict_with_existing_id():
     tavern = make_location("cap_tavern", "Таверна", "capital")
-    assert check_location(make_world(), tavern, HEROES) == []
+    conflicts = check_location(make_world(), tavern, HEROES)
+    assert len(conflicts) == 1
+    assert "vale_tavern" in conflicts[0]
 
 
 def test_same_name_at_top_level_is_conflict():
@@ -128,8 +130,18 @@ def test_same_name_at_top_level_is_conflict():
     assert len(conflicts) == 1
 
 
-def test_same_name_top_level_vs_nested_is_allowed():
-    assert check_location(make_world(), make_location("tavern_top", "Таверна"), HEROES) == []
+def test_same_name_top_level_vs_nested_is_conflict():
+    assert len(check_location(make_world(), make_location("tavern_top", "Таверна"), HEROES)) == 1
+
+
+def test_different_name_in_other_parent_is_allowed():
+    inn = make_location("cap_inn", "Постоялый двор", "capital")
+    assert check_location(make_world(), inn, HEROES) == []
+
+
+def test_location_name_comparison_ignores_edge_spaces():
+    padded = make_location("t3", "  Таверна ", "capital")
+    assert len(check_location(make_world(), padded, HEROES)) == 1
 
 
 def test_location_name_comparison_ignores_case():
@@ -138,6 +150,48 @@ def test_location_name_comparison_ignores_case():
 
 def test_location_name_may_equal_npc_or_god_name():
     assert check_location(make_world(), make_location("morrah_temple", "Моррах"), HEROES) == []
+
+
+def tree_world():
+    world = make_world()
+    world.locations["hall"] = make_location("hall", "Зал", "vale")
+    world.locations["cellar"] = make_location("cellar", "Погреб", "hall")
+    return world
+
+
+def test_inside_of_parent_itself():
+    assert inside_of(tree_world(), "vale", "vale") is True
+
+
+def test_inside_of_child():
+    assert inside_of(tree_world(), "vale", "hall") is True
+
+
+def test_inside_of_grandchild():
+    assert inside_of(tree_world(), "vale", "cellar") is True
+
+
+def test_inside_of_ancestor():
+    assert inside_of(tree_world(), "cellar", "vale") is True
+
+
+def test_inside_of_neighbour_branch_is_false():
+    assert inside_of(tree_world(), "vale", "capital") is False
+
+
+def test_inside_of_sibling_is_false():
+    assert inside_of(tree_world(), "hall", "vale_tavern") is False
+
+
+def test_inside_of_unknown_id_is_false():
+    assert inside_of(tree_world(), "vale", "nowhere") is False
+
+
+def test_inside_of_survives_parent_cycle():
+    world = tree_world()
+    world.locations["a"] = make_location("a", "А", "b")
+    world.locations["b"] = make_location("b", "Б", "a")
+    assert inside_of(world, "a", "capital") is False
 
 
 def test_location_check_does_not_change_world():

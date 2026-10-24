@@ -179,12 +179,20 @@ def test_location_create_adds_location(registry, cfg):
     assert d.log
 
 
-def test_location_create_same_name_other_parent_is_accepted(registry, cfg):
-    # «Таверна» есть в Вейле, вторая «Таверна» в Лесу -- можно (ТЗ 5.3)
+def test_location_create_same_name_other_parent_is_rejected(registry, cfg):
+    # имя локации уникально во всём мире (BACKLOG 170)
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_location(id="forest_tavern", name="Таверна", parent_id="forest"))
+    assert d.status == "rejected"
+    assert dump(ctx) == before
+
+
+def test_location_create_name_conflict_signal_names_existing_id(registry, cfg):
     ctx = make_ctx(registry, cfg)
     d = apply(ctx, new_location(id="forest_tavern", name="Таверна", parent_id="forest"))
-    assert d.status == "accepted"
-    assert "forest_tavern" in ctx.bundle.world.locations
+    assert "vale_tavern" in d.signal_to_master
+    assert "существующий id" in d.signal_to_master
 
 
 def test_location_create_same_name_same_parent_is_rejected(registry, cfg):
@@ -198,7 +206,7 @@ def test_location_create_same_name_same_parent_is_rejected(registry, cfg):
 
 def test_location_create_taken_id_is_rejected(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    d = apply(ctx, new_location(id="forest", name="Другая Чаща", parent_id=""))
+    d = apply(ctx, new_location(id="forest", name="Другая Чаща", parent_id="vale"))
     assert d.status == "rejected"
     assert ctx.bundle.world.locations["forest"].name == "Лес"
 
@@ -227,10 +235,20 @@ def test_attitude_plus_15_is_clamped_to_10(registry, cfg):
     ctx = make_ctx(registry, cfg)
     d = attitude(ctx, 15)
     assert d.status == "clamped"
-    assert d.report_tag == "limit-exceeded"
+    assert d.report_tag is None
     assert d.signal_to_master
     assert ctx.bundle.world.npcs["aldric"].attitude == 10
-    assert ctx.marks == ["limit-exceeded"]
+    assert ctx.marks == []
+
+
+def test_attitude_at_cap_plus_1_is_clamped_without_tag(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = 100
+    d = attitude(ctx, 1)
+    assert d.status == "clamped"
+    assert d.report_tag is None
+    assert d.signal_to_master
+    assert ctx.bundle.world.npcs["aldric"].attitude == 100
 
 
 def test_attitude_minus_15_is_clamped_to_minus_10(registry, cfg):
@@ -249,24 +267,23 @@ def test_attitude_step_comes_from_config(registry, cfg):
     assert ctx.bundle.world.npcs["aldric"].attitude == 3
 
 
-def test_attitude_scene_total_is_clamped_to_20(registry, cfg):
+def test_attitude_scene_total_is_clamped_to_30(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    first = attitude(ctx, 10)
-    second = attitude(ctx, 10)
-    third = attitude(ctx, 10)
-    assert [first.status, second.status, third.status] == ["accepted", "accepted", "clamped"]
-    assert third.report_tag == "limit-exceeded"
-    assert ctx.bundle.world.npcs["aldric"].attitude == 20
-    assert ctx.attitude_spent["aldric"] == 20
+    steps = [attitude(ctx, 10) for _ in range(4)]
+    assert [d.status for d in steps] == ["accepted", "accepted", "accepted", "clamped"]
+    assert steps[3].report_tag is None
+    assert ctx.bundle.world.npcs["aldric"].attitude == 30
+    assert ctx.attitude_spent["aldric"] == 30
 
 
 def test_attitude_scene_remainder_is_applied_partially(registry, cfg):
     ctx = make_ctx(registry, cfg)
     attitude(ctx, 10)
+    attitude(ctx, 10)
     attitude(ctx, 8)
     d = attitude(ctx, 10)
     assert d.status == "clamped"
-    assert ctx.bundle.world.npcs["aldric"].attitude == 20
+    assert ctx.bundle.world.npcs["aldric"].attitude == 30
 
 
 def test_attitude_scene_cap_is_per_npc(registry, cfg):
@@ -291,11 +308,11 @@ def test_attitude_scene_cap_comes_from_config(registry, cfg):
 def test_attitude_spent_is_kept_in_scene_between_contexts(registry, cfg):
     # накопитель живёт в сцене бандла, а не в контексте хода
     bundle = make_bundle(registry)
-    attitude(make_ctx(registry, cfg, bundle=bundle), 10)
-    attitude(make_ctx(registry, cfg, bundle=bundle), 10)
+    for _ in range(3):
+        attitude(make_ctx(registry, cfg, bundle=bundle), 10)
     d = attitude(make_ctx(registry, cfg, bundle=bundle), 10)
     assert d.status == "clamped"
-    assert bundle.world.npcs["aldric"].attitude == 20
+    assert bundle.world.npcs["aldric"].attitude == 30
 
 
 def test_npc_update_unknown_npc_is_invalid(registry, cfg):
@@ -533,8 +550,8 @@ def test_combined_update_with_valid_death_and_big_delta_keeps_both_marks(registr
     assert npc.status == "dead"
     assert npc.attitude == 10
     assert d.status == "clamped"
-    assert d.report_tag == "limit-exceeded"
-    assert "limit-exceeded" in ctx.marks
+    assert d.report_tag is None
+    assert "limit-exceeded" not in ctx.marks
 
 
 def test_empty_npc_update_is_invalid(registry, cfg):

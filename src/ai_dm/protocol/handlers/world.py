@@ -176,13 +176,38 @@ def location_create(ctx, request):
     if conflicts:
         return rejected(
             "; ".join(conflicts),
-            "Локация не создана: " + "; ".join(conflicts) + ". Придумай другое имя и id.",
+            "Локация не создана: " + "; ".join(conflicts)
+            + ". Место то же — используй существующий id, иначе придумай другое имя и id.",
         )
+    problem = connection_problem(ctx, request)
+    if problem is not None:
+        return problem
     world.locations[location.id] = location
     return Decision(
         status="accepted", result={"location_id": location.id},
         log=[f"Новая локация: {location.name}"],
     )
+
+
+def connection_problem(ctx, request):
+    # rejected: нет родителя или связь внутри родителя длиннее лимита; иначе None
+    world = ctx.bundle.world
+    if not request.parent_id:
+        return rejected(
+            "не указан parent_id",
+            "Локация не создана: укажи parent_id — здание, двор, город или область из "
+            "locations/known_locations. Опиши место иначе или повтори с родителем.",
+        )
+    limit = ctx.cfg.locations.inside_max_m
+    parent = world.locations[request.parent_id]
+    for spec in request.connections or []:
+        if spec.distance_m > limit and uniqueness.inside_of(world, request.parent_id, spec.to):
+            return rejected(
+                f"связь {spec.to} длиннее {limit} м внутри {request.parent_id}",
+                f"Локация не создана: внутри {parent.name} связи не длиннее {limit} м: "
+                f"{spec.to} — {spec.distance_m} м; место дальше — выбери другого родителя.",
+            )
+    return None
 
 
 def wanted_attitude(ctx, npc, delta) -> int:
@@ -206,7 +231,6 @@ def change_attitude(ctx, npc, delta, decision):
         refresh_weight(npc, ctx.scene)
     if abs(applied) < abs(delta):
         decision.status = "clamped"
-        decision.report_tag = "limit-exceeded"
         decision.reason = f"запрошено {delta:+d}, применено {applied:+d}"
         decision.signal_to_master = (
             f"Отношение изменено только на {applied:+d}: опиши реакцию по факту."
@@ -247,7 +271,6 @@ def change_memory(ctx, npc, request, decision):
     if kind in WARM_KINDS and has_kind(npc, scene, kind):
         # отношение из этого запроса уже применено, дубль вида в сцене в память не пишется
         decision.status = "clamped"
-        decision.report_tag = "duplicate-kind"
         decision.reason = f"{kind} уже записан в этой сцене"
         decision.log.append(f"{npc_label(npc)} уже помнит это в этой сцене: {title}")
         decision.signal_to_master = (

@@ -53,8 +53,16 @@ def unsupported_call(call_id="us-1"):
     }
 
 
-def too_friendly_call(call_id="nu-1"):
-    # сдвиг отношения сверх шага -- урезается с меткой limit-exceeded
+def over_limit_item_call(call_id="gi-1"):
+    # выдача предметов сверх лимита -- урезается с меткой limit-exceeded
+    # (сдвиг отношения сверх шага метку больше не ставит, BACKLOG 144)
+    return {
+        "id": call_id, "name": "give_item",
+        "input": {"type": "give_item", "item_id": "potion_of_healing", "qty": 50},
+    }
+
+
+def too_friendly_attitude_call(call_id="nu-3"):
     return {
         "id": call_id, "name": "npc_update",
         "input": {"type": "npc_update", "npc_id": "aldric", "attitude_delta": 50},
@@ -87,10 +95,17 @@ def test_missing_mechanic_writes_report(registry, tmp_path):
 
 
 def test_limit_exceeded_writes_report(registry, tmp_path):
-    steps = [tools_step(too_friendly_call()), text_step("Олдрик хмыкает.")]
+    steps = [tools_step(over_limit_item_call()), text_step("Олдрик хмыкает.")]
     _, reply = play_with(registry, tmp_path, steps, auto_reports=True)
     assert reply.turn.report_tags == ["limit-exceeded"]
     assert issues(tmp_path)[0].name.endswith("-t1-limit-exceeded")
+
+
+def test_clamped_attitude_writes_no_report(registry, tmp_path):
+    steps = [tools_step(too_friendly_attitude_call()), text_step("Олдрик хмыкает.")]
+    _, reply = play_with(registry, tmp_path, steps, auto_reports=True)
+    assert reply.turn.report_tags == []
+    assert issues(tmp_path) == []
 
 
 def test_invalid_death_writes_report(registry, tmp_path):
@@ -187,7 +202,7 @@ def test_invalid_defeat_writes_report(registry, tmp_path):
 
 def test_two_tags_make_one_report_with_both(registry, tmp_path):
     steps = [
-        tools_step(too_friendly_call(), unsupported_call()), text_step("Олдрик хмыкает."),
+        tools_step(over_limit_item_call(), unsupported_call()), text_step("Олдрик хмыкает."),
     ]
     _, reply = play_with(registry, tmp_path, steps, auto_reports=True)
     assert set(reply.turn.report_tags) == {"limit-exceeded", "missing-mechanic"}

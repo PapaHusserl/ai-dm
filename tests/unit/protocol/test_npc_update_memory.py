@@ -334,7 +334,7 @@ def test_memory_text_over_limit_with_clamped_attitude_stays_clamped(registry, cf
     ctx = make_ctx(registry, cfg)
     d = remember_call(ctx, text="я" * 300, attitude_delta=50)
     assert d.status == "clamped"
-    assert d.report_tag == "limit-exceeded"
+    assert d.report_tag is None
 
 
 def test_memory_text_over_limit_with_clamped_attitude_joins_reason(registry, cfg):
@@ -512,10 +512,19 @@ def test_warm_kind_twice_in_scene_is_clamped(kind, registry, cfg):
     assert remember_call(ctx, kind, attitude_delta=2).status == "clamped"
 
 
-def test_warm_kind_duplicate_has_duplicate_kind_tag(registry, cfg):
+def test_warm_kind_duplicate_is_clamped_without_tag(registry, cfg):
     ctx = make_ctx(registry, cfg)
     remember_call(ctx, "joke", attitude_delta=2)
-    assert remember_call(ctx, "joke", attitude_delta=2).report_tag == "duplicate-kind"
+    d = remember_call(ctx, "joke", attitude_delta=2)
+    assert d.status == "clamped"
+    assert d.report_tag is None
+
+
+def test_warm_kind_duplicate_leaves_no_mark(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    remember_call(ctx, "romance", attitude_delta=2)
+    remember_call(ctx, "romance", attitude_delta=2)
+    assert "duplicate-kind" not in ctx.marks
 
 
 def test_warm_kind_duplicate_is_not_written(registry, cfg):
@@ -636,7 +645,9 @@ def test_warm_battle_written_by_engine_blocks_master_duplicate(registry, cfg):
     npc = ctx.bundle.world.npcs["aldric"]
     remember(npc, ctx.bundle.session.current_scene, NpcEvent(kind="battle", turn_seq=1, text="бой"),
              cfg.npc_memory)
-    assert remember_call(ctx, "battle").report_tag == "duplicate-kind"
+    d = remember_call(ctx, "battle")
+    assert d.status == "clamped"
+    assert d.report_tag is None
 
 
 # У1 П2: платная близость -- не роман (romance_gate в change_memory)
@@ -752,9 +763,9 @@ def test_paid_romance_after_purchase_deal_in_same_scene_writes_no_second_deal(re
     (50, -5, 0, 45),
     (50, 50, 0, 60),
     (50, -50, 0, 40),
-    (50, 10, 15, 55),
-    (50, -10, 15, 45),
-    (50, 10, 20, 50),
+    (50, 10, 25, 55),
+    (50, -10, 25, 45),
+    (50, 10, 30, 50),
     (95, 10, 0, 100),
     (-95, -10, 0, -100),
     (50, 0, 0, 50),
