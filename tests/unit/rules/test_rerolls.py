@@ -3,11 +3,13 @@
 # порядке:
 #   1. Luck (черта вида halfling): на d20-тесте (attack/save/check/initiative) оставленная
 #      кость = 1 -> один переброс, новое значение обязательно; повторная 1 не перебрасывается
-#   2. героическое вдохновение: hero.heroic_inspiration == True, d20-тест, передан decisions:
-#      decisions.choose(options, ctx) -> str; options == ["reroll", "keep"],
-#      ctx["natural"] -- оставленная кость на момент вопроса. "reroll" -> новая кость заменяет
-#      прежнюю (даже если хуже), флаг героя снят; "keep" -> без переброса, флаг остаётся.
-#      Флаг False, decisions=None или актёр -- CreatureState: вопрос не задаётся
+#   2. героическое вдохновение (шаг 165, тратится само на первый провал): hero.heroic_inspiration
+#      == True, kind в check/save/death_save (атака, инициатива -- нет), СЛ известна. Провал:
+#      natural + бонус < СЛ (с dc_bonus); для death_save СЛ 10, ещё natural == 1. Переброс --
+#      новая кость заменяет прежнюю (даже если хуже), флаг героя снят. Нет провала, нет СЛ,
+#      безнадёжно (20 на перебросе, при помехе -- вторая кость пары, не спасёт) -- без переброса,
+#      флаг остаётся. Флаг False или актёр -- CreatureState: переброса нет.
+#      spent_lines(result) -- ["Вдохновение потрачено"], если среди rerolls есть вдохновение
 #   3. Savage Attacker (черта "savage_attacker" в sheet.feats): kind="damage" с tags["weapon"]=True:
 #      кубики урона бросаются дважды (весь набор), берётся больший набор. Раз в ход:
 #      tags["savage_attacker_used"]=True -- бросок один. Не оружие -- один бросок
@@ -23,9 +25,17 @@
 #   Savage Attacker -- "Урон: 1d8 (2 | 6 → 6) + 3 = 9 [Свирепый атакующий]" (набор кубиков
 #   до | и после, затем выбранный).
 #   rerollers=None (D1): список перебросов (по умолчанию [luck, heroic_inspiration]), функции
-#   (request, kept_pair, rng, registry, decisions) -> reroll_id | None; rerollers=[] -- без них.
+#   (request, kept_pair, rng, registry) -> reroll_id | None; rerollers=[] -- без них.
 from ai_dm.core.rng import Rng
-from ai_dm.rules.roll_pipeline import RollRequest, roll
+from ai_dm.rules.modifiers import Modifier, default_modifier_registry
+from ai_dm.rules.roll_pipeline import (
+    KeptPair,
+    RollRequest,
+    best_natural,
+    luck,
+    roll,
+    spent_lines,
+)
 from ai_dm.state.creature import CreatureState
 from ai_dm.state.hero import BackgroundSpec, CharacterSheet, ClassLevel, HeroState
 
@@ -39,16 +49,6 @@ class ScriptedRng(Rng):
         sides, face = self.rolls.pop(0)
         assert sides == n
         return face - 1
-
-
-class ScriptedProvider:
-    def __init__(self, *answers):
-        self.answers = list(answers)
-        self.asked = []
-
-    def choose(self, options, ctx):
-        self.asked.append((list(options), dict(ctx)))
-        return self.answers.pop(0)
 
 
 def make_hero(species="human", feats=(), heroic_inspiration=False):
@@ -184,95 +184,201 @@ def test_no_savage_attacker_without_feat(registry):
 
 # героическое вдохновение
 
-def test_inspiration_refused_keeps_roll_and_flag(registry):
+def test_inspiration_spent_on_failed_check_rerolls_and_clears_flag(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("keep")
-    result = roll(make_request(hero), ScriptedRng((20, 5)), registry, decisions=provider)
-    assert result.natural == 5
-    assert result.rerolls == []
-    assert hero.heroic_inspiration is True
-
-
-def test_inspiration_accepted_rerolls_and_clears_flag(registry):
-    hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    result = roll(make_request(hero), ScriptedRng((20, 5), (20, 17)), registry, decisions=provider)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 5), (20, 17)), registry)
     assert result.natural == 17
     assert result.rerolls == ["heroic_inspiration"]
     assert hero.heroic_inspiration is False
 
 
+def test_inspiration_kept_when_check_succeeds(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 12)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_kept_when_total_equals_dc(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 10)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_spent_when_total_is_one_below_dc(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 9), (20, 17)), registry)
+    assert result.rerolls == ["heroic_inspiration"]
+
+
+def test_inspiration_spent_on_failed_save(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "save", ability="wis")
+    result = roll(request, ScriptedRng((20, 5), (20, 17)), registry)
+    assert result.natural == 17
+    assert hero.heroic_inspiration is False
+
+
 def test_inspiration_new_roll_is_used_even_if_worse(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    result = roll(make_request(hero), ScriptedRng((20, 15), (20, 2)), registry, decisions=provider)
+    request = make_request(hero, "check", skill="athletics", bonus=0)
+    result = roll(request, ScriptedRng((20, 12), (20, 2)), registry)
     assert result.natural == 2
 
 
 def test_inspiration_log_shows_both_values(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    result = roll(make_request(hero), ScriptedRng((20, 5), (20, 17)), registry, decisions=provider)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 5), (20, 17)), registry)
     assert result.d20_rolls == [5, 17]
-    assert "5" in result.log.text
-    assert "17" in result.log.text
+    assert "→ вдохновение 17" in result.log.text
 
 
-def test_inspiration_question_offers_reroll_or_keep(registry):
+def test_inspiration_not_spent_without_flag(registry):
+    request = make_request(make_hero(), "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 5)), registry)
+    assert result.rerolls == []
+    assert result.natural == 5
+
+
+def test_inspiration_not_spent_without_dc(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("keep")
-    roll(make_request(hero), ScriptedRng((20, 5)), registry, decisions=provider)
-    assert provider.asked[0][0] == ["reroll", "keep"]
-    assert provider.asked[0][1]["natural"] == 5
-
-
-def test_inspiration_not_asked_without_flag(registry):
-    provider = ScriptedProvider()
-    roll(make_request(make_hero()), ScriptedRng((20, 5)), registry, decisions=provider)
-    assert provider.asked == []
-
-
-def test_inspiration_without_provider_is_not_used(registry):
-    hero = make_hero(heroic_inspiration=True)
-    result = roll(make_request(hero), ScriptedRng((20, 5)), registry)
+    request = make_request(hero, "check", skill="athletics", dc=None)
+    result = roll(request, ScriptedRng((20, 1)), registry)
     assert result.rerolls == []
     assert hero.heroic_inspiration is True
 
 
-def test_inspiration_works_on_save_and_check(registry):
-    for kind, extra in [("save", {"ability": "wis"}), ("check", {"skill": "athletics"})]:
-        hero = make_hero(heroic_inspiration=True)
-        provider = ScriptedProvider("reroll")
-        request = make_request(hero, kind, **extra)
-        result = roll(request, ScriptedRng((20, 5), (20, 17)), registry, decisions=provider)
-        assert result.natural == 17
+def test_inspiration_not_spent_on_hopeless_failure(registry):
+    # 20 + 3 < 25: переброс не спасёт
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics", dc=25, bonus=3)
+    result = roll(request, ScriptedRng((20, 5)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
 
 
-def test_npc_actor_is_never_offered_inspiration(registry):
-    provider = ScriptedProvider()
-    request = make_request(CreatureState(hp_current=7, hp_max=7))
-    roll(request, ScriptedRng((20, 5)), registry, decisions=provider)
-    assert provider.asked == []
+def test_inspiration_spent_when_twenty_just_saves(registry):
+    # 20 + 3 = 23 >= 23
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics", dc=23, bonus=3)
+    result = roll(request, ScriptedRng((20, 5), (20, 20)), registry)
+    assert result.rerolls == ["heroic_inspiration"]
+    assert hero.heroic_inspiration is False
+
+
+def test_inspiration_not_spent_at_disadvantage_when_other_die_cannot_save(registry):
+    # кости (4, 9): после переброса natural не выше 9; 9 + 0 < 12
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(
+        hero, "check", skill="athletics", bonus=0, dc=12, base_adv="disadvantage"
+    )
+    result = roll(request, ScriptedRng((20, 4), (20, 9)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_spent_at_disadvantage_when_other_die_can_save(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(
+        hero, "check", skill="athletics", bonus=0, dc=9, base_adv="disadvantage"
+    )
+    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 15)), registry)
+    assert result.rerolls == ["heroic_inspiration"]
+    assert result.natural == 9
+
+
+def test_inspiration_judges_failure_by_dc_with_dc_bonus(registry):
+    # СЛ 15 + dc_bonus 2 = 17; 8 + 5 + 3 (flat) = 16 < 17 -- провал по итоговой СЛ
+    class Cover:
+        id = "cover"
+
+        def modifiers(self, request, registry):
+            return [Modifier(source="cover", dc_bonus=2, flat=3)]
+
+    modifiers = default_modifier_registry()
+    modifiers.register(Cover())
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 8), (20, 17)), registry, modifiers=modifiers)
+    assert result.rerolls == ["heroic_inspiration"]
+
+
+def test_inspiration_kept_when_total_beats_base_dc_but_not_needed(registry):
+    # 8 + 5 + 4 = 17 >= 15 + 2: не провал
+    class Cover:
+        id = "cover"
+
+        def modifiers(self, request, registry):
+            return [Modifier(source="cover", dc_bonus=2, flat=4)]
+
+    modifiers = default_modifier_registry()
+    modifiers.register(Cover())
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 8)), registry, modifiers=modifiers)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_not_spent_on_auto_fail(registry):
+    class Paralysed:
+        id = "paralysed"
+
+        def modifiers(self, request, registry):
+            return [Modifier(source="paralysed", auto_fail=True)]
+
+    modifiers = default_modifier_registry()
+    modifiers.register(Paralysed())
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "save", ability="dex")
+    result = roll(request, ScriptedRng(), registry, modifiers=modifiers)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_not_spent_on_attack(registry):
+    hero = make_hero(heroic_inspiration=True)
+    result = roll(make_request(hero, "attack"), ScriptedRng((20, 2)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_not_spent_on_initiative(registry):
+    hero = make_hero(heroic_inspiration=True)
+    result = roll(make_request(hero, "initiative"), ScriptedRng((20, 2)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_npc_actor_never_spends_inspiration(registry):
+    request = make_request(CreatureState(hp_current=7, hp_max=7), "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 5)), registry)
+    assert result.rerolls == []
 
 
 # порядок
 
 def test_luck_goes_before_inspiration(registry):
     hero = make_hero("halfling", heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
+    request = make_request(hero, "check", skill="athletics")
     rng = ScriptedRng((20, 1), (20, 2), (20, 18))
-    result = roll(make_request(hero), rng, registry, decisions=provider)
-    assert provider.asked[0][1]["natural"] == 2
+    result = roll(request, rng, registry)
     assert result.rerolls == ["luck", "heroic_inspiration"]
     assert result.d20_rolls == [1, 2, 18]
     assert result.natural == 18
 
 
-def test_inspiration_refused_after_luck_keeps_luck_roll(registry):
+def test_inspiration_kept_when_luck_roll_succeeds(registry):
     hero = make_hero("halfling", heroic_inspiration=True)
-    provider = ScriptedProvider("keep")
-    result = roll(make_request(hero), ScriptedRng((20, 1), (20, 9)), registry, decisions=provider)
-    assert result.natural == 9
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 1), (20, 12)), registry)
+    assert result.natural == 12
     assert result.rerolls == ["luck"]
     assert hero.heroic_inspiration is True
 
@@ -283,8 +389,8 @@ def test_rerolls_are_deterministic_by_seed(registry):
     results = []
     for _ in range(2):
         hero = make_hero("halfling", heroic_inspiration=True)
-        provider = ScriptedProvider("reroll")
-        results.append(roll(make_request(hero), Rng(3), registry, decisions=provider))
+        request = make_request(hero, "check", skill="athletics")
+        results.append(roll(request, Rng(3), registry))
     assert results[0] == results[1]
 
 
@@ -335,11 +441,10 @@ def test_luck_with_disadvantage_log_shows_pair_reroll_and_kept(registry):
 # вдохновение при преимуществе и помехе (B1)
 
 def test_inspiration_with_advantage_replaces_the_kept_die(registry):
+    # кости (4, 9) -> 9 + 5 = 14 < 15 провал; заменяется 9
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    request = make_request(hero, base_adv="advantage")
-    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 3)), registry, decisions=provider)
-    assert provider.asked[0][1]["natural"] == 9
+    request = make_request(hero, "check", skill="athletics", base_adv="advantage")
+    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 3)), registry)
     assert result.natural == 4
     assert result.d20_rolls == [4, 9, 3]
     assert result.rerolls == ["heroic_inspiration"]
@@ -348,27 +453,27 @@ def test_inspiration_with_advantage_replaces_the_kept_die(registry):
 
 def test_inspiration_with_advantage_new_die_can_be_higher(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    request = make_request(hero, base_adv="advantage")
-    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 15)), registry, decisions=provider)
+    request = make_request(hero, "check", skill="athletics", base_adv="advantage")
+    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 15)), registry)
     assert result.natural == 15
 
 
-def test_inspiration_with_advantage_refused_keeps_pair(registry):
+def test_inspiration_with_advantage_kept_when_pair_succeeds(registry):
+    # кости (4, 12) -> 12 + 5 = 17: не провал
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("keep")
-    request = make_request(hero, base_adv="advantage")
-    result = roll(request, ScriptedRng((20, 4), (20, 9)), registry, decisions=provider)
-    assert result.natural == 9
+    request = make_request(hero, "check", skill="athletics", base_adv="advantage")
+    result = roll(request, ScriptedRng((20, 4), (20, 12)), registry)
+    assert result.natural == 12
     assert hero.heroic_inspiration is True
 
 
 def test_inspiration_with_disadvantage_replaces_the_kept_die(registry):
+    # кости (4, 9) -> 4 + 5 = 9 < 14; потолок переброса 9 + 5 = 14 >= 14 -- не безнадёжно
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    request = make_request(hero, base_adv="disadvantage")
-    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 15)), registry, decisions=provider)
-    assert provider.asked[0][1]["natural"] == 4
+    request = make_request(
+        hero, "check", skill="athletics", dc=14, base_adv="disadvantage"
+    )
+    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 15)), registry)
     assert result.natural == 9
     assert result.d20_rolls == [4, 9, 15]
     assert result.rerolls == ["heroic_inspiration"]
@@ -376,9 +481,10 @@ def test_inspiration_with_disadvantage_replaces_the_kept_die(registry):
 
 def test_inspiration_with_disadvantage_new_die_can_be_lower(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    request = make_request(hero, base_adv="disadvantage")
-    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 2)), registry, decisions=provider)
+    request = make_request(
+        hero, "check", skill="athletics", dc=14, base_adv="disadvantage"
+    )
+    result = roll(request, ScriptedRng((20, 4), (20, 9), (20, 2)), registry)
     assert result.natural == 2
 
 
@@ -392,8 +498,8 @@ def test_luck_log_format(registry):
 
 def test_inspiration_log_format(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
-    result = roll(make_request(hero), ScriptedRng((20, 4), (20, 15)), registry, decisions=provider)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 4), (20, 15)), registry)
     assert "d20 (4 → вдохновение 15)" in result.log.text
 
 
@@ -406,13 +512,62 @@ def test_luck_works_on_death_save(registry):
     assert result.rerolls == ["luck"]
 
 
-def test_inspiration_works_on_death_save(registry):
+def test_inspiration_spent_on_death_save_below_10(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider("reroll")
     request = make_request(hero, "death_save", dc=None, bonus=0)
-    result = roll(request, ScriptedRng((20, 4), (20, 15)), registry, decisions=provider)
+    result = roll(request, ScriptedRng((20, 4), (20, 15)), registry)
     assert result.natural == 15
     assert result.rerolls == ["heroic_inspiration"]
+    assert hero.heroic_inspiration is False
+
+
+def test_inspiration_spent_on_death_save_natural_1(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=0)
+    result = roll(request, ScriptedRng((20, 1), (20, 15)), registry)
+    assert result.natural == 15
+    assert result.rerolls == ["heroic_inspiration"]
+
+
+def test_inspiration_spent_on_death_save_of_9(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=0)
+    result = roll(request, ScriptedRng((20, 9), (20, 15)), registry)
+    assert result.rerolls == ["heroic_inspiration"]
+
+
+def test_inspiration_kept_on_death_save_of_10(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=0)
+    result = roll(request, ScriptedRng((20, 10)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_kept_on_death_save_of_12(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=0)
+    result = roll(request, ScriptedRng((20, 12)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_kept_on_death_save_natural_20(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=0)
+    result = roll(request, ScriptedRng((20, 20)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_luck_then_inspiration_on_halfling_natural_1(registry):
+    # удача 1 -> 3 (провал) -> вдохновение 3 -> 17: три d20 (решение 8)
+    hero = make_hero("halfling", heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 1), (20, 3), (20, 17)), registry)
+    assert result.rerolls == ["luck", "heroic_inspiration"]
+    assert result.d20_rolls == [1, 3, 17]
+    assert result.natural == 17
 
 
 # rerollers= (D1)
@@ -426,17 +581,24 @@ def test_empty_rerollers_disables_luck(registry):
 
 def test_empty_rerollers_disables_inspiration(registry):
     hero = make_hero(heroic_inspiration=True)
-    provider = ScriptedProvider()
-    request = make_request(hero)
-    result = roll(request, ScriptedRng((20, 4)), registry, decisions=provider, rerollers=[])
-    assert provider.asked == []
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 4)), registry, rerollers=[])
     assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_luck_only_rerollers_keeps_inspiration(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 4)), registry, rerollers=[luck])
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
 
 
 def test_custom_reroller_is_called_and_its_id_is_recorded(registry):
     seen = []
 
-    def custom(request, kept_pair, rng, registry, decisions):
+    def custom(request, kept_pair, rng, registry):
         seen.append(request.kind)
         return "custom"
 
@@ -446,11 +608,86 @@ def test_custom_reroller_is_called_and_its_id_is_recorded(registry):
 
 
 def test_custom_reroller_returning_none_records_nothing(registry):
-    def custom(request, kept_pair, rng, registry, decisions):
+    def custom(request, kept_pair, rng, registry):
         return None
 
     result = roll(make_request(make_hero()), ScriptedRng((20, 7)), registry, rerollers=[custom])
     assert result.rerolls == []
+
+
+# best_natural, spent_lines, KeptPair.dc (шаг 165)
+
+def test_best_natural_is_20_for_normal_roll():
+    assert best_natural(KeptPair([5], "normal")) == 20
+
+
+def test_best_natural_is_20_for_advantage():
+    assert best_natural(KeptPair([5, 9], "advantage")) == 20
+
+
+def test_best_natural_at_disadvantage_is_the_higher_die_of_pair():
+    assert best_natural(KeptPair([4, 9], "disadvantage")) == 9
+
+
+def test_kept_pair_dc_defaults_to_none():
+    assert KeptPair([5], "normal").dc is None
+
+
+def test_kept_pair_keeps_given_dc():
+    assert KeptPair([5], "normal", dc=12).dc == 12
+
+
+def test_spent_lines_when_inspiration_was_spent(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 5), (20, 17)), registry)
+    assert spent_lines(result) == ["Вдохновение потрачено"]
+
+
+def test_spent_lines_empty_for_luck_only(registry):
+    request = make_request(make_hero("halfling"), "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 1), (20, 12)), registry)
+    assert spent_lines(result) == []
+
+
+def test_spent_lines_empty_without_rerolls(registry):
+    request = make_request(make_hero(), "check", skill="athletics")
+    result = roll(request, ScriptedRng((20, 12)), registry)
+    assert spent_lines(result) == []
+
+
+def test_kept_pair_extra_defaults_to_zero():
+    assert KeptPair([5], "normal").extra == 0
+
+
+def test_kept_pair_keeps_given_extra():
+    assert KeptPair([5], "normal", extra=3).extra == 3
+
+
+def test_inspiration_spent_on_death_save_natural_1_even_if_bonus_reaches_10(registry):
+    # 1 + 12 = 13 >= 10, но натуральная 1 на спасброске от смерти -- провал
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=12)
+    result = roll(request, ScriptedRng((20, 1), (20, 15)), registry)
+    assert result.rerolls == ["heroic_inspiration"]
+    assert hero.heroic_inspiration is False
+
+
+def test_inspiration_not_spent_on_death_save_natural_2_when_bonus_reaches_10(registry):
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "death_save", dc=None, bonus=12)
+    result = roll(request, ScriptedRng((20, 2)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_not_spent_on_check_natural_1_when_total_reaches_dc(registry):
+    # натуральная 1 не провал для проверки: 1 + 10 = 11 >= 5
+    hero = make_hero(heroic_inspiration=True)
+    request = make_request(hero, "check", skill="athletics", dc=5, bonus=10)
+    result = roll(request, ScriptedRng((20, 1)), registry)
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
 
 
 # лог урона (B6)

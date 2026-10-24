@@ -508,10 +508,57 @@ def test_death_save_is_reported_as_an_event(registry, cfg):
     assert saves == [{"id": "hero", "result": "success"}]
 
 
+def test_third_failure_asks_the_engine_for_divine_intervention(registry, cfg, monkeypatch):
+    engine = dying_engine(registry, cfg, ScriptedRng(d20=[5]))
+    engine.heroes["hero"].creature.death_saves.failures = 2
+    asked = []
+    monkeypatch.setattr(engine, "intervene", lambda hero: asked.append(hero.id) or "god")
+    events = engine.step()
+    assert asked == ["hero"]
+    assert engine.heroes["hero"].status == "active"
+    assert engine.part("hero").status == "active"
+    assert [e.type for e in events if e.type == "divine_intervention"] == ["divine_intervention"]
+
+
 def test_failed_death_save_event(registry, cfg):
     engine = dying_engine(registry, cfg, ScriptedRng(d20=[5]))
     saves = [e.data["result"] for e in engine.step() if e.type == "death_save"]
     assert saves == ["failure"]
+
+
+def test_death_save_roll_line_is_in_the_combat_log(registry, cfg):
+    engine = dying_engine(registry, cfg, ScriptedRng(d20=[12]))
+    engine.step()
+    assert any("d20 (12)" in line for line in engine.state.log)
+
+
+def test_failed_death_save_spends_inspiration_and_logs_both_lines(registry, cfg):
+    engine = dying_engine(registry, cfg, ScriptedRng(d20=[4, 15]))
+    engine.heroes["hero"].heroic_inspiration = True
+    engine.step()
+    log = engine.state.log
+    assert engine.heroes["hero"].heroic_inspiration is False
+    assert engine.heroes["hero"].creature.death_saves.successes == 1
+    assert any("→ вдохновение 15" in line for line in log)
+    assert "  Вдохновение потрачено" in log
+
+
+def test_death_save_lines_precede_the_verdict(registry, cfg):
+    engine = dying_engine(registry, cfg, ScriptedRng(d20=[4, 15]))
+    engine.heroes["hero"].heroic_inspiration = True
+    engine.step()
+    log = engine.state.log
+    spent = log.index("  Вдохновение потрачено")
+    verdict = next(i for i, line in enumerate(log) if "спасбросок от смерти: success" in line)
+    assert spent < verdict
+
+
+def test_successful_death_save_keeps_inspiration_and_has_no_spent_line(registry, cfg):
+    engine = dying_engine(registry, cfg, ScriptedRng(d20=[12]))
+    engine.heroes["hero"].heroic_inspiration = True
+    engine.step()
+    assert engine.heroes["hero"].heroic_inspiration is True
+    assert not any("Вдохновение потрачено" in line for line in engine.state.log)
 
 
 # атаки по лежащему герою

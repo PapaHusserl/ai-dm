@@ -2,13 +2,14 @@
 #   dc_for_category(category: str, registry) -> int
 #       таблица "dc" реестра: very_easy 5, easy 10, medium 15, hard 20, very_hard 25,
 #       nearly_impossible 30; неизвестная категория -> ValueError
-#   skill_check(hero, registry, rng, skill, category=None, *, dc=None, tags=None, decisions=None,
+#   skill_check(hero, registry, rng, skill, category=None, *, dc=None, tags=None,
 #               modifiers=None, rerollers=None)
 #       -> RollResult (kind="check") -- через roll_pipeline.roll; бонус = derived.skill_bonus;
 #       СЛ -- по категории либо явным dc (ровно одно из двух, иначе ValueError);
 #       ошибка категории -- до броска (rng не трогается)
-#   saving_throw(hero, registry, rng, ability, category=None, *, dc=None, tags=None, decisions=None,
+#   saving_throw(hero, registry, rng, ability, category=None, *, dc=None, tags=None,
 #                modifiers=None, rerollers=None)
+#       героическое вдохновение героя тратится само на первый провал (шаг 165, см. test_rerolls.py)
 #       -> RollResult (kind="save"); бонус = derived.saving_throw_bonus
 #       modifiers / rerollers (B7) пробрасываются в roll_pipeline.roll как есть
 #   passive_check(hero, registry, skill) -> int   -- 10 + skill_bonus(hero, registry, skill)
@@ -230,3 +231,48 @@ def test_skill_check_luck_works_by_default(registry):
     hero = make_hero("halfling")
     result = skill_check(hero, registry, ScriptedRng((20, 1), (20, 14)), "athletics", "medium")
     assert result.natural == 14
+
+
+# героическое вдохновение тратится само (шаг 165)
+
+def test_skill_check_spends_inspiration_on_failure(registry):
+    hero = make_hero()
+    hero.heroic_inspiration = True
+    result = skill_check(hero, registry, ScriptedRng((20, 3), (20, 14)), "athletics", "medium")
+    assert result.rerolls == ["heroic_inspiration"]
+    assert result.natural == 14
+    assert hero.heroic_inspiration is False
+
+
+def test_skill_check_keeps_inspiration_on_success(registry):
+    hero = make_hero()
+    hero.heroic_inspiration = True
+    result = skill_check(hero, registry, ScriptedRng((20, 12)), "athletics", "medium")
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_saving_throw_spends_inspiration_on_failure(registry):
+    hero = make_hero()
+    hero.heroic_inspiration = True
+    result = saving_throw(hero, registry, ScriptedRng((20, 3), (20, 14)), "con", "medium")
+    assert result.rerolls == ["heroic_inspiration"]
+    assert hero.heroic_inspiration is False
+
+
+def test_saving_throw_keeps_inspiration_on_success(registry):
+    hero = make_hero()
+    hero.heroic_inspiration = True
+    result = saving_throw(hero, registry, ScriptedRng((20, 12)), "con", "medium")
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True
+
+
+def test_skill_check_empty_rerollers_keeps_inspiration(registry):
+    hero = make_hero()
+    hero.heroic_inspiration = True
+    result = skill_check(
+        hero, registry, ScriptedRng((20, 3)), "athletics", "medium", rerollers=[]
+    )
+    assert result.rerolls == []
+    assert hero.heroic_inspiration is True

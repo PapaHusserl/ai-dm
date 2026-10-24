@@ -20,7 +20,7 @@ def pick_dc(category, dc, registry) -> int:
 
 
 def skill_check(
-    hero, registry, rng, skill, category=None, *, dc=None, tags=None, decisions=None,
+    hero, registry, rng, skill, category=None, *, dc=None, tags=None,
     modifiers=None, rerollers=None, now_s=None, base_adv="normal", base_adv_label="",
 ):
     dc = pick_dc(category, dc, registry)
@@ -38,13 +38,11 @@ def skill_check(
         dc=dc,
         now_s=now_s,
     )
-    return roll(
-        request, rng, registry, modifiers=modifiers, decisions=decisions, rerollers=rerollers
-    )
+    return roll(request, rng, registry, modifiers=modifiers, rerollers=rerollers)
 
 
 def saving_throw(
-    hero, registry, rng, ability, category=None, *, dc=None, tags=None, decisions=None,
+    hero, registry, rng, ability, category=None, *, dc=None, tags=None,
     modifiers=None, rerollers=None, now_s=None,
 ):
     dc = pick_dc(category, dc, registry)
@@ -59,6 +57,4 @@ def saving_throw(
         dc=dc,
         now_s=now_s,
     )
-    return roll(
-        request, rng, registry, modifiers=modifiers, decisions=decisions, rerollers=rerollers
-    )
+    return roll(request, rng, registry, modifiers=modifiers, rerollers=rerollers)

@@ -1,5 +1,6 @@
 from ai_dm.protocol.decision import Decision
 from ai_dm.rules import checks
+from ai_dm.rules.roll_pipeline import spent_lines
 
 
 def roll_decision(ctx, result, actor_id=None) -> Decision:
@@ -7,7 +8,7 @@ def roll_decision(ctx, result, actor_id=None) -> Decision:
     return Decision(
         status="accepted",
         result={"roll_ref": ref, "outcome": result.outcome, "dc": result.dc, "total": result.total},
-        log=[result.log.text],
+        log=[result.log.text, *spent_lines(result)],
     )
 
 

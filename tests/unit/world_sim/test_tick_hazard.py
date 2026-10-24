@@ -8,6 +8,7 @@ import pytest
 from tick_kit import QueueRng, run_tick, solo_hero
 from world_sim_kit import DAY, mini_bundle
 
+from ai_dm.state.creature import ActiveEffect, Expiry
 from ai_dm.state.world import EventHazard, GlobalEvent
 from ai_dm.world_sim import hazard
 
@@ -168,6 +169,43 @@ def test_failed_save_adds_one_exhaustion(registry, cfg):
     run_tick(bundle, failing(), registry, cfg)
     assert hero.creature.exhaustion == 1
     assert hero.status == "active"
+
+
+def test_failed_hazard_save_does_not_spend_inspiration(registry, cfg):
+    # трата была бы немой (строка броска не печатается): переброса нет, истощение +1
+    bundle, hero = setup(registry, cfg, plague())
+    hero.heroic_inspiration = True
+    rng = failing()
+    run_tick(bundle, rng, registry, cfg)
+    assert hero.heroic_inspiration is True
+    assert saves(rng) == 1
+    assert hero.creature.exhaustion == 1
+
+
+def test_savable_failure_keeps_inspiration_and_still_fails(registry, cfg):
+    # переброс спас бы (dc medium, на перебросе 20), но вдохновение здесь не тратится
+    bundle, hero = setup(registry, cfg, plague(dc="medium"))
+    hero.heroic_inspiration = True
+    rng = QueueRng(d20=[2], default="high")
+    run_tick(bundle, rng, registry, cfg)
+    assert hero.heroic_inspiration is True
+    assert saves(rng) == 1
+    assert hero.creature.exhaustion == 1
+
+
+def test_expired_effect_is_ignored_by_hazard_save(registry, cfg):
+    # помеха истекла к моменту тика: бросается одна d20, не две
+    bundle, hero = setup(registry, cfg, plague(dc="medium"))
+    hero.creature.active_effects.append(
+        ActiveEffect(
+            id="curse", source="x", kind="modifier",
+            params={"target": "saving_throw", "mode": "disadvantage"},
+            expires=Expiry(kind="seconds", value=1),
+        )
+    )
+    rng = passing()
+    run_tick(bundle, rng, registry, cfg)
+    assert saves(rng) == 1
 
 
 def test_passed_save_keeps_exhaustion(registry, cfg):

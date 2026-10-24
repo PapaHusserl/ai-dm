@@ -1,7 +1,7 @@
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.healing import heal
 from ai_dm.rules.mortality_guard import mark_dead
-from ai_dm.rules.roll_pipeline import RollRequest, roll
+from ai_dm.rules.roll_pipeline import DEATH_SAVE_DC, RollRequest, roll, spent_lines
 from ai_dm.state.creature import AppliedCondition, DeathSaves
 
 
@@ -36,7 +36,7 @@ def check_three(hero, cause, by, now_s, intervene=None) -> str | None:
 
 def roll_death_save(
     hero, registry, rng, *, now_s: int, cause: str, by: str | None = None,
-    modifiers=None, rerollers=None, decisions=None, logs=None, intervene=None,
+    modifiers=None, rerollers=None, logs=None, intervene=None,
 ) -> str:
     if hero.status == "dead":
         raise ValueError("герой мёртв")
@@ -47,12 +47,10 @@ def roll_death_save(
         kind="death_save", actor=hero, actor_id=hero.id, tags={"critical_moment": True},
         now_s=now_s,
     )
-    result = roll(
-        request, rng, registry, modifiers=modifiers, decisions=decisions, rerollers=rerollers
-    )
+    result = roll(request, rng, registry, modifiers=modifiers, rerollers=rerollers)
     if logs is not None:
-        # строка броска (ТЗ 6) для вызывающего
-        logs.append(result.log.text)
+        # строка броска (ТЗ 6) для вызывающего и строка траты вдохновения
+        logs += [result.log.text, *spent_lines(result)]
     saves = creature.death_saves
     if result.natural == 20:
         heal(hero, 1)
@@ -60,7 +58,7 @@ def roll_death_save(
     if result.natural == 1:
         saves.failures += 2
         outcome = "failure"
-    elif result.total >= 10:
+    elif result.total >= DEATH_SAVE_DC:
         saves.successes += 1
         outcome = "success"
     else:

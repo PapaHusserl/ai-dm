@@ -3,6 +3,7 @@ from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.checks import saving_throw
 from ai_dm.rules.divine import try_intervention
 from ai_dm.rules.exhaustion import add_exhaustion
+from ai_dm.rules.roll_pipeline import luck
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.memory import add_entry
 from ai_dm.world_sim.mortality import affected, location_chain
@@ -26,7 +27,10 @@ def zone_events(world, hero, at) -> list:
 
 def failed_save(hero, event, registry, rng, at) -> bool:
     spec = event.hazard
-    result = saving_throw(hero, registry, rng, spec.save, spec.dc_category, now_s=at)
+    # без вдохновения: строка броска не печатается, трата была бы немой
+    result = saving_throw(
+        hero, registry, rng, spec.save, spec.dc_category, now_s=at, rerollers=[luck]
+    )
     return result.outcome == "fail"
 
 

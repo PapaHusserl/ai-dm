@@ -232,10 +232,13 @@ def death_save(engine, ref) -> list[DomainEvent]:
         return []
     by = p.last_hit_by
     cause = death_cause(by)
+    logs = []
     result = death_saves.roll_death_save(
         hero, engine.registry, engine.rng, now_s=engine.world.clock.now_s, cause=cause, by=by,
-        intervene=engine.intervene,
+        logs=logs, intervene=engine.intervene,
     )
+    for line in logs:
+        engine.log(f"  {line}")
     engine.log(f"{engine.name(ref)}: спасбросок от смерти: {result}")
     events = [DomainEvent(type="death_save", data={"id": ref, "result": result})]
     if result == "dead":

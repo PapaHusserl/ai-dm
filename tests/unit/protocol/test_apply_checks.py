@@ -111,6 +111,39 @@ def test_check_does_not_change_hero_or_world(registry, cfg):
     assert dump(ctx) == before
 
 
+def test_failed_check_spends_inspiration_and_adds_spent_line(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1, 20]))
+    ctx.hero.heroic_inspiration = True
+    d = apply(ctx, req("skill_check", skill="athletics", category="medium"))
+    assert ctx.hero.heroic_inspiration is False
+    assert d.result["outcome"] == "success"
+    assert len(d.log) == 2
+    assert "→ вдохновение 20" in d.log[0]
+    assert d.log[1] == "Вдохновение потрачено"
+
+
+def test_failed_save_spends_inspiration_and_adds_spent_line(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1, 20]))
+    ctx.hero.heroic_inspiration = True
+    d = apply(ctx, req("saving_throw", ability="con", category="medium"))
+    assert ctx.hero.heroic_inspiration is False
+    assert d.log[1:] == ["Вдохновение потрачено"]
+
+
+def test_successful_check_keeps_inspiration_and_has_one_log_line(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[20]))
+    ctx.hero.heroic_inspiration = True
+    d = apply(ctx, req("skill_check", skill="athletics", category="medium"))
+    assert ctx.hero.heroic_inspiration is True
+    assert d.log == [ctx.rolls["r1"].log.text]
+
+
+def test_failed_check_without_inspiration_has_one_log_line(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    d = apply(ctx, req("skill_check", skill="athletics", category="medium"))
+    assert len(d.log) == 1
+
+
 def test_two_checks_give_two_refs(registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10, 15]))
     a = apply(ctx, req("skill_check", skill="athletics", category="easy"))

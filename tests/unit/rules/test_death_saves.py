@@ -8,7 +8,9 @@
 #   roll_death_save(hero, registry, rng, *, now_s, cause, by=None, modifiers=None,
 #                   rerollers=None) -> str
 #       modifiers / rerollers пробрасываются в roll (B7); спасбросок -- и d20-тест, и спасбросок:
-#       Luck, Bless и т.п. действуют (B5); запросу конвейера ставится tags["critical_moment"]=True
+#       Luck, Bless и т.п. действуют (B5); героическое вдохновение тратится само на бросок
+#       < 10 или nat 1 (шаг 165); с logs= строки: бросок и «Вдохновение потрачено»;
+#       запросу конвейера ставится tags["critical_moment"]=True
 #       (виден источникам модификаторов в request.tags) (B8). Мёртвый герой (status == "dead") ->
 #       ValueError (rng не трогается) (B3)
 #       один d20 без бонусов (через roll_pipeline, kind="death_save"). Итог -- строка:
@@ -187,6 +189,82 @@ def test_death_save_when_stable_is_error(registry):
 def test_death_save_requires_cause(registry):
     with pytest.raises(TypeError):
         roll_death_save(make_hero(), registry, ScriptedRng((20, 5)), now_s=0)
+
+
+def inspired_hero(**kwargs):
+    hero = make_hero(**kwargs)
+    hero.heroic_inspiration = True
+    return hero
+
+
+def test_inspiration_rerolls_failed_death_save_into_success(registry):
+    hero = inspired_hero()
+    rng = ScriptedRng((20, 4), (20, 15))
+    assert roll_death_save(hero, registry, rng, now_s=0, cause="goal") == "success"
+    assert hero.creature.death_saves.successes == 1
+    assert hero.creature.death_saves.failures == 0
+    assert hero.heroic_inspiration is False
+
+
+def test_inspiration_rerolls_natural_1_so_no_double_failure(registry):
+    hero = inspired_hero()
+    rng = ScriptedRng((20, 1), (20, 12))
+    assert roll_death_save(hero, registry, rng, now_s=0, cause="goal") == "success"
+    assert hero.creature.death_saves.failures == 0
+
+
+def test_inspiration_reroll_can_be_a_new_failure(registry):
+    hero = inspired_hero()
+    rng = ScriptedRng((20, 4), (20, 2))
+    assert roll_death_save(hero, registry, rng, now_s=0, cause="goal") == "failure"
+    assert hero.creature.death_saves.failures == 1
+    assert hero.heroic_inspiration is False
+
+
+def test_inspiration_reroll_to_20_revives(registry):
+    hero = inspired_hero()
+    rng = ScriptedRng((20, 4), (20, 20))
+    assert roll_death_save(hero, registry, rng, now_s=0, cause="goal") == "revived"
+    assert hero.creature.hp_current == 1
+
+
+def test_inspiration_kept_on_successful_death_save(registry):
+    hero = inspired_hero()
+    assert save(hero, registry, 12) == "success"
+    assert hero.heroic_inspiration is True
+
+
+def test_inspiration_kept_on_natural_20_death_save(registry):
+    hero = inspired_hero()
+    assert save(hero, registry, 20) == "revived"
+    assert hero.heroic_inspiration is True
+
+
+def test_death_save_logs_have_roll_and_spent_line(registry):
+    hero = inspired_hero()
+    logs = []
+    rng = ScriptedRng((20, 4), (20, 15))
+    roll_death_save(hero, registry, rng, now_s=0, cause="goal", logs=logs)
+    assert len(logs) == 2
+    assert "→ вдохновение 15" in logs[0]
+    assert logs[1] == "Вдохновение потрачено"
+
+
+def test_death_save_logs_have_only_roll_line_without_spending(registry):
+    hero = make_hero()
+    logs = []
+    roll_death_save(hero, registry, ScriptedRng((20, 12)), now_s=0, cause="goal", logs=logs)
+    assert len(logs) == 1
+    assert "вдохновение" not in logs[0]
+
+
+def test_out_of_combat_saves_spend_inspiration_once(registry):
+    hero = inspired_hero()
+    rng = ScriptedRng((20, 4), (20, 15), (20, 12), (20, 12))
+    outcome, logs = resolve_out_of_combat(hero, registry, rng, now_s=0, cause="goal")
+    assert outcome == "stable"
+    assert logs.count("Вдохновение потрачено") == 1
+    assert len(logs) == 4
 
 
 def test_death_saves_are_deterministic_by_seed(registry):

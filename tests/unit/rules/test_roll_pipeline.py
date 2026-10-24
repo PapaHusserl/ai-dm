@@ -13,8 +13,8 @@
 #       dc: int | None = None      -- КД для атаки, СЛ для остальных; None -- исхода нет
 #       dice: str | None = None    -- только для kind="damage", например "1d8"
 #       now_s: int | None = None   -- текущее время для источников «раз в день» (D1)
-#   roll(request, rng, registry, *, modifiers=None, decisions=None, rerollers=None) -> RollResult
-#       modifiers -- ModifierRegistry (по умолчанию встроенный), decisions -- DecisionProvider,
+#   roll(request, rng, registry, *, modifiers=None, rerollers=None) -> RollResult
+#       modifiers -- ModifierRegistry (по умолчанию встроенный),
 #       rerollers -- список перебросов (по умолчанию [luck, heroic_inspiration]); [] -- без них
 #       (переброс при adv/dis и логи перебросов -- в test_rerolls.py; dc_bonus/crit_min -- в
 #       test_modifiers.py). Урон (kind="damage") -- грани кубиков в логе, см. test_rerolls.py

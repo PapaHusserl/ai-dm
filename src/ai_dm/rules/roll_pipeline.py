@@ -13,6 +13,10 @@ from ai_dm.state.hero import HeroState
 
 KINDS = D20_KINDS + ("damage",)
 
+# виды бросков, на которых тратится вдохновение (атаки -- Ж6)
+INSPIRATION_KINDS = ("check", "save", "death_save")
+DEATH_SAVE_DC = 10
+
 REROLL_WORDS = {"luck": "удача", "heroic_inspiration": "вдохновение"}
 
 # подписи эффектов и источников без названия в реестре (источник преимущества или помехи)
@@ -87,11 +91,13 @@ class RollResult(BaseModel):
 
 class KeptPair:
     # кости d20 одного броска: одна (обычный) или две (преимущество/помеха)
-    def __init__(self, dice, advantage, extra=0):
+    def __init__(self, dice, advantage, extra=0, dc=None):
         self.dice = list(dice)
         self.advantage = advantage
         # сумма всего, кроме d20 (бонус и члены источников): для решения о перебросе
         self.extra = extra
+        # итоговая СЛ (с dc_bonus) или None: для решения о перебросе
+        self.dc = dc
         # все выпавшие грани по порядку (с перебросами)
         self.rolled = list(dice)
         # переброс: (id, выпавшая грань)
@@ -116,7 +122,7 @@ def reroll_kept(kept_pair, rng, reroll_id) -> int:
     return kept_pair.natural
 
 
-def luck(request, kept_pair, rng, registry, decisions) -> str | None:
+def luck(request, kept_pair, rng, registry) -> str | None:
     # Luck (полурослик): 1 на к20-тесте перебрасывается
     luck_trait = luck_id(request, registry)
     if luck_trait is None or kept_pair.natural != 1:
@@ -125,26 +131,43 @@ def luck(request, kept_pair, rng, registry, decisions) -> str | None:
     return luck_trait
 
 
-def heroic_inspiration(request, kept_pair, rng, registry, decisions) -> str | None:
-    actor = request.actor
-    if not is_hero(actor) or not actor.heroic_inspiration or decisions is None:
-        return None
+def best_natural(kept_pair) -> int:
+    # лучшее, что может дать переброс: 20; при помехе -- не выше второй кости пары
+    if kept_pair.advantage != "disadvantage":
+        return 20
+    return max(kept_pair.dice)
+
+
+def inspiration_failed(request, kept_pair) -> bool:
+    # провал, который переброс может исправить: СЛ известна, 20 на перебросе спасёт
+    dc = DEATH_SAVE_DC if request.kind == "death_save" else kept_pair.dc
+    if dc is None:
+        return False
     natural = kept_pair.natural
-    total = natural + kept_pair.extra
-    ctx = {"kind": request.kind, "natural": natural, "total": total, "dc": request.dc}
-    if decisions.choose(["reroll", "keep"], ctx) != "reroll":
+    failed = natural + kept_pair.extra < dc or (request.kind == "death_save" and natural == 1)
+    return failed and best_natural(kept_pair) + kept_pair.extra >= dc
+
+
+def heroic_inspiration(request, kept_pair, rng, registry) -> str | None:
+    # героическое вдохновение тратится само на первый провал (решение 1 шага 165)
+    actor = request.actor
+    if not is_hero(actor) or not actor.heroic_inspiration:
+        return None
+    if request.kind not in INSPIRATION_KINDS or not inspiration_failed(request, kept_pair):
         return None
     reroll_kept(kept_pair, rng, "heroic_inspiration")
     actor.heroic_inspiration = False
     return "heroic_inspiration"
 
 
+def spent_lines(result) -> list[str]:
+    return ["Вдохновение потрачено"] if "heroic_inspiration" in result.rerolls else []
+
+
 REROLLERS = [luck, heroic_inspiration]
 
 
-def roll(
-    request, rng, registry, *, modifiers=None, decisions=None, rerollers=None
-) -> RollResult:
+def roll(request, rng, registry, *, modifiers=None, rerollers=None) -> RollResult:
     if request.kind not in KINDS:
         raise ValueError(f"неизвестный вид броска: {request.kind!r}")
     if request.kind == "damage":
@@ -154,7 +177,7 @@ def roll(
     if rerollers is None:
         rerollers = REROLLERS
     mods = modifiers.collect(request, registry)
-    return roll_d20(request, rng, registry, mods, decisions, rerollers)
+    return roll_d20(request, rng, registry, mods, rerollers)
 
 
 def resolve_advantage(request, mods) -> str:
@@ -201,7 +224,7 @@ def feat_reroll_id(actor, registry, target: str) -> str | None:
     return None
 
 
-def roll_d20(request, rng, registry, mods, decisions, rerollers) -> RollResult:
+def roll_d20(request, rng, registry, mods, rerollers) -> RollResult:
     advantage = resolve_advantage(request, mods)
     advantage_from = advantage_labels(request, mods, registry, "advantage")
     disadvantage_from = advantage_labels(request, mods, registry, "disadvantage")
@@ -233,8 +256,9 @@ def roll_d20(request, rng, registry, mods, decisions, rerollers) -> RollResult:
             )
     if kept_pair is not None and request.kind in D20_KINDS:
         kept_pair.extra = request.bonus + sum(t.value for t in extra_terms)
+        kept_pair.dc = dc
         for reroller in rerollers:
-            reroll_id = reroller(request, kept_pair, rng, registry, decisions)
+            reroll_id = reroller(request, kept_pair, rng, registry)
             if reroll_id is not None:
                 rerolls.append(reroll_id)
         natural = kept_pair.natural

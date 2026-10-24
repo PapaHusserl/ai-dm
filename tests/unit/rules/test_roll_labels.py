@@ -198,5 +198,13 @@ def test_source_label_of_unknown_source_is_raw_id(registry):
     assert source_label(registry, "mystery_source") == "mystery_source"
 
 
+def test_source_label_of_feature_is_registry_name(registry):
+    assert source_label(registry, "amorphous") == registry.get("feature", "amorphous").name
+
+
+def test_source_label_of_feat_is_registry_name(registry):
+    assert source_label(registry, "alert") == registry.get("feat", "alert").name
+
+
 def test_source_label_prefers_registry_name_over_word(registry):
     assert source_label(registry, "bless") == registry.get("spell", "bless").name

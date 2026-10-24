@@ -3,6 +3,7 @@ from ai_dm.core.events import DomainEvent
 from ai_dm.rules import money
 from ai_dm.rules.checks import saving_throw
 from ai_dm.rules.npc_memory import has_kind, remember
+from ai_dm.rules.roll_pipeline import luck
 from ai_dm.state.creature import AppliedCondition
 from ai_dm.state.relations import NPC_EVENT_TEXT_MAX, NpcEvent
 
@@ -24,7 +25,8 @@ def disease_check(ctx, kind, npc):
         return None
     hero = ctx.hero
     result = saving_throw(
-        hero, ctx.registry, ctx.rng, "con", dc=dc, now_s=ctx.bundle.world.clock.now_s
+        hero, ctx.registry, ctx.rng, "con", dc=dc, now_s=ctx.bundle.world.clock.now_s,
+        rerollers=[luck],
     )
     lines = [result.log.text]
     ref = ctx.add_roll(result, hero.id, engine=True)
@@ -45,7 +47,8 @@ def theft_check(ctx, kind, npc):
         return None
     hero = ctx.hero
     result = saving_throw(
-        hero, ctx.registry, ctx.rng, "wis", dc=dc, now_s=ctx.bundle.world.clock.now_s
+        hero, ctx.registry, ctx.rng, "wis", dc=dc, now_s=ctx.bundle.world.clock.now_s,
+        rerollers=[luck],
     )
     lines = [result.log.text]
     ref = ctx.add_roll(result, hero.id, engine=True)

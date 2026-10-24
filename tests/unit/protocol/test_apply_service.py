@@ -1555,6 +1555,14 @@ def test_theft_does_not_touch_the_boon(registry, cfg):
     assert d.result["boon"] == "inspired"
 
 
+def test_failed_disease_save_does_not_spend_the_boon(registry, cfg):
+    ctx = risky_ctx(registry, cfg, True, False)
+    d = buy(ctx, "companion_cheap")
+    assert [c.id for c in ctx.hero.creature.conditions] == ["diseased"]
+    assert ctx.hero.heroic_inspiration is True
+    assert d.result["boon"] == "inspired"
+
+
 # лечение болезни храмом (решение 34)
 
 def temple_ctx(registry, cfg, *conditions, money=3000):
