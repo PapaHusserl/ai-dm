@@ -644,6 +644,14 @@ class SceneMood(Request):
     NEUTRAL: ClassVar[dict] = {"mood": "none"}
 
 
+class Wash(Request):
+    """Герой вымылся по рассказу без платной услуги (река, озеро, бочка, баня даром): снимает
+    вонь, отсчёт недели заново. Не для бани за деньги — там `service`.
+    """
+
+    type: Literal["wash"]
+
+
 class WarnDanger(Request):
     """Предупреждение об опасности в локации."""
 
@@ -1088,6 +1096,7 @@ REQUEST_MODELS = {
     "reveal_secret": RevealSecret,
     "knowledge_note": KnowledgeNote,
     "scene_mood": SceneMood,
+    "wash": Wash,
     "event_start": EventStart,
     "event_end": EventEnd,
     "offer_choices": OfferChoices,
@@ -1139,7 +1148,7 @@ MasterRequest = Annotated[
     | AdvanceTime | Rest
     | WarnDanger
     | SetFlag | NpcCreate | LocationCreate | NpcUpdate | FavorChange | Pray | ChangeDeity
-    | CompanionUpdate | RevealSecret | KnowledgeNote | SceneMood | EventStart | EventEnd
+    | CompanionUpdate | RevealSecret | KnowledgeNote | SceneMood | Wash | EventStart | EventEnd
     | OfferChoices | EndScene | EndChapter | AfterlifeAction | UnsupportedAction,
     Field(discriminator="type"),
 ]

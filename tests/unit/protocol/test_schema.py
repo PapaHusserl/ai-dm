@@ -278,9 +278,9 @@ def test_unknown_mode_is_error():
         tool_set("flying")
 
 
-def test_visible_set_has_38_tools_from_plan():
+def test_visible_set_has_39_tools_from_plan():
     names = [t["name"] for t in tool_defs(VISIBLE_TYPES)]
-    assert len(names) == 38
+    assert len(names) == 39
     assert names == sorted(VISIBLE_TYPES)
     assert "npc_action" not in names
     for hidden in HIDDEN_TYPES:
@@ -341,6 +341,18 @@ def test_zh3_tools_are_in_explore_and_not_strict(name):
 @pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate", "npc_choice"])
 def test_zh3_tools_are_not_in_other_modes(name, mode):
     assert name not in [t["name"] for t in tool_set(mode)]
+
+
+# 182: wash -- только explore, не strict
+
+def test_wash_is_in_explore_and_not_strict():
+    tools = {t["name"]: t for t in tool_set("explore")}
+    assert tools["wash"]["strict"] is False
+
+
+@pytest.mark.parametrize("mode", ["combat_classify", "combat_narrate", "npc_choice", "world"])
+def test_wash_is_not_in_other_modes(mode):
+    assert "wash" not in [t["name"] for t in tool_set(mode)]
 
 
 def test_knowledge_note_kind_and_source_enums():

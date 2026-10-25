@@ -13,6 +13,15 @@ def mark_washed(world, hero, now_s) -> None:
     world.flags[f"{WASHED_FLAG}:{hero.id}"] = now_s
 
 
+def wash(world, hero, now_s) -> bool:
+    # герой вымылся: отсчёт заново, вонь снята; True, если вонь была
+    mark_washed(world, hero, now_s)
+    conditions = hero.creature.conditions
+    smelly = any(c.id == SMELLY for c in conditions)
+    conditions[:] = [c for c in conditions if c.id != SMELLY]
+    return smelly
+
+
 def is_stale(world, hero, cfg, at) -> bool:
     # с последнего мытья прошло не меньше hygiene_days суток; без флага отсчёта нет
     washed = washed_at(world, hero.id)

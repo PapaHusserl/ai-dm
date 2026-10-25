@@ -1,7 +1,7 @@
 from ai_dm.core.boon_ids import BOON_IDS
 from ai_dm.core.clock import DAY
 from ai_dm.rules.creatures import live_effects
-from ai_dm.rules.hygiene import SMELLY, mark_washed
+from ai_dm.rules.hygiene import wash
 from ai_dm.state.creature import ActiveEffect, Expiry
 
 # id бонуса услуги -> (название для лога и показа, фраза, если бонус уже действует)
@@ -43,9 +43,6 @@ def grant_boon(ctx, boon_id, npc) -> tuple[str, bool]:
             return f"Бонус: {name} — {already}", False
         hero.heroic_inspiration = True
     else:
-        mark_washed(world, hero, now_s)
-        conditions = hero.creature.conditions
-        if any(c.id == SMELLY for c in conditions):
-            conditions[:] = [c for c in conditions if c.id != SMELLY]
+        if wash(world, hero, now_s):
             return f"Бонус: {name} — вонь смыта", True
     return f"Бонус: {name}", True

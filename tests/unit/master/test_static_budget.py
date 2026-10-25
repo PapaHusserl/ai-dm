@@ -3,7 +3,8 @@
 # PromptBuilder.static_tokens(mode) -> {rules, tools, total} по общему chars_per_token (не по
 # провайдеру); реестр пака не участвует (monster_ids и world.md паков в статику не входят).
 #
-# STATIC_MAX = текущий explore.total после ТБ #56 + ~3 %. Поднимать порог только с причиной здесь:
+# STATIC_MAX = замер explore.total + небольшой запас (раньше +3 %, с У1 П2 -- десятки токенов).
+# Поднимать порог только с причиной здесь:
 #   ТБ (2026-10-17): порог введён, 28900 = 28022 + 3 %.
 #   Ж0 п.0 (2026-10-17): static_tokens считает схемы с ensure_ascii=False (раньше кириллица в
 #   \uXXXX удваивала tools): explore.total 28022 -> 17666 (rules 8167, tools 9499);
@@ -47,7 +48,8 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # Фикс dusk П1 (170): фраза о location_create, решение 4/Р4 (замер 23445; 23380 -> 23460).
 # Фикс dusk П2 (142): правило scene_mood -- метка переносится, если те же место и NPC
 # (narrator_rules.md:124; замер 23475; 23460 -> 23490).
-STATIC_MAX = 23490
+# 182: инструмент wash и фраза о мытье (замер 23661: rules 11917, tools 11744; 23490 -> 23680).
+STATIC_MAX = 23680
 
 MODES = sorted(MODE_TOOLS)
 

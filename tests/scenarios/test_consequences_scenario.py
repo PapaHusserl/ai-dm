@@ -214,6 +214,65 @@ def test_bath_washes_the_stench_away(registry, tmp_path, monkeypatch):
     assert not [line for line in sheet(app) if line.startswith("Состояния")]
 
 
+# 182: мытьё без услуги (ход 1112 drunk_dragon): инструмент wash вместо service
+
+def wash_call(call_id="wh-1"):
+    return {"id": call_id, "name": "wash", "input": {"type": "wash"}}
+
+
+def days_turn(count, text="Дни в пути."):
+    calls = [advance_call(call_id=f"adv-{i}", category="day") for i in range(count)]
+    return (calls + [end_scene_call()], text)
+
+
+def river_app(registry, root, monkeypatch, *after):
+    risks(monkeypatch, disease_dc=0, theft_dc=0)
+    turns = [
+        ([advance_call(category="month"), end_scene_call()], "Месяц в пути."),
+        ([wash_call()], "Ты вымылся в реке."),
+        *after,
+    ]
+    return world_app(registry, root, turns)
+
+
+def test_river_wash_without_service_removes_the_stench(registry, tmp_path, monkeypatch):
+    app = river_app(registry, tmp_path, monkeypatch)
+    app.handle("Месяц в дороге")
+    assert conditions(app) == ["smelly"]
+    reply = app.handle("Моюсь в реке")
+    assert reply.turn.requests == ["wash"]
+    assert "Вонь смыта" in reply.turn.lines
+    assert conditions(app) == []
+    assert not [line for line in sheet(app) if line.startswith("Состояния")]
+
+
+def test_river_wash_costs_nothing_and_marks_the_time(registry, tmp_path, monkeypatch):
+    app = river_app(registry, tmp_path, monkeypatch)
+    app.handle("Месяц в дороге")
+    app.handle("Моюсь в реке")
+    hero = hero_of(app.bundle)
+    assert hero.money_cp == 3000
+    assert app.bundle.world.flags[f"washed:{hero.id}"] == app.bundle.world.clock.now_s
+
+
+def test_stench_does_not_return_one_day_before_the_limit(registry, tmp_path, monkeypatch):
+    days = settings().rules.services.hygiene_days
+    app = river_app(registry, tmp_path, monkeypatch, days_turn(days - 1))
+    app.handle("Месяц в дороге")
+    app.handle("Моюсь в реке")
+    app.handle("Иду дальше")
+    assert conditions(app) == []
+
+
+def test_stench_returns_after_hygiene_days_since_the_wash(registry, tmp_path, monkeypatch):
+    days = settings().rules.services.hygiene_days
+    app = river_app(registry, tmp_path, monkeypatch, days_turn(days))
+    app.handle("Месяц в дороге")
+    app.handle("Моюсь в реке")
+    app.handle("Иду дальше")
+    assert conditions(app) == ["smelly"]
+
+
 def test_week_alone_is_not_enough_after_the_first_tick(registry, tmp_path, monkeypatch):
     # отсчёт идёт с первого тика: неделя пути от нуля героя ещё не пачкает
     risks(monkeypatch, disease_dc=0, theft_dc=0)

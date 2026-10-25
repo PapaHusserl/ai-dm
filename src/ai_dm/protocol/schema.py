@@ -21,7 +21,7 @@ MODE_TOOLS = {
         "gold", "award_xp", "advance_time", "rest", "set_flag", "npc_create", "location_create",
         "npc_update", "favor_change", "pray", "change_deity", "companion_update",
         "offer_choices", "end_scene", "end_chapter", "reveal_secret", "event_start", "event_end",
-        "warn_danger", "knowledge_note", "scene_mood", "unsupported_action",
+        "warn_danger", "knowledge_note", "scene_mood", "wash", "unsupported_action",
     ),
     "combat_classify": ("player_action", "unsupported_action"),
     "combat_narrate": ("offer_choices", "end_combat", "defeat_outcome"),

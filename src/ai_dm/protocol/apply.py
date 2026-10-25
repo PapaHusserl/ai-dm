@@ -44,6 +44,7 @@ HANDLERS = {
     "pray": world.pray,
     "change_deity": world.change_deity,
     "companion_update": hero.companion_update,
+    "wash": hero.wash,
     "offer_choices": world.offer_choices,
     "end_scene": world.end_scene,
     "end_chapter": world.end_chapter,

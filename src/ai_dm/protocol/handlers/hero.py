@@ -1,4 +1,5 @@
 from ai_dm.protocol.decision import Decision, Invalid
+from ai_dm.rules import hygiene
 from ai_dm.rules.builder import (
     CharacterChoices,
     HeroSheet,
@@ -141,6 +142,17 @@ def hero_sheet(ctx, request):
         return Invalid(code=codes[0], message="; ".join(messages))
     ctx.sheet = sheet
     return Decision(status="accepted", log=["Лист героя принят"])
+
+
+def wash(ctx, request):
+    hero = ctx.hero
+    if hero.status == "dead":
+        return Invalid(code="hero_dead", message="герой мёртв, мыться некому")
+    removed = hygiene.wash(ctx.bundle.world, hero, ctx.bundle.world.clock.now_s)
+    return Decision(
+        status="accepted", result={"washed": True, "smelly_removed": removed},
+        log=["Вонь смыта" if removed else "Помылся"],
+    )
 
 
 def companion_problem(hero, registry, request):

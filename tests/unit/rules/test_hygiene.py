@@ -5,7 +5,8 @@
 from ai_dm.core.clock import DAY
 from ai_dm.core.rng import Rng
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES
-from ai_dm.rules.hygiene import SMELLY, WASHED_FLAG, is_stale, mark_washed, washed_at
+from ai_dm.rules.hygiene import SMELLY, WASHED_FLAG, is_stale, mark_washed, wash, washed_at
+from ai_dm.state.creature import AppliedCondition
 from ai_dm.state.world import WorldState
 
 
@@ -100,6 +101,65 @@ def test_washed_at_the_last_second_of_a_day_counts_from_that_day(cfg):
 
 def test_stale_long_after_the_limit(cfg):
     assert stale_at(cfg, 0, 30 * DAY) is True
+
+
+# 182: wash(world, hero, now_s) -> bool -- отметка мытья и снятие вони
+
+class Creature:
+    def __init__(self, *ids):
+        self.conditions = [AppliedCondition(id=i, source="test") for i in ids]
+
+
+class Washer(Hero):
+    def __init__(self, hero_id, *ids):
+        super().__init__(hero_id)
+        self.creature = Creature(*ids)
+
+
+def test_wash_of_smelly_hero_returns_true():
+    assert wash(make_world(), Washer("hero", "smelly"), 500) is True
+
+
+def test_wash_removes_smelly():
+    hero = Washer("hero", "smelly")
+    wash(make_world(), hero, 500)
+    assert hero.creature.conditions == []
+
+
+def test_wash_marks_the_time_when_smelly():
+    world = make_world()
+    wash(world, Washer("hero", "smelly"), 500)
+    assert world.flags == {"washed:hero": 500}
+
+
+def test_wash_of_clean_hero_returns_false():
+    assert wash(make_world(), Washer("hero"), 500) is False
+
+
+def test_wash_of_clean_hero_still_marks_the_time():
+    world = make_world()
+    wash(world, Washer("hero"), 500)
+    assert washed_at(world, "hero") == 500
+
+
+def test_wash_keeps_other_conditions():
+    hero = Washer("hero", "cursed", "smelly", "poisoned")
+    wash(make_world(), hero, 500)
+    assert [c.id for c in hero.creature.conditions] == ["cursed", "poisoned"]
+
+
+def test_wash_overwrites_the_old_mark():
+    world = make_world()
+    mark_washed(world, Hero("hero"), 100)
+    wash(world, Washer("hero"), 900)
+    assert washed_at(world, "hero") == 900
+
+
+def test_wash_does_not_touch_another_hero_mark():
+    world = make_world()
+    mark_washed(world, Hero("other"), 100)
+    wash(world, Washer("hero"), 900)
+    assert washed_at(world, "other") == 100
 
 
 def test_stale_limit_follows_hygiene_days(cfg):

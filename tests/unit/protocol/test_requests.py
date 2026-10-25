@@ -77,6 +77,7 @@ VALID = {
         "from_ref": "mira",
     },
     "scene_mood": {"mood": "romance"},
+    "wash": {},
     "event_start": {"id": "plague_1", "event_type": "plague", "cause": "trigger:morrah"},
     "event_end": {"id": "plague_1"},
     "offer_choices": {"choices": ["Войти", "Уйти"]},
@@ -91,8 +92,8 @@ def example(type_name):
     return {"type": type_name, **copy.deepcopy(VALID[type_name])}
 
 
-def test_there_are_40_request_types():
-    assert len(ALL_TYPES) == 40
+def test_there_are_41_request_types():
+    assert len(ALL_TYPES) == 41
     assert sorted(REQUEST_MODELS) == sorted(ALL_TYPES)
 
 
@@ -101,7 +102,7 @@ def test_examples_cover_every_type():
 
 
 def test_visible_hidden_and_npc_only_partition_all_types():
-    assert len(VISIBLE_TYPES) == 38
+    assert len(VISIBLE_TYPES) == 39
     assert sorted(HIDDEN_TYPES) == ["afterlife_action"]
     assert NPC_ONLY_TYPES == ("npc_action",)
     assert sorted(VISIBLE_TYPES + HIDDEN_TYPES + NPC_ONLY_TYPES) == sorted(ALL_TYPES)
@@ -117,6 +118,7 @@ def test_visible_set_matches_plan():
         "end_scene", "end_chapter", "unsupported_action", "reveal_secret", "event_start",
         "event_end", "favor_change", "pray", "change_deity", "warn_danger", "cast_spell",
         "companion_update", "knowledge_note", "scene_mood",
+        "wash",
     ]
     assert sorted(VISIBLE_TYPES) == sorted(plan)
 
