@@ -45,6 +45,9 @@
   при устаревшем mutants/ — удалить каталог, он генерируемый). FUNCS разворачивается в шаблоны mutmut
   `ai_dm.mod.x_func__mutmut_*` и `ai_dm.mod.xǁClassǁmethod__mutmut_*`; пример:
   `make mutate FUNCS="ai_dm.ui.session:PlaySession.submit" TESTS="tests/unit/ui"`.
+  Параллельность mutmut — `MUT_CHILDREN` (по умолчанию 4). После `make mutate` — `make mutate-diff`: выжившие делятся
+  на «в диффе» (новые строки от HEAD, вместе с неотслеживаемыми файлами src — разбирать), «старые строки» (в BACKLOG)
+  и «не распознано» (смотреть глазами).
 - vulture_allowlist — только с согласия пользователя. Партия не повышает smells (правило нулевого баланса).
 
 ## Экономия конвейера (приняты пользователем 2026-10-05)
