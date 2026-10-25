@@ -879,15 +879,6 @@ updated: 2026-10-23
 `protocol.handlers.world.change_attitude` 20–22 — строка `decision.result["attitude"] = npc.attitude` (None и порча
 ключа): ключ `result["attitude"]` ни один тест не проверяет.
 
-## 159. Вес памяти «измена» после смены отношения в той же сцене
-status: idea
-priority: low
-updated: 2026-10-23
-
-(ревью мамы У1 П3, круг 2 — docs/plan-u1.md) Ревность ставит записи `betrayal` вес `max(weight, |applied|)`, но если
-мастер потом в той же сцене меняет отношение этому NPC, `refresh_weight` перезаписывает вес — запись может снова
-вытесняться первой. Чинить через `max` в `refresh_weight` — только отдельным решением: функция общая.
-
 ## 160. Выжившие мутанты на старых строках (У1 П3)
 status: idea
 priority: low
