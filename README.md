@@ -218,6 +218,5 @@ docs/                   документация: ROADMAP, BACKLOG, handoff, pla
 
 ## Лицензия
 
-Код — MIT. Данные в `src/ai_dm/srd/` — System Reference Document 5.2 (Wizards of the Coast), CC-BY-4.0. Полный
-текст и атрибуция — в `LICENSE`, происхождение данных монстров — в `src/ai_dm/srd/data/ATTRIBUTION.md`. Музыка и звуки в `src/ai_dm/audio/data/` — CC BY 4.0 / CC0, авторы и ссылки —
+Код — GNU AGPL-3.0 (текст — в `LICENSE`). Данные в `src/ai_dm/srd/` — System Reference Document 5.2 (Wizards of the Coast), CC-BY-4.0. Атрибуция — в `NOTICE`, происхождение данных монстров — в `src/ai_dm/srd/data/ATTRIBUTION.md`. Музыка и звуки в `src/ai_dm/audio/data/` — CC BY 4.0 / CC0, авторы и ссылки —
 `src/ai_dm/audio/data/ATTRIBUTION.md`.

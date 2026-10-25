@@ -2,7 +2,7 @@
 
 Данные в этой папке основаны на System Reference Document 5.2 («SRD 5.2») компании Wizards of the Coast LLC,
 https://www.dndbeyond.com/srd. SRD 5.2 распространяется по лицензии Creative Commons Attribution 4.0 International,
-https://creativecommons.org/licenses/by/4.0/legalcode. Полный текст атрибуции — в `LICENSE` в корне репозитория.
+https://creativecommons.org/licenses/by/4.0/legalcode. Полный текст атрибуции — в `NOTICE` в корне репозитория.
 
 This work includes material taken from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC and
 available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0

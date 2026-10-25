@@ -1,0 +1,37 @@
+AI-DM
+Copyright (C) 2026 Vladislav Akhtyamov
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See LICENSE for the full text.
+
+The license above covers the code. Data and assets listed below are distributed
+under their own licenses.
+
+
+SRD Attribution (data in src/ai_dm/srd/data/)
+=============================================
+
+The data in src/ai_dm/srd/data/ is based on the System Reference Document 5.2
+("SRD 5.2") by Wizards of the Coast LLC, available at
+https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative
+Commons Attribution 4.0 International License, available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+This work includes material taken from the System Reference Document 5.2
+("SRD 5.2") by Wizards of the Coast LLC and available at
+https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative
+Commons Attribution 4.0 International License, available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Details on the origin of monster data: src/ai_dm/srd/data/ATTRIBUTION.md.
+
+
+Music and sounds (src/ai_dm/audio/data/)
+========================================
+
+Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons:
+By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/.
+Other music and ambient sounds are CC0 1.0. Authors, titles, sources and edits:
+src/ai_dm/audio/data/ATTRIBUTION.md.
