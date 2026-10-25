@@ -1060,11 +1060,6 @@ def advance_time(ctx, request):
         )
     if request.count not in (None, 1) and request.category is None:
         return Invalid(code="count_only_with_category", message="count задают только с category")
-    if request.count not in (None, 1) and request.category == "minute":
-        return Invalid(
-            code="count_not_with_minute",
-            message="minute — четверть часа, без count: для большего срока бери hour и count",
-        )
     if request.until is not None:
         if ctx.rested:
             return until_with_rest_invalid()

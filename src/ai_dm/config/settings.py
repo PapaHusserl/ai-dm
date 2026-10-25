@@ -20,6 +20,8 @@ class TimeConfig(BaseModel):
     short_rest_s: int
     long_rest_s: int
     min_advance_s: int
+    # сколько секунд движок прибавляет к обычному ходу без сдвига часов мастером
+    turn_s: int = Field(ge=1)
     # час «утра» для advance_time until=morning
     morning_hour: int = Field(ge=0, le=23)
     # начало частей суток (час): morning, day, evening, night

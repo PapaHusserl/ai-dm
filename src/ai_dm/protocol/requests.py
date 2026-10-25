@@ -422,7 +422,7 @@ class AdvanceTime(Request):
     """
 
     type: Literal["advance_time"]
-    category: Literal["none", "minute", "hour", "day", "week", "month"] = Field(
+    category: Literal["none", "hour", "day", "week", "month"] = Field(
         "none", description="На сколько сдвинуть время; none, если идёт путь."
     )
     travel_to: str = Field(
@@ -444,8 +444,7 @@ class AdvanceTime(Request):
     count: int = Field(
         1,
         description=(
-            "Сколько раз category подряд («8 дней» = day + 8); 1 = один; не больше года; "
-            "minute (четверть часа) без count."
+            "Сколько раз category подряд («8 дней» = day + 8); 1 = один; не больше года."
         ),
     )
     NEUTRAL: ClassVar[dict] = {

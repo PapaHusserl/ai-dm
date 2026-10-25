@@ -89,15 +89,6 @@ def test_mark_outside_combat_keeps_mark_pending_with_concentration_expiry(dragon
 
 # advance_time по категории
 
-def test_advance_minutes_keeps_the_mark(dragon, cfg):
-    registry, bundle = dragon
-    hero = marked(registry, cfg, bundle)
-    d = go(registry, cfg, bundle, "advance_time", category="minute")
-    assert hero.creature.concentration is not None
-    assert "concentration_ended" not in d.result
-    assert not any("Концентрация" in line for line in d.log)
-
-
 def test_advance_an_hour_ends_the_mark_exactly_at_the_limit(dragon, cfg):
     registry, bundle = dragon
     hero = marked(registry, cfg, bundle)
@@ -106,10 +97,10 @@ def test_advance_an_hour_ends_the_mark_exactly_at_the_limit(dragon, cfg):
     assert d.result["concentration_ended"] == "hunters_mark"
 
 
-def test_mark_ends_after_a_minute_and_then_an_hour_and_not_before(dragon, cfg):
+def test_mark_ends_after_a_quarter_hour_and_then_an_hour_and_not_before(dragon, cfg):
     registry, bundle = dragon
     hero = marked(registry, cfg, bundle)
-    go(registry, cfg, bundle, "advance_time", category="minute")
+    bundle.world.clock.advance(900)
     assert hero.creature.concentration is not None
     d = go(registry, cfg, bundle, "advance_time", category="hour")
     assert hero.creature.concentration is None

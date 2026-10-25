@@ -70,10 +70,19 @@ def test_turn_ends_a_concentration_exactly_at_its_limit(registry, cfg, tmp_path)
 
 def test_turn_keeps_a_concentration_that_has_time_left(registry, cfg, tmp_path):
     bundle = make_bundle(registry)
-    blessed(bundle, until_s=1001, now_s=1000)
+    blessed(bundle, until_s=1000 + 900 + 1, now_s=1000)
     rig, _ = play(registry, cfg, tmp_path, bundle)
     assert rig.runner.bundle.heroes[0].creature.concentration is not None
     assert len(rig.runner.bundle.heroes[0].creature.active_effects) == 1
+
+
+def test_turn_tick_ends_a_concentration_with_less_than_a_tick_left(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    blessed(bundle, until_s=1000 + 899, now_s=1000)
+    rig, _ = play(registry, cfg, tmp_path, bundle)
+    assert rig.runner.bundle.world.clock.now_s == 1900
+    assert rig.runner.bundle.heroes[0].creature.concentration is None
+    assert rig.runner.bundle.heroes[0].creature.active_effects == []
 
 
 def test_turn_keeps_an_unlimited_concentration_of_an_old_save(registry, cfg, tmp_path):

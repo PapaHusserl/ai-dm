@@ -3,6 +3,8 @@ round_s = 6
 short_rest_s = 3600
 long_rest_s = 28800
 min_advance_s = 600
+# обычный ход без боя и без сдвига часов мастером: движок прибавляет столько секунд
+turn_s = 900
 morning_hour = 6
 
 # начало частей суток (час): утро, день, вечер, ночь; ночь идёт до утра
@@ -13,7 +15,6 @@ evening = 18
 night = 21
 
 [time.advance_categories]
-minute = 900
 hour = 3600
 day = 86400
 week = 604800

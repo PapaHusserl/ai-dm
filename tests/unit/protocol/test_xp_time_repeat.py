@@ -297,13 +297,6 @@ def test_first_hour_is_accepted_with_old_log_text(registry, cfg):
     assert d.result == {"seconds": 3600, "now_s": start + 3600}
 
 
-def test_minute_after_hour_is_accepted(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
-    d = apply(ctx, req("advance_time", category="minute"))
-    assert d.status == "accepted"
-    assert d.log == ["Время идёт: 900 с"]
-
-
 def test_day_after_hour_is_accepted(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
     d = apply(ctx, req("advance_time", category="day"))
@@ -400,28 +393,13 @@ def test_count_two_months_log(registry, cfg):
     assert apply(ctx, counted("month", 2)).log[0] == "Прошло 2 месяца"
 
 
-def test_count_with_minute_is_invalid_and_clock_stays(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [])
-    start = ctx.bundle.world.clock.now_s
-    d = apply(ctx, counted("minute", 10))
-    assert isinstance(d, Invalid)
-    assert d.code == "count_not_with_minute"
-    assert ctx.bundle.world.clock.now_s == start
+def test_minute_is_not_an_advance_time_category():
+    from pydantic import ValidationError
 
+    from ai_dm.protocol.requests import AdvanceTime
 
-def test_minute_without_count_is_900_seconds(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [])
-    d = apply(ctx, req("advance_time", category="minute"))
-    assert d.result["seconds"] == 900
-    assert d.log == ["Время идёт: 900 с"]
-
-
-def test_minute_with_count_one_is_same_as_without_count(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [])
-    d = apply(ctx, counted("minute", 1))
-    assert d.status == "accepted"
-    assert d.result["seconds"] == 900
-    assert d.log == ["Время идёт: 900 с"]
+    with pytest.raises(ValidationError):
+        AdvanceTime(type="advance_time", category="minute")
 
 
 def test_count_two_months_sums_calendar_months(registry, cfg):
@@ -490,13 +468,6 @@ def test_count_two_with_travel_to_is_invalid(registry, cfg):
     d = apply(ctx, req("advance_time", travel_to="forest", count=2))
     assert isinstance(d, Invalid)
     assert d.code == "count_only_with_category"
-
-
-def test_count_two_with_minute_is_invalid(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [])
-    d = apply(ctx, counted("minute", 2))
-    assert isinstance(d, Invalid)
-    assert d.code == "count_not_with_minute"
 
 
 def test_count_one_with_travel_to_is_not_invalid(registry, cfg):
@@ -594,7 +565,7 @@ def test_until_without_rest_still_moves_to_morning(registry, cfg):
 def test_category_after_rest_is_not_blocked(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
     assert apply(ctx, req("rest", kind="long")).status == "accepted"
-    assert apply(ctx, req("advance_time", category="minute")).status == "accepted"
+    assert apply(ctx, req("advance_time", category="hour")).status == "accepted"
 
 
 def test_rest_after_accepted_until_gets_report_tag(registry, cfg):

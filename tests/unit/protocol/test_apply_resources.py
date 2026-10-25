@@ -557,7 +557,7 @@ def test_short_rest_log_line_exists(registry, cfg):
 
 @pytest.mark.parametrize(
     "category, seconds",
-    [("minute", 900), ("hour", 3600), ("day", DAY), ("week", 7 * DAY), ("month", 30 * DAY)],
+    [("hour", 3600), ("day", DAY), ("week", 7 * DAY), ("month", 30 * DAY)],
 )
 def test_advance_time_by_category(category, seconds, registry, cfg):
     ctx = make_ctx(registry, cfg)

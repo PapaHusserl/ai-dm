@@ -4,8 +4,8 @@
 #   short_rest_seconds(cfg) -> int                         -- 3600
 #   long_rest_seconds(cfg) -> int                          -- 28800
 #   category_seconds(category: str, clock: GameClock, cfg) -> int
-#       "minute" (900) | "hour" (3600, P1: не закрывает сцену) | "day" | "week" | "month";
-#       minute/hour/day/week -- из
+#       "hour" (3600, P1: не закрывает сцену) | "day" | "week" | "month";
+#       hour/day/week -- из
 #       cfg.time.advance_categories; "month" -- clock.days_in_current_month() * 86400;
 #       неизвестная категория -> ValueError
 #   travel_seconds(distance_m: int, pace: str, cfg) -> int
@@ -28,6 +28,7 @@ from ai_dm.rules.time_ops import (
     rounds_to_seconds,
     short_rest_seconds,
     travel_seconds,
+    turn_tick,
 )
 
 DAY = 86400
@@ -58,7 +59,7 @@ def test_rest_and_round_follow_config():
     assert long_rest_seconds(cfg=cfg) == 3600
 
 
-@pytest.mark.parametrize("category", ["minute", "hour", "day"])
+@pytest.mark.parametrize("category", ["hour", "day"])
 def test_category_comes_from_config(category):
     cfg = load_rules_config()
     clock = GameClock(now_s=0)
@@ -66,8 +67,8 @@ def test_category_comes_from_config(category):
 
 
 def test_category_override_in_config():
-    cfg = load_rules_config(toml_text="[time.advance_categories]\nminute = 300\n")
-    assert category_seconds("minute", GameClock(now_s=0), cfg=cfg) == 300
+    cfg = load_rules_config(toml_text="[time.advance_categories]\nhour = 300\n")
+    assert category_seconds("hour", GameClock(now_s=0), cfg=cfg) == 300
 
 
 def test_day_is_86400(cfg):
@@ -131,10 +132,32 @@ def test_ensure_min_advance_uses_config_value():
     assert clock.now_s == 60
 
 
-def test_default_minute_and_hour_seconds(cfg):
+def test_default_hour_seconds(cfg):
+    assert category_seconds("hour", GameClock(now_s=0), cfg=cfg) == 3600
+
+
+def test_minute_is_no_longer_a_category(cfg):
+    with pytest.raises(ValueError):
+        category_seconds("minute", GameClock(now_s=0), cfg=cfg)
+
+
+def test_turn_tick_adds_turn_s_if_clock_stood_still(cfg):
+    clock = GameClock(now_s=5000)
+    turn_tick(clock, 5000, cfg)
+    assert clock.now_s == 5900
+
+
+def test_turn_tick_does_nothing_if_clock_moved(cfg):
+    clock = GameClock(now_s=5001)
+    turn_tick(clock, 5000, cfg)
+    assert clock.now_s == 5001
+
+
+def test_turn_tick_uses_config_value():
+    cfg = load_rules_config(toml_text="[time]\nturn_s = 60\n")
     clock = GameClock(now_s=0)
-    assert category_seconds("minute", clock, cfg=cfg) == 900
-    assert category_seconds("hour", clock, cfg=cfg) == 3600
+    turn_tick(clock, 0, cfg)
+    assert clock.now_s == 60
 
 
 def test_hour_is_exactly_one_hour_and_does_not_close_scene(cfg):

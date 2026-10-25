@@ -8,13 +8,19 @@ from game_kit import (
     BAD_CHECK,
     SAVED_AT,
     CountingAdapter,
+    advance_call,
+    attack_or_move_number,
     core_dump,
     damage_call,
+    drive,
+    end_scene_call,
     flag_call,
     make_rig,
     run_records,
+    script_then_react,
     scripted,
     skill_check_call,
+    start_combat_call,
     state_of,
     text_step,
     tool_names,
@@ -611,3 +617,163 @@ def test_turn_with_dropped_turns_replays_without_divergence(registry, cfg, tmp_p
     again.app_cfg.master.context_cap = 1
     for number in range(4):
         assert again.runner.play(f"ход {number}").committed is True
+
+
+# П2 ДН: ход без сдвига часов мастером = +turn_s (15 минут)
+
+TICK = 900
+REST_CALL = {"id": "r1", "name": "rest", "input": {"type": "rest", "kind": "long"}}
+
+
+def clock_after(registry, cfg, tmp_path, steps, now_s=0):
+    bundle = make_bundle(registry)
+    bundle.world.clock.advance(now_s)
+    rig = make_rig(registry, cfg, tmp_path, scripted(steps), bundle=bundle)
+    result = rig.runner.play("Иду")
+    return rig, result
+
+
+def test_plain_turn_adds_a_quarter_hour(registry, cfg, tmp_path):
+    rig, result = clock_after(registry, cfg, tmp_path, [text_step("Тихо.")])
+    assert result.committed is True
+    assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+def test_tick_comes_from_config(registry, cfg, tmp_path):
+    cfg2 = cfg.model_copy(deep=True)
+    cfg2.time.turn_s = 120
+    rig, _ = clock_after(registry, cfg2, tmp_path, [text_step("Тихо.")])
+    assert rig.runner.bundle.world.clock.now_s == 120
+
+
+def test_tool_turn_without_time_call_adds_a_quarter_hour(registry, cfg, tmp_path):
+    steps = [tools_step(flag_call("met")), text_step("Тихо.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps)
+    assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+def test_tick_moves_day_part_over_the_boundary(registry, cfg, tmp_path):
+    from ai_dm.rules.time_ops import day_part
+
+    start = 17 * 3600 + 50 * 60
+    before = day_part(start, cfg)
+    rig, _ = clock_after(registry, cfg, tmp_path, [text_step("Тихо.")], now_s=start)
+    now = rig.runner.bundle.world.clock.now_s
+    assert now == start + TICK
+    assert now % 86400 == 18 * 3600 + 5 * 60
+    assert day_part(now, cfg) != before
+
+
+def test_two_turns_tick_twice(registry, cfg, tmp_path):
+    rig = make_rig(registry, cfg, tmp_path, scripted([text_step("Раз."), text_step("Два.")]))
+    rig.runner.play("a")
+    rig.runner.play("b")
+    assert rig.runner.bundle.world.clock.now_s == 2 * TICK
+
+
+def test_travel_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(advance_call(travel_to="forest")), text_step("Лес.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps)
+    assert rig.runner.bundle.world.clock.now_s == 3600
+
+
+def test_hour_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(advance_call(category="hour")), text_step("Час.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps)
+    assert rig.runner.bundle.world.clock.now_s == 3600
+
+
+def test_until_morning_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(advance_call(until="morning")), text_step("Утро.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps, now_s=2 * 3600)
+    assert rig.runner.bundle.world.clock.now_s == 6 * 3600
+
+
+def test_rest_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(REST_CALL), text_step("Сон.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps)
+    assert rig.runner.bundle.world.clock.now_s == cfg.time.long_rest_s
+
+
+def test_rejected_advance_time_still_ticks(registry, cfg, tmp_path):
+    steps = [tools_step(advance_call(travel_to="nowhere")), text_step("Никуда.")]
+    rig, result = clock_after(registry, cfg, tmp_path, steps)
+    assert result.committed is True
+    assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+def test_start_combat_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(start_combat_call()), text_step("Гоблины бросаются на вас.")]
+    rig = make_rig(registry, cfg, tmp_path, script_then_react(steps))
+    assert rig.runner.play("Иду").committed is True
+    assert rig.runner.bundle.session.active_combat is not None
+    assert rig.runner.bundle.world.clock.now_s == 0
+
+
+def test_combat_turn_has_no_tick(registry, cfg, tmp_path):
+    steps = [tools_step(start_combat_call()), text_step("Гоблины бросаются на вас.")]
+    rig = make_rig(registry, cfg, tmp_path, script_then_react(steps))
+    rig.runner.play("Иду")
+    result = drive(rig.runner, attack_or_move_number, limit=1)[0]
+    assert result.committed is True
+    assert rig.runner.bundle.world.clock.now_s < TICK
+
+
+def test_rejected_start_combat_still_ticks(registry, cfg, tmp_path):
+    call = start_combat_call()
+    call["input"]["enemies"][0]["monster_id"] = "no_such_monster"
+    steps = [tools_step(call), text_step("Никого нет.")]
+    rig, result = clock_after(registry, cfg, tmp_path, steps)
+    assert result.committed is True
+    assert "start_combat" not in result.requests
+    assert rig.runner.bundle.session.active_combat is None
+    assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+def test_combat_started_and_ended_in_one_turn_has_no_tick(registry, cfg, tmp_path, monkeypatch):
+    import ai_dm.game.turn as turn_module
+
+    def instant_end(ctx, session, run_id, world_text):
+        ctx.bundle.session.active_combat = None
+        return []
+
+    monkeypatch.setattr(turn_module.combat_flow, "start_fight", instant_end)
+    steps = [tools_step(start_combat_call()), text_step("Всё кончилось.")]
+    rig, result = clock_after(registry, cfg, tmp_path, steps)
+    assert result.requests == ["start_combat"]
+    assert rig.runner.bundle.session.active_combat is None
+    assert rig.runner.bundle.world.clock.now_s == 0
+
+
+def test_auto_retry_ticks_once(registry, cfg, tmp_path):
+    steps = [tools_step(flag_call("a")), text_step("Ок."), tools_step(flag_call("a")),
+             text_step("Ты идёшь по тихой улице Вейла, и ветер несёт запах дыма из труб, "
+                       "а в окнах гаснут огни.")]
+    rig = make_rig(registry, cfg, tmp_path, scripted(steps))
+    rig.runner.app_cfg.master.min_narration_chars = 80
+    result = rig.runner.play("Иду")
+    assert result.committed is True
+    assert result.report_tags == ["short_retry"]
+    assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+def test_failed_turn_does_not_move_the_clock(registry, cfg, tmp_path):
+    rig, _, result = failed(registry, cfg, tmp_path, FATAL)
+    assert result.committed is False
+    assert rig.runner.bundle.world.clock.now_s == 0
+
+
+def test_tick_does_not_wait_for_repeat_hour_guard(registry, cfg, tmp_path):
+    # тик не пишет «Время идёт» в ленту хода, поэтому час после тик-хода не считается повтором
+    steps = [text_step("Тихо."), tools_step(advance_call(category="hour")), text_step("Час.")]
+    rig = make_rig(registry, cfg, tmp_path, scripted(steps))
+    rig.runner.play("a")
+    result = rig.runner.play("b")
+    assert result.requests == ["advance_time"]
+    assert rig.runner.bundle.world.clock.now_s == TICK + 3600
+
+
+def test_end_scene_turn_gets_tick_before_the_boundary(registry, cfg, tmp_path):
+    steps = [tools_step(end_scene_call()), text_step("Конец.")]
+    rig, _ = clock_after(registry, cfg, tmp_path, steps)
+    assert rig.runner.bundle.world.clock.now_s == TICK

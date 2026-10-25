@@ -21,6 +21,7 @@ from ai_dm.rules.goals import on_kill
 from ai_dm.rules.knowledge import note_combat, note_presence
 from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.rules.survivors import classify, materialize, reveal_names
+from ai_dm.rules.time_ops import turn_tick
 from ai_dm.state.scene import TurnRecord
 
 ERROR_MENU = ["retry", "switch_model", "save_and_quit"]
@@ -234,9 +235,12 @@ class TurnRunner:
         # ход идёт на копии: откат -- выбросить копию
         work = self.bundle.model_copy(deep=True)
         rng = Rng.from_state(work.world.rng)
+        start_s = work.world.clock.now_s
         try:
             if work.session.active_combat is None:
                 narration = self.explore_turn(work, rng, player_input, run_id, result)
+                if "start_combat" not in result.requests:
+                    turn_tick(work.world.clock, start_s, self.cfg)
             else:
                 narration = self.combat_turn(work, rng, player_input, run_id, result)
         except CombatRoundLimit as error:

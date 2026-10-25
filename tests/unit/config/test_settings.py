@@ -1,7 +1,8 @@
 # Ожидаемый API: ai_dm.config.settings (+ ai_dm/config/defaults.toml в пакете)
 #   RulesConfig(BaseModel, extra="forbid") с вложенными секциями (все тоже extra="forbid"):
 #     .time:   round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600,
-#              advance_categories: dict[str, int] -- секунды для "minute", "hour", "day", "week"
+#              turn_s=900 (обычный ход без сдвига часов мастером),
+#              advance_categories: dict[str, int] -- секунды для "hour", "day", "week"
 #              ("month" в конфиге нет: длина месяца берётся из календаря)
 #     .combat: max_rounds=100
 #     .defeat: robbery_gold_percent=50, left_to_die_hours_dice="1d8", left_to_die_hp=1
@@ -32,12 +33,21 @@ def test_default_time_values():
 
 def test_default_advance_categories():
     cats = load_rules_config().time.advance_categories
-    assert set(cats) == {"minute", "hour", "day", "week"}
+    assert set(cats) == {"hour", "day", "week"}
     assert cats["day"] == 86400
     assert cats["week"] == 7 * 86400
-    assert cats["minute"] == 900
     assert cats["hour"] == 3600
-    assert 0 < cats["minute"] < cats["hour"] < cats["day"]
+    assert 0 < cats["hour"] < cats["day"]
+
+
+def test_default_turn_s_is_a_quarter_hour():
+    assert load_rules_config().time.turn_s == 900
+
+
+def test_override_turn_s_keeps_siblings():
+    cfg = load_rules_config(toml_text="[time]\nturn_s = 300\n")
+    assert cfg.time.turn_s == 300
+    assert cfg.time.min_advance_s == 600
 
 
 def test_default_round_limit():
@@ -79,8 +89,8 @@ def test_override_single_key_inside_section_keeps_siblings():
 
 
 def test_override_one_advance_category_keeps_others():
-    cfg = load_rules_config(toml_text="[time.advance_categories]\nminute = 300\n")
-    assert cfg.time.advance_categories["minute"] == 300
+    cfg = load_rules_config(toml_text="[time.advance_categories]\nhour = 300\n")
+    assert cfg.time.advance_categories["hour"] == 300
     assert cfg.time.advance_categories["day"] == 86400
 
 
@@ -356,14 +366,27 @@ def time_config(day_parts):
     from ai_dm.config.settings import TimeConfig
 
     return TimeConfig(
-        round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, morning_hour=6,
-        day_parts=day_parts, advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+        round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
+        morning_hour=6, day_parts=day_parts, advance_categories={"hour": 3600},
+        travel_pace={"normal": 4800},
     )
 
 
 def test_day_parts_direct_valid_is_accepted():
     parts = {"morning": 6, "day": 12, "evening": 18, "night": 21}
     assert time_config(parts).day_parts == parts
+
+
+@pytest.mark.parametrize("turn_s", [0, -1])
+def test_turn_s_below_one_is_rejected(turn_s):
+    from ai_dm.config.settings import TimeConfig
+
+    with pytest.raises(ValidationError):
+        TimeConfig(
+            round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=turn_s,
+            morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
+            advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+        )
 
 
 def test_day_parts_missing_key_is_rejected():

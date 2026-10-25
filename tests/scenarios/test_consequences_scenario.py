@@ -252,7 +252,9 @@ def test_river_wash_costs_nothing_and_marks_the_time(registry, tmp_path, monkeyp
     app.handle("Моюсь в реке")
     hero = hero_of(app.bundle)
     assert hero.money_cp == 3000
-    assert app.bundle.world.flags[f"washed:{hero.id}"] == app.bundle.world.clock.now_s
+    # решение 20 (docs/plan-dn.md): метка ставится в момент мытья, после хода часы уходят на тик
+    washed_at = app.bundle.world.clock.now_s - settings().rules.time.turn_s
+    assert app.bundle.world.flags[f"washed:{hero.id}"] == washed_at
 
 
 def test_stench_does_not_return_one_day_before_the_limit(registry, tmp_path, monkeypatch):

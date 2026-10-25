@@ -1213,3 +1213,13 @@ mutmut шага ДН (docs/plan-dn.md) по изменённым функция�
 summarize_chapter/accepted_names, has_invalid, note); `rest_apply` — 9 (тело прежнего `rest`: cut, hit_dice,
 str(error), concentration_note — см. 148/176); `time_by_category` 73, 74 (`concentration_note`); `status_line` 9–11,
 28, 31 (ledger.report / 1e9, ac_summary). Разбирать при касании функций.
+
+## 204. Выжившие мутанты старых строк из ДН П2
+status: idea
+priority: low
+updated: 2026-10-25
+
+mutmut ДН П2 (docs/plan-dn.md, «План П2»); выжившие на строках, которые партия не меняла (AGENTS п. 4):
+`TurnRunner.attempt` — 30, 32 (`rng`/`run_id` → None в вызове `combat_turn`), 53 (`expire_concentration` получает
+None вместо `work.world` — нужен тест на передачу мира); `advance_time` 11, 23, 24 — только текст сообщения Invalid.
+Разбирать при касании функций.

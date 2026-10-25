@@ -255,6 +255,41 @@ def test_failure_in_step_3_keeps_state_as_after_autosave(registry, cfg, tmp_path
     assert load_slot(tmp_path, "w1", "auto").session.boundary_pending is True
 
 
+def test_failure_in_step_3_keeps_the_clock_of_the_autosave(registry, cfg, tmp_path, monkeypatch):
+    import ai_dm.game.boundary as boundary
+    from ai_dm.master.session import TurnFailed
+
+    def broken(bundle, npcs_before=None):
+        raise TurnFailed("fatal", "сбой границы")
+
+    monkeypatch.setattr(boundary, "start_scene", broken)
+    steps = [tools_step(end_scene_call(summary="Выжимка.")), text_step("Конец.")]
+    rig, _ = play_many(registry, cfg, tmp_path, steps, 1)
+    assert rig.runner.bundle.world.clock.now_s == load_slot(
+        tmp_path, "w1", "auto"
+    ).world.clock.now_s
+
+
+def test_turn_interrupted_on_pending_boundary_does_not_move_the_clock(
+    registry, cfg, tmp_path, monkeypatch
+):
+    import ai_dm.game.boundary as boundary
+    from ai_dm.master.session import TurnFailed
+
+    def broken(bundle, npcs_before=None):
+        raise TurnFailed("fatal", "сбой границы")
+
+    monkeypatch.setattr(boundary, "start_scene", broken)
+    steps = [tools_step(end_scene_call(summary="Выжимка.")), text_step("Конец."), text_step("Ещё.")]
+    rig, _ = play_many(registry, cfg, tmp_path, steps, 1)
+    assert rig.runner.bundle.session.boundary_pending is True
+    after_first = rig.runner.bundle.world.clock.now_s
+    result = rig.runner.play("ещё ход")
+    assert result.committed is False
+    assert rig.runner.bundle.session.boundary_pending is True
+    assert rig.runner.bundle.world.clock.now_s == after_first
+
+
 def test_failure_in_step_3_rolls_back_chapter(registry, cfg, tmp_path, monkeypatch):
     import ai_dm.game.boundary as boundary
     from ai_dm.master.session import TurnFailed

@@ -88,4 +88,5 @@ def test_rest_without_payment_is_refused(registry, tmp_path):
     hero = hero_of(app.bundle)
     assert hero.money_cp == 200
     assert hero.creature.hp_current == 1
-    assert app.bundle.world.clock.now_s == before
+    # решение 25 (docs/plan-dn.md): отказ в отдыхе часов не двигает, ход получает только тик
+    assert app.bundle.world.clock.now_s == before + settings().rules.time.turn_s

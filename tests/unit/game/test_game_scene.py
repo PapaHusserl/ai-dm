@@ -347,19 +347,19 @@ def test_end_scene_autosave_holds_closed_scene(registry, cfg, tmp_path):
     assert saved.memory.recent_turns[-1].narration == "Конец сцены."
 
 
-def test_end_scene_without_time_adds_min_advance(registry, cfg, tmp_path):
+def test_end_scene_without_time_gets_turn_tick_and_no_min_advance(registry, cfg, tmp_path):
     steps = [tools_step(end_scene_call()), text_step()]
     rig, _ = play(registry, cfg, tmp_path, steps)
-    assert rig.runner.bundle.world.clock.now_s == 600
-    assert rig.runner.bundle.session.current_scene.started_at_s == 600
+    assert rig.runner.bundle.world.clock.now_s == 900
+    assert rig.runner.bundle.session.current_scene.started_at_s == 900
 
 
 def test_end_scene_after_time_moved_has_no_extra_advance(registry, cfg, tmp_path):
     steps = [
-        tools_step(advance_call(category="minute"), end_scene_call()), text_step(),
+        tools_step(advance_call(category="hour"), end_scene_call()), text_step(),
     ]
     rig, _ = play(registry, cfg, tmp_path, steps)
-    assert rig.runner.bundle.world.clock.now_s == 900
+    assert rig.runner.bundle.world.clock.now_s == 3600
 
 
 def test_autosave_is_written_at_scene_boundary_only(registry, cfg, tmp_path):
@@ -410,9 +410,8 @@ def test_time_jump_over_hour_closes_scene(registry, cfg, tmp_path, category):
     assert list_slots(tmp_path, "w1") == ["auto"]
 
 
-@pytest.mark.parametrize("category", ["minute", "hour"])
-def test_short_time_does_not_close_scene(registry, cfg, tmp_path, category):
-    steps = [tools_step(advance_call(category=category)), text_step()]
+def test_short_time_does_not_close_scene(registry, cfg, tmp_path):
+    steps = [tools_step(advance_call(category="hour")), text_step()]
     rig, _ = play(registry, cfg, tmp_path, steps)
     assert saved_close_reason(tmp_path, "w1") is None
     assert rig.runner.bundle.session.current_scene.id == "scene_1"

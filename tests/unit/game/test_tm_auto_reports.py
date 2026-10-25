@@ -109,11 +109,11 @@ def test_rest_repeat_writes_no_report(registry, tmp_path):
     assert issues(tmp_path) == []
 
 
-def test_rest_repeat_does_not_move_the_clock(registry, tmp_path):
+def test_rest_repeat_moves_the_clock_only_by_the_turn_tick(registry, tmp_path):
     app, _, _ = two_rest_turns(registry, tmp_path, auto_reports=True)
     end_s = app.bundle.heroes[0].long_rest_end_s
     assert end_s is not None
-    assert app.bundle.world.clock.now_s == end_s
+    assert app.bundle.world.clock.now_s == end_s + 900
 
 
 # ТХ: xp_repeat и time_repeat

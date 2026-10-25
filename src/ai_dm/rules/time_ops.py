@@ -16,6 +16,12 @@ def long_rest_seconds(cfg: RulesConfig) -> int:
     return cfg.time.long_rest_s
 
 
+def turn_tick(clock: GameClock, start_s: int, cfg: RulesConfig) -> None:
+    # ход без сдвига часов мастером -- четверть часа от движка
+    if clock.now_s == start_s:
+        clock.advance(cfg.time.turn_s)
+
+
 def category_seconds(category: str, clock: GameClock, cfg: RulesConfig) -> int:
     if category == "month":
         return clock.days_in_current_month() * DAY
