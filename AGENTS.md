@@ -44,6 +44,7 @@
 - Перед коммитом партии: `make cov` (≥ 94 %), `make smells` (≤ 200), `make dead`,
   `make mutate FUNCS="модуль:функция модуль:Класс.метод" TESTS="tests/..."` по изменённым функциям
   (старый вариант — `MOD="..."`; TESTS — только тесты этих модулей, иначе stats/clean гоняют весь tests/ по ~12 мин;
+  TESTS — каталог тестов модуля целиком, не один файл: узкий TESTS даёт ложных выживших (шаг 202, решение 16);
   при устаревшем mutants/ — удалить каталог, он генерируемый). FUNCS разворачивается в шаблоны mutmut
   `ai_dm.mod.x_func__mutmut_*` и `ai_dm.mod.xǁClassǁmethod__mutmut_*`; пример:
   `make mutate FUNCS="ai_dm.ui.session:PlaySession.submit" TESTS="tests/unit/ui"`.

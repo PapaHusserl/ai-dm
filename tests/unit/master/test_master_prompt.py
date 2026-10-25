@@ -11,6 +11,7 @@ from master_kit import app_cfg, combat_ctx, make_bundle, make_ctx, turn_record
 from ai_dm.llm.types import ChatRequest, SystemBlock, Text, ToolSpec
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.schema import tool_set
+from ai_dm.rules.time_ops import DAY_PART_NAMES
 
 MODES = ["explore", "combat_classify", "combat_narrate", "npc_choice"]
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -747,3 +748,116 @@ def test_divine_data_deity_is_none_for_hero_without_god(registry, cfg):
     divine = divine_of(registry, cfg, None)
     assert "deity" in divine
     assert divine["deity"] is None
+
+
+# П4 шага 202: состав state_data -- ключи, места, секреты, аргументы помощников
+
+STATE_TOP_KEYS = [
+    "time", "location", "locations", "known_npcs", "hero", "scene_npcs", "secrets", "divine",
+    "nudge", "combat", "recent_turns", "offered_choices", "player_input",
+]
+
+
+@pytest.mark.parametrize("key", STATE_TOP_KEYS)
+def test_state_has_top_level_key(registry, cfg, key):
+    assert key in data_of(build(make_ctx(registry, cfg)))
+
+
+@pytest.mark.parametrize("key", ["date", "now_s", "hour", "part"])
+def test_state_time_has_key(registry, cfg, key):
+    assert key in data_of(build(make_ctx(registry, cfg)))["time"]
+
+
+@pytest.mark.parametrize(
+    "key", ["name", "hp", "hp_max", "conditions", "inventory", "gold_cp", "level", "xp"]
+)
+def test_state_hero_has_key(registry, cfg, key):
+    assert key in data_of(build(make_ctx(registry, cfg)))["hero"]
+
+
+def test_state_time_now_s_and_part_have_values(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = 3 * 86400 + 14 * 3600
+    time = data_of(build(ctx))["time"]
+    assert time["now_s"] == 3 * 86400 + 14 * 3600
+    assert time["hour"] == "14:00"
+    assert time["part"] == DAY_PART_NAMES["day"]
+    assert time["date"] == ctx.bundle.world.clock.to_date()
+
+
+def test_state_location_has_id_and_name_only(registry, cfg):
+    assert data_of(build(make_ctx(registry, cfg)))["location"] == {"id": "vale", "name": "Вейл"}
+
+
+def test_state_locations_are_the_hero_place_and_its_neighbour(registry, cfg):
+    locations = data_of(build(make_ctx(registry, cfg)))["locations"]
+    assert [x["id"] for x in locations] == ["vale", "forest"]
+
+
+def test_state_hero_without_location_has_null_location_and_no_places(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.location_id = None
+    data = data_of(build(ctx))
+    assert data["location"] is None
+    assert data["locations"] == []
+    assert "known_locations" not in data
+
+
+def test_state_known_locations_skip_unvisited_far_place(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    ids = [x["id"] for x in known_locations_of(ctx)]
+    assert "vale_tavern" not in ids
+
+
+def test_state_known_npc_has_id_name_location_and_key(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    npc = ctx.bundle.world.npcs["grakh"]
+    known = {n["id"]: n for n in data_of(build(ctx))["known_npcs"]}["grakh"]
+    assert known["name"] == "Гракх"
+    assert known["location_id"] == npc.location_id
+    assert known["key"] == npc.key
+
+
+def hidden_secret_ctx(registry, cfg):
+    from ai_dm.state.triggers import Secret
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["grakh"].secrets = [
+        Secret(id="s1", text="Тайна кузни", reveal_if={"flag": "x"})
+    ]
+    return ctx
+
+
+def test_state_secret_has_npc_id_id_and_text(registry, cfg):
+    secret = data_of(build(hidden_secret_ctx(registry, cfg)))["secrets"][0]
+    assert secret["npc_id"] == "grakh"
+    assert secret["id"] == "s1"
+    assert secret["text"] == "Тайна кузни"
+
+
+def test_state_secret_note_says_hidden_and_points_to_reveal_secret(registry, cfg):
+    note = data_of(build(hidden_secret_ctx(registry, cfg)))["secrets"][0]["note"]
+    assert "скрыто" in note
+    assert "reveal_secret" in note
+
+
+def test_state_secret_note_keeps_both_halves_in_lower_case(registry, cfg):
+    note = data_of(build(hidden_secret_ctx(registry, cfg)))["secrets"][0]["note"]
+    assert note.startswith("скрыто:")
+    assert note.endswith("только через reveal_secret")
+
+
+def test_state_without_secrets_has_empty_list(registry, cfg):
+    assert data_of(build(make_ctx(registry, cfg)))["secrets"] == []
+
+
+def test_state_last_combat_gear_names_come_from_the_registry(registry, cfg):
+    from ai_dm.state.hero import InventoryEntry
+    from ai_dm.state.session import LastCombat
+
+    ctx = make_ctx(registry, cfg)
+    gear = [InventoryEntry(item_id="scimitar", qty=1, cost_cp=15, quality="junk")]
+    ctx.bundle.session.last_combat = LastCombat(defeated=["goblin_warrior"], gear=gear)
+    names = data_of(build(ctx))["last_combat"]["gear"]
+    assert "скимитар" in names[0].casefold()

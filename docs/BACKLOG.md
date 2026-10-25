@@ -1213,6 +1213,7 @@ mutmut шага ДН (docs/plan-dn.md) по изменённым функция�
 summarize_chapter/accepted_names, has_invalid, note); `rest_apply` — 9 (тело прежнего `rest`: cut, hit_dice,
 str(error), concentration_note — см. 148/176); `time_by_category` 73, 74 (`concentration_note`); `status_line` 9–11,
 28, 31 (ledger.report / 1e9, ac_summary). Разбирать при касании функций.
+`PromptBuilder.state_data` закрыт в шаге 202 П4 (docs/plan-202.md; остался эквивалентный мутант 7, решение 14).
 
 ## 204. Выжившие мутанты старых строк из ДН П2
 status: idea
