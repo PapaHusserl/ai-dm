@@ -14,6 +14,9 @@ MUT_ARGS = $(if $(FUNCS),$(foreach f,$(FUNCS),$(call func_pattern,$(f))),$(forea
 # число процессов mutmut (--max-children); шаблоны мутантов живут в MUT_ARGS, его не затирать
 MUT_CHILDREN ?= 4
 
+# число воркеров pytest-xdist в make cov (mutmut гоняет тесты без -n)
+XDIST ?= 4
+
 .PHONY: quality lint smells cov dead prompt-budget sim-grid install-check linux-check mutate mutate-results mutate-diff
 
 quality: lint smells dead cov
@@ -26,7 +29,7 @@ smells:
 	echo "qlty smells: $$n (max $(SMELLS_MAX))"; test $$n -le $(SMELLS_MAX)
 
 cov:
-	uv run pytest -q --cov --cov-report=term
+	uv run pytest -q -n $(XDIST) --dist loadfile --cov --cov-report=term --durations=30
 
 dead:
 	uv run vulture

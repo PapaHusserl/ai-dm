@@ -11,6 +11,7 @@
 import re
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,7 @@ TURN_STEPS = [
 ]
 STATUS_COST = re.compile(r"сессия \$(\d+(?:\.\d+)?)")
 PERCENT = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
+SUBMIT_WAIT = 5  # потолок ожидания в Tui.submit, секунды
 
 
 class GateAdapter(ScriptedAdapter):
@@ -126,7 +128,15 @@ class Tui:
         entry = app.query_one("#input")
         entry.value = line
         await pilot.press("enter")
+        # Input.Submitted обрабатывается асинхронно: пока поле не очищено, обработчик не отработал,
+        # и worker хода ещё не запущен (под нагрузкой одного pause мало)
+        deadline = time.monotonic() + SUBMIT_WAIT
+        while entry.value and not app.closing and time.monotonic() < deadline:
+            await pilot.pause()
         await app.workers.wait_for_complete()
+        # конец хода -- finish_turn через call_from_thread: busy снят или выставлен closing
+        while app.busy and not app.closing and time.monotonic() < deadline:
+            await pilot.pause()
         await pilot.pause()
 
     def session_cost(self, app):
