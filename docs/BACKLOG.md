@@ -271,9 +271,9 @@ updated: 2026-10-22
 Связано: п. 23 (торговля, TradeProfile), п. 24 (питание), п. 28 (ремесленники), п. 29 (кто есть в поселении).
 
 ## 36. День и ночь: распорядок NPC и лавок
-status: planned
+status: started
 priority: medium
-updated: 2026-10-11
+updated: 2026-10-25
 
 (идея проектировщика, 2026-10-11, без приоритета)
 Мир учитывает время суток: ночью часть NPC спит и не работает, некоторые лавки закрыты.
@@ -898,15 +898,6 @@ updated: 2026-10-23
 подробностей», `result +=` для events и aging. `protocol.handlers.services.cure_service` 11, 12, 23–27 (тексты
 исключений `Invalid`), 59 (`apply_events`).
 
-## 161. Сдвиг времени с количеством
-status: idea
-priority: medium
-updated: 2026-10-23
-
-(живой прогон У1 `u1_live`, ходы 13–16 — docs/plan-u1.md) «Ждём 8 дней» дало ровно неделю: у `AdvanceTime` нет поля
-количества (`protocol/requests.py`, `advance_time` только `week`/…). На «бродить пару недель» движок дал 150 с и
-проверку Выживания. Сводка путает счёт дней («восемь суток», «шестнадцать дней» при 14 по часам).
-
 ## 162. Долгие дни в дикой местности без механики
 status: idea
 priority: low
@@ -1196,3 +1187,29 @@ updated: 2026-10-25
 
 Бизнес-план, этап 3 (docs/business-plan.md). Telegram Mini App и/или полноценный клиент, реклама. Зависит от: 198 и
 условия перехода этапа 2 (привлечение игрока окупается за 3 месяца подписки). Зачем: рост.
+
+## 202. Ускорить тесты и разбор мутантов без потери качества
+status: idea
+priority: medium
+updated: 2026-10-25
+
+Запрос проектировщика 2026-10-25: «оптимизировать наши тесты и ревью мутантов по времени, не теряя качества». Ресёрч
+кабана-кволити (шаг ДН, docs/plan-dn.md): `make cov` — 61 мин, ≈ 21,9 тыс. тестов в одном процессе на 8 ядрах;
+медленнее всего tests/unit/ui (Textual Pilot, ≈ 8 мин). Меры по порядку: (1) mutmut — `max_children` 4–6,
+`mutate_only_covered_lines`, отсев выживших по строкам `git diff -U0` (разбор с десятков до единиц); (2) pytest-xdist
+`-n 6 --dist loadfile` — оценка 61 → 15–30 мин, новая зависимость — согласие проектировщика, пробный прогон на
+зависимость от порядка; (3) маркер `slow` для Pilot-тестов вне полного прогона; (4) шумовые мутанты текстов
+сообщений — `# pragma: no mutate`/`do_not_mutate` по утверждённому списку; (5) по желанию pytest-testmon для итераций
+(зависимость). В AGENTS.md «≈ 45 мин без xdist» — по факту 61. Решение проектировщика: шаг после ДН.
+
+## 203. Выжившие мутанты старых строк из шага ДН
+status: idea
+priority: low
+updated: 2026-10-25
+
+mutmut шага ДН (docs/plan-dn.md) по изменённым функциям; выжившие на строках, которые ДН не меняла (AGENTS п. 4):
+`PromptBuilder.state_data` — 62 (location, locations, known_locations, boons_data, services_data и т.п.);
+`SummarizerPromptBuilder.state_data` — 40 (id, rolls, requests и т.п.); `MasterSession.run_round` — 14 (allowed,
+summarize_chapter/accepted_names, has_invalid, note); `rest_apply` — 9 (тело прежнего `rest`: cut, hit_dice,
+str(error), concentration_note — см. 148/176); `time_by_category` 73, 74 (`concentration_note`); `status_line` 9–11,
+28, 31 (ledger.report / 1e9, ac_summary). Разбирать при касании функций.

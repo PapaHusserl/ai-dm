@@ -22,6 +22,7 @@ from ai_dm.core.clock import Calendar, GameClock, Month
 from ai_dm.rules.time_ops import (
     advance_by_category,
     category_seconds,
+    day_part,
     ensure_min_advance,
     long_rest_seconds,
     rounds_to_seconds,
@@ -312,3 +313,28 @@ def test_route_path_ignores_link_to_missing_place():
 
     world.locations["vale"].connections.append(Connection(to="ghost", distance_m=1))
     assert route_path(world, "vale", "ghost") is None
+
+
+# day_part: утро с 6, день с 12, вечер с 18, ночь с 21 (до утра)
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "part"),
+    [
+        (0, 0, "ночь"), (5, 59, "ночь"), (6, 0, "утро"), (11, 59, "утро"),
+        (12, 0, "день"), (17, 59, "день"), (18, 0, "вечер"), (20, 59, "вечер"),
+        (21, 0, "ночь"), (23, 59, "ночь"),
+    ],
+)
+def test_day_part_boundaries(cfg, hour, minute, part):
+    assert day_part(hour * 3600 + minute * 60, cfg) == part
+
+
+def test_day_part_ignores_whole_days(cfg):
+    assert day_part(5 * DAY + 13 * 3600, cfg) == "день"
+
+
+def test_day_part_follows_config_boundaries():
+    cfg = load_rules_config(toml_text="[time.day_parts]\nmorning = 5\nnight = 22\n")
+    assert day_part(5 * 3600, cfg) == "утро"
+    assert day_part(21 * 3600, cfg) == "вечер"
+    assert day_part(22 * 3600, cfg) == "ночь"

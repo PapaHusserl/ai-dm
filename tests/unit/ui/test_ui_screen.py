@@ -330,6 +330,23 @@ def test_status_line_is_the_same_as_in_simple(registry, tmp_path):
     assert status_line(app) == simple_status(app)
 
 
+def test_status_line_has_day_part_word_after_time(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    app.bundle.world.clock.now_s = 21 * 3600 + 30 * 60
+    line = status_line(app)
+    assert f"{app.bundle.world.clock.to_date()} 21:30 ночь · сессия" in line
+
+
+def test_status_line_day_part_morning(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    app.bundle.world.clock.now_s = 6 * 3600
+    assert " 06:00 утро · сессия" in status_line(app)
+
+
 def test_status_line_shows_cursed_after_hp(registry, tmp_path):
     from ai_dm.game.scene import hero_of
     from ai_dm.state.creature import AppliedCondition

@@ -905,6 +905,133 @@ def test_run_round_without_invalid_returns_false_flag(tmp_path, registry, cfg):
     assert accepted == {"set_flag"}
 
 
+# until вместе с rest в одном раунде: отдых сам двигает время (ДН, живая игра)
+
+NIGHT_S = 2 * 3600 + 900
+
+
+def until_call(call_id="u1"):
+    return ToolCall(
+        id=call_id, name="advance_time", input={"type": "advance_time", "until": "morning"},
+    )
+
+
+def rest_call(call_id="r1"):
+    return ToolCall(id=call_id, name="rest", input={"type": "rest", "kind": "long"})
+
+
+def advance_call(until, call_id="u1"):
+    return ToolCall(
+        id=call_id, name="advance_time", input={"type": "advance_time", "until": until},
+    )
+
+
+def test_until_with_rest_ignores_until_none_string():
+    from ai_dm.master.session import until_with_rest
+
+    assert until_with_rest([advance_call("none"), rest_call()]) == set()
+
+
+def test_until_with_rest_ignores_until_empty_string():
+    from ai_dm.master.session import until_with_rest
+
+    assert until_with_rest([advance_call(""), rest_call()]) == set()
+
+
+def test_until_with_rest_ignores_missing_until():
+    from ai_dm.master.session import until_with_rest
+
+    call = ToolCall(id="u1", name="advance_time", input={"type": "advance_time"})
+    assert until_with_rest([call, rest_call()]) == set()
+
+
+def test_until_with_rest_picks_real_until_only_with_rest():
+    from ai_dm.master.session import until_with_rest
+
+    assert until_with_rest([advance_call("morning"), rest_call()]) == {"u1"}
+    assert until_with_rest([advance_call("morning")]) == set()
+
+
+def night_round(tmp_path, registry, cfg, calls):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = NIGHT_S
+    result = MasterResult()
+    blocks, has_invalid, accepted = session.run_round(ctx, calls, apply, result, "explore")
+    return ctx, blocks, has_invalid, accepted
+
+
+def test_round_until_then_rest_blocks_until_and_rests(tmp_path, registry, cfg):
+    ctx, blocks, has_invalid, accepted = night_round(
+        tmp_path, registry, cfg, [until_call(), rest_call()]
+    )
+    assert has_invalid is True
+    assert accepted == {"rest"}
+    assert [b.is_error for b in blocks] == [True, False]
+    assert ctx.bundle.world.clock.now_s == NIGHT_S + 8 * 3600
+
+
+def test_round_rest_then_until_is_the_same(tmp_path, registry, cfg):
+    ctx, blocks, has_invalid, accepted = night_round(
+        tmp_path, registry, cfg, [rest_call(), until_call()]
+    )
+    assert has_invalid is True
+    assert accepted == {"rest"}
+    assert [b.is_error for b in blocks] == [False, True]
+    assert ctx.bundle.world.clock.now_s == NIGHT_S + 8 * 3600
+
+
+def test_round_blocked_until_names_the_reason(tmp_path, registry, cfg):
+    _, blocks, _, _ = night_round(tmp_path, registry, cfg, [until_call(), rest_call()])
+    assert "until вместе с rest не ставь" in blocks[0].content
+
+
+def test_round_rest_in_first_round_blocks_until_in_second(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = NIGHT_S
+    result = MasterResult()
+    session.run_round(ctx, [rest_call()], apply, result, "explore")
+    after_rest = ctx.bundle.world.clock.now_s
+    blocks, has_invalid, accepted = session.run_round(
+        ctx, [until_call("u2")], apply, result, "explore"
+    )
+    assert has_invalid is True
+    assert accepted == set()
+    assert blocks[0].is_error is True
+    assert ctx.bundle.world.clock.now_s == after_rest
+
+
+def test_round_until_without_rest_works_as_before(tmp_path, registry, cfg):
+    ctx, blocks, has_invalid, accepted = night_round(tmp_path, registry, cfg, [until_call()])
+    assert has_invalid is False
+    assert accepted == {"advance_time"}
+    assert ctx.bundle.world.clock.now_s == 6 * 3600
+
+
+def test_round_hour_category_with_rest_is_not_blocked(tmp_path, registry, cfg):
+    hour = ToolCall(
+        id="h1", name="advance_time", input={"type": "advance_time", "category": "hour"},
+    )
+    _, blocks, has_invalid, accepted = night_round(tmp_path, registry, cfg, [hour, rest_call()])
+    assert has_invalid is False
+    assert accepted == {"advance_time", "rest"}
+
+
+def test_round_until_then_rest_in_later_round_rests_with_report_tag(tmp_path, registry, cfg):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = NIGHT_S
+    result = MasterResult()
+    session.run_round(ctx, [until_call()], apply, result, "explore")
+    _, has_invalid, accepted = session.run_round(
+        ctx, [rest_call("r2")], apply, result, "explore"
+    )
+    assert has_invalid is False
+    assert accepted == {"rest"}
+    assert "until_then_rest" in result.report_tags
+
+
 def test_run_without_world_text_has_empty_world_text_in_system(tmp_path, registry, cfg):
     adapter = scripted([text_step("Ветер.")])
     run(adapter, tmp_path, registry, cfg)

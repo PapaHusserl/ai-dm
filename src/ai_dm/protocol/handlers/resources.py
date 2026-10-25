@@ -871,6 +871,16 @@ def lodging_unpaid(ctx, request):
 
 
 def rest(ctx, request):
+    outcome = rest_apply(ctx, request)
+    if isinstance(outcome, Decision) and outcome.status in ("accepted", "clamped"):
+        ctx.rested = True
+        if ctx.until_done and outcome.report_tag is None:
+            # until уже сдвинул время в раньшем раунде хода: двойной сдвиг остаётся, тег репорта
+            outcome.report_tag = "until_then_rest"
+    return outcome
+
+
+def rest_apply(ctx, request):
     hero = ctx.hero
     world = ctx.bundle.world
     for check in (rest_redundant, lodging_unpaid, swap_invalid, prey_invalid):
@@ -922,21 +932,31 @@ def rest(ctx, request):
     return Decision(status="accepted", result=result, log=log)
 
 
+def time_log_seconds(text):
+    # N из строки «Время идёт: N с»; None, если строка другая
+    head, tail = TIME_LOG.split("{}")
+    if text.startswith(head) and text.endswith(tail) and text[len(head):-len(tail)].isdigit():
+        return int(text[len(head):-len(tail)])
+    return None
+
+
 def time_repeated(ctx, seconds):
-    # turn_seq хода из последних time_repeat_turns, где уже шёл тот же сдвиг времени без пути
-    # и дела (в requests только advance_time и offer_choices), или None
+    # turn_seq хода из последних time_repeat_turns, где уже шёл сдвиг времени, кратный seconds,
+    # без пути и дела (в requests только advance_time и offer_choices), или None
     window = ctx.cfg.limits.time_repeat_turns
     if window == 0:
         return None
     idle = {"advance_time", "offer_choices"}
     for turn in ctx.bundle.memory.recent_turns[-window:]:
-        if TIME_LOG.format(seconds) in turn.outcomes and set(turn.requests) <= idle:
+        shifts = [time_log_seconds(text) for text in turn.outcomes]
+        if any(n and n % seconds == 0 for n in shifts) and set(turn.requests) <= idle:
             return turn.turn_seq
     return None
 
 
 def time_by_category(ctx, request):
     world = ctx.bundle.world
+    count = request.count or 1
     if request.category == "hour":
         seq = time_repeated(ctx, ctx.cfg.time.advance_categories["hour"])
         if seq is not None:
@@ -946,11 +966,44 @@ def time_by_category(ctx, request):
                 "сцену по факту, а ожидание продолжай только по просьбе героя.",
                 report_tag="time_repeat",
             )
-    seconds = time_ops.advance_by_category(world.clock, request.category, ctx.cfg)
+    seconds = 0
+    probe = world.clock.model_copy(deep=True)
+    for _ in range(count):
+        step = time_ops.category_seconds(request.category, probe, ctx.cfg)
+        probe.advance(step)
+        seconds += step
+        if seconds > probe.calendar.seconds_in_year:
+            return Invalid(
+                code="count_over_year",
+                message="за раз можно сдвинуть время не больше чем на год: уменьши count",
+            )
+    world.clock.advance(seconds)
     result = {"seconds": seconds, "now_s": world.clock.now_s}
     log = [TIME_LOG.format(seconds)]
+    if count >= 2:
+        log.insert(0, passed_text(request.category, count))
     concentration_note(ctx, log, result)
     return Decision(status="accepted", result=result, log=log)
+
+
+TIME_UNITS = {
+    "hour": ("час", "часа", "часов"),
+    "day": ("день", "дня", "дней"),
+    "week": ("неделя", "недели", "недель"),
+    "month": ("месяц", "месяца", "месяцев"),
+}
+
+
+def plural_form(n, forms):
+    # русское склонение: 1 день, 2 дня, 5 дней; 11-14 -- «дней»
+    if 11 <= n % 100 <= 14 or n % 10 in (0, 5, 6, 7, 8, 9):
+        return forms[2]
+    return forms[0] if n % 10 == 1 else forms[1]
+
+
+def passed_text(category, count):
+    # «Прошло 8 дней»
+    return f"Прошло {count} {plural_form(count, TIME_UNITS[category])}"
 
 
 def time_until(ctx, request):
@@ -973,6 +1026,7 @@ def time_until(ctx, request):
             target += DAY
     seconds = target - now_s
     world.clock.advance(seconds)
+    ctx.until_done = True
     result = {"seconds": seconds, "now_s": world.clock.now_s}
     log = [TIME_LOG.format(seconds)]
     concentration_note(ctx, log, result)
@@ -990,6 +1044,13 @@ def until_invalid(request):
     return None
 
 
+def until_with_rest_invalid():
+    return Invalid(
+        code="until_with_rest",
+        message="отдых сам двигает время: until вместе с rest не ставь, для сна хватит rest long",
+    )
+
+
 def advance_time(ctx, request):
     chosen = [x for x in (request.category, request.travel_to, request.until) if x is not None]
     if len(chosen) != 1:
@@ -997,7 +1058,16 @@ def advance_time(ctx, request):
             code="category_travel_to_or_until",
             message="нужно ровно одно из category, travel_to и until",
         )
+    if request.count not in (None, 1) and request.category is None:
+        return Invalid(code="count_only_with_category", message="count задают только с category")
+    if request.count not in (None, 1) and request.category == "minute":
+        return Invalid(
+            code="count_not_with_minute",
+            message="minute — четверть часа, без count: для большего срока бери hour и count",
+        )
     if request.until is not None:
+        if ctx.rested:
+            return until_with_rest_invalid()
         return until_invalid(request) or time_until(ctx, request)
     if request.category is not None:
         return time_by_category(ctx, request)

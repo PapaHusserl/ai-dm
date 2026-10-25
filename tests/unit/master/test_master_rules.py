@@ -370,10 +370,14 @@ def test_rules_time_section_names_until_targets(word):
     assert word in xp_time_section()
 
 
-def test_rules_say_until_long_rest_then_rest_long():
+def test_rules_say_sleep_is_rest_long_without_until():
     text = xp_time_section()
-    at = text.index("`until: long_rest`")
-    assert "затем `rest long` в том же ходу" in text[at:at + 80]
+    at = text.index("Сон — только `rest long`")
+    assert "`until` вместе с `rest` не ставь" in text[at:at + 160]
+
+
+def test_rules_say_time_of_day_comes_from_time_hour_and_part():
+    assert "`time.hour` и `time.part`" in xp_time_section()
 
 
 def test_advance_time_schema_has_until_fields():

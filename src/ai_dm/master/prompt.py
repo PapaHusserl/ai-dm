@@ -18,7 +18,7 @@ from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
 from ai_dm.rules.boons import BOONS
 from ai_dm.rules.creatures import live_effects
-from ai_dm.rules.derived import always_prepared, companion_due, hero_feature_ids
+from ai_dm.rules.derived import always_prepared, clock_text, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.knowledge import prompt_entries
 from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
@@ -26,6 +26,7 @@ from ai_dm.rules.npc_names import name_hidden
 from ai_dm.rules.rests import hit_dice_pools
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.services import haggle_slot, kinds_of
+from ai_dm.rules.time_ops import day_part
 from ai_dm.rules.trade import (
     category_models,
     haggle_state,
@@ -605,7 +606,12 @@ class PromptBuilder:
         if hero.sheet.background.description:
             hero_data["background_description"] = hero.sheet.background.description
         data = {
-            "time": {"date": world.clock.to_date(), "now_s": world.clock.now_s},
+            "time": {
+                "date": world.clock.to_date(),
+                "now_s": world.clock.now_s,
+                "hour": clock_text(world.clock.now_s),
+                "part": day_part(world.clock.now_s, ctx.cfg),
+            },
             "location": location,
             "locations": locations,
             "known_npcs": known_npcs,

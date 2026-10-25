@@ -91,7 +91,7 @@ def test_travel_log_does_not_name_stayers(registry, cfg):
     assert "Фермер" not in line
 
 
-def test_time_advance_by_category_does_not_move_followers(registry, cfg):
+def test_advance_time_category_does_not_move_followers(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_follower(ctx, "bran", "Бран")
     apply(ctx, req("advance_time", category="hour"))

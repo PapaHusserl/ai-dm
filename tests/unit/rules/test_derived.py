@@ -40,6 +40,7 @@
 # Данные героев собираются прямо в тесте (без build_character).
 import pytest
 
+from ai_dm.core.clock import DAY
 from ai_dm.rules.derived import (
     ability_mod,
     ability_modifier,
@@ -47,6 +48,7 @@ from ai_dm.rules.derived import (
     armor_class_parts,
     armor_dex,
     attack_bonus,
+    clock_text,
     damage_bonus,
     effect_amount,
     gear_ac,
@@ -594,3 +596,14 @@ def test_hero_ac_parts_note_a_zero_cap_only_when_dexterity_is_lost(registry):
 def test_hero_ac_parts_have_no_note_for_free_dexterity(registry):
     parts = armor_class_parts(make_fighter(armor="leather_armor"), registry)
     assert parts[1] == ("Лов", 1, "")
+
+
+@pytest.mark.parametrize(
+    ("now_s", "text"),
+    [
+        (0, "00:00"), (2 * 3600 + 15 * 60, "02:15"), (14 * 3600 + 45 * 60, "14:45"),
+        (23 * 3600 + 59 * 60 + 59, "23:59"), (5 * DAY + 9 * 3600 + 5 * 60, "09:05"),
+    ],
+)
+def test_clock_text_is_hh_mm_of_the_day(now_s, text):
+    assert clock_text(now_s) == text

@@ -240,6 +240,24 @@ def test_advance_time_all_fields_optional():
     assert model.pace in (None, "normal")
 
 
+def test_advance_time_count_zero_is_rejected():
+    with pytest.raises(ValidationError):
+        parse_request({"type": "advance_time", "category": "day", "count": 0})
+
+
+def test_advance_time_count_negative_is_rejected():
+    with pytest.raises(ValidationError):
+        parse_request({"type": "advance_time", "category": "day", "count": -3})
+
+
+def test_advance_time_count_one_is_neutral_none():
+    assert parse_request({"type": "advance_time", "category": "day", "count": 1}).count is None
+
+
+def test_advance_time_count_eight_is_kept():
+    assert parse_request({"type": "advance_time", "category": "day", "count": 8}).count == 8
+
+
 def test_advance_time_category_and_pace_are_literals():
     with pytest.raises(ValidationError):
         parse_request({"type": "advance_time", "category": "fortnight"})

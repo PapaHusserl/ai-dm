@@ -2,6 +2,7 @@ import time
 from datetime import UTC, datetime
 from importlib import resources
 
+from ai_dm.core.clock import DAY, GameClock
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
 from ai_dm.master.prompt import dump
 from ai_dm.master.session import MasterSession, TurnFailed, soft_failure
@@ -120,11 +121,14 @@ class SummarizerPromptBuilder:
             }
             for t in scene_list
         ]
+        start = GameClock(now_s=scene.started_at_s, calendar=world.clock.calendar)
         return {
             "scene": {
                 "id": scene.id, "closed_reason": scene.closed_reason,
                 "location": None if place is None else place.name,
+                "date_start": start.to_date(),
                 "date": world.clock.to_date(),
+                "days": world.clock.now_s // DAY - scene.started_at_s // DAY,
             },
             "hint": {"title": scene.title, "summary": scene.summary},
             "hero_name": ctx.hero.name,

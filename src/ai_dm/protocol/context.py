@@ -31,6 +31,9 @@ class TurnContext:
         self.engine_rolls = set()
         self.events = []
         self.marks = []
+        # за ход принят rest / принят until (двойной сдвиг времени: until с rest в одном ходе)
+        self.rested = False
+        self.until_done = False
         self.chapter_title = None
         self.scene_summary = None
         # запасной накопитель, если сцены нет

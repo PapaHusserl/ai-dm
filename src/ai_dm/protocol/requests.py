@@ -441,9 +441,24 @@ class AdvanceTime(Request):
     )
     until_hour: int = Field(-1, description="Час 0-23 для until=hour; иначе -1.")
     pace: Literal["slow", "normal", "fast"] = Field("normal", description="Темп пути.")
+    count: int = Field(
+        1,
+        description=(
+            "Сколько раз category подряд («8 дней» = day + 8); 1 = один; не больше года; "
+            "minute (четверть часа) без count."
+        ),
+    )
     NEUTRAL: ClassVar[dict] = {
-        "category": "none", "travel_to": "", "until": "none", "until_hour": -1,
+        "category": "none", "travel_to": "", "until": "none", "until_hour": -1, "count": 1,
     }
+
+    @field_validator("count")
+    @classmethod
+    def count_in_range(cls, value):
+        # ge в strict-схему не попадает -- границу проверяем здесь
+        if value < 1:
+            raise ValueError("count: не меньше 1")
+        return value
 
     @field_validator("until_hour")
     @classmethod

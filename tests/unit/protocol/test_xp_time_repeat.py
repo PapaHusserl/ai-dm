@@ -8,6 +8,7 @@
 #     offer_choices} -> turn_seq.
 #   advance_time hour при повторе -> rejected (report_tag "time_repeat"), часы и концентрация
 #     не меняются.
+import pytest
 from protocol_kit import dump, make_bundle, make_ctx, req
 
 from ai_dm.config.settings import load_rules_config
@@ -355,6 +356,324 @@ def test_until_is_not_affected_by_hour_record(registry, cfg):
     d = apply(ctx, req("advance_time", until="hour", until_hour=6))
     assert d.status == "accepted"
     assert d.log == [HOUR_LOG]
+
+
+# advance_time count (ДН)
+
+def counted(category, count):
+    return req("advance_time", category=category, count=count)
+
+
+def test_count_eight_days_moves_clock_eight_days(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    start = ctx.bundle.world.clock.now_s
+    d = apply(ctx, counted("day", 8))
+    assert d.status == "accepted"
+    assert d.result == {"seconds": 8 * 86400, "now_s": start + 8 * 86400}
+    assert ctx.bundle.world.clock.now_s == start + 8 * 86400
+
+
+def test_count_eight_days_log_has_passed_and_time_lines(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, counted("day", 8)).log == ["Прошло 8 дней", "Время идёт: 691200 с"]
+
+
+def test_count_two_days_log_uses_genitive_singular(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, counted("day", 2)).log[0] == "Прошло 2 дня"
+
+
+def test_count_three_hours_log(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, counted("hour", 3))
+    assert d.log == ["Прошло 3 часа", "Время идёт: 10800 с"]
+
+
+def test_count_two_weeks_log(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, counted("week", 2))
+    assert d.log == ["Прошло 2 недели", "Время идёт: 1209600 с"]
+
+
+def test_count_two_months_log(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, counted("month", 2)).log[0] == "Прошло 2 месяца"
+
+
+def test_count_with_minute_is_invalid_and_clock_stays(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    start = ctx.bundle.world.clock.now_s
+    d = apply(ctx, counted("minute", 10))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_not_with_minute"
+    assert ctx.bundle.world.clock.now_s == start
+
+
+def test_minute_without_count_is_900_seconds(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, req("advance_time", category="minute"))
+    assert d.result["seconds"] == 900
+    assert d.log == ["Время идёт: 900 с"]
+
+
+def test_minute_with_count_one_is_same_as_without_count(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, counted("minute", 1))
+    assert d.status == "accepted"
+    assert d.result["seconds"] == 900
+    assert d.log == ["Время идёт: 900 с"]
+
+
+def test_count_two_months_sums_calendar_months(registry, cfg):
+    from ai_dm.core.clock import Calendar, GameClock, Month
+
+    ctx = make_ctx_with(registry, cfg, [])
+    cal = Calendar(months=[
+        Month(name="А", days=30), Month(name="Б", days=31), Month(name="В", days=20),
+    ])
+    ctx.bundle.world.clock = GameClock.from_date("0001-01-01", cal)
+    d = apply(ctx, counted("month", 2))
+    assert d.result["seconds"] == (30 + 31) * 86400
+    assert ctx.bundle.world.clock.to_date() == "0001-03-01"
+
+
+def test_count_over_year_is_invalid_and_clock_stays(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    year_days = ctx.bundle.world.clock.calendar.days_in_year
+    start = ctx.bundle.world.clock.now_s
+    d = apply(ctx, counted("day", year_days + 1))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_over_year"
+    assert ctx.bundle.world.clock.now_s == start
+
+
+def test_count_exactly_one_year_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    year_days = ctx.bundle.world.clock.calendar.days_in_year
+    d = apply(ctx, counted("day", year_days))
+    assert d.status == "accepted"
+    assert d.result["seconds"] == year_days * 86400
+
+
+def test_count_over_year_in_months_is_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    months = len(ctx.bundle.world.clock.calendar.months)
+    assert apply(ctx, counted("month", months + 1)).code == "count_over_year"
+
+
+def test_count_one_gives_old_log_only(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, counted("day", 1)).log == ["Время идёт: 86400 с"]
+
+
+def test_count_absent_gives_old_log_only(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, req("advance_time", category="day")).log == ["Время идёт: 86400 с"]
+
+
+def test_count_with_travel_to_is_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, req("advance_time", travel_to="forest", count=3))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_only_with_category"
+
+
+def test_count_with_until_is_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, req("advance_time", until="morning", count=3))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_only_with_category"
+
+
+def test_count_two_with_travel_to_is_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, req("advance_time", travel_to="forest", count=2))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_only_with_category"
+
+
+def test_count_two_with_minute_is_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, counted("minute", 2))
+    assert isinstance(d, Invalid)
+    assert d.code == "count_not_with_minute"
+
+
+def test_count_one_with_travel_to_is_not_invalid(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    d = apply(ctx, req("advance_time", travel_to="forest", count=1))
+    assert not isinstance(d, Invalid)
+
+
+def test_count_hour_after_same_total_record_is_rejected_as_repeat(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+    d = apply(ctx, counted("hour", 3))
+    assert d.status == "rejected"
+    assert d.report_tag == "time_repeat"
+
+
+def test_count_hour_after_single_hour_record_is_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    d = apply(ctx, counted("hour", 2))
+    assert d.status == "rejected"
+    assert d.report_tag == "time_repeat"
+
+
+def test_hour_after_three_hours_record_is_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+    assert apply(ctx, hour()).status == "rejected"
+
+
+def test_count_hour_after_three_hours_record_other_request_is_not_repeat(registry, cfg):
+    ctx = make_ctx_with(
+        registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time", "skill_check"])],
+    )
+    assert apply(ctx, counted("hour", 3)).status == "accepted"
+
+
+def test_hour_after_900_seconds_record_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 900 с"], ["advance_time"])])
+    assert apply(ctx, hour()).status == "accepted"
+
+
+def test_hour_after_day_record_is_rejected_as_repeat(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 86400 с"], ["advance_time"])])
+    d = apply(ctx, hour())
+    assert d.status == "rejected"
+    assert d.report_tag == "time_repeat"
+
+
+def test_hour_after_until_giving_whole_hours_is_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 28800 с"], ["advance_time"])])
+    assert apply(ctx, hour()).status == "rejected"
+
+
+def test_time_log_seconds_parses_number_and_ignores_other_lines():
+    from ai_dm.protocol.handlers.resources import time_log_seconds
+
+    assert time_log_seconds("Время идёт: 10800 с") == 10800
+    assert time_log_seconds("Путь: до леса") is None
+    assert time_log_seconds("Время идёт: много с") is None
+
+
+def test_hour_without_count_after_hour_record_is_still_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    assert apply(ctx, hour()).status == "rejected"
+
+
+def test_count_day_after_hour_record_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    assert apply(ctx, counted("day", 2)).status == "accepted"
+
+
+# until и rest в одном ходе (ctx.rested / ctx.until_done)
+
+def until_morning():
+    return req("advance_time", until="morning")
+
+
+def test_until_after_accepted_rest_is_invalid_and_clock_stays(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    ctx.bundle.world.clock.now_s = 2 * 3600 + 900
+    assert apply(ctx, req("rest", kind="long")).status == "accepted"
+    after_rest = ctx.bundle.world.clock.now_s
+    d = apply(ctx, until_morning())
+    assert isinstance(d, Invalid)
+    assert d.code == "until_with_rest"
+    assert ctx.bundle.world.clock.now_s == after_rest
+
+
+def test_until_without_rest_still_moves_to_morning(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    ctx.bundle.world.clock.now_s = 2 * 3600 + 900
+    d = apply(ctx, until_morning())
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 6 * 3600
+
+
+def test_category_after_rest_is_not_blocked(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, req("rest", kind="long")).status == "accepted"
+    assert apply(ctx, req("advance_time", category="minute")).status == "accepted"
+
+
+def test_rest_after_accepted_until_gets_report_tag(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    ctx.bundle.world.clock.now_s = 2 * 3600 + 900
+    assert apply(ctx, until_morning()).status == "accepted"
+    d = apply(ctx, req("rest", kind="long"))
+    assert d.status == "accepted"
+    assert d.report_tag == "until_then_rest"
+
+
+def test_until_after_rejected_rest_is_not_blocked(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    now_s = 2 * 3600 + 900
+    ctx.bundle.world.clock.now_s = now_s
+    ctx.hero.long_rest_end_s = now_s
+    assert apply(ctx, req("rest", kind="long")).status == "rejected"
+    assert ctx.rested is False
+    assert apply(ctx, until_morning()).status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 6 * 3600
+
+
+def test_until_then_rest_does_not_overwrite_existing_report_tag(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    ctx.bundle.world.clock.now_s = 2 * 3600 + 900
+    assert apply(ctx, until_morning()).status == "accepted"
+    d = apply(ctx, req("rest", kind="short", hit_dice=99))
+    assert d.status == "clamped"
+    assert d.report_tag == "limit-exceeded"
+
+
+def test_rest_without_until_has_no_report_tag(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    assert apply(ctx, req("rest", kind="long")).report_tag is None
+
+
+# plural_form, passed_text
+
+@pytest.mark.parametrize(
+    ("n", "word"),
+    [
+        (1, "день"), (2, "дня"), (3, "дня"), (4, "дня"), (5, "дней"), (10, "дней"),
+        (11, "дней"), (12, "дней"), (13, "дней"), (14, "дней"), (15, "дней"),
+        (20, "дней"), (21, "день"), (22, "дня"), (25, "дней"), (100, "дней"),
+        (101, "день"), (111, "дней"), (112, "дней"), (114, "дней"), (121, "день"),
+        (110, "дней"), (115, "дней"), (211, "дней"), (213, "дней"), (203, "дня"),
+        (6, "дней"), (7, "дней"), (8, "дней"), (9, "дней"), (19, "дней"), (27, "дней"),
+    ],
+)
+def test_plural_form_for_days(n, word):
+    from ai_dm.protocol.handlers.resources import plural_form
+
+    assert plural_form(n, ("день", "дня", "дней")) == word
+
+
+def test_passed_text_hours_five():
+    from ai_dm.protocol.handlers.resources import passed_text
+
+    assert passed_text("hour", 5) == "Прошло 5 часов"
+
+
+def test_passed_text_months_five():
+    from ai_dm.protocol.handlers.resources import passed_text
+
+    assert passed_text("month", 5) == "Прошло 5 месяцев"
+
+
+def test_passed_text_weeks_and_days():
+    from ai_dm.protocol.handlers.resources import passed_text
+
+    assert passed_text("week", 3) == "Прошло 3 недели"
+    assert passed_text("day", 21) == "Прошло 21 день"
+
+
+def test_passed_text_has_no_minute_unit():
+    from ai_dm.protocol.handlers.resources import passed_text
+
+    with pytest.raises(KeyError):
+        passed_text("minute", 2)
 
 
 def test_known_limitation_two_hours_in_one_turn_are_not_caught(registry, cfg):

@@ -103,3 +103,5 @@ cha  # unused variable (protocol/requests.py)
 until_s  # unused variable (state/creature.py: Concentration, TempForm)
 temp_hp_granted  # unused variable (state/creature.py)
 temp_form  # unused variable (state/creature.py)
+# ДН (решение Влада, плана п. 6): сдвиг на одну категорию, покрыт тестами rules/test_time_ops.py
+advance_by_category  # unused function (rules/time_ops.py)

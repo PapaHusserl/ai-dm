@@ -132,6 +132,24 @@ def test_message_has_date_and_time(registry, cfg):
     assert time["now_s"] == 100_000
 
 
+def test_message_time_part_is_night_at_22(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = 22 * 3600
+    assert data_of(build(ctx))["time"]["part"] == "ночь"
+
+
+def test_message_time_hour_is_hh_mm(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = 3 * 86400 + 14 * 3600 + 45 * 60
+    assert data_of(build(ctx))["time"]["hour"] == "14:45"
+
+
+def test_message_time_part_is_morning_at_6(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = 6 * 3600
+    assert data_of(build(ctx))["time"]["part"] == "утро"
+
+
 def test_message_has_hero_location(registry, cfg):
     assert data_of(build(make_ctx(registry, cfg)))["location"] == {"id": "vale", "name": "Вейл"}
 

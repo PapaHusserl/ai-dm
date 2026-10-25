@@ -49,7 +49,10 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # Фикс dusk П2 (142): правило scene_mood -- метка переносится, если те же место и NPC
 # (narrator_rules.md:124; замер 23475; 23460 -> 23490).
 # 182: инструмент wash и фраза о мытье (замер 23661: rules 11917, tools 11744; 23490 -> 23680).
-STATIC_MAX = 23680
+# ДН: фразы о time.part, ночном визите, count (minute без count) и location_create перед
+# travel_to + поле count в advance_time, time.hour и правило «сон — rest long, без until»
+# (замер 23921; 23680 -> 23940).
+STATIC_MAX = 23940
 
 MODES = sorted(MODE_TOOLS)
 

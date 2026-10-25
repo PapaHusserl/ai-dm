@@ -11,6 +11,7 @@ from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolCall, T
 from ai_dm.master.leaks import MARKED_LINE, cut_choice_head, cut_leaks, looks_like_plan
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.decision import Invalid
+from ai_dm.protocol.handlers.resources import until_with_rest_invalid
 from ai_dm.protocol.render import render_tool_result
 from ai_dm.protocol.requests import IMPORT_MODE, parse_request
 from ai_dm.protocol.schema import tool_set
@@ -29,6 +30,16 @@ REQUIRED_BY_MODE = {
 SINGLE_SHOT_MODES = (
     "summarize_scene", "summarize_chapter", "hero_background", "hero_sheet", IMPORT_MODE
 )
+
+
+def until_with_rest(calls):
+    # id вызовов advance_time с until в раунде, где есть rest: отдых сам двигает время
+    if not any(c.name == "rest" for c in calls):
+        return set()
+    return {
+        c.id for c in calls
+        if c.name == "advance_time" and c.input.get("until") not in (None, "", "none")
+    }
 
 
 def api_tokens(usage, provider):
@@ -298,8 +309,12 @@ class MasterSession:
         blocks = []
         has_invalid = False
         accepted_names = set()
+        blocked = until_with_rest(calls)
         for call in calls:
-            outcome = self.run_call(ctx, call, executor, result, mode)
+            if call.id in blocked:
+                outcome = until_with_rest_invalid()
+            else:
+                outcome = self.run_call(ctx, call, executor, result, mode)
             if isinstance(outcome, Invalid):
                 has_invalid = True
             else:

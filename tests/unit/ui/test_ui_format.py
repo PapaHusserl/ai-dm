@@ -232,7 +232,7 @@ def test_status_line_keeps_the_content(registry, tmp_path):
     app = text_app(registry, tmp_path, [text_step()])
     raw = play(app, []).raw
     status = next(line for line in raw if "HP 12/12" in line)
-    assert re.search(r"HP 12/12 · .+ \d\d:\d\d · сессия \$\d+\.\d+", status)
+    assert re.search(r"HP 12/12 · .+ \d\d:\d\d (утро|день|вечер|ночь) · сессия \$\d+\.\d+", status)
 
 
 def test_status_line_is_after_each_turn(registry, tmp_path):

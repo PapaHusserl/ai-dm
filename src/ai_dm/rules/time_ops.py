@@ -24,6 +24,21 @@ def category_seconds(category: str, clock: GameClock, cfg: RulesConfig) -> int:
     return cfg.time.advance_categories[category]
 
 
+DAY_PART_NAMES = {"morning": "утро", "day": "день", "evening": "вечер", "night": "ночь"}
+
+
+def day_part(now_s: int, cfg: RulesConfig) -> str:
+    # часть суток словом; ночь -- с часа night и до утра
+    hour = now_s % DAY // 3600
+    starts = cfg.time.day_parts
+    if hour >= starts["night"] or hour < starts["morning"]:
+        return DAY_PART_NAMES["night"]
+    for key in ("evening", "day"):
+        if hour >= starts[key]:
+            return DAY_PART_NAMES[key]
+    return DAY_PART_NAMES["morning"]
+
+
 def travel_seconds(distance_m: int, pace: str, cfg: RulesConfig) -> int:
     if pace not in cfg.time.travel_pace:
         raise ValueError(f"неизвестный темп: {pace!r}")

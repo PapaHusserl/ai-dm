@@ -2,15 +2,15 @@ from dataclasses import dataclass
 
 from ai_dm.art import PictureState
 from ai_dm.audio import SoundState
-from ai_dm.core.clock import DAY
 from ai_dm.game.battle_map import battle_map_lines, part_hp, part_name
 from ai_dm.game.boundary import boundary_lines
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import boon_effects, condition_names
 from ai_dm.llm.cost import check_limit
-from ai_dm.rules.derived import ac_summary
+from ai_dm.rules.derived import ac_summary, clock_text
 from ai_dm.rules.inventory import entry_name
 from ai_dm.rules.money import format_cp
+from ai_dm.rules.time_ops import day_part
 from ai_dm.ui.combat_menu import TargetChip
 from ai_dm.ui.format import COMBAT_HINT
 
@@ -47,7 +47,6 @@ class Block:
 def status_line(app):
     hero = hero_of(app.bundle)
     clock = app.bundle.world.clock
-    minutes = clock.now_s % DAY // 60
     spent = app.ledger.report(app.now().astimezone().date()).session.total_nano / 1e9
     names = condition_names(hero, app.registry)
     names += [name for name, _until in boon_effects(hero, clock.now_s)]
@@ -55,7 +54,8 @@ def status_line(app):
     return (
         f"HP {hero.creature.hp_current}/{hero.creature.hp_max}{conditions} · "
         f"{ac_summary(hero, app.registry, clock.now_s)} · "
-        f"{clock.to_date()} {minutes // 60:02d}:{minutes % 60:02d} · сессия ${spent:.4f}"
+        f"{clock.to_date()} {clock_text(clock.now_s)} "
+        f"{day_part(clock.now_s, app.settings.rules)} · сессия ${spent:.4f}"
     )
 
 

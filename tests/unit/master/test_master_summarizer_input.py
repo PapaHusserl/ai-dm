@@ -3,6 +3,7 @@
 # сцены; локации: visited=True и локация сцены. Герой в protocol_kit стоит в "vale".
 from master_kit import make_bundle, make_ctx, turn_record
 
+from ai_dm.core.clock import DAY, GameClock
 from ai_dm.master.summarizer import SummarizerPromptBuilder
 from ai_dm.state.world import NPC
 
@@ -171,6 +172,42 @@ def test_npc_with_empty_name_is_not_found_by_empty_string(registry, cfg):
     add_npc(bundle, "nameless", name="", location_id="forest")
     scene_turn(bundle, 1, "Тихо.")
     assert "nameless" not in npc_ids(state_of(registry, cfg, bundle))
+
+
+def test_scene_has_start_and_end_dates_and_days(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.started_at_s = 1 * DAY + 3600
+    bundle.world.clock.now_s = 15 * DAY + 7200
+    scene = state_of(registry, cfg, bundle)["scene"]
+    assert scene["date_start"] == GameClock(now_s=1 * DAY).to_date()
+    assert scene["date"] == GameClock(now_s=15 * DAY).to_date()
+    assert scene["days"] == 14
+
+
+def test_scene_days_is_calendar_difference_across_midnight(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.started_at_s = 3 * DAY + 23 * 3600
+    bundle.world.clock.now_s = 4 * DAY + 3600
+    assert state_of(registry, cfg, bundle)["scene"]["days"] == 1
+
+
+def test_scene_start_date_uses_world_calendar(registry, cfg):
+    from ai_dm.core.clock import Calendar, Month
+
+    bundle = make_bundle(registry)
+    bundle.world.clock = GameClock(
+        now_s=15 * DAY,
+        calendar=Calendar(months=[Month(name="Первый", days=10), Month(name="Второй", days=10)]),
+    )
+    bundle.session.current_scene.started_at_s = 12 * DAY
+    assert state_of(registry, cfg, bundle)["scene"]["date_start"] == "0001-02-03"
+
+
+def test_scene_days_is_zero_within_one_day(registry, cfg):
+    bundle = make_bundle(registry)
+    bundle.session.current_scene.started_at_s = 3 * DAY + 3600
+    bundle.world.clock.now_s = 3 * DAY + 20 * 3600
+    assert state_of(registry, cfg, bundle)["scene"]["days"] == 0
 
 
 def test_hidden_real_name_not_in_summarizer_text(registry, cfg):

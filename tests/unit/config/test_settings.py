@@ -324,6 +324,68 @@ def test_enemy_chance_out_of_range_is_rejected(value):
         load_rules_config(toml_text=f"[disarm]\nenemy_chance = {value}\n")
 
 
+def test_default_day_parts():
+    assert load_rules_config().time.day_parts == {
+        "morning": 6, "day": 12, "evening": 18, "night": 21,
+    }
+
+
+def test_day_parts_valid_override_is_accepted():
+    cfg = load_rules_config(toml_text="[time.day_parts]\nmorning = 5\nnight = 23\n")
+    assert cfg.time.day_parts == {"morning": 5, "day": 12, "evening": 18, "night": 23}
+
+
+def test_day_parts_extra_key_is_rejected():
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text="[time.day_parts]\ndusk = 20\n")
+
+
+@pytest.mark.parametrize("body", ["morning = 13", "day = 18", "evening = 21", "night = 12"])
+def test_day_parts_not_ascending_is_rejected(body):
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text=f"[time.day_parts]\n{body}\n")
+
+
+@pytest.mark.parametrize("body", ["morning = -1", "night = 24"])
+def test_day_parts_hour_out_of_day_is_rejected(body):
+    with pytest.raises(ValidationError):
+        load_rules_config(toml_text=f"[time.day_parts]\n{body}\n")
+
+
+def time_config(day_parts):
+    from ai_dm.config.settings import TimeConfig
+
+    return TimeConfig(
+        round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, morning_hour=6,
+        day_parts=day_parts, advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+    )
+
+
+def test_day_parts_direct_valid_is_accepted():
+    parts = {"morning": 6, "day": 12, "evening": 18, "night": 21}
+    assert time_config(parts).day_parts == parts
+
+
+def test_day_parts_missing_key_is_rejected():
+    with pytest.raises(ValidationError):
+        time_config({"morning": 6, "day": 12, "evening": 18})
+
+
+def test_day_parts_keys_in_wrong_order_are_rejected():
+    with pytest.raises(ValidationError):
+        time_config({"day": 12, "morning": 6, "evening": 18, "night": 21})
+
+
+def test_day_parts_equal_hours_are_rejected():
+    with pytest.raises(ValidationError):
+        time_config({"morning": 6, "day": 6, "evening": 18, "night": 21})
+
+
+def test_day_parts_edge_hours_0_and_23_are_accepted():
+    toml = "[time.day_parts]\nmorning = 0\nday = 1\nevening = 2\nnight = 23\n"
+    assert load_rules_config(toml_text=toml).time.day_parts["night"] == 23
+
+
 def test_disarm_override_keeps_the_unarmed_types():
     cfg = load_rules_config(toml_text="[disarm]\nenemy_chance = 10\n")
     assert cfg.disarm.unarmed_types == ["humanoid", "fey"]

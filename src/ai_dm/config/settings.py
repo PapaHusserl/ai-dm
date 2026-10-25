@@ -22,8 +22,20 @@ class TimeConfig(BaseModel):
     min_advance_s: int
     # час «утра» для advance_time until=morning
     morning_hour: int = Field(ge=0, le=23)
+    # начало частей суток (час): morning, day, evening, night
+    day_parts: dict[str, int]
     advance_categories: dict[str, int]
     travel_pace: dict[str, int]
+
+    @field_validator("day_parts")
+    @classmethod
+    def check_day_parts(cls, value: dict[str, int]) -> dict[str, int]:
+        if list(value) != ["morning", "day", "evening", "night"]:
+            raise ValueError("day_parts: ровно ключи morning, day, evening, night по порядку")
+        hours = list(value.values())
+        if any(not 0 <= h <= 23 for h in hours) or hours != sorted(set(hours)):
+            raise ValueError("day_parts: часы 0-23 по возрастанию")
+        return value
 
 
 class CombatConfig(BaseModel):

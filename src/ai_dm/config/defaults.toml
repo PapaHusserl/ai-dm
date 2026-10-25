@@ -5,6 +5,13 @@ long_rest_s = 28800
 min_advance_s = 600
 morning_hour = 6
 
+# начало частей суток (час): утро, день, вечер, ночь; ночь идёт до утра
+[time.day_parts]
+morning = 6
+day = 12
+evening = 18
+night = 21
+
 [time.advance_categories]
 minute = 900
 hour = 3600
