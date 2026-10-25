@@ -17,7 +17,7 @@ MUT_CHILDREN ?= 4
 # число воркеров pytest-xdist в make cov (mutmut гоняет тесты без -n)
 XDIST ?= 4
 
-.PHONY: quality lint smells cov dead prompt-budget sim-grid install-check linux-check mutate mutate-results mutate-diff
+.PHONY: quality lint smells cov test-fast dead prompt-budget sim-grid install-check linux-check mutate mutate-results mutate-diff
 
 quality: lint smells dead cov
 
@@ -30,6 +30,10 @@ smells:
 
 cov:
 	uv run pytest -q -n $(XDIST) --dist loadfile --cov --cov-report=term --durations=30
+
+# итерации: без медленных Pilot-тестов (маркер slow); make cov маркер не фильтрует
+test-fast:
+	uv run pytest -q -n $(XDIST) --dist loadfile -m "not slow"
 
 dead:
 	uv run vulture

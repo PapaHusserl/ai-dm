@@ -148,6 +148,14 @@ class Tui:
         return None if match is None else float(match.group(1).replace(",", "."))
 
 
+def pytest_collection_modifyitems(config, items):
+    # хук conftest видит все собранные тесты, не только каталога: slow ставим по пути (шаг 202, П3)
+    here = Path(__file__).resolve().parent
+    for item in items:
+        if here in item.path.resolve().parents:
+            item.add_marker(pytest.mark.slow)
+
+
 @pytest.fixture
 def tui():
     return Tui()
