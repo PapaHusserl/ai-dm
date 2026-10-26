@@ -47,6 +47,30 @@ Kimi-K2.6 у Together AI быстрее: ~472 ток/с ([AA](https://artificial
 
 Сэкономить при той же прозе, скорее всего, не выйдет: реальная альтернатива — «та же цена, другой хостер». Gemini в 2027 году подорожает вдвое, и тогда V4-Pro и K2.6 станут дешевле его примерно в 2 раза.
 
+По 18+ данных мало. В пробу 185 добавить на каждой модели 1–2 хода с откровенной сценой в мире Влада и смотреть отказы, обрывы и смягчения. На DeepInfra ограничения правилами хостера не видно; у gemini 18+ упирается в политику Google, а не только в настройки safety settings.
+
+## Откровенные сцены (18+) — дополнение от 2026-10-26
+
+Влад уточнил: речь об откровенных сценах 18+. Про жёсткое насилие отдельно не искал. Мимоходом нашёл только запрет Google на контент, который «facilitates violence», в Prohibited Use Policy (17.12.2024). Как это применяется к художественному тексту — не проверено.
+
+**Правила хостеров**
+
+| Хостер | Запрет 18+ в правилах | Фильтр и его настройка | Источник |
+|---|---|---|---|
+| DeepInfra | Явного запрета нет. Под запретом только «illegal, fraudulent, deceptive purpose» (п. 11a). | Фильтрация не описана. Данные могут храниться для расследования «abuse». Отдельной AUP на странице нет; есть ли она где-то ещё — не проверено. | [DeepInfra ToS, ред. 15.10.2026](https://deepinfra.com/terms) |
+| Google (Gemini API) | Запрещён «sexually explicit content… for the purpose of pornography or sexual gratification». Исключение — «artistic considerations», на усмотрение Google. | Категорию `HARM_CATEGORY_SEXUALLY_EXPLICIT` можно поставить на `BLOCK_NONE`. По официальной странице, у новых стабильных моделей «Block none» стоит по умолчанию (отдельно для 3.8-flash не проверено). По отзывам, модель всё равно решает сама. | [Generative AI Prohibited Use Policy, 17.12.2024](https://policies.google.com/terms/generative-ai/use-policy); [safety settings](https://ai.google.dev/docs/safety_setting_gemini); [форум, PG-13 romance](https://discuss.ai.google.dev/t/is-the-gemini-api-basically-useless-for-pg-13-romance-stories/37629) (дата не проверена) |
+
+**Поведение моделей**
+
+| Модель | Пропускает, смягчает или отказывает | Русский | Источник |
+|---|---|---|---|
+| gemini-3.8-flash | Модель не uncensored. Даже при `BLOCK_NONE` возможны обрывы и смягчения, по отзывам на старших версиях. Для 3.8 не проверено. | не проверено | см. выше |
+| DeepSeek-V4-Pro | Отзывы противоречат друг другу. По одному, модель «не uncensored» и при аккуратной подаче долго держит роль до дисклеймеров. По другому, явное отсекает классификатор, причём стабильно. Это сайт, продающий NSFW-инструменты. | не проверено | [Picasso IA, обзор ролевой игры](https://blog.picassoia.com/deepseek-v4-pro-roleplay-nsfw-review), [Picasso IA, adult content](https://blog.picassoia.com/deepseek-v4-pro-adult-content-what-it-allows) (даты не проверены) |
+| Kimi-K2.6 | Якобы спокойно пишет взрослый контент в художественном контексте. Это рекламный листикл без тестов. | не проверено | [Picasso IA](https://blog.picassoia.com/best-free-ai-chatbots-for-nsfw-conversations) (дата не проверена) |
+| gemma-4-31B-it-turbo | Данных о стоковой модели нет. Существуют «decensored»-форки (Heretic, «−97 % отказов» по замеру автора), значит у стока отказы есть. Политика Gemma Prohibited Use — не проверено. | не проверено | [featherless, gemma-4 heretic](https://featherless.ai/models/llmfan46/gemma-4-26B-A4B-it-ultra-uncensored-heretic) |
+
+Независимых бенчмарков доли отказов на NSFW ни для одной модели не нашёл, на русском тем более.
+
 ## Открытые вопросы к проектировщику
 
 - Цель — снизить цену или найти замену gemini по прозе при той же цене? Если снизить, из найденного проходит только gemma, и то с риском по скорости.
