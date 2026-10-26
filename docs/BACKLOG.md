@@ -1027,7 +1027,7 @@ mutmut шага 165 (docs/plan-165.md), строки, которые парти�
 190, 206, 207, 216, 217 (подписи преимущества, extra_terms, detail, аргументы `d20_log`).
 
 ## 184. Провайдер с OpenAI-совместимым API и настраиваемым адресом
-status: idea
+status: started
 priority: high
 updated: 2026-10-25
 

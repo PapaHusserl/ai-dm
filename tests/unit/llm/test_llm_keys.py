@@ -2,6 +2,7 @@
 # ТЗ 11: ключи из env или .env (свой парсер), env важнее .env; ключи никогда не попадают в
 # сейвы, журнал и репорты (сторож в конце файла прогоняет ход на моке).
 import gzip
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -14,7 +15,7 @@ from ai_dm.llm.cost import CostLedger, cost_nano
 from ai_dm.llm.errors import LlmError, LlmTransient
 from ai_dm.llm.gemini_adapter import GeminiAdapter
 from ai_dm.llm.journal import Journal
-from ai_dm.llm.keys import load_key, parse_dotenv, redact
+from ai_dm.llm.keys import load_key, parse_dotenv, read_var, redact
 from ai_dm.llm.mock import ScriptedAdapter
 from ai_dm.llm.retry import call_with_retries
 from ai_dm.persistence.store import save_slot
@@ -113,8 +114,77 @@ def test_unknown_provider_is_value_error():
         load_key("mistral", env={})
 
 
+def test_unknown_provider_error_names_the_provider():
+    with pytest.raises(ValueError, match="mistral"):
+        load_key("mistral", env={})
+
+
+def test_dotenv_is_read_as_utf8(tmp_path, monkeypatch):
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("H_KEY=from-file\n", encoding="utf-8")
+    encodings = []
+    original = Path.read_text
+
+    def spy(self, encoding=None, errors=None, newline=None):
+        encodings.append(encoding)
+        return original(self, encoding="utf-8", errors=errors, newline=newline)
+
+    monkeypatch.setattr(Path, "read_text", spy)
+    read_var("H_KEY", env={}, dotenv_path=dotenv)
+    assert [e.lower() for e in encodings] == ["utf-8"]
+
+
 def test_openai_key_is_read_from_openai_api_key():
     assert load_key("openai", env={"OPENAI_API_KEY": "o-key"}) == "o-key"
+
+
+def test_load_key_with_var_reads_that_variable():
+    assert load_key("openrouter", env={"OPENROUTER_API_KEY": "r"}, var="OPENROUTER_API_KEY") == "r"
+
+
+def test_load_key_with_var_accepts_unknown_provider():
+    assert load_key("myhost", env={"H_KEY": "h"}, var="H_KEY") == "h"
+
+
+def test_load_key_with_var_ignores_builtin_variable_of_same_provider():
+    assert load_key("openai", env={"OPENAI_API_KEY": "o"}, var="H_KEY") is None
+
+
+def test_load_key_with_var_env_wins_over_dotenv(tmp_path):
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("H_KEY=from-file\n", encoding="utf-8")
+    assert load_key("h", env={"H_KEY": "from-env"}, dotenv_path=dotenv, var="H_KEY") == "from-env"
+
+
+def test_load_key_with_var_from_dotenv(tmp_path):
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("H_KEY=from-file\n", encoding="utf-8")
+    assert load_key("h", env={}, dotenv_path=dotenv, var="H_KEY") == "from-file"
+
+
+def test_load_key_with_var_empty_in_both_is_none(tmp_path):
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("H_KEY=\n", encoding="utf-8")
+    assert load_key("h", env={"H_KEY": ""}, dotenv_path=dotenv, var="H_KEY") is None
+
+
+def test_read_var_from_env():
+    assert read_var("X", env={"X": "1"}) == "1"
+
+
+def test_read_var_missing_is_none():
+    assert read_var("X", env={}) is None
+
+
+def test_read_var_empty_env_falls_back_to_dotenv(tmp_path):
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("X=file\n", encoding="utf-8")
+    assert read_var("X", env={"X": ""}, dotenv_path=dotenv) == "file"
+
+
+def test_read_var_default_env_is_os_environ(monkeypatch):
+    monkeypatch.setenv("AI_DM_TEST_VAR", "from-os")
+    assert read_var("AI_DM_TEST_VAR") == "from-os"
 
 
 def test_redact_replaces_secret():

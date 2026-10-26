@@ -23,12 +23,18 @@ def parse_dotenv(text):
     return result
 
 
-def load_key(provider, *, env=None, dotenv_path=None):
-    if provider not in KEY_VARS:
-        raise ValueError(f"неизвестный провайдер: {provider}")
+def load_key(provider, *, env=None, dotenv_path=None, var=None):
+    # var -- имя переменной хостера (providers.<имя>.key_env); у встроенных берётся из KEY_VARS
+    if var is None:
+        if provider not in KEY_VARS:
+            raise ValueError(f"неизвестный провайдер: {provider}")
+        var = KEY_VARS[provider]
+    return read_var(var, env=env, dotenv_path=dotenv_path)
+
+
+def read_var(name, *, env=None, dotenv_path=None):
     if env is None:
         env = os.environ
-    name = KEY_VARS[provider]
     if env.get(name):
         return env[name]
     if dotenv_path is not None and Path(dotenv_path).is_file():

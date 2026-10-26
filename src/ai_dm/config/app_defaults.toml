@@ -104,6 +104,25 @@ cache_write = 125000
 cache_write_1h = 125000
 cache_storage_hour = 0
 
+# OpenRouter (живой /models 2026-10-26; хостеры меняют цены -- правятся в config.toml игрока):
+# кэш неявный, записи кэша нет (cache_write = 0), хранения нет
+[prices."deepseek/deepseek-v4-flash"]
+input = 91000
+output = 182000
+cache_read = 18200
+cache_write = 0
+cache_write_1h = 0
+cache_storage_hour = 0
+
+# цены кэша у qwen нет: чтение по цене входа (без скидки)
+[prices."qwen/qwen3-235b-a22b-2507"]
+input = 90000
+output = 550000
+cache_read = 90000
+cache_write = 0
+cache_write_1h = 0
+cache_storage_hour = 0
+
 # окна Gemini -- консервативно, сверить; окна OpenAI -- макс. вход (окно 1.05M)
 [context_windows]
 claude-opus-5-5 = 1000000
@@ -115,6 +134,14 @@ claude-haiku-4-5 = 200000
 "gemini-3-flash-preview" = 1000000
 "gpt-6.1-sol" = 922000
 "gpt-6-luna" = 922000
+"deepseek/deepseek-v4-flash" = 1048576
+"qwen/qwen3-235b-a22b-2507" = 262144
+
+# хостеры OpenAI-совместимого Chat Completions: адрес и имя переменной ключа (env или .env);
+# в /model -- "openrouter:<модель>"
+[providers.openrouter]
+base_url = "https://openrouter.ai/api/v1"
+key_env = "OPENROUTER_API_KEY"
 
 [retry]
 delays = [1, 3, 10]

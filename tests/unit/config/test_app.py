@@ -411,6 +411,83 @@ def test_new_profile_with_known_models_is_accepted():
     assert load_settings(roles).app.profiles["mixed"].world.model == GEMINI_LITE
 
 
+HOST = '\n[providers.{name}]\nbase_url = "https://h.example/v1"\nkey_env = "H_KEY"\n'
+HOST_PRICE = "\n[prices.h-model]\ninput = 1\noutput = 1\ncache_read = 1\n"
+HOST_PRICE += "cache_write = 1\ncache_write_1h = 1\n\n[context_windows]\nh-model = 100000\n"
+
+
+def host_profile(provider, name="h"):
+    return "".join(
+        f'\n[profiles.{name}.{role}]\nprovider = "{provider}"\n'
+        f'model = "h-model"\nmax_tokens = 100\n'
+        for role in ("narrator", "world", "summarizer", "import")
+    )
+
+
+def test_default_openrouter_host_is_configured():
+    host = app().providers["openrouter"]
+    assert host.base_url == "https://openrouter.ai/api/v1"
+    assert host.key_env == "OPENROUTER_API_KEY"
+    assert host.chars_per_token == 3.5
+
+
+@pytest.mark.parametrize("name", ["anthropic", "openai", "gemini"])
+def test_host_named_as_builtin_provider_is_rejected(name):
+    with pytest.raises(ValidationError, match=name):
+        load_settings(HOST.format(name=name))
+
+
+def test_profile_role_with_user_host_is_accepted():
+    text = HOST.format(name="myhost") + host_profile("myhost") + HOST_PRICE
+    assert load_settings(text).app.profiles["h"].world.provider == "myhost"
+
+
+def test_host_without_base_url_is_rejected():
+    with pytest.raises(ValidationError):
+        load_settings('\n[providers.myhost]\nkey_env = "H_KEY"\n')
+
+
+def test_host_without_key_env_is_rejected():
+    with pytest.raises(ValidationError):
+        load_settings('\n[providers.myhost]\nbase_url = "https://h.example/v1"\n')
+
+
+def test_host_unknown_key_is_rejected():
+    with pytest.raises(ValidationError):
+        load_settings(HOST.format(name="myhost") + "bogus = 1\n")
+
+
+def test_host_chars_per_token_must_be_positive():
+    with pytest.raises(ValidationError):
+        load_settings(HOST.format(name="myhost") + "chars_per_token = 0\n")
+
+
+def test_user_host_gets_its_chars_per_token_by_default():
+    master = load_settings(HOST.format(name="myhost") + "chars_per_token = 4.0\n").app.master
+    assert master.cpt_for("myhost") == 4.0
+
+
+def test_explicit_provider_cpt_beats_host_value():
+    text = HOST.format(name="myhost") + "chars_per_token = 4.0\n"
+    text += "\n[master.chars_per_token_by_provider]\nmyhost = 2.0\n"
+    assert load_settings(text).app.master.cpt_for("myhost") == 2.0
+
+
+def test_user_price_overrides_default_hoster_price():
+    text = '[prices."deepseek/deepseek-v4-flash"]\ninput = 1\n'
+    prices = load_settings(text).app.prices
+    assert prices["deepseek/deepseek-v4-flash"].input == 1
+    assert prices["deepseek/deepseek-v4-flash"].output == 182000
+
+
+def test_default_hoster_prices_and_windows():
+    config = app()
+    assert config.prices["deepseek/deepseek-v4-flash"].cache_read == 18200
+    assert config.prices["qwen/qwen3-235b-a22b-2507"].cache_read == 90000
+    assert config.context_windows["deepseek/deepseek-v4-flash"] == 1048576
+    assert config.context_windows["qwen/qwen3-235b-a22b-2507"] == 262144
+
+
 def test_gemini_prices_are_integers():
     for model in (GEMINI_FLASH, GEMINI_LITE):
         for field in PRICE_FIELDS:
@@ -690,7 +767,7 @@ def test_unknown_key_in_audio_section_is_rejected():
 
 def test_cpt_by_provider_default_is_anthropic_only():
     assert app().master.chars_per_token_by_provider == {
-        "anthropic": 2.2, "gemini": 3.0, "openai": 3.5,
+        "anthropic": 2.2, "gemini": 3.0, "openai": 3.5, "openrouter": 3.5,
     }
 
 
@@ -723,7 +800,8 @@ def test_common_cpt_override_beats_default_provider_value():
     master = load_settings("[master]\nchars_per_token = 3.0\n").app.master
     assert master.cpt_for("gemini") == 3.0
     assert master.cpt_for("anthropic") == 3.0
-    assert master.chars_per_token_by_provider == {}
+    # хостер получает свою запись от providers.<имя>.chars_per_token, а не от общего значения
+    assert master.chars_per_token_by_provider == {"openrouter": 3.5}
 
 
 def test_common_cpt_in_later_layer_beats_provider_value_of_earlier_layer(tmp_path):

@@ -64,6 +64,9 @@ def parse_output(output, cut):
 
 
 class OpenAIAdapter:
+    # адрес API хостера; у OpenAI не задан (ChatCompletionsAdapter берёт из providers)
+    base_url = None
+
     def __init__(self, model, app_cfg, *, client_factory=None, api_key=None):
         self.model = model
         self.cfg = app_cfg
@@ -82,8 +85,11 @@ class OpenAIAdapter:
 
                 factory = openai.OpenAI
             # повторы -- наши (retry.py), у SDK их нет
+            options = {}
+            if self.base_url is not None:
+                options["base_url"] = self.base_url
             self.client = factory(
-                api_key=self.api_key, max_retries=0, timeout=self.cfg.retry.timeout_s,
+                api_key=self.api_key, max_retries=0, timeout=self.cfg.retry.timeout_s, **options,
             )
         return self.client
 

@@ -26,6 +26,18 @@ class RolesConfig(BaseModel):
     import_: ModelRole | None = Field(default=None, alias="import")
 
 
+BUILTIN_PROVIDERS = ("anthropic", "openai", "gemini")
+
+
+class ProviderHost(BaseModel):
+    # хостер с OpenAI-совместимым Chat Completions; имя -- ключ providers
+    model_config = ConfigDict(extra="forbid")
+    base_url: str
+    # имя переменной окружения / .env с ключом
+    key_env: str
+    chars_per_token: float = Field(default=3.5, gt=0)
+
+
 class AlternativesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     narrator: ModelRole
@@ -202,9 +214,15 @@ class AppConfig(BaseModel):
     audio: AudioConfig = AudioConfig()
     import_: ImportConfig = Field(default_factory=ImportConfig, alias="import")
     profiles: dict[str, RolesConfig] = {}
+    providers: dict[str, ProviderHost] = {}
 
     @model_validator(mode="after")
     def check_models_known(self):
+        for name, host in self.providers.items():
+            if name in BUILTIN_PROVIDERS:
+                raise ValueError(f"providers.{name}: имя занято встроенным провайдером")
+            # хостер без своей записи считается как заданный в профиле хостера
+            self.master.chars_per_token_by_provider.setdefault(name, host.chars_per_token)
         roles = [self.roles.narrator, self.roles.world, self.roles.summarizer]
         roles.append(self.roles.import_)
         roles.append(self.alternatives.narrator)

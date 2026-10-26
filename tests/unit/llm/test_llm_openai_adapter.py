@@ -734,6 +734,32 @@ def test_client_is_created_lazily_with_key_no_sdk_retries_and_timeout():
     assert created == [{"api_key": "k", "max_retries": 0, "timeout": cfg.retry.timeout_s}]
 
 
+def test_client_gets_base_url_when_set():
+    created = []
+
+    def factory(**kw):
+        created.append(kw)
+        return SimpleNamespace()
+
+    adapter = OpenAIAdapter(MODEL, app_cfg(), client_factory=factory, api_key="k")
+    adapter.base_url = "https://h.example/v1"
+    adapter.get_client()
+    assert created[0]["base_url"] == "https://h.example/v1"
+
+
+def test_openai_adapter_has_no_base_url_by_default():
+    assert OpenAIAdapter(MODEL, app_cfg()).base_url is None
+
+
+def test_client_has_no_base_url_argument_by_default():
+    created = []
+    adapter = OpenAIAdapter(
+        MODEL, app_cfg(), client_factory=lambda **kw: created.append(kw), api_key="k",
+    )
+    adapter.get_client()
+    assert "base_url" not in created[0]
+
+
 def test_client_is_created_once():
     created = []
 
