@@ -35,6 +35,8 @@ class ProviderHost(BaseModel):
     base_url: str
     # имя переменной окружения / .env с ключом
     key_env: str
+    # правила рассказчика: "openai" -- narrator_rules_openai.md, "base" -- общие
+    narrator_rules: Literal["openai", "base"] = "openai"
     chars_per_token: float = Field(default=3.5, gt=0)
 
 
@@ -223,16 +225,29 @@ class AppConfig(BaseModel):
                 raise ValueError(f"providers.{name}: имя занято встроенным провайдером")
             # хостер без своей записи считается как заданный в профиле хостера
             self.master.chars_per_token_by_provider.setdefault(name, host.chars_per_token)
-        roles = [self.roles.narrator, self.roles.world, self.roles.summarizer]
-        roles.append(self.roles.import_)
-        roles.append(self.alternatives.narrator)
-        for profile in self.profiles.values():
-            roles += [profile.narrator, profile.world, profile.summarizer, profile.import_]
-        models = [role.model for role in roles if role is not None]
+        named = {
+            "roles.narrator": self.roles.narrator, "roles.world": self.roles.world,
+            "roles.summarizer": self.roles.summarizer, "roles.import": self.roles.import_,
+            "alternatives.narrator": self.alternatives.narrator,
+        }
+        for profile_name, profile in self.profiles.items():
+            pairs = (
+                ("narrator", "narrator"), ("world", "world"), ("summarizer", "summarizer"),
+                ("import", "import_"),
+            )
+            for label, attr in pairs:
+                named[f"profiles.{profile_name}.{label}"] = getattr(profile, attr)
+        known = (*BUILTIN_PROVIDERS, *self.providers)
+        for label, role in named.items():
+            if role is not None and role.provider not in known:
+                raise ValueError(f"{label}: неизвестный провайдер {role.provider}")
+        models = [role.model for role in named.values() if role is not None]
         for key in self.llm.narrator_chain:
             provider, _, model = key.partition(":")
             if not provider or not model:
                 raise ValueError(f"llm.narrator_chain: ключ {key!r} не вида провайдер:модель")
+            if provider not in known:
+                raise ValueError(f"llm.narrator_chain: неизвестный провайдер {provider}")
             models.append(model)
         for model in models:
             if model not in self.prices:
@@ -257,6 +272,15 @@ class Settings(BaseModel):
                 "summarizer не увидит начало длинной сцены"
             )
         return self
+
+
+def profile_for(app_cfg, provider, model):
+    # профиль по провайдеру и модели рассказчика, затем первый с тем же провайдером; нет -- None
+    same = [p for p in app_cfg.profiles.values() if p.narrator.provider == provider]
+    for profile in same:
+        if profile.narrator.model == model:
+            return profile
+    return same[0] if same else None
 
 
 def merge_layer(data, layer):

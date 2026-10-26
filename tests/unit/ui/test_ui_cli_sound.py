@@ -272,6 +272,42 @@ def test_config_dir_is_read_in_replay_report(tmp_path, monkeypatch):
     assert seen == [setup.env]
 
 
+def test_play_report_gives_game_a_factory_with_config_env_and_dotenv(tmp_path, monkeypatch):
+    # шаг 184 П2: /model в повторе видит ключи (в том числе из .env) и хостеры из конфига
+    class Stop(Exception):
+        pass
+
+    captured = {}
+    made = []
+
+    def fake_game(*args, **kwargs):
+        captured.update(kwargs)
+        raise Stop
+
+    def fake_make(provider, model, app_cfg, **kwargs):
+        made.append((provider, model, app_cfg, kwargs))
+        return "adapter"
+
+    monkeypatch.setattr(cli_module, "GameApp", fake_game)
+    monkeypatch.setattr(cli_module, "make_adapter", fake_make)
+    setup = SimpleNamespace(
+        env={"AI_DM_CONFIG_DIR": str(tmp_path)}, dotenv_path=tmp_path / ".env",
+        campaigns_dir=tmp_path, secrets=[],
+    )
+    report = SimpleNamespace(
+        records=[], now_iso="2026-01-01T00:00:00+00:00", meta={"model": "m"},
+        before=SimpleNamespace(world=SimpleNamespace(lore=SimpleNamespace(world_text=""))),
+    )
+    with pytest.raises(Stop):
+        cli_module.play_report(report, None, tmp_path, None, setup)
+    result = captured["adapter_factory"]("openrouter", "deepseek/deepseek-v4-flash")
+    assert result == "adapter"
+    provider, model, app_cfg, kwargs = made[0]
+    assert (provider, model) == ("openrouter", "deepseek/deepseek-v4-flash")
+    assert "openrouter" in app_cfg.providers
+    assert kwargs == {"env": setup.env, "dotenv_path": setup.dotenv_path}
+
+
 def test_broken_config_toml_is_code_1_with_file_name(tmp_path):
     put(tmp_path / "cfg", "config.toml", "[journal\nmax_mb = ")
     code, out = cli([*BASE, *mock_args(tmp_path)], lines=["/quit"],

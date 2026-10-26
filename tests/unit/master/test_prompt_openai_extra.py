@@ -6,6 +6,7 @@ from importlib import resources
 import pytest
 from master_kit import app_cfg, make_bundle
 
+from ai_dm.config.app import ProviderHost
 from ai_dm.master.context import estimate_tokens
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.context import TurnContext
@@ -44,6 +45,39 @@ def test_other_providers_have_no_rules_extra(provider, registry, cfg):
     builder = PromptBuilder(app_cfg(), provider=provider)
     assert builder.rules_extra == ""
     assert system_of(builder, registry, cfg)[0].text == prompt_text("narrator_rules.md")
+
+
+def test_default_openrouter_host_has_rules_extra():
+    builder = PromptBuilder(app_cfg(), provider="openrouter")
+    assert builder.rules_extra == prompt_text("narrator_rules_openai.md")
+
+
+def test_host_with_narrator_rules_base_has_no_rules_extra(registry, cfg):
+    app = app_cfg()
+    app.providers["openrouter"].narrator_rules = "base"
+    builder = PromptBuilder(app, provider="openrouter")
+    assert builder.rules_extra == ""
+    assert system_of(builder, registry, cfg)[0].text == prompt_text("narrator_rules.md")
+
+
+def test_user_host_with_narrator_rules_openai_has_rules_extra():
+    app = app_cfg()
+    app.providers["myhost"] = ProviderHost(base_url="https://h/v1", key_env="K")
+    assert PromptBuilder(app, provider="myhost").rules_extra == prompt_text(
+        "narrator_rules_openai.md"
+    )
+
+
+def test_unknown_provider_has_no_rules_extra():
+    assert PromptBuilder(app_cfg(), provider="nowhere").rules_extra == ""
+
+
+def test_host_rules_extra_is_taken_from_role_provider_without_argument():
+    app = app_cfg()
+    app.roles = app.roles.model_copy(
+        update={"narrator": app.roles.narrator.model_copy(update={"provider": "openrouter"})}
+    )
+    assert PromptBuilder(app).rules_extra == prompt_text("narrator_rules_openai.md")
 
 
 def test_static_tokens_of_openai_equal_gemini():

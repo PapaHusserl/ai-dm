@@ -1201,3 +1201,14 @@ mutmut ДН П2 (docs/plan-dn.md, «План П2»); выжившие на ст�
 `TurnRunner.attempt` — 30, 32 (`rng`/`run_id` → None в вызове `combat_turn`), 53 (`expire_concentration` получает
 None вместо `work.world` — нужен тест на передачу мира); `advance_time` 11, 23, 24 — только текст сообщения Invalid.
 Разбирать при касании функций.
+
+## 205. Выжившие мутанты старых строк из шага 184 П2
+status: idea
+priority: low
+updated: 2026-10-26
+
+mutmut шага 184 П2 (docs/plan-184.md); выжившие на строках, которые партия не меняла (AGENTS п. 4): `ui.cli.play_report` —
+121, `main` — 7, `import_pack` — 2, `TurnRunner.new_world_session` — 5 (19, 21, 26, 27, 29), `GameApp.set_narrator` 3,
+`PromptBuilder.__init__` — 8 «segfault» (15, 19, 21, 24, 26, 43, 46, 48). «segfault» у mutmut — процесс снят сигналом
+(-9/-11), а не тест убил мутанта (разбор доебы П2): такие мутанты на деле не проверены. `ui.cli.prepare` и `make_parser`
+в П2 мутантами не гонялись (окно Влада 2026-10-26: ~840 мутантов, > 1 ч). Разбирать при касании функций.

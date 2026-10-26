@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from ai_dm.combat.engine import CombatRoundLimit
+from ai_dm.config.app import profile_for
 from ai_dm.core.rng import Rng
 from ai_dm.game import boundary, combat_flow, combat_fold
 from ai_dm.game.controllers import PlayerController
@@ -337,8 +338,9 @@ class TurnRunner:
         adapter = self.world_adapter or self.adapter
         model = self.world_model
         if model is None:
-            # модель world -- профиль провайдера адаптера; нет профиля (мок) -- roles.world
-            profile = self.app_cfg.profiles.get(adapter.info().provider)
+            # модель world -- профиль провайдера адаптера и модели рассказчика;
+            # нет профиля (мок) -- roles.world
+            profile = profile_for(self.app_cfg, adapter.info().provider, self.model)
             if profile is not None:
                 model = profile.world.model
         return WorldSession(
@@ -353,8 +355,9 @@ class TurnRunner:
             return None
         model = self.summarizer_model
         if model is None:
-            # модель summarizer -- профиль провайдера адаптера; нет профиля (мок) -- roles
-            profile = self.app_cfg.profiles.get(adapter.info().provider)
+            # модель summarizer -- профиль провайдера адаптера и модели рассказчика;
+            # нет профиля (мок) -- roles
+            profile = profile_for(self.app_cfg, adapter.info().provider, self.model)
             if profile is not None:
                 model = profile.summarizer.model
         backup = None

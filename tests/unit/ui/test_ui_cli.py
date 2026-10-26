@@ -3,6 +3,7 @@
 # Живых вызовов нет: --mock (YAML-сценарий), ключи -- словари env.
 import tomllib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from slots_kit import list_slots
@@ -700,6 +701,377 @@ def test_without_any_key_still_explains(tmp_path):
     code, out = cli(BASE + ["--saves", str(tmp_path / "saves")], env={}, **NO_ENV)
     assert code != 0
     assert "API_KEY" in out.text
+
+
+# шаг 184 П2: хостеры в CLI
+
+OR_KEY = {"OPENROUTER_API_KEY": "sk-or-secret"}
+DEEPSEEK = ("openrouter", "deepseek/deepseek-v4-flash")
+QWEN = ("openrouter", "qwen/qwen3-235b-a22b-2507")
+
+
+def test_provider_with_unknown_profile_is_code_1_with_profile_names(tmp_path, monkeypatch):
+    spy = spy_adapters(monkeypatch)
+    root = tmp_path / "saves"
+    code, out = cli(BASE + ["--provider", "xyz", "--saves", str(root)], env=BOTH, **NO_ENV)
+    assert code == 1
+    assert "Ошибка: нет профиля xyz" in out.text
+    assert "deepseek" in out.text
+    assert spy.calls == []
+    assert not root.exists() or world_dirs(root) == []
+
+
+def test_provider_deepseek_puts_every_role_on_the_host(tmp_path, monkeypatch):
+    spy = spy_adapters(monkeypatch)
+    argv = BASE + ["--provider", "deepseek", "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, ["/quit"], env=OR_KEY, **NO_ENV)
+    assert code == 0
+    assert "Ошибка" not in out.text
+    assert spy.calls
+    assert set(spy.calls) == {DEEPSEEK}
+
+
+def test_provider_qwen_uses_qwen_model(tmp_path, monkeypatch):
+    spy = spy_adapters(monkeypatch)
+    argv = BASE + ["--provider", "qwen", "--saves", str(tmp_path / "saves")]
+    cli(argv, ["/quit"], env=OR_KEY, **NO_ENV)
+    assert spy.calls[0] == QWEN
+    assert set(spy.calls) == {QWEN}
+
+
+def test_provider_deepseek_without_host_key_names_the_variable(tmp_path):
+    argv = BASE + ["--provider", "deepseek", "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, env=BOTH, **NO_ENV)
+    assert code != 0
+    assert "OPENROUTER_API_KEY" in out.text
+
+
+def test_host_key_alone_does_not_pick_host_profile_automatically(tmp_path, monkeypatch):
+    spy = spy_adapters(monkeypatch)
+    argv = BASE + ["--saves", str(tmp_path / "saves")]
+    _, out = cli(argv, ["/quit"], env=OR_KEY, **NO_ENV)
+    assert spy.calls[0] == GEMINI
+    assert "беру профиль" not in out.text
+    assert [call for call in spy.calls if call[0] == "openrouter"] == []
+
+
+def test_host_key_is_masked_in_error_text(tmp_path, monkeypatch):
+    def failing(provider, model, app_cfg, **kwargs):
+        raise RuntimeError("сервер ответил: ключ sk-or-secret неверен")
+
+    monkeypatch.setattr("ai_dm.ui.cli.make_adapter", failing)
+    argv = BASE + ["--provider", "deepseek", "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, env=OR_KEY, **NO_ENV)
+    assert code == 1
+    assert "Ошибка" in out.text
+    assert "sk-or-secret" not in out.text
+
+
+def test_user_host_key_is_masked_in_error_text(tmp_path, monkeypatch):
+    def failing(provider, model, app_cfg, **kwargs):
+        raise RuntimeError("ключ sk-h-secret неверен")
+
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "config.toml").write_text(
+        '[providers.myhost]\nbase_url = "https://h.example/v1"\nkey_env = "H_KEY"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("ai_dm.ui.cli.make_adapter", failing)
+    env = {"GEMINI_API_KEY": "sk-g", "H_KEY": "sk-h-secret", "AI_DM_CONFIG_DIR": str(cfg)}
+    code, out = cli(BASE + ["--saves", str(tmp_path / "saves")], env=env, **NO_ENV)
+    assert code == 1
+    assert "sk-h-secret" not in out.text
+
+
+def test_host_key_from_dotenv_is_masked_in_error_text(tmp_path, monkeypatch):
+    def failing(provider, model, app_cfg, **kwargs):
+        raise RuntimeError("ключ sk-or-file неверен")
+
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("OPENROUTER_API_KEY=sk-or-file\n", encoding="utf-8")
+    monkeypatch.setattr("ai_dm.ui.cli.make_adapter", failing)
+    argv = BASE + ["--provider", "deepseek", "--saves", str(tmp_path / "saves")]
+    code, out = cli(argv, env={}, dotenv_path=dotenv)
+    assert code == 1
+    assert "sk-or-file" not in out.text
+
+
+def test_config_with_unknown_provider_in_profile_is_code_1_and_no_world(tmp_path, monkeypatch):
+    spy = spy_adapters(monkeypatch)
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    roles = "".join(
+        f'\n[profiles.bad.{name}]\nprovider = "foo"\n'
+        f'model = "gemini-3.5-flash-lite"\nmax_tokens = 100\n'
+        for name in ("narrator", "world", "summarizer")
+    )
+    (cfg / "config.toml").write_text(roles, encoding="utf-8")
+    root = tmp_path / "saves"
+    env = {**BOTH, "AI_DM_CONFIG_DIR": str(cfg)}
+    code, out = cli(BASE + ["--saves", str(root)], env=env, **NO_ENV)
+    assert code == 1
+    assert "Ошибка" in out.text
+    assert "foo" in out.text
+    assert spy.calls == []
+    assert not root.exists() or world_dirs(root) == []
+
+
+def test_profile_narrator_of_known_profile_is_its_narrator():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import profile_narrator
+
+    settings = load_settings()
+    assert profile_narrator(settings, "qwen") is settings.app.profiles["qwen"].narrator
+
+
+def test_profile_narrator_of_unknown_profile_lists_profiles():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import profile_narrator
+
+    with pytest.raises(ValueError, match="нет профиля nope; есть: .*deepseek.*qwen"):
+        profile_narrator(load_settings(), "nope")
+
+
+def test_profile_narrator_of_unknown_profile_joins_profiles_with_comma_space():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import profile_narrator
+
+    settings = load_settings()
+    with pytest.raises(ValueError) as info:
+        profile_narrator(settings, "nope")
+    assert str(info.value) == f"нет профиля nope; есть: {', '.join(settings.app.profiles)}"
+
+
+def pick_args(**kw):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(**{"provider": None, "new": True, "world": "w", **kw})
+
+
+def host_narrator(model):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(provider="openrouter", model=model)
+
+
+def test_pick_world_of_host_narrator_follows_narrator_model():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_world
+
+    settings = load_settings()
+    role = pick_world(pick_args(), settings, host_narrator(QWEN[1]))
+    assert role is settings.app.profiles["qwen"].world
+
+
+def test_pick_summarizer_of_host_narrator_follows_narrator_model():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_summarizer
+
+    settings = load_settings()
+    role = pick_summarizer(pick_args(), settings, host_narrator(QWEN[1]))
+    assert role is settings.app.profiles["qwen"].summarizer
+
+
+def test_pick_import_of_host_narrator_follows_narrator_model():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_import
+
+    settings = load_settings()
+    role = pick_import(pick_args(), settings, host_narrator(QWEN[1]))
+    assert role is settings.app.profiles["qwen"].import_
+
+
+def test_pick_world_of_host_narrator_with_other_model_is_first_host_profile():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_world
+
+    settings = load_settings()
+    role = pick_world(pick_args(), settings, host_narrator("some/other"))
+    assert role is settings.app.profiles["deepseek"].world
+
+
+def test_pick_world_with_provider_flag_is_profile_world():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_world
+
+    settings = load_settings()
+    role = pick_world(pick_args(provider="qwen"), settings, host_narrator("x"))
+    assert role is settings.app.profiles["qwen"].world
+
+
+def test_pick_summarizer_with_provider_flag_is_profile_summarizer():
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_summarizer
+
+    settings = load_settings()
+    role = pick_summarizer(pick_args(provider="deepseek"), settings, host_narrator("x"))
+    assert role is settings.app.profiles["deepseek"].summarizer
+
+
+def test_pick_narrator_skips_host_profiles_even_with_host_key():
+    from types import SimpleNamespace
+
+    from ui_kit import PlainOutput
+
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_narrator
+
+    settings = load_settings()
+    setup = SimpleNamespace(env=dict(OR_KEY), dotenv_path=Path("/nonexistent/.env"))
+    out = PlainOutput()
+    got = pick_narrator(pick_args(), settings, setup, Path("/nonexistent"), out)
+    assert got is settings.app.roles.narrator
+    assert "беру профиль" not in out.text
+
+
+HOST_NARRATOR_TOML = (
+    '[roles.narrator]\nprovider = "openrouter"\nmodel = "deepseek/deepseek-v4-flash"\n'
+)
+
+
+def pick_with(toml, env):
+    from types import SimpleNamespace
+
+    from ui_kit import PlainOutput
+
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_narrator
+
+    settings = load_settings(toml)
+    setup = SimpleNamespace(env=env, dotenv_path=Path("/nonexistent/.env"))
+    out = PlainOutput()
+    return pick_narrator(pick_args(), settings, setup, Path("/nonexistent"), out), settings, out
+
+
+def test_host_in_roles_narrator_with_its_key_stays_on_host():
+    got, settings, out = pick_with(HOST_NARRATOR_TOML, {**OR_KEY, "ANTHROPIC_API_KEY": "sk-a"})
+    assert got is settings.app.roles.narrator
+    assert got.provider == "openrouter"
+    assert "беру профиль" not in out.text
+
+
+def test_host_in_roles_narrator_without_key_names_host_variable_and_takes_profile():
+    got, settings, out = pick_with(HOST_NARRATOR_TOML, {"ANTHROPIC_API_KEY": "sk-a"})
+    assert got is settings.app.profiles["anthropic"].narrator
+    assert "Нет ключа OPENROUTER_API_KEY: беру профиль anthropic." in out.text
+
+
+def test_host_in_roles_narrator_without_any_key_stays_on_host():
+    got, settings, out = pick_with(HOST_NARRATOR_TOML, {})
+    assert got is settings.app.roles.narrator
+    assert out.text == ""
+
+
+def test_user_host_in_roles_narrator_uses_its_key_env():
+    toml = '[providers.myhost]\nbase_url = "https://h/v1"\nkey_env = "H_KEY"\n'
+    toml += '[roles.narrator]\nprovider = "myhost"\nmodel = "gemini-3.5-flash-lite"\n'
+    got, settings, out = pick_with(toml, {"H_KEY": "k", "GEMINI_API_KEY": "g"})
+    assert got.provider == "myhost"
+    assert "беру профиль" not in out.text
+
+
+def test_user_host_in_roles_narrator_without_key_names_its_variable():
+    toml = '[providers.myhost]\nbase_url = "https://h/v1"\nkey_env = "H_KEY"\n'
+    toml += '[roles.narrator]\nprovider = "myhost"\nmodel = "gemini-3.5-flash-lite"\n'
+    _, _, out = pick_with(toml, {"GEMINI_API_KEY": "g"})
+    assert "Нет ключа H_KEY: беру профиль gemini." in out.text
+
+
+def test_settings_of_takes_settings_from_setup_without_loading(monkeypatch):
+    import ai_dm.ui.cli as cli_module
+
+    def boom(env):
+        raise AssertionError("настройки не должны грузиться заново")
+
+    monkeypatch.setattr(cli_module, "load_user_settings", boom)
+    marker = object()
+    setup = SimpleNamespace(env={}, settings=marker)
+    assert cli_module.settings_of(setup) is marker
+
+
+def test_settings_of_without_settings_loads_them_from_env(monkeypatch):
+    import ai_dm.ui.cli as cli_module
+
+    seen = []
+    monkeypatch.setattr(cli_module, "load_user_settings", lambda env: seen.append(env) or "S")
+    setup = SimpleNamespace(env={"X": "1"})
+    assert cli_module.settings_of(setup) == "S"
+    assert seen == [{"X": "1"}]
+
+
+def test_settings_of_with_none_settings_loads_them_from_env(monkeypatch):
+    import ai_dm.ui.cli as cli_module
+
+    monkeypatch.setattr(cli_module, "load_user_settings", lambda env: "S")
+    assert cli_module.settings_of(SimpleNamespace(env={}, settings=None)) == "S"
+
+
+def test_setup_settings_defaults_to_none():
+    from ai_dm.ui.cli import Setup
+
+    assert Setup({}, Path("."), None, [], Path("."), "simple").settings is None
+
+
+def test_main_loads_user_settings_once_and_passes_them_in_setup(tmp_path, monkeypatch):
+    import ai_dm.ui.cli as cli_module
+
+    real = cli_module.load_user_settings
+    loaded = []
+    monkeypatch.setattr(cli_module, "load_user_settings", lambda env: loaded.append(1) or real(env))
+    code, _ = cli(BASE + mock_args(tmp_path), ["/quit"], env={})
+    assert code == 0
+    assert len(loaded) == 1
+
+
+def test_pick_narrator_still_takes_builtin_profile_with_its_key():
+    from types import SimpleNamespace
+
+    from ui_kit import PlainOutput
+
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_narrator
+
+    settings = load_settings()
+    env = {**OR_KEY, "ANTHROPIC_API_KEY": "sk-a"}
+    setup = SimpleNamespace(env=env, dotenv_path=Path("/nonexistent/.env"))
+    got = pick_narrator(pick_args(), settings, setup, Path("/nonexistent"), PlainOutput())
+    assert got is settings.app.profiles["anthropic"].narrator
+
+
+def test_pick_narrator_keeps_looking_past_host_profile_for_builtin_key():
+    from ui_kit import PlainOutput
+
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.cli import pick_narrator
+
+    settings = load_settings()
+    profiles = settings.app.profiles
+    reordered = {"deepseek": profiles["deepseek"], **profiles}
+    profiles.clear()
+    profiles.update(reordered)
+    env = {"ANTHROPIC_API_KEY": "sk-a"}
+    setup = SimpleNamespace(env=env, dotenv_path=Path("/nonexistent/.env"))
+    got = pick_narrator(pick_args(), settings, setup, Path("/nonexistent"), PlainOutput())
+    assert got is profiles["anthropic"].narrator
+
+
+def test_pick_narrator_reads_narrator_key_from_dotenv(tmp_path):
+    from ui_kit import PlainOutput
+
+    from ai_dm.config.app import load_settings
+    from ai_dm.llm.keys import KEY_VARS
+    from ai_dm.ui.cli import pick_narrator
+
+    settings = load_settings()
+    dotenv = tmp_path / ".env"
+    var = KEY_VARS[settings.app.roles.narrator.provider]
+    dotenv.write_text(f"{var}=from-file\n", encoding="utf-8")
+    setup = SimpleNamespace(env={}, dotenv_path=dotenv)
+    out = PlainOutput()
+    got = pick_narrator(pick_args(), settings, setup, Path("/nonexistent"), out)
+    assert got is settings.app.roles.narrator
+    assert out.text == ""
 
 
 def gemini_world(registry, root):

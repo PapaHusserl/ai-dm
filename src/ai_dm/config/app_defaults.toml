@@ -291,6 +291,52 @@ model = "gpt-6.1-sol"
 effort = "low"
 max_tokens = 32000
 
+# OpenRouter, deepseek-v4-flash: все роли на одной модели; effort/max_tokens как у openai
+[profiles.deepseek.narrator]
+provider = "openrouter"
+model = "deepseek/deepseek-v4-flash"
+effort = "medium"
+max_tokens = 16000
+
+[profiles.deepseek.world]
+provider = "openrouter"
+model = "deepseek/deepseek-v4-flash"
+effort = "low"
+max_tokens = 8000
+
+[profiles.deepseek.summarizer]
+provider = "openrouter"
+model = "deepseek/deepseek-v4-flash"
+effort = "low"
+max_tokens = 8000
+
+[profiles.deepseek.import]
+provider = "openrouter"
+model = "deepseek/deepseek-v4-flash"
+effort = "low"
+max_tokens = 32000
+
+# OpenRouter, qwen3-235b-a22b-2507: те же лимиты, effort нет (reasoning_effort модель не поддерживает)
+[profiles.qwen.narrator]
+provider = "openrouter"
+model = "qwen/qwen3-235b-a22b-2507"
+max_tokens = 16000
+
+[profiles.qwen.world]
+provider = "openrouter"
+model = "qwen/qwen3-235b-a22b-2507"
+max_tokens = 8000
+
+[profiles.qwen.summarizer]
+provider = "openrouter"
+model = "qwen/qwen3-235b-a22b-2507"
+max_tokens = 8000
+
+[profiles.qwen.import]
+provider = "openrouter"
+model = "qwen/qwen3-235b-a22b-2507"
+max_tokens = 32000
+
 [import]
 # предел длины текстовой выжимки для ai-dm --import, символы
 max_chars = 60000

@@ -267,7 +267,9 @@ class PromptBuilder:
         self.rules = (prompts / "narrator_rules.md").read_text(encoding="utf-8")
         # добавка правил по провайдеру: внутри блока system[0], в замер static_tokens не входит
         self.rules_extra = ""
-        if (provider or self.role_cfg.provider) == "openai":
+        provider = provider or self.role_cfg.provider
+        host = app_cfg.providers.get(provider)
+        if provider == "openai" or (host is not None and host.narrator_rules == "openai"):
             self.rules_extra = (prompts / "narrator_rules_openai.md").read_text(encoding="utf-8")
 
     def find_role_cfg(self, role, model):

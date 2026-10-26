@@ -549,3 +549,161 @@ def test_replay_of_boundary_retry_after_world_failure_gives_same_bundle(registry
     second = play_failed_boundary(registry, cfg, tmp_path / "b", replay, world_model=model)
     one, two = first.runner.bundle.world, second.runner.bundle.world
     assert one.model_dump_json() == two.model_dump_json()
+
+
+# шаг 184 П2: профиль хостера по провайдеру и модели рассказчика; world/summarizer следуют за ним
+
+DEEPSEEK = "deepseek/deepseek-v4-flash"
+QWEN = "qwen/qwen3-235b-a22b-2507"
+
+
+def host_app(registry, tmp_path, narrator_model, factory, *, world=None, summarizer=None):
+    from game_kit import ReactiveAdapter, make_app
+
+    app = make_app(
+        registry, tmp_path, ReactiveAdapter(provider="openrouter", model=narrator_model),
+        adapter_factory=factory, use_stored_model=False,
+    )
+    app.runner.world_adapter = world
+    app.runner.summarizer_adapter = summarizer
+    return app
+
+
+def test_new_world_session_of_host_narrator_uses_profile_by_narrator_model(registry, tmp_path):
+    app = host_app(registry, tmp_path, QWEN, None)
+    assert app.runner.new_world_session().model == settings().app.profiles["qwen"].world.model
+
+
+def test_new_world_session_of_host_narrator_deepseek_profile(registry, tmp_path):
+    app = host_app(registry, tmp_path, DEEPSEEK, None)
+    assert app.runner.new_world_session().model == DEEPSEEK
+
+
+def test_new_world_session_of_host_with_unknown_model_uses_first_profile_of_host(
+    registry, tmp_path
+):
+    app = host_app(registry, tmp_path, "some/other", None)
+    assert app.runner.new_world_session().model == DEEPSEEK
+
+
+def test_new_summarizer_session_of_host_uses_profile_by_narrator_model(registry, tmp_path):
+    from game_kit import ReactiveAdapter
+
+    app = host_app(
+        registry, tmp_path, QWEN, None,
+        summarizer=ReactiveAdapter(provider="openrouter", model=QWEN),
+    )
+    del app.runner.new_summarizer_session
+    assert app.runner.new_summarizer_session().model == QWEN
+
+
+def test_new_summarizer_session_of_host_deepseek_profile(registry, tmp_path):
+    from game_kit import ReactiveAdapter
+
+    app = host_app(
+        registry, tmp_path, DEEPSEEK, None,
+        summarizer=ReactiveAdapter(provider="openrouter", model=DEEPSEEK),
+    )
+    del app.runner.new_summarizer_session
+    assert app.runner.new_summarizer_session().model == DEEPSEEK
+
+
+def test_model_command_between_host_profiles_moves_world_to_new_profile(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter
+
+    factory = FactorySpy()
+    world = ReactiveAdapter(provider="openrouter", model=DEEPSEEK)
+    app = host_app(registry, tmp_path, DEEPSEEK, factory, world=world)
+    assert app.handle(f"/model narrator openrouter:{QWEN}") is not None
+    assert app.runner.world_adapter is factory.made[-1]
+    assert app.runner.world_adapter is not world
+    assert app.runner.world_model == QWEN
+    assert factory.calls[-1] == ("openrouter", QWEN)
+
+
+def test_model_command_between_host_profiles_moves_summarizer_to_new_profile(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter
+
+    factory = FactorySpy()
+    summarizer = ReactiveAdapter(provider="openrouter", model=DEEPSEEK)
+    app = host_app(registry, tmp_path, DEEPSEEK, factory, summarizer=summarizer)
+    app.handle(f"/model narrator openrouter:{QWEN}")
+    assert app.runner.summarizer_adapter is factory.made[-1]
+    assert app.runner.summarizer_model == QWEN
+
+
+def test_model_command_to_same_host_profile_keeps_world_adapter(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter
+
+    factory = FactorySpy()
+    world = ReactiveAdapter(provider="openrouter", model=DEEPSEEK)
+    app = host_app(registry, tmp_path, DEEPSEEK, factory, world=world)
+    app.handle("/model narrator openrouter:some/other")
+    assert app.runner.world_adapter is world
+
+
+def test_model_command_from_builtin_to_host_moves_world_to_host_profile(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter, make_app
+
+    factory = FactorySpy()
+    app = make_app(
+        registry, tmp_path, ReactiveAdapter(provider="gemini", model="gemini-3.8-flash"),
+        adapter_factory=factory, use_stored_model=False,
+    )
+    app.runner.world_adapter = ReactiveAdapter(provider="gemini", model="gemini-3.5-flash-lite")
+    app.handle(f"/model narrator openrouter:{QWEN}")
+    assert (app.runner.world_adapter.info().provider, app.runner.world_model) == (
+        "openrouter", QWEN,
+    )
+
+
+def test_model_command_to_host_without_key_keeps_narrator_and_reports(registry, tmp_path):
+    from game_kit import ReactiveAdapter
+
+    from ai_dm.llm.errors import MissingKey
+
+    made = []
+
+    def factory(provider, model):
+        if made:
+            raise MissingKey("нет ключа OPENROUTER_API_KEY")
+        made.append(model)
+        return ReactiveAdapter(provider=provider, model=model)
+
+    world = ReactiveAdapter(provider="openrouter", model=DEEPSEEK)
+    app = host_app(registry, tmp_path, DEEPSEEK, factory, world=world)
+    narrator = app.runner.adapter
+    error = app.set_narrator(f"openrouter:{QWEN}")
+    assert error is not None and "OPENROUTER_API_KEY" in error
+    assert app.runner.adapter is narrator
+    assert app.runner.world_adapter is world
+
+
+def test_follow_provider_without_role_adapter_does_nothing(registry, tmp_path):
+    from game_kit import FactorySpy
+
+    factory = FactorySpy()
+    app = host_app(registry, tmp_path, DEEPSEEK, factory)
+    assert app.follow_provider("world", "openrouter", QWEN) is None
+    assert factory.calls == []
+
+
+def test_follow_provider_same_profile_by_runner_model_does_nothing(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter
+
+    factory = FactorySpy()
+    world = ReactiveAdapter(provider="openrouter", model=QWEN)
+    app = host_app(registry, tmp_path, QWEN, factory, world=world)
+    assert app.follow_provider("world", "openrouter", QWEN) is None
+    assert factory.calls == []
+    assert app.runner.world_adapter is world
+
+
+def test_follow_provider_with_mock_adapter_without_profile_does_nothing(registry, tmp_path):
+    from game_kit import FactorySpy, ReactiveAdapter
+
+    factory = FactorySpy()
+    world = ReactiveAdapter(provider="mock", model="m")
+    app = host_app(registry, tmp_path, DEEPSEEK, factory, world=world)
+    assert app.follow_provider("world", "openrouter", QWEN) is None
+    assert app.runner.world_adapter is world

@@ -6,6 +6,7 @@ from pathlib import Path
 from ai_dm.audio import SilentSound
 from ai_dm.campaign.loader import CAMPAIGNS_DIR, PackError, load_pack, pack_npc_trade
 from ai_dm.campaign.merge import merge_new
+from ai_dm.config.app import profile_for
 from ai_dm.core.rng import Rng
 from ai_dm.game import tone
 from ai_dm.game.boundary import boundary_lines
@@ -537,24 +538,26 @@ class GameApp:
         narrator_adapter = self.checked_adapter
         runner = self.runner
         for role in ("world", "summarizer"):
-            error = self.follow_provider(role, provider)
+            error = self.follow_provider(role, provider, model)
             if error is not None:
                 return error
         runner.set_adapter(narrator_adapter)
         write_models(self.saves_root, self.world_id, provider, model)
         return None
 
-    def follow_provider(self, role, provider) -> str | None:
-        # роль world/summarizer следует за провайдером рассказчика: профиль нового провайдера
+    def follow_provider(self, role, provider, narrator_model) -> str | None:
+        # роль world/summarizer следует за рассказчиком: профиль его провайдера и модели
         runner = self.runner
-        profiles = self.settings.app.profiles
+        app_cfg = self.settings.app
         adapter = getattr(runner, f"{role}_adapter")
-        if (
-            adapter is None or adapter.info().provider not in profiles
-            or adapter.info().provider == provider or provider not in profiles
-        ):
+        if adapter is None:
             return None
-        model = getattr(profiles[provider], role).model
+        current = profile_for(app_cfg, adapter.info().provider, runner.model)
+        target = profile_for(app_cfg, provider, narrator_model)
+        if current is None or target is None or current is target:
+            return None
+        provider = getattr(target, role).provider
+        model = getattr(target, role).model
         try:
             setattr(runner, f"{role}_adapter", self.adapter_factory(provider, model))
         except (MissingKey, ValueError) as error:

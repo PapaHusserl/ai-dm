@@ -22,7 +22,7 @@ from ai_dm.campaign.loader import (
     pack_npc_trade,
 )
 from ai_dm.campaign.presets import PACK_TONE, load_presets, preset_packs
-from ai_dm.config.app import ModelRole
+from ai_dm.config.app import ModelRole, profile_for
 from ai_dm.config.user import AUDIO_FILE, AudioPrefs, config_dir, load_user_settings
 from ai_dm.content.loader import load_registry
 from ai_dm.game import difficulty
@@ -48,7 +48,7 @@ from ai_dm.llm.cost import CostLedger
 from ai_dm.llm.errors import MissingKey
 from ai_dm.llm.factory import make_adapter
 from ai_dm.llm.journal import Journal
-from ai_dm.llm.keys import KEY_VARS, load_key, redact
+from ai_dm.llm.keys import KEY_VARS, load_key, read_var, redact
 from ai_dm.llm.mock import ScriptedAdapter, load_script
 from ai_dm.llm.replay import ReplayAdapter, ReplayDivergence
 from ai_dm.persistence.durable import set_durable
@@ -92,6 +92,12 @@ class Setup:
     secrets: list
     campaigns_dir: Path
     mode: str
+    # настройки, загруженные в main; нет -- грузятся из env (вызовы без main)
+    settings: object = None
+
+
+def settings_of(setup):
+    return getattr(setup, "settings", None) or load_user_settings(setup.env)
 
 
 def make_parser():
@@ -110,8 +116,8 @@ def make_parser():
     )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
-        "--provider", choices=("anthropic", "gemini", "openai"),
-        help="профиль провайдера для нового мира",
+        "--provider", metavar="PROFILE",
+        help="имя профиля из config (profiles)",
     )
     parser.add_argument("--mock", metavar="PATH", help="YAML-сценарий вместо модели")
     parser.add_argument(
@@ -303,7 +309,10 @@ def create_hero(stdin, stdout, notes, setup, session):
 
 
 def profile_narrator(settings, provider):
-    return settings.app.profiles[provider].narrator
+    profiles = settings.app.profiles
+    if provider not in profiles:
+        raise ValueError(f"нет профиля {provider}; есть: {', '.join(profiles)}")
+    return profiles[provider].narrator
 
 
 def stored_narrator(saves_root, world_id):
@@ -328,11 +337,17 @@ def pick_narrator(args, settings, setup, saves_root, stdout):
             return stored
     env, dotenv_path = setup.env, setup.dotenv_path
     narrator = settings.app.roles.narrator
-    if load_key(narrator.provider, env=env, dotenv_path=dotenv_path) is not None:
+    # имя переменной ключа: у встроенного из KEY_VARS, у хостера из providers (как у make_adapter)
+    host = settings.app.providers.get(narrator.provider)
+    var = KEY_VARS[narrator.provider] if host is None else host.key_env
+    if load_key(narrator.provider, env=env, dotenv_path=dotenv_path, var=var) is not None:
         return narrator
     for provider in settings.app.profiles:
+        # профили хостеров (deepseek, qwen) сами не выбираются: только явно (--provider, /model)
+        if provider not in KEY_VARS:
+            continue
         if load_key(provider, env=env, dotenv_path=dotenv_path) is not None:
-            say(stdout, f"Нет ключа {KEY_VARS[narrator.provider]}: беру профиль {provider}.")
+            say(stdout, f"Нет ключа {var}: беру профиль {provider}.")
             return profile_narrator(settings, provider)
     return narrator
 
@@ -362,7 +377,7 @@ def pick_world(args, settings, narrator):
         return settings.app.profiles[args.provider].world
     if narrator.provider == roles.world.provider:
         return roles.world
-    profile = settings.app.profiles.get(narrator.provider)
+    profile = profile_for(settings.app, narrator.provider, narrator.model)
     if profile is not None:
         return profile.world
     return roles.world
@@ -375,7 +390,7 @@ def pick_summarizer(args, settings, narrator):
         return settings.app.profiles[args.provider].summarizer
     if narrator.provider == roles.summarizer.provider:
         return roles.summarizer
-    profile = settings.app.profiles.get(narrator.provider)
+    profile = profile_for(settings.app, narrator.provider, narrator.model)
     if profile is not None:
         return profile.summarizer
     return roles.summarizer
@@ -389,7 +404,7 @@ def pick_import(args, settings, narrator):
         return settings.app.profiles[args.provider].import_ or roles.import_
     if narrator.provider == roles.import_.provider:
         return roles.import_
-    profile = settings.app.profiles.get(narrator.provider)
+    profile = profile_for(settings.app, narrator.provider, narrator.model)
     if profile is not None:
         return profile.import_ or roles.import_
     return roles.import_
@@ -465,7 +480,11 @@ def main(argv=None, *, stdin=None, stdout=None, env=None, dotenv_path=None, mock
     secrets = []
     try:
         secrets = [load_key(provider, env=env, dotenv_path=dotenv_path) for provider in KEY_VARS]
-        setup = Setup(env, dotenv_path, mock_factory, secrets, campaigns_dir, mode)
+        # ключи хостеров тоже маскируются; ошибка конфига -- «Ошибка: …», игра не стартует
+        settings = load_user_settings(env)
+        hosts = settings.app.providers.values()
+        secrets += [read_var(h.key_env, env=env, dotenv_path=dotenv_path) for h in hosts]
+        setup = Setup(env, dotenv_path, mock_factory, secrets, campaigns_dir, mode, settings)
         return play(args, stdin, stdout, setup)
     except KeyboardInterrupt:
         say(stdout, "Прервано.")
@@ -525,7 +544,7 @@ def import_pack(args, stdin, stdout, setup):
     refusal = import_refusal(args, stdout)
     if refusal is not None:
         return refusal
-    settings = load_user_settings(setup.env)
+    settings = settings_of(setup)
     text = import_text(args, stdout, setup, settings.app.import_.max_chars)
     if isinstance(text, int):
         return text
@@ -710,7 +729,7 @@ def replay_report(args, stdout, setup):
 
 def play_report(report, registry, saves_root, stdout, setup):
     records = report.records
-    settings = load_user_settings(setup.env)
+    settings = settings_of(setup)
     now = datetime.fromisoformat(report.now_iso)
     world = journal_role_model(records, "world", None)
     summarizer = journal_role_model(records, "summarizer", None)
@@ -724,6 +743,9 @@ def play_report(report, registry, saves_root, stdout, setup):
         secrets=setup.secrets, world_adapter=world_adapter, world_model=world,
         summarizer_adapter=summarizer_adapter, summarizer_model=summarizer,
         summarizer_backup=summarizer_adapter,
+        adapter_factory=functools.partial(
+            make_adapter, app_cfg=settings.app, env=setup.env, dotenv_path=setup.dotenv_path
+        ),
         # отпечаток запроса от времени не зависит; now фиксируется ради stamp и saved_at
         now=lambda: now, sleeper=lambda seconds: None,
     )
@@ -845,7 +867,7 @@ def prepare(args, stdin, stdout, notes, setup):
     if not args.new and (args.hero or args.seed is not None or args.campaign):
         say(notes, "--campaign, --hero и --seed нужны только для нового мира (--new).")
         return 2
-    settings = load_user_settings(setup.env)
+    settings = settings_of(setup)
     set_durable(settings.app.persistence.durable)
     narrator = pick_narrator(args, settings, setup, saves_root, notes)
     records = None

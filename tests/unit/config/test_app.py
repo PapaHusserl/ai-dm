@@ -33,7 +33,7 @@
 import pytest
 from pydantic import ValidationError
 
-from ai_dm.config.app import AppConfig, ModelPrice, load_settings
+from ai_dm.config.app import AppConfig, ModelPrice, load_settings, profile_for
 from ai_dm.config.settings import RulesConfig
 
 OPUS = "claude-opus-5-5"
@@ -416,6 +416,9 @@ HOST_PRICE = "\n[prices.h-model]\ninput = 1\noutput = 1\ncache_read = 1\n"
 HOST_PRICE += "cache_write = 1\ncache_write_1h = 1\n\n[context_windows]\nh-model = 100000\n"
 
 
+HOST_MODEL = "deepseek/deepseek-v4-flash"
+
+
 def host_profile(provider, name="h"):
     return "".join(
         f'\n[profiles.{name}.{role}]\nprovider = "{provider}"\n'
@@ -440,6 +443,119 @@ def test_host_named_as_builtin_provider_is_rejected(name):
 def test_profile_role_with_user_host_is_accepted():
     text = HOST.format(name="myhost") + host_profile("myhost") + HOST_PRICE
     assert load_settings(text).app.profiles["h"].world.provider == "myhost"
+
+
+def test_profile_role_with_unknown_provider_is_rejected():
+    with pytest.raises(ValidationError, match="foo"):
+        load_settings(host_profile("foo") + HOST_PRICE)
+
+
+@pytest.mark.parametrize("role", ["narrator", "world", "summarizer", "import"])
+def test_unknown_provider_error_names_profile_and_role(role):
+    text = HOST.format(name="myhost") + HOST_PRICE
+    for name in ("narrator", "world", "summarizer", "import"):
+        provider = "foo" if name == role else "myhost"
+        text += f'\n[profiles.h.{name}]\nprovider = "{provider}"\n'
+        text += 'model = "h-model"\nmax_tokens = 100\n'
+    with pytest.raises(ValidationError, match=f"profiles.h.{role}"):
+        load_settings(text)
+
+
+def test_host_narrator_rules_is_openai_by_default():
+    assert app().providers["openrouter"].narrator_rules == "openai"
+
+
+def test_host_narrator_rules_accepts_base():
+    text = HOST.format(name="myhost") + 'narrator_rules = "base"\n'
+    assert load_settings(text).app.providers["myhost"].narrator_rules == "base"
+
+
+def test_host_narrator_rules_accepts_only_openai_or_base():
+    with pytest.raises(ValidationError):
+        load_settings(HOST.format(name="myhost") + 'narrator_rules = "other"\n')
+
+
+@pytest.mark.parametrize("name", ["deepseek", "qwen"])
+def test_default_hoster_profile_runs_all_roles_on_openrouter(name):
+    profile = app().profiles[name]
+    roles = (profile.narrator, profile.world, profile.summarizer, profile.import_)
+    assert {role.provider for role in roles} == {"openrouter"}
+
+
+def test_qwen_profile_has_no_effort():
+    assert app().profiles["qwen"].narrator.effort is None
+
+
+def test_deepseek_profile_is_deepseek_model_with_effort():
+    role = app().profiles["deepseek"].narrator
+    assert (role.model, role.effort) == ("deepseek/deepseek-v4-flash", "medium")
+
+
+def test_profile_for_picks_profile_by_provider_and_model():
+    config = app()
+    got = profile_for(config, "openrouter", "qwen/qwen3-235b-a22b-2507")
+    assert got is config.profiles["qwen"]
+
+
+def test_profile_for_other_model_of_same_provider_picks_first_profile_of_provider():
+    config = app()
+    got = profile_for(config, "openrouter", "some/other-model")
+    assert got is config.profiles["deepseek"]
+
+
+def test_profile_for_builtin_provider_returns_its_profile():
+    config = app()
+    assert profile_for(config, "gemini", "any") is config.profiles["gemini"]
+
+
+def test_profile_for_unknown_provider_is_none():
+    assert profile_for(app(), "nowhere", "m") is None
+
+
+def test_profile_for_provider_without_profiles_is_none():
+    assert profile_for(app(), "mock", "m") is None
+
+
+@pytest.mark.parametrize(
+    "section",
+    ["roles.narrator", "roles.world", "roles.summarizer", "roles.import", "alternatives.narrator"],
+)
+def test_unknown_provider_in_main_role_is_rejected_with_role_name(section):
+    text = f'[{section}]\nprovider = "foo"\n'
+    with pytest.raises(ValidationError, match=f"{section}: неизвестный провайдер foo"):
+        load_settings(text)
+
+
+def test_unknown_provider_in_narrator_chain_is_rejected():
+    text = '[llm]\nnarrator_chain = ["foo:gemini-3.5-flash-lite"]\n'
+    with pytest.raises(ValidationError, match=r"llm\.narrator_chain: неизвестный провайдер foo"):
+        load_settings(text)
+
+
+def test_narrator_chain_with_host_provider_is_accepted():
+    text = f'[llm]\nnarrator_chain = ["openrouter:{HOST_MODEL}"]\n'
+    assert load_settings(text).app.llm.narrator_chain == [f"openrouter:{HOST_MODEL}"]
+
+
+def test_narrator_chain_with_user_host_is_accepted():
+    text = HOST.format(name="myhost") + '[llm]\nnarrator_chain = ["myhost:gemini-3.5-flash-lite"]\n'
+    assert load_settings(text).app.llm.narrator_chain == ["myhost:gemini-3.5-flash-lite"]
+
+
+@pytest.mark.parametrize("section", ["roles.narrator", "roles.world", "alternatives.narrator"])
+def test_host_provider_in_main_role_is_accepted(section):
+    text = f'[{section}]\nprovider = "openrouter"\nmodel = "{HOST_MODEL}"\n'
+    app_config = load_settings(text).app
+    role = app_config.alternatives.narrator if section.startswith("alt") else getattr(
+        app_config.roles, section.split(".")[1]
+    )
+    assert role.provider == "openrouter"
+
+
+def test_unknown_provider_in_role_of_user_host_name_is_rejected_without_host():
+    text = '[roles.narrator]\nprovider = "myhost"\n'
+    with pytest.raises(ValidationError, match="myhost"):
+        load_settings(text)
 
 
 def test_host_without_base_url_is_rejected():

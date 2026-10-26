@@ -444,7 +444,10 @@ def test_campaign_id_that_is_not_a_plain_id_is_code_2(tmp_path, campaign):
 
 # роль import: профиль без неё откатывается на roles.import
 
-PROFILE_WITHOUT_IMPORT = "".join(
+PROFILE_WITHOUT_IMPORT = (
+    '\n[providers.other]\nbase_url = "https://o.example/v1"\nkey_env = "O_KEY"\n'
+)
+PROFILE_WITHOUT_IMPORT += "".join(
     f'\n[profiles.other.{name}]\nprovider = "other"\n'
     f'model = "gemini-3.5-flash-lite"\nmax_tokens = 100\n'
     for name in ("narrator", "world", "summarizer")
@@ -459,7 +462,7 @@ def pick(provider_flag, narrator_provider):
 
     settings = load_settings(PROFILE_WITHOUT_IMPORT)
     args = SimpleNamespace(provider=provider_flag)
-    narrator = SimpleNamespace(provider=narrator_provider)
+    narrator = SimpleNamespace(provider=narrator_provider, model="gemini-3.5-flash-lite")
     return pick_import(args, settings, narrator), settings
 
 
