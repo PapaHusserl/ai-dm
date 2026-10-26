@@ -659,11 +659,11 @@ def test_switch_model_in_menu_changes_summarizer_not_narrator(
     app.handle("Иду")
     assert app.pending == "error_menu"
     app.choose("switch_model")
-    app.choose(f"anthropic:{SONNET}")
+    app.choose("openai:gpt-6.1-sol")
     reply = app.choose("retry")
     new = factory.made[0]
     summ_requests = [r for r in new.requests if r.role == "summarizer"]
-    assert summ_requests[0].model == SONNET
+    assert summ_requests[0].model == "gpt-6.1-sol"
     assert app.runner.adapter is narrator
     assert app.runner.model == narrator.model
     assert reply.turn.boundary_failed is False

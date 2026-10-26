@@ -73,10 +73,10 @@ def test_helper_roles_use_haiku(name):
     assert role.model == HAIKU
 
 
-def test_narrator_alternative_is_sonnet():
+def test_narrator_alternative_is_openai():
     alt = app().alternatives.narrator
-    assert alt.provider == "anthropic"
-    assert alt.model == SONNET
+    assert alt.provider == "openai"
+    assert alt.model == "gpt-6.1-sol"
 
 
 def test_opus_prices():

@@ -5,10 +5,10 @@ from ai_dm.llm.errors import MissingKey
 
 
 def model_options(app_cfg, current=None):
-    # модели рассказчика для меню выбора: roles, alternatives, профили и цепочка, без повторов;
+    # модели рассказчика для меню выбора: roles, alternatives и цепочка, без повторов; профили
+    # в меню не идут: модель профиля там, только если её ключ стоит в llm.narrator_chain;
     # current -- ключ текущей модели: следующая после неё по цепочке идёт первой
     roles = [app_cfg.roles.narrator, app_cfg.alternatives.narrator]
-    roles += [profile.narrator for profile in app_cfg.profiles.values()]
     options = []
     for role in roles:
         key = f"{role.provider}:{role.model}"

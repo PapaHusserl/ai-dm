@@ -6,7 +6,6 @@ import re
 from slots_kit import list_slots
 from ui_kit import (
     DESCEND,
-    OPUS,
     TALK,
     FactorySpy,
     FightInput,
@@ -333,16 +332,17 @@ def test_error_menu_switch_model_shows_model_options(registry, tmp_path):
     app = text_app(registry, tmp_path, FATAL, adapter_factory=FactorySpy())
     out = play(app, ["Иду", "2"])
     texts = [text for _, text in numbered_lines(out.lines)]
-    assert f"anthropic:{OPUS}" in texts
+    assert "openai:gpt-6.1-sol" in texts
+    assert not [text for text in texts if text.startswith("anthropic:")]
 
 
 def test_error_menu_pick_model_returns_to_error_menu(registry, tmp_path):
     spy = FactorySpy()
     app = text_app(registry, tmp_path, FATAL, adapter_factory=spy)
     options = app.model_options()
-    pick = str(options.index(f"anthropic:{OPUS}") + 1)
+    pick = str(options.index("openai:gpt-6.1-sol") + 1)
     out = play(app, ["Иду", "2", pick])
-    assert spy.calls == [("anthropic", OPUS)]
+    assert spy.calls == [("openai", "gpt-6.1-sol")]
     assert app.pending == "error_menu"
     assert "повтор" in " ".join(text.lower() for _, text in numbered_lines(out.lines[-6:]))
 

@@ -147,7 +147,7 @@ def narrator_models(app):
 
 def test_narrator_models_are_found_in_default_config():
     models = narrator_models(load_settings().app)
-    assert {"gemini-3.8-flash", "claude-opus-5-5", "claude-sonnet-5-5"} <= set(models)
+    assert {"gemini-3.8-flash", "claude-opus-5-5", "gpt-6.1-sol"} <= set(models)
 
 
 def test_context_cap_is_at_least_8000():

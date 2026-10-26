@@ -211,12 +211,11 @@ def test_switch_model_offers_models_and_returns_to_menu(registry, tmp_path):
     app.handle("Иду")
     reply = app.choose("switch_model")
     assert reply.pending == "model_choice"
-    for option in (
-        "anthropic:claude-opus-5-5", f"anthropic:{SONNET}", "gemini:gemini-3.8-flash",
-    ):
+    for option in ("openai:gpt-6.1-sol", "gemini:gemini-3.8-flash"):
         assert option in reply.menu
-    back = app.choose(f"anthropic:{SONNET}")
-    assert factory.calls == [("anthropic", SONNET)]
+    assert not [option for option in reply.menu if option.startswith("anthropic:")]
+    back = app.choose("openai:gpt-6.1-sol")
+    assert factory.calls == [("openai", "gpt-6.1-sol")]
     assert back.pending == "error_menu"
     assert back.menu == ERROR_MENU
 
@@ -226,17 +225,17 @@ def test_retry_after_model_switch_uses_new_model(registry, tmp_path):
     app = make_app(registry, tmp_path, scripted([{"stop": "refusal"}] * 2), adapter_factory=factory)
     app.handle("Иду")
     app.choose("switch_model")
-    app.choose(f"anthropic:{SONNET}")
+    app.choose("openai:gpt-6.1-sol")
     reply = app.choose("retry")
     assert reply.turn.committed is True
-    assert factory.made[0].requests[0].model == SONNET
+    assert factory.made[0].requests[0].model == "gpt-6.1-sol"
 
 
 def test_model_switch_from_menu_is_remembered_outside_slots(registry, tmp_path):
     app = make_app(registry, tmp_path, scripted(FATAL), adapter_factory=FactorySpy())
     app.handle("Иду")
     app.choose("switch_model")
-    app.choose(f"anthropic:{SONNET}")
+    app.choose("openai:gpt-6.1-sol")
     assert (tmp_path / "w1" / "meta" / "models.json").is_file()
 
 

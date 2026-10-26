@@ -21,8 +21,8 @@ model = "gemini-3.8-flash"
 max_tokens = 32000
 
 [alternatives.narrator]
-provider = "anthropic"
-model = "claude-sonnet-5-5"
+provider = "openai"
+model = "gpt-6.1-sol"
 effort = "medium"
 max_tokens = 16000
 

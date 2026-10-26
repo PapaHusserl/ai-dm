@@ -93,10 +93,14 @@ def test_options_have_no_duplicates():
     assert len(options) == len(set(options))
 
 
-def test_options_keep_old_ones_and_keys_of_profiles():
+def test_options_do_not_offer_models_of_profiles_outside_the_chain():
     options = model_options(app())
-    for key in (FLASH, "anthropic:claude-sonnet-5-5", OPUS):
-        assert key in options
+    assert FLASH in options
+    for key in (
+        "anthropic:claude-sonnet-5-5", OPUS, "openrouter:deepseek/deepseek-v4-flash",
+        "openrouter:qwen/qwen3-235b-a22b-2507",
+    ):
+        assert key not in options
 
 
 def test_options_contain_the_openai_narrator():

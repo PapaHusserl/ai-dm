@@ -445,8 +445,9 @@ def test_model_options_helper_matches_config_without_duplicates():
         f"{cfg_app.alternatives.narrator.provider}:{cfg_app.alternatives.narrator.model}"
         in options
     )
-    for profile in cfg_app.profiles.values():
-        assert f"{profile.narrator.provider}:{profile.narrator.model}" in options
+    for key in cfg_app.llm.narrator_chain:
+        assert key in options
+    assert "openrouter:qwen/qwen3-235b-a22b-2507" not in options
 
 
 def test_session_model_menu_equals_helper_options(registry, cfg, tmp_path):
