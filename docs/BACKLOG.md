@@ -1186,14 +1186,6 @@ mutmut шага 184 П2 (docs/plan-184.md); выжившие на строках
 (-9/-11), а не тест убил мутанта (разбор доебы П2): такие мутанты на деле не проверены. `ui.cli.prepare` и `make_parser`
 в П2 мутантами не гонялись (окно Влада 2026-10-26: ~840 мутантов, > 1 ч). Разбирать при касании функций.
 
-## 207. Время до первого токена и токены/с в журнале вызовов
-status: idea
-priority: medium
-updated: 2026-10-26
-
-Решение 18 шага 184: отзывы «медленнее gemini», «квен очень долгий» сейчас нечем разложить на хостера и модель.
-Писать в calls-*.jsonl время до первого токена и скорость генерации — для честного сравнения моделей в 185.
-
 ## 208. Старые выжившие мутанты Journal.record_call и MasterSession.call
 status: idea
 priority: low
@@ -1202,3 +1194,15 @@ updated: 2026-10-27
 mutmut шага 207 П1 (docs/plan-207.md): на строках до шага выжили 35 мутантов — `Journal.record_call` 22
 (1, 4–6, 9–11, 116–118, 131–133, 163, 165, 167, 170, 172, 176, 180, 182, 183), `MasterSession.call` 13
 (25–27, 37, 39, 42, 43, 69, 70, 103, 110, 131, 136). Разобрать: добить тестами или признать эквивалентными.
+
+## 209. Тесты окна выбора модели в TUI падают на HEAD
+status: idea
+priority: medium
+updated: 2026-10-27
+
+`make cov` шага 207 П1 (docs/plan-207.md): падают test_tui_live1.py::test_model_window_enter_picks_highlighted_current_model,
+::test_model_window_down_enter_picks_next_model и test_tui_live1_edges.py::test_model_window_marks_only_current_and_has_title
+(список моделей пуст, `assert 0 == 1`); на HEAD a288984 в worktree — тоже. Причина не установлена.
+`test_digit_key…` при повторе прошёл. Гипотеза оркестратора — зависят от пользовательского `config.toml`,
+не проверена. Найти причину и починить или изолировать. Источник — отклик Декарта семьи кабанов
+`~/projects/semia-kabanov/otkliki/dekart/2026-10-27-ai-dm-207-p1-sh20-dolg.md` (Н4), решение Влада 2026-10-27.
