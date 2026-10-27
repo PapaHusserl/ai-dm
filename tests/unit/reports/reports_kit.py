@@ -2,8 +2,9 @@
 # Не фикстуры pytest, а обычные функции. Контракт: ai_dm.reports.capture.TurnCapture,
 # ai_dm.reports.writer.write_report(saves_root, world_id, capture, text, now) -> Path,
 # ai_dm.reports.markdown.render(capture, text) -> str.
-# #21 ТО: ai_dm.reports.writer.trim_issues(saves_root, world_id, max_mb) -> list[Path] (лимит issues/),
-# dir_size(path) -> int; GameApp.already_reported(capture) -- один авто-репорт на попытку хода.
+# #21 ТО: ai_dm.reports.writer.trim_issues(saves_root, world_id, max_mb) -> list[Path]
+# (лимит issues/), dir_size(path) -> int; GameApp.already_reported(capture) -- один авто-репорт
+# на попытку хода.
 import sys
 from datetime import UTC, datetime
 from pathlib import Path

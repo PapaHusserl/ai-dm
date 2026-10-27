@@ -2,8 +2,8 @@
 #   AppConfig(BaseModel, extra="forbid" на всех уровнях) -- настройки приложения (не правила игры):
 #     .roles.narrator / .roles.world / .roles.summarizer: ModelRole(provider: str, model: str,
 #         effort: str | None, max_tokens: int)
-#         narrator: provider "anthropic", model "claude-opus-5-5", effort "medium" (B59, было "low" в C3),
-#         max_tokens 16000;
+#         narrator: provider "anthropic", model "claude-opus-5-5", effort "medium"
+#         (B59, было "low" в C3), max_tokens 16000;
 #         world и summarizer: provider "anthropic", model "claude-haiku-4-5" (на этапе 2 описаны,
 #         не вызываются)
 #     .alternatives.narrator: ModelRole -- профиль-альтернатива narrator (по выбору игрока):

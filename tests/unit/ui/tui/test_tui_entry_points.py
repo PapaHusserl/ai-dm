@@ -1403,7 +1403,8 @@ def test_preset_picker_click_on_wrapped_line_of_item_three_returns_three(tui):
     assert app.return_value == 3
 
 
-# Б2б: placeholder по типу сессии, заставка в PickerApp (пункт «Создать пошагово» -- в test_cli_hero_steps)
+# Б2б: placeholder по типу сессии, заставка в PickerApp
+# (пункт «Создать пошагово» -- в test_cli_hero_steps)
 
 def make_sessions(registry, cfg):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "game"))
@@ -1423,7 +1424,9 @@ def test_create_hero_tui_gives_steps_placeholder_to_wizard(registry, cfg, monkey
     from ai_dm.ui.tui import strings
 
     seen = []
-    monkeypatch.setattr(tui_module, "create_hero", lambda session, placeholder: seen.append(placeholder))
+    monkeypatch.setattr(
+        tui_module, "create_hero", lambda session, placeholder: seen.append(placeholder)
+    )
     _, wizard = make_sessions(registry, cfg)
     assert create_hero_tui(wizard) == (None, None)
     assert seen == [strings.STEPS_PLACEHOLDER]
@@ -1435,7 +1438,9 @@ def test_create_hero_tui_gives_create_placeholder_to_describe_session(registry, 
     from ai_dm.ui.tui import strings
 
     seen = []
-    monkeypatch.setattr(tui_module, "create_hero", lambda session, placeholder: seen.append(placeholder))
+    monkeypatch.setattr(
+        tui_module, "create_hero", lambda session, placeholder: seen.append(placeholder)
+    )
     session, _ = make_sessions(registry, cfg)
     assert create_hero_tui(session) == (None, None)
     assert seen == [strings.CREATE_PLACEHOLDER]
@@ -1487,7 +1492,8 @@ def test_picker_shows_title_art_above_the_items(tui):
         choices_y = app.query_one("#choices").region.y
         return picker_feed_lines(app), screen, feed_y, choices_y
 
-    lines, screen, feed_y, choices_y = run(PickerApp("Выберите героя:", ["Арн", "Лиэль"], splash=True), steps)
+    picker = PickerApp("Выберите героя:", ["Арн", "Лиэль"], splash=True)
+    lines, screen, feed_y, choices_y = run(picker, steps)
     assert len(rows) == 16
     assert [row for row in rows if row not in lines] == []
     assert [row for row in rows if not any(row in line for line in screen)] == []

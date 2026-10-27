@@ -272,7 +272,10 @@ def test_rules_say_scene_is_written_in_text_not_in_thinking():
 
 def test_rules_say_offer_choices_goes_in_last_answer_after_scene_text():
     text = rules_text()
-    assert "`offer_choices` вызывай в последнем ответе, после результатов механики и текста сцены" in text
+    assert (
+        "`offer_choices` вызывай в последнем ответе, после результатов механики и текста сцены"
+        in text
+    )
 
 
 def test_rules_say_offer_choices_without_scene_is_not_end_of_turn():

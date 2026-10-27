@@ -25,7 +25,8 @@ def test_test_defaults_have_the_check_off():
 
 
 def test_min_narration_chars_can_be_set_by_user(real_defaults):
-    assert load_settings("[master]\nmin_narration_chars = 120\n").app.master.min_narration_chars == 120
+    settings = load_settings("[master]\nmin_narration_chars = 120\n")
+    assert settings.app.master.min_narration_chars == 120
 
 
 def test_min_narration_chars_zero_is_valid(real_defaults):

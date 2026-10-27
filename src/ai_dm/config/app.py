@@ -131,7 +131,8 @@ class LlmConfig(BaseModel):
     gemini_cache_world: bool = False
     # safety_settings Gemini: block_none/off снимают фильтры, default не передаёт
     gemini_safety: Literal["default", "block_none", "off"] = "block_none"
-    # thinking Claude по ролям (только narrator, включает создание героя); нет ключа -- не передаётся
+    # thinking Claude по ролям (только narrator, включает создание героя);
+    # нет ключа -- не передаётся
     thinking: dict[Literal["narrator"], Literal["adaptive"]] = {}
     # показ мышления в ответе (журнал): summarized или omitted
     thinking_display: Literal["summarized", "omitted"] = "summarized"

@@ -233,7 +233,9 @@ def test_thinking_block_with_signature_goes_back_unchanged_next_round():
     block = Block(type="thinking", thinking="", signature="sig==")
     adapter, client, _ = make([api_response([block, Block(type="text", text="т")])])
     response = adapter.complete(make_request())
-    follow = make_request(messages=[user("привет"), Message(role="assistant", content=response.content)])
+    follow = make_request(
+        messages=[user("привет"), Message(role="assistant", content=response.content)]
+    )
     adapter.client.results.append(api_response())
     adapter.complete(follow)
     assert client.calls[1]["messages"][1]["content"][0] == raw

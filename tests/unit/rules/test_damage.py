@@ -12,8 +12,9 @@
 #   roll_damage удалён (аудит 1 п. 2.12): кубики урона -- core.dice.roll_damage_dice
 #       (крит удваивает ЧИСЛО кубиков, бонус не удваивается -- тесты в core/test_dice.py)
 #   hazard_dice(level: int, severity: str, registry) -> str  -- ТЗ 2.3, severity: "nuisance" |
-#       "dangerous" | "deadly"; таблица damage_severity (К0б, SRD 5.2) по полосам 1-4 / 5-10 / 11-16 /
-#       17-20: 1d10 2d10 4d10 / 2d10 4d10 10d10 / 4d10 10d10 18d10 / 10d10 18d10 24d10;
+#       "dangerous" | "deadly"; таблица damage_severity (К0б, SRD 5.2) по полосам
+#       1-4 / 5-10 / 11-16 / 17-20: 1d10 2d10 4d10 / 2d10 4d10 10d10 /
+#       4d10 10d10 18d10 / 10d10 18d10 24d10;
 #       уровень вне 1..20 или неизвестная тяжесть -> ValueError
 #   HazardError(ValueError)
 #   roll_hazard(hero, severity, damage_type, registry, rng, *, failed_save=False) -> HazardResult

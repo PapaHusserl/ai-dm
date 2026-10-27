@@ -1,7 +1,8 @@
 # Ожидаемый API: ai_dm.rules.progression (registry -- ContentRegistry, см. tests/unit/conftest.py)
 #   Таблицы опыта и мастерства читаются из реестра (вид "table": xp, proficiency), поэтому
 #   все функции принимают registry; реестр без SRD-слоя таблиц не содержит.
-#   max_level(registry) = 20                     -- наибольший ключ таблицы xp (К0б; MAX_LEVEL удалён)
+#   max_level(registry) = 20                     -- наибольший ключ таблицы xp
+#                                                   (К0б; MAX_LEVEL удалён)
 #   xp_for_level(level: int, registry) -> int    -- порог опыта: 1:0, 2:300, 3:900, 4:2700, 5:6500;
 #                                                   level вне 1..5 -> ValueError
 #   level_for_xp(xp: int, registry) -> int       -- максимальный уровень, порог которого достигнут;

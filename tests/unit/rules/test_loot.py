@@ -139,7 +139,9 @@ class FixedDice(Rng):
 
 def hoard_rows(registry, band):
     rows = registry.get("table", "hoard").rows
-    coins = [key.split(":")[1] for key in rows if key.startswith(f"{band}:") and key.endswith(":count")]
+    coins = [
+        key.split(":")[1] for key in rows if key.startswith(f"{band}:") and key.endswith(":count")
+    ]
     return [
         (rows[f"{band}:{coin}:count"], rows[f"{band}:{coin}:sides"], rows[f"{band}:{coin}:mult_cp"])
         for coin in coins

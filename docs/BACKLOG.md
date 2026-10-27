@@ -1204,15 +1204,6 @@ updated: 2026-10-27
 косвенно тестами окна `/model`. Нужен явный юнит-тест models.py. Замечание мамы-кабана по шагу 209 П1
 (docs/plan-209.md), решение Влада 2026-10-27 — пунктом в беклог, шаг 209 не расширять.
 
-## 211. ruff красный на HEAD: 16 ошибок
-status: idea
-priority: medium
-updated: 2026-10-27
-
-`uv run ruff check src tests` на HEAD a870c1e (worktree, шаг 209) — 16 ошибок: src/ai_dm/config/app.py, 4 в
-tests/unit/ui/tui/test_tui_entry_points.py (E501), по одной в 11 файлах tests/unit (config, game_kit, llm, master,
-protocol, reports_kit, rules). Не от шага 209; причина не установлена.
-
 ## 212. Общая сводка игры отстаёт от сюжета: устаревшая «открытая нить»
 status: idea
 priority: medium
