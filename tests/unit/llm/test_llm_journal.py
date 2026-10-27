@@ -20,7 +20,7 @@ TS = "2026-10-03T12:00:00+00:00"
 FIELDS = {
     "call_id", "run_id", "ts", "world_id", "turn_seq", "attempt", "role", "provider", "model",
     "request", "response", "usage", "cost_nano", "request_id", "stop_reason", "error",
-    "report_tags", "turn_status", "meta",
+    "report_tags", "turn_status", "meta", "duration_s", "tokens_per_s",
 }
 
 
@@ -733,3 +733,107 @@ def test_mark_turn_with_role_finds_role_in_older_segment_of_the_same_run(tmp_pat
     journal.mark_turn("bnd-1", "aborted", role="summarizer")
     journal.mark_turn("bnd-1", "committed", role="world")
     assert statuses_by_role(journal) == [("summarizer", "aborted"), ("world", "committed")]
+
+
+# 207: duration_s и tokens_per_s в записи (tokens_per_s = usage.output / duration_s)
+
+def resp_with_output(tokens):
+    return make_response(usage=Usage(input=10, output=tokens))
+
+
+def test_record_writes_duration_s(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=12.5, resp=resp_with_output(250))
+    assert journal.read_records()[0]["duration_s"] == 12.5
+
+
+def test_record_computes_tokens_per_s_from_output_and_duration(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=12.5, resp=resp_with_output(250))
+    assert journal.read_records()[0]["tokens_per_s"] == 20.0
+
+
+def test_tokens_per_s_is_rounded_to_one_decimal(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=3.0, resp=resp_with_output(10))
+    assert journal.read_records()[0]["tokens_per_s"] == 3.3
+
+
+def test_duration_s_is_rounded_to_three_decimals(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=1.23456, resp=resp_with_output(10))
+    assert journal.read_records()[0]["duration_s"] == 1.235
+
+
+def test_sub_second_duration_still_gives_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=0.5, resp=resp_with_output(10))
+    assert journal.read_records()[0]["tokens_per_s"] == 20.0
+
+
+def test_zero_duration_gives_no_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=0.0, resp=resp_with_output(250))
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (0.0, None)
+
+
+def test_negative_duration_is_written_as_is_without_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=-0.1, resp=resp_with_output(250))
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (-0.1, None)
+
+
+def test_timeout_error_keeps_duration_without_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    journal.record_call(
+        call_id="c1", run_id="run-1", ts=TS, turn_seq=1, attempt=1, role="narrator",
+        provider="anthropic", model="claude-opus-5-5", request=make_request(),
+        error=LlmTransient("таймаут", timeout=True), duration_s=90.0,
+    )
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (90.0, None)
+
+
+def test_fatal_error_keeps_duration_without_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    journal.record_call(
+        call_id="c1", run_id="run-1", ts=TS, turn_seq=1, attempt=1, role="narrator",
+        provider="anthropic", model="claude-opus-5-5", request=make_request(),
+        error=LlmFatal("400"), duration_s=0.4,
+    )
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (0.4, None)
+
+
+def test_response_without_output_tokens_gives_zero_tokens_per_s(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=2.0, resp=resp_with_output(0))
+    assert journal.read_records()[0]["tokens_per_s"] == 0.0
+
+
+def test_record_without_duration_has_both_fields_none(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal)
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (None, None)
+
+
+def test_mark_turn_keeps_timing_fields(tmp_path):
+    journal = make_journal(tmp_path)
+    record(journal, duration_s=12.5, resp=resp_with_output(250))
+    journal.mark_turn("run-1", "committed")
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"], rec["turn_status"]) == (
+        12.5, 20.0, "committed",
+    )
+
+
+def test_timing_fields_do_not_change_fingerprint(tmp_path):
+    journal = make_journal(tmp_path)
+    request = make_request()
+    record(journal, 1, req=request, duration_s=3.0)
+    record(journal, 2, req=request)
+    first, second = journal.read_records()
+    assert first["request"]["fingerprint"] == second["request"]["fingerprint"]

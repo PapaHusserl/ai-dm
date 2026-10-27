@@ -245,3 +245,29 @@ def test_replay_of_record_without_stop_detail_key_gives_none(tmp_path):
     got = ReplayAdapter(records).complete(make_request("раз"))
     assert (got.text if hasattr(got, "text") else got.content[0].text) == "старый"
     assert got.stop_detail is None
+
+
+# 207: поля duration_s / tokens_per_s не в отпечатке; записи с ними и без них воспроизводятся
+
+def test_replay_of_record_with_timing_fields_returns_response(tmp_path):
+    journal = make_journal(tmp_path)
+    req, resp = make_request("раз"), make_response("с замером")
+    journal.record_call(
+        call_id="c1", run_id="run-1", ts="2026-10-03T12:00:00", turn_seq=1, attempt=1,
+        role=req.role, provider="anthropic", model=req.model, request=req, response=resp,
+        duration_s=4.2,
+    )
+    records = journal.read_records()
+    assert records[0]["duration_s"] == 4.2
+    assert ReplayAdapter(records).complete(req) == resp
+
+
+def test_replay_of_record_without_timing_keys_returns_response(tmp_path):
+    # старые журналы: полей duration_s / tokens_per_s в записи нет
+    journal = make_journal(tmp_path)
+    req, resp = make_request("раз"), make_response("старый")
+    log(journal, 1, req, resp)
+    records = journal.read_records()
+    records[0].pop("duration_s", None)
+    records[0].pop("tokens_per_s", None)
+    assert ReplayAdapter(records).complete(req) == resp

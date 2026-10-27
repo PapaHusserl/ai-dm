@@ -2,6 +2,8 @@
 #   MasterSession(..., policy=None): None -> app_cfg.retry; свой policy -- свои паузы/число попыток;
 #   SummarizerSession(..., policy=None) пробрасывает policy в run_scene / run_chapter;
 #   сеть у summarizer -- мягкий сбой (к запасному); journal.note_start на каждую попытку.
+from datetime import timedelta
+
 import pytest
 from master_kit import (
     NOW,
@@ -17,6 +19,8 @@ from test_master_summarizer_chain import (
     scene_steps,
 )
 
+from ai_dm.llm.cost import CostLedger
+from ai_dm.llm.journal import Journal
 from ai_dm.master.session import MasterSession, TurnFailed
 from ai_dm.master.summarizer import SummarizerSession
 from ai_dm.protocol.apply import apply
@@ -117,6 +121,60 @@ def test_every_started_attempt_has_a_pair_in_calls(tmp_path, registry, cfg):
     _, session, journal, _, ctx = run(steps, tmp_path, registry, cfg)
     session.run(ctx, "Иду.", apply, "explore")
     assert len(attempt_rows(journal)) == len(journal.read_records()) == 2
+
+
+# 207: duration_s = конец попытки (on_attempt) - начало (on_start), одни и те же часы self.now
+
+def ticking_session(offsets, steps, tmp_path):
+    # часы отдают метки NOW + offsets[i] по одной на каждый вызов now(): старт, конец, старт, ...
+    clock = iter([NOW + timedelta(seconds=s) for s in offsets]).__next__
+    app = app_cfg()
+    journal = Journal(tmp_path, "w1", app.journal)
+    session = MasterSession(
+        scripted(steps), app, journal=journal, ledger=CostLedger(tmp_path, "w1"),
+        run_id="run-1", sleeper=lambda s: None, now=clock,
+    )
+    return session, journal
+
+
+def test_call_writes_duration_between_start_and_end_of_attempt(tmp_path, registry, cfg):
+    session, journal = ticking_session([0, 3], [text_step()], tmp_path)
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    assert journal.read_records()[0]["duration_s"] == 3.0
+
+
+def test_call_uses_the_same_start_mark_for_attempts_log_and_duration(tmp_path, registry, cfg):
+    session, journal = ticking_session([0, 3], [text_step()], tmp_path)
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    assert attempt_rows(journal)[0][0] == NOW.isoformat()
+    assert journal.read_records()[0]["ts"] == (NOW + timedelta(seconds=3)).isoformat()
+
+
+def test_each_retry_attempt_gets_its_own_duration(tmp_path, registry, cfg):
+    session, journal = ticking_session([0, 1, 2, 5], [TRANSIENT, text_step()], tmp_path)
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    assert [r["duration_s"] for r in journal.read_records()] == [1.0, 3.0]
+
+
+def test_failed_attempt_has_duration_and_no_tokens_per_s(tmp_path, registry, cfg):
+    session, journal = ticking_session([0, 1, 2, 5], [TRANSIENT, text_step()], tmp_path)
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    first = journal.read_records()[0]
+    assert (first["error"]["kind"], first["tokens_per_s"]) == ("transient", None)
+
+
+def test_attempts_log_rows_keep_their_marks_with_ticking_clock(tmp_path, registry, cfg):
+    session, journal = ticking_session([0, 1, 2, 5], [TRANSIENT, text_step()], tmp_path)
+    session.run(make_ctx(registry, cfg), "Иду.", apply, "explore")
+    marks = [r[0] for r in attempt_rows(journal)]
+    assert marks == [NOW.isoformat(), (NOW + timedelta(seconds=2)).isoformat()]
+
+
+def test_constant_clock_gives_zero_duration_and_no_tokens_per_s(tmp_path, registry, cfg):
+    _, session, journal, _, ctx = run([text_step()], tmp_path, registry, cfg)
+    session.run(ctx, "Иду.", apply, "explore")
+    rec = journal.read_records()[0]
+    assert (rec["duration_s"], rec["tokens_per_s"]) == (0.0, None)
 
 
 def test_session_without_journal_notes_nothing(tmp_path, registry, cfg):

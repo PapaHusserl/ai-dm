@@ -511,7 +511,8 @@ xp_awards_per_scene` (1) записей с outcome «Опыт: +» (0 — вык
 ## C4. Журнал и Replay
 
 Каждый вызов модели пишется в `saves/<world>/journal/calls-NNN.jsonl` (статические блоки в `blobs/` по sha256, ротация и
-gzip, `turn_status committed|aborted`, без ключей). У границы сцены world и summarizer пишут под одним `run_id`: при мягком сбое world (`world_skipped`)
+gzip, `turn_status committed|aborted`, без ключей); в записи также `duration_s` (вызов целиком, от старта до конца попытки)
+и `tokens_per_s` (`usage.output / duration_s`, мышление входит; `None` без ответа или при `duration_s ≤ 0`). У границы сцены world и summarizer пишут под одним `run_id`: при мягком сбое world (`world_skipped`)
 `Journal.mark_turn(run_id, status, role="world")` метит его записи `aborted`, остальное — `committed`. `ReplayAdapter`
 отдаёт записанные ответы по порядку и проверяет
 отпечаток запроса: изменённый ввод или промпт — `ReplayDivergence`. `ai-dm --replay` воспроизводит бой и броски без сети.

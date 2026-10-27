@@ -100,7 +100,7 @@ class Journal:
     def record_call(
         self, *, call_id, run_id, ts, turn_seq, attempt, role, provider, model, request,
         response=None, cost_nano=0, error=None, report_tags=(),
-        meta=None,
+        meta=None, duration_s=None,
     ):
         system_sha = self.write_blob([b.model_dump(mode="json") for b in request.system])
         tools_sha = self.write_blob([t.model_dump(mode="json") for t in request.tools])
@@ -120,6 +120,11 @@ class Journal:
                 "retry_after": getattr(error, "retry_after", None),
                 "timeout": getattr(error, "timeout", False),
             }
+        speed = None
+        if duration_s is not None:
+            duration_s = round(duration_s, 3)
+            if response is not None and duration_s > 0:
+                speed = round(response.usage.output / duration_s, 1)
         record = {
             "call_id": call_id,
             "run_id": run_id,
@@ -148,6 +153,8 @@ class Journal:
             "report_tags": list(report_tags),
             "meta": meta or {},
             "turn_status": None,
+            "duration_s": duration_s,
+            "tokens_per_s": speed,
         }
         path = self.current_segment()
         path.parent.mkdir(parents=True, exist_ok=True)

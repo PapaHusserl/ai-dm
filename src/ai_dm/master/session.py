@@ -220,15 +220,21 @@ class MasterSession:
         messages = [first.model_copy(update={"content": content})] + list(req.messages[1:])
         return req.model_copy(update={"messages": messages})
 
-    def note_start(self, ctx, run_id, info, attempt):
+    def note_start(self, ctx, run_id, info, attempt, moment):
         # строка в journal/attempts.log перед попыткой (если есть журнал)
         if self.journal is not None:
             self.journal.note_start(
-                self.now().isoformat(), run_id, ctx.turn_seq, self.role, info.model, attempt
+                moment.isoformat(), run_id, ctx.turn_seq, self.role, info.model, attempt
             )
 
     def call(self, ctx, req, run_id, plan=None):
         info = self.adapter.info()
+        started_at = None
+
+        def on_start(attempt):
+            nonlocal started_at
+            started_at = self.now()
+            self.note_start(ctx, run_id, info, attempt, started_at)
 
         def on_attempt(attempt, response, error):
             number = self.call_numbers.get(run_id, 0) + 1
@@ -259,6 +265,7 @@ class MasterSession:
                     turn_seq=ctx.turn_seq, attempt=attempt, role=self.role,
                     provider=info.provider, model=model, request=req, response=response,
                     cost_nano=cost, error=error, report_tags=tags, meta=meta,
+                    duration_s=(moment - started_at).total_seconds(),
                 )
             if self.ledger is not None and response is not None:
                 self.ledger.add(
@@ -269,7 +276,7 @@ class MasterSession:
         try:
             return call_with_retries(
                 self.adapter, req, self.policy, self.sleeper, on_attempt,
-                lambda attempt: self.note_start(ctx, run_id, info, attempt),
+                on_start,
             )
         except RetriesExhausted as error:
             raise TurnFailed("network", str(error)) from error

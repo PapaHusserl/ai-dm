@@ -49,7 +49,9 @@
 #       канон = json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).
 #       Journal(saves_root, world_id, cfg: JournalConfig); .dir = saves_root/world_id/journal;
 #       .record_call(*, call_id, turn_seq, attempt, role, provider, model, request, response=None,
-#         cost_nano=0, error: LlmError | None = None, report_tags=()) -> None
+#         cost_nano=0, error: LlmError | None = None, report_tags=(), duration_s=None) -> None
+#         duration_s (сек, round 3 | None) и tokens_per_s = usage.output / duration_s (round 1;
+#         None, если нет ответа, duration_s не задан или <= 0) -- поля записи, не в отпечатке
 #       .mark_turn(turn_seq, status: "committed"|"aborted") -- ставит статус всем записям хода
 #         без статуса (иначе ValueError); .read_records() -> list[dict] по порядку записи (gz тоже)
 #       запись: call_id, world_id, turn_seq, attempt, role, provider, model, request, response

@@ -108,6 +108,8 @@
 #         ответа или адаптера, request, response/error, cost_nano, report_tags=[]);
 #         стоимость ответа -- ledger.add(call_id той же записи, role, model, usage, cost_nano =
 #         llm.cost.cost_nano(usage, app_cfg.prices[model]), day).
+#         duration_s записи = self.now() в on_attempt - self.now() в on_start той же попытки
+#         (одна метка старта идёт и в attempts.log); now() вызывается по разу на старт и на конец.
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
