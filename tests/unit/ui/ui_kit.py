@@ -120,7 +120,9 @@ TALK = "Спрашиваю трактирщика, что слышно в окр
 DESCEND = "Спускаюсь в подвал"
 
 
-def build_app(registry, root, adapter, *, seed=SEED, hero="arn", hp=None, adapter_factory=None):
+def build_app(
+    registry, root, adapter, *, seed=SEED, hero="arn", hp=None, adapter_factory=None, model=OPUS
+):
     from slots_kit import WORLD_TEXT
 
     from ai_dm.game.starter import new_world
@@ -131,14 +133,22 @@ def build_app(registry, root, adapter, *, seed=SEED, hero="arn", hp=None, adapte
     if hp is not None:
         bundle.heroes[0].creature.hp_max = bundle.heroes[0].creature.hp_current = hp
     return make_app(
-        registry, root, adapter, bundle=bundle, world_text=WORLD_TEXT, model=OPUS,
+        registry, root, adapter, bundle=bundle, world_text=WORLD_TEXT, model=model,
         adapter_factory=adapter_factory,
     )
 
 
 def text_app(registry, root, steps, **kw):
-    adapter = ScriptedAdapter(steps, provider="anthropic", model=OPUS)
+    # kw: provider (по умолчанию anthropic) и model (по умолчанию OPUS) -- адаптер и ключ игры
+    model = kw.setdefault("model", OPUS)
+    adapter = ScriptedAdapter(steps, provider=kw.pop("provider", "anthropic"), model=model)
     return build_app(registry, root, adapter, **kw)
+
+
+def menu_model_app(registry, root, steps, **kw):
+    # игра с текущей моделью из меню /model: рассказчик из конфига, не литерал
+    role = settings().app.roles.narrator
+    return text_app(registry, root, steps, provider=role.provider, model=role.model, **kw)
 
 
 def scene_app(registry, root, **kw):

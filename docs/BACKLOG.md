@@ -1195,14 +1195,20 @@ mutmut шага 207 П1 (docs/plan-207.md): на строках до шага в
 (1, 4–6, 9–11, 116–118, 131–133, 163, 165, 167, 170, 172, 176, 180, 182, 183), `MasterSession.call` 13
 (25–27, 37, 39, 42, 43, 69, 70, 103, 110, 131, 136). Разобрать: добить тестами или признать эквивалентными.
 
-## 209. Тесты окна выбора модели в TUI падают на HEAD
+## 210. Тест порядка пунктов меню /model
+status: idea
+priority: low
+updated: 2026-10-27
+
+Порядок `model_options()` (src/ai_dm/game/models.py: следующая по цепочке первой, текущая следом) закреплён только
+косвенно тестами окна `/model`. Нужен явный юнит-тест models.py. Замечание мамы-кабана по шагу 209 П1
+(docs/plan-209.md), решение Влада 2026-10-27 — пунктом в беклог, шаг 209 не расширять.
+
+## 211. ruff красный на HEAD: 16 ошибок
 status: idea
 priority: medium
 updated: 2026-10-27
 
-`make cov` шага 207 П1 (docs/plan-207.md): падают test_tui_live1.py::test_model_window_enter_picks_highlighted_current_model,
-::test_model_window_down_enter_picks_next_model и test_tui_live1_edges.py::test_model_window_marks_only_current_and_has_title
-(список моделей пуст, `assert 0 == 1`); на HEAD a288984 в worktree — тоже. Причина не установлена.
-`test_digit_key…` при повторе прошёл. Гипотеза оркестратора — зависят от пользовательского `config.toml`,
-не проверена. Найти причину и починить или изолировать. Источник — отклик Декарта семьи кабанов
-`~/projects/semia-kabanov/otkliki/dekart/2026-10-27-ai-dm-207-p1-sh20-dolg.md` (Н4), решение Влада 2026-10-27.
+`uv run ruff check src tests` на HEAD a870c1e (worktree, шаг 209) — 16 ошибок: src/ai_dm/config/app.py, 4 в
+tests/unit/ui/tui/test_tui_entry_points.py (E501), по одной в 11 файлах tests/unit (config, game_kit, llm, master,
+protocol, reports_kit, rules). Не от шага 209; причина не установлена.

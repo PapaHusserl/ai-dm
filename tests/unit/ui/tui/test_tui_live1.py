@@ -19,11 +19,12 @@ from game_kit import (  # noqa: E402
     OPUS,
     FactorySpy,
     end_scene_call,
+    settings,
     text_step,
     tools_step,
 )
 from summarizer_kit import summ_steps  # noqa: E402
-from ui_kit import DESCEND, TALK, play, scene_app, text_app  # noqa: E402
+from ui_kit import DESCEND, TALK, menu_model_app, play, scene_app, text_app  # noqa: E402
 
 from ai_dm.game.scene import hero_of  # noqa: E402
 from ai_dm.llm.errors import MissingKey  # noqa: E402
@@ -183,7 +184,7 @@ def test_narrow_f2_shows_combat_and_combat_log_in_fight(registry, tmp_path, tui)
 
 def model_app(registry, tmp_path, error=None):
     spy = FactorySpy(error=error)
-    game = text_app(registry, tmp_path, [text_step("Раз.")], adapter_factory=spy)
+    game = menu_model_app(registry, tmp_path, [text_step("Раз.")], adapter_factory=spy)
     return tui_of(game), game, spy
 
 
@@ -296,7 +297,7 @@ def test_model_window_escape_closes_without_change(registry, tmp_path, tui):
     assert spy.calls == []
     assert "Модель рассказчика" not in text
     assert focus is True
-    assert game.adapter.info().model == OPUS
+    assert game.adapter.info().model == settings().app.roles.narrator.model
 
 
 def test_model_window_digit_out_of_range_changes_nothing(registry, tmp_path, tui):
@@ -326,7 +327,7 @@ def test_model_window_error_goes_to_feed(registry, tmp_path, tui):
     assert depth == 1
     assert "нет ключа GEMINI_API_KEY" in text
     assert "Модель рассказчика:" not in text
-    assert game.adapter.info().model == OPUS
+    assert game.adapter.info().model == settings().app.roles.narrator.model
 
 
 def test_model_window_model_without_price_goes_to_feed(registry, tmp_path, tui):

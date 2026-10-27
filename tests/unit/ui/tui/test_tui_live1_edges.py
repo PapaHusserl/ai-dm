@@ -8,9 +8,9 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "game"))
 
-from game_kit import ReactiveAdapter, text_step  # noqa: E402
+from game_kit import OPUS, ReactiveAdapter, text_step  # noqa: E402
 from test_tui_spells import combat_game, grey_game, open_spells, option_texts, start_fight  # noqa
-from ui_kit import text_app  # noqa: E402
+from ui_kit import menu_model_app, text_app  # noqa: E402
 
 from ai_dm.game.scene import hero_of  # noqa: E402
 from ai_dm.ui.format import INERT_NOTE, turn_menu_lines  # noqa: E402
@@ -203,7 +203,7 @@ def test_model_switch_blocks_input_until_done_then_unblocks(registry, tmp_path, 
 
 
 def test_model_window_marks_only_current_and_has_title(registry, tmp_path, tui):
-    game = text_app(registry, tmp_path, [text_step()])
+    game = menu_model_app(registry, tmp_path, [text_step()])
     app = AiDmApp(PlaySession(game))
 
     async def steps(app, pilot):
@@ -215,6 +215,21 @@ def test_model_window_marks_only_current_and_has_title(registry, tmp_path, tui):
     texts, title = run(app, steps)
     assert len([x for x in texts if "(текущая)" in x]) == 1
     assert title == strings.MODAL_TITLES["/model"]
+
+
+def test_model_window_current_model_outside_config_is_not_marked(registry, tmp_path, tui):
+    game = text_app(registry, tmp_path, [text_step()])
+    assert f"anthropic:{OPUS}" not in game.model_options()
+    app = AiDmApp(PlaySession(game))
+
+    async def steps(app, pilot):
+        await tui.submit(app, pilot, "/model")
+        menu = app.screen.query_one("#model-list")
+        return [str(menu.get_option_at_index(i).prompt) for i in range(menu.option_count)]
+
+    texts = run(app, steps)
+    assert texts
+    assert not [x for x in texts if "(текущая)" in x]
 
 
 def test_model_window_last_digit_picks_last_model(registry, tmp_path, tui):
