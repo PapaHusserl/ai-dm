@@ -659,3 +659,64 @@ def test_two_turn_tool_flow_returns_opaque_message_unchanged():
     assert second[2] == dump
     assert second[3] == {"role": "tool", "tool_call_id": "call_1", "content": "успех"}
     assert final.content[0] == Text(text="итог")
+
+
+class FakeGet:
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def get(self, path, **kwargs):
+        self.calls.append((path, kwargs))
+        if self.error is not None:
+            raise self.error
+        return {}
+
+
+def probing(cfg=None, provider=HOST, error=None, api_key="k"):
+    client = FakeGet(error)
+    adapter = ChatCompletionsAdapter(
+        provider, MODEL, cfg or app_cfg(), client_factory=lambda **kw: client, api_key=api_key,
+    )
+    return adapter, client
+
+
+def test_probe_openrouter_asks_key_path_not_models():
+    adapter, client = probing()
+    adapter.probe()
+    assert client.calls == [("/key", {"cast_to": object})]
+
+
+def test_probe_uses_default_models_path_for_other_host():
+    cfg = cfg_with_host("myhost", "https://h.example/v1")
+    adapter, client = probing(cfg, provider="myhost")
+    adapter.probe()
+    assert client.calls == [("/models", {"cast_to": object})]
+
+
+def test_probe_uses_host_probe_path_from_config():
+    cfg = cfg_with_host("myhost", "https://h.example/v1")
+    cfg.providers["myhost"].probe_path = "/me"
+    adapter, client = probing(cfg, provider="myhost")
+    adapter.probe()
+    assert client.calls[0][0] == "/me"
+
+
+def test_probe_auth_error_is_fatal_with_status():
+    adapter, _ = probing(error=StatusError(401, "No auth"))
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert info.value.status == 401
+
+
+def test_probe_server_error_is_transient():
+    adapter, _ = probing(error=StatusError(502))
+    with pytest.raises(LlmTransient):
+        adapter.probe()
+
+
+def test_probe_error_text_has_no_key():
+    adapter, _ = probing(error=StatusError(401, f"bad {SECRET}"), api_key=SECRET)
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert SECRET not in str(info.value)

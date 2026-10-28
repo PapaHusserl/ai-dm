@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pydantic import ValidationError
 
 from ai_dm.llm.cost import cost_nano, pick_price
-from ai_dm.llm.errors import LlmFatal, RetriesExhausted
+from ai_dm.llm.errors import LlmFatal, RetriesExhausted, is_auth_error
 from ai_dm.llm.retry import call_with_retries
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolCall, ToolResult
 from ai_dm.master.leaks import MARKED_LINE, cut_choice_head, cut_leaks, looks_like_plan
@@ -145,6 +145,13 @@ class TurnFailed(Exception):
         self.applied_refs = frozenset()
 
 
+def fatal_failure(error, provider) -> TurnFailed:
+    # отказ по ключу -- "auth" (подсказка /key), прочее -- "fatal"
+    if is_auth_error(error):
+        return TurnFailed("auth", str(error), detail=provider)
+    return TurnFailed("fatal", str(error))
+
+
 def soft_failure(error) -> bool:
     return isinstance(error, TurnFailed) and error.reason in SOFT_REASONS
 
@@ -281,7 +288,7 @@ class MasterSession:
         except RetriesExhausted as error:
             raise TurnFailed("network", str(error)) from error
         except LlmFatal as error:
-            raise TurnFailed("fatal", str(error)) from error
+            raise fatal_failure(error, info.provider) from error
 
     def run_call(self, ctx, call, executor, result, mode="explore"):
         allowed = {d["name"] for d in tool_set(mode)}

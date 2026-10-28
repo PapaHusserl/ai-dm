@@ -63,6 +63,17 @@ def test_fail_with_refusal_shows_refusal_hint_not_the_text(registry, cfg):
     assert "отказ" not in text.replace(REFUSAL_HINT, "")
 
 
+def test_fail_with_auth_shows_key_hint_with_provider_not_the_text(registry, cfg):
+    from ai_dm.game.turn import AUTH_HINT
+
+    menu, _ = make(registry, cfg)
+    step = menu.fail(TurnFailed("auth", "сырой текст", detail="openrouter"))
+    text = texts(step)
+    assert AUTH_HINT.format(provider="openrouter") in text
+    assert "сырой текст" not in text
+    assert len(menu_of(step)) == 3
+
+
 def test_fail_with_invalid_does_not_show_refusal_hint(registry, cfg):
     menu, _ = make(registry, cfg)
     assert REFUSAL_HINT not in texts(menu.fail(invalid()))

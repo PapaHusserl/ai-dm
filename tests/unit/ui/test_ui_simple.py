@@ -760,6 +760,145 @@ def test_run_reads_input_with_prompt(registry, tmp_path):
     assert source.prompts == ["> "]
 
 
+# /key в простом режиме (шаг 190)
+
+KEY = "sk-ant-api03-WXYZ"
+
+
+class SecretInput:
+    # как ScriptedInput, но помнит, какие строки прочитаны через read_secret
+    def __init__(self, lines):
+        self.remaining = list(lines)
+        self.secret_reads = []
+
+    def read(self, prompt=""):
+        return self.remaining.pop(0) if self.remaining else None
+
+    def read_secret(self, prompt=""):
+        line = self.read(prompt)
+        self.secret_reads.append(line)
+        return line
+
+
+def key_factory(tmp_path, verdict="ok", secrets=None):
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.key_session import KeyDeps, KeySession
+
+    def make():
+        deps = KeyDeps(
+            load_settings().app, {}, tmp_path / "cfg" / ".env",
+            [] if secrets is None else secrets, lambda provider, key, cfg: verdict,
+        )
+        return KeySession(deps)
+
+    return make
+
+
+def run_key(app, lines, factory):
+    from ai_dm.ui.simple import run
+
+    out = PlainOutput()
+    source = SecretInput(lines)
+    code = run(app, source, out, key_factory=factory)
+    return out, source, code
+
+
+def test_key_command_runs_wizard_saves_key_and_rekeys(registry, tmp_path):
+    factory = FactorySpy()
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=factory)
+    out, _, code = run_key(app, ["/key", "3", KEY, "/quit"], key_factory(tmp_path))
+    assert code == 0
+    assert (tmp_path / "cfg" / ".env").read_text(encoding="utf-8") == f"ANTHROPIC_API_KEY={KEY}\n"
+    assert "Ключ anthropic подключён." in out.text
+    assert factory.calls == [("anthropic", app.runner.model)]
+
+
+def test_key_is_read_without_echo_and_not_shown(registry, tmp_path):
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=FactorySpy())
+    out, source, _ = run_key(app, ["/key", "3", KEY, "/quit"], key_factory(tmp_path))
+    assert source.secret_reads == [KEY]
+    assert KEY not in out.text
+    assert "…WXYZ" in out.text
+
+
+def test_key_command_other_provider_saves_and_points_to_model(registry, tmp_path):
+    factory = FactorySpy()
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=factory)
+    out, _, _ = run_key(app, ["/key", "1", "or-key-1234", "/quit"], key_factory(tmp_path))
+    assert "сменить модель — /model" in out.text
+    assert factory.calls == []
+
+
+def test_key_command_cancel_does_not_rekey_or_write(registry, tmp_path):
+    factory = FactorySpy()
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=factory)
+    out, _, _ = run_key(app, ["/key", "3", None], key_factory(tmp_path))
+    assert not (tmp_path / "cfg" / ".env").exists()
+    assert factory.calls == []
+    assert "подключён" not in out.text
+
+
+def test_key_command_invalid_then_valid(registry, tmp_path):
+    from ai_dm.config.app import load_settings
+    from ai_dm.ui.key_session import KeyDeps, KeySession
+
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=FactorySpy())
+    verdicts = ["invalid", "ok"]
+
+    def make():
+        deps = KeyDeps(
+            load_settings().app, {}, tmp_path / "cfg" / ".env", [],
+            lambda provider, key, cfg: verdicts.pop(0),
+        )
+        return KeySession(deps)
+
+    out, _, _ = run_key(app, ["/key", "3", "плохой", KEY, "/quit"], make)
+    assert "Ключ не подошёл, ещё раз?" in out.text
+    assert "Ключ anthropic подключён." in out.text
+
+
+def test_key_command_adds_key_to_secrets(registry, tmp_path):
+    secrets = []
+    app = text_app(registry, tmp_path / "s", [text_step()], adapter_factory=FactorySpy())
+    run_key(app, ["/key", "3", KEY, "/quit"], key_factory(tmp_path, secrets=secrets))
+    assert secrets == [KEY]
+
+
+def test_key_command_without_factory_says_unavailable(registry, tmp_path):
+    app = text_app(registry, tmp_path / "s", [text_step()])
+    out, source, code = run_key(app, ["/key", "/quit"], None)
+    assert "Ввод ключа здесь недоступен." in out.text
+    assert (code, source.remaining) == (0, [])
+
+
+def test_key_command_game_continues_after_wizard(registry, tmp_path):
+    app = text_app(registry, tmp_path / "s", [text_step("Дальше.")], adapter_factory=FactorySpy())
+    out, _, _ = run_key(app, ["/key", "3", KEY, "Иду", "/quit"], key_factory(tmp_path))
+    # ход идёт уже на адаптере, который собрала фабрика после ключа (ReactiveAdapter: «Рассказ.»)
+    assert "Дальше." not in out.text
+    assert out.text.index("Рассказ.") > out.text.index("подключён")
+
+
+def test_enter_key_simple_returns_session_with_result(tmp_path):
+    from slots_kit import ScriptedInput
+
+    from ai_dm.ui.simple import enter_key_simple
+
+    session = key_factory(tmp_path)()
+    enter_key_simple(ScriptedInput(["2", "g-key-9999"]), PlainOutput(), session)
+    assert (session.saved, session.provider, session.tail) == (True, "gemini", "9999")
+
+
+def test_enter_key_simple_end_of_input_ends_without_save(tmp_path):
+    from slots_kit import ScriptedInput
+
+    from ai_dm.ui.simple import enter_key_simple
+
+    session = key_factory(tmp_path)()
+    assert enter_key_simple(ScriptedInput(["2"]), PlainOutput(), session) is session
+    assert session.saved is False
+
+
 def test_run_redacts_secrets_in_turn_failure(registry, tmp_path, monkeypatch):
     from slots_kit import ScriptedInput
 

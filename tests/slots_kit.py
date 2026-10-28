@@ -26,6 +26,9 @@ class ScriptedInput:
             return None
         return self.remaining.pop(0)
 
+    def read_secret(self, prompt=""):
+        return self.read(prompt)
+
 
 def saved_close_reason(root, world_id):
     # причина закрытия сцены в автосейве границы (он хранит закрытую сцену); нет автосейва -- None

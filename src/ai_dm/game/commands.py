@@ -38,6 +38,7 @@ HELP = {
     "load": "[имя] загрузить игру (без имени — последнее автосохранение)",
     "model": "[роль провайдер:модель] показать или сменить модель",
     "cost": "расходы на модель",
+    "key": "добавить или сменить ключ API провайдера",
     "sheet": "лист героя: характеристики, навыки, черты",
     "inv": "инвентарь по группам; надеть <предмет> [левая] · снять <слот> · выпить <предмет>",
     "shop": "торговцы здесь: что купить и что продать",
@@ -93,6 +94,11 @@ def cmd_model(app, arg):
     if error is not None:
         return app.reply([error])
     return app.reply([f"Модель рассказчика: {key.strip()}."])
+
+
+def cmd_key(app, arg):
+    # сам ввод ключа делает экран (UI): команда лишь просит его
+    return app.reply(["Ключ API: выберите провайдера."], request="key")
 
 
 def money_text(nano):
@@ -315,6 +321,7 @@ COMMANDS = {
     "load": cmd_load,
     "model": cmd_model,
     "cost": cmd_cost,
+    "key": cmd_key,
     "sheet": cmd_sheet,
     "inv": cmd_inv,
     "shop": cmd_shop,

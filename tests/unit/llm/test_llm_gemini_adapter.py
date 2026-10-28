@@ -45,7 +45,7 @@ import pytest
 from llm_kit import app_cfg, make_request, user
 
 from ai_dm.llm.adapter import AdapterInfo
-from ai_dm.llm.errors import LlmFatal, LlmTransient
+from ai_dm.llm.errors import LlmFatal, LlmTransient, is_auth_error
 from ai_dm.llm.gemini_adapter import GeminiAdapter
 from ai_dm.llm.types import (
     Message,
@@ -744,3 +744,70 @@ def test_real_function_response_with_api_id_keeps_id():
     ])
     response = adapter.build_contents(req)[2].parts[0].function_response
     assert (response.name, response.id) == ("skill_check", "fc-9")
+
+
+class FakeModelsList:
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def list(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        return []
+
+
+def probing(error=None, api_key="AIza-0000"):
+    models = FakeModelsList(error)
+    client = SimpleNamespace(models=models)
+    adapter = GeminiAdapter(MODEL, app_cfg(), client=client, sdk=FAKE_SDK, api_key=api_key)
+    return adapter, models
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404])
+def test_fatal_code_error_keeps_status(code):
+    adapter, _ = make([ApiError(code)])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert info.value.status == code
+
+
+def test_fatal_error_without_code_has_no_status():
+    adapter, _ = make([ValueError("странное")])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert info.value.status is None
+
+
+def test_probe_lists_one_model_per_page():
+    adapter, models = probing()
+    adapter.probe()
+    assert models.calls == [{"config": {"page_size": 1}}]
+
+
+def test_probe_invalid_key_400_is_recognized_as_auth_error():
+    adapter, _ = probing(ApiError(400, "API key not valid. Please pass a valid API key."))
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert is_auth_error(info.value)
+
+
+def test_probe_plain_400_is_not_auth_error():
+    adapter, _ = probing(ApiError(400, "bad request"))
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert not is_auth_error(info.value)
+
+
+def test_probe_server_error_is_transient():
+    adapter, _ = probing(ApiError(503))
+    with pytest.raises(LlmTransient):
+        adapter.probe()
+
+
+def test_probe_error_text_has_no_key():
+    adapter, _ = probing(ApiError(403, "bad AIza-SECRET-55"), api_key="AIza-SECRET-55")
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert "AIza-SECRET-55" not in str(info.value)

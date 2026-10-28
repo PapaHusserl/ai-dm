@@ -7,7 +7,7 @@ from ai_dm.ui.format import (
     status_lines,
     turn_menu_lines,
 )
-from ai_dm.ui.screen import SPENT_PREFIX, limit_state, reply_blocks, status_line
+from ai_dm.ui.screen import SPENT_PREFIX, limit_state, note_block, reply_blocks, status_line
 from ai_dm.ui.session import PlaySession
 
 # limit_state и status_line реэкспортируются для совместимости старых импортов (тесты)
@@ -68,7 +68,29 @@ def show_reply(app, reply, sink, xp_before):
     show_blocks(app, sink, reply_blocks(app, reply, xp_before))
 
 
-def run(app, source, sink, replay=False, secrets=(), opening=None):
+def enter_key_simple(stdin, stdout, session):
+    # ввод ключа построчно; ключ читается без эха; возвращает сессию (saved -- ключ записан)
+    width = session.deps.app_cfg.ui.width
+    emit_blocks(stdout, session.start().blocks, width)
+    while True:
+        read = stdin.read_secret if session.state == "key" else stdin.read
+        step = session.submit(read("> "))
+        emit_blocks(stdout, step.blocks, width)
+        if step.quit:
+            return session
+
+
+def key_command(app, source, sink, key_factory):
+    # /key в игре: окно ввода ключа, затем новые адаптеры ролей этого провайдера
+    if key_factory is None:
+        show_blocks(app, sink, [note_block("Ввод ключа здесь недоступен.")])
+        return
+    session = enter_key_simple(source, sink, key_factory())
+    if session.saved:
+        show_blocks(app, sink, [note_block(app.rekey(session.provider))])
+
+
+def run(app, source, sink, replay=False, secrets=(), opening=None, key_factory=None):
     session = PlaySession(app, replay=replay, secrets=secrets, opening=opening)
     title = art_for_event("title")
     if title is not None:
@@ -81,5 +103,7 @@ def run(app, source, sink, replay=False, secrets=(), opening=None):
             line = source.read("> ")
         step = session.submit(line)
         show_blocks(app, sink, step.blocks)
+        if step.request == "key":
+            key_command(app, source, sink, key_factory)
         if step.quit:
             return step.exit_code

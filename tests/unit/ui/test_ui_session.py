@@ -589,6 +589,17 @@ def test_limit_saved_note_is_exact(registry, tmp_path):
     assert texts(step, "note") == ["Сохранено."]
 
 
+def test_key_command_puts_request_into_step(registry, tmp_path):
+    app = text_app(registry, tmp_path, [text_step()])
+    assert make_session(app).submit("/key").request == "key"
+
+
+def test_ordinary_turn_and_commands_have_no_request(registry, tmp_path):
+    session = make_session(text_app(registry, tmp_path, [text_step()]))
+    assert session.submit("/help").request is None
+    assert session.submit("Иду").request is None
+
+
 def test_limit_unknown_answer_note_is_exact(registry, tmp_path):
     app = limited_app(registry, tmp_path, [PAID, PAID], 1)
     session = make_session(app)

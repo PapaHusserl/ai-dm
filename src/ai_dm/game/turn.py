@@ -37,12 +37,22 @@ TEXT_NOTE = (
     "Системная приписка: напиши сцену текстом ответа — "
     "игрок видит только текст, размышления ему не показываются."
 )
+AUTH_HINT = "Ключ {provider} не принят — введите новый: /key, затем «1. повтор»."
 RETRY_NOTES = {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE}
 HARD_REFUSALS = ("PROHIBITED_CONTENT", "BLOCKLIST", "SPII")
 
 
 def hard_refusal(failure):
     return failure.reason == "refusal" and failure.detail in HARD_REFUSALS
+
+
+def failure_hint(failure):
+    # что видит игрок вместо сырого текста сбоя
+    if failure.reason == "refusal":
+        return REFUSAL_HINT
+    if failure.reason == "auth":
+        return AUTH_HINT.format(provider=failure.detail)
+    return str(failure)
 
 
 class TurnResult:
@@ -270,7 +280,7 @@ class TurnRunner:
         result.failure = failure
         result.report_tags = list(dict.fromkeys(started.report_tags + failure.report_tags))
         result.menu = list(ERROR_MENU)
-        result.hint = REFUSAL_HINT if failure.reason == "refusal" else str(failure)
+        result.hint = failure_hint(failure)
         return result
 
     def mark_journal(self, run_id, status, role=None):

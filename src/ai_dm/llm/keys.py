@@ -44,6 +44,26 @@ def read_var(name, *, env=None, dotenv_path=None):
     return None
 
 
+def write_dotenv_var(path, name, value):
+    # меняет первую строку с этим именем, остальное не трогает; нет строки -- дописывает
+    path = Path(path)
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    new = f"{name}={value}"
+    for index, line in enumerate(lines):
+        if line.strip().startswith("#") or "=" not in line:
+            continue
+        if line.split("=", 1)[0].strip() == name:
+            lines[index] = new
+            break
+    else:
+        lines.append(new)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    tmp.chmod(0o600)
+    tmp.replace(path)
+
+
 def redact(text, secrets):
     for secret in secrets:
         if secret:

@@ -53,7 +53,7 @@ from ai_dm.game.scene import start_scene
 from ai_dm.game.starter import new_world_from_pack
 from ai_dm.llm.cost import CostLedger
 from ai_dm.llm.errors import MissingKey
-from ai_dm.llm.factory import make_adapter
+from ai_dm.llm.factory import make_adapter, verify_key
 from ai_dm.llm.journal import Journal
 from ai_dm.llm.keys import KEY_VARS, load_key, read_var, redact
 from ai_dm.llm.mock import ScriptedAdapter, load_script
@@ -69,7 +69,8 @@ from ai_dm.ui.hero_session import CREATE_HERO, HeroSession
 from ai_dm.ui.hero_wizard import CREATE_HERO_STEPS, HeroWizard
 from ai_dm.ui.import_session import ImportSession
 from ai_dm.ui.io import CaptureOutput, InputSource, OutputSink, StdinInput, StdoutOutput
-from ai_dm.ui.simple import emit_blocks, run
+from ai_dm.ui.key_session import PROVIDER_VAR, KeyDeps, KeySession
+from ai_dm.ui.simple import emit_blocks, enter_key_simple, run
 
 # первый ход нового мира — мастер открывает сцену сам
 OPENING = (
@@ -319,6 +320,18 @@ def create_hero(stdin, stdout, notes, setup, session):
     return create_hero_simple(stdin, stdout, session)
 
 
+def enter_key(stdin, stdout, notes, setup, session):
+    # ввод ключа API; сессия (saved=True, если ключ записан); экран TUI -- партия 2, пока простой
+    return enter_key_simple(stdin, stdout, session)
+
+
+def key_session_of(setup, remember=False):
+    deps = KeyDeps(
+        settings_of(setup).app, setup.env, setup.dotenv_path, setup.secrets, verify=verify_key
+    )
+    return KeySession(deps, remember=remember)
+
+
 def profile_narrator(settings, provider):
     profiles = settings.app.profiles
     if provider not in profiles:
@@ -337,15 +350,26 @@ def stored_narrator(saves_root, world_id):
         return None
 
 
-def pick_narrator(args, settings, setup, saves_root, stdout):
-    # роль рассказчика: явный --provider, сохранённая модель мира, roles.narrator,
-    # иначе профиль провайдера, для которого есть ключ
+def chosen_narrator(args, settings, setup, saves_root):
+    # явный выбор: --provider, сохранённая модель мира, провайдер мастера ключа (AI_DM_PROVIDER)
     if args.provider:
         return profile_narrator(settings, args.provider)
     if not args.new:
         stored = stored_narrator(saves_root, args.world)
         if stored is not None:
             return stored
+    remembered = read_var(PROVIDER_VAR, env=setup.env, dotenv_path=setup.dotenv_path)
+    if remembered:
+        return profile_narrator(settings, remembered)
+    return None
+
+
+def pick_narrator(args, settings, setup, saves_root, stdout):
+    # роль рассказчика: явный выбор (chosen_narrator), roles.narrator, иначе профиль провайдера,
+    # для которого есть ключ
+    chosen = chosen_narrator(args, settings, setup, saves_root)
+    if chosen is not None:
+        return chosen
     env, dotenv_path = setup.env, setup.dotenv_path
     narrator = settings.app.roles.narrator
     # имя переменной ключа: у встроенного из KEY_VARS, у хостера из providers (как у make_adapter)
@@ -636,7 +660,10 @@ def play(args, stdin, stdout, setup):
             return code
         say(stdout, redact(f"TUI не запустился: {reason}, простой режим.", secrets))
         flush_notes(notes, stdout)
-    return run(app, stdin, stdout, replay=args.replay, secrets=secrets, opening=opening)
+    return run(
+        app, stdin, stdout, replay=args.replay, secrets=secrets, opening=opening,
+        key_factory=functools.partial(key_session_of, setup),
+    )
 
 
 def attach_sound(args, app, setup):
@@ -884,6 +911,9 @@ def prepare(args, stdin, stdout, notes, setup):
         return 2
     settings = settings_of(setup)
     set_durable(settings.app.persistence.durable)
+    if not any(secrets) and not (args.mock or args.replay):
+        # ключа нет нигде: мастер; отмена -- дальше прежний MissingKey
+        enter_key(stdin, stdout, notes, setup, key_session_of(setup, remember=True))
     narrator = pick_narrator(args, settings, setup, saves_root, notes)
     records = None
     if args.replay:

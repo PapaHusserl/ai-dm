@@ -1,3 +1,4 @@
+import getpass
 from typing import Protocol
 
 
@@ -25,6 +26,13 @@ class StdinInput:
     def read(self, prompt=""):
         try:
             return input(prompt)
+        except EOFError:
+            return None
+
+    def read_secret(self, prompt=""):
+        # ввод без эха (ключ API)
+        try:
+            return getpass.getpass(prompt)
         except EOFError:
             return None
 

@@ -489,6 +489,7 @@ def test_play_gives_opening_to_tui(tmp_path, monkeypatch):
 def test_play_fallback_to_simple_keeps_opening_and_secrets(tmp_path, monkeypatch):
     code, calls = play_with_opening(tmp_path, monkeypatch, (0, "сломалось"))
     assert code == 5
+    assert calls["simple"].pop("key_factory") is not None
     assert calls["simple"] == {"replay": False, "secrets": ["секрет"], "opening": "Начало."}
 
 

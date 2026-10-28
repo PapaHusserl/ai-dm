@@ -29,6 +29,14 @@ class ChatCompletionsAdapter(OpenAIAdapter):
     def info(self):
         return AdapterInfo(provider=self.provider, model=self.model)
 
+    def probe(self):
+        # список моделей у части хостеров открыт без ключа: путь задаёт providers.<имя>.probe_path
+        path = self.cfg.providers[self.provider].probe_path
+        try:
+            self.get_client().get(path, cast_to=object)
+        except Exception as error:
+            raise self.translate_error(error) from error
+
     def build_tools(self, req):
         strict = self.cfg.llm.strict_tools
         return [

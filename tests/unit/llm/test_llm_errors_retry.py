@@ -11,6 +11,7 @@ from ai_dm.llm.errors import (
     LlmFatal,
     LlmTransient,
     RetriesExhausted,
+    is_auth_error,
 )
 from ai_dm.llm.retry import call_with_retries
 
@@ -212,3 +213,38 @@ def test_on_attempt_sees_fatal_attempt():
             on_attempt=lambda n, resp, err: seen.append((n, resp, type(err).__name__)),
         )
     assert seen == [(1, None, "LlmFatal")]
+
+
+def test_fatal_status_defaults_to_none():
+    assert LlmFatal("x").status is None
+
+
+def test_fatal_keeps_status_and_message():
+    error = LlmFatal("текст", status=401)
+    assert (error.status, str(error)) == (401, "текст")
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_is_auth_error_for_401_and_403(status):
+    assert is_auth_error(LlmFatal("x", status=status))
+
+
+@pytest.mark.parametrize("status", [None, 404, 429, 500])
+def test_is_auth_error_false_for_other_status(status):
+    assert not is_auth_error(LlmFatal("x", status=status))
+
+
+def test_is_auth_error_gemini_400_with_invalid_key_text():
+    assert is_auth_error(LlmFatal("400 API key not valid. Please pass a valid API key", status=400))
+
+
+def test_is_auth_error_400_without_those_words_is_not_auth():
+    assert not is_auth_error(LlmFatal("400 bad request", status=400))
+
+
+def test_is_auth_error_text_without_400_is_not_auth():
+    assert not is_auth_error(LlmFatal("API key not valid", status=404))
+
+
+def test_is_auth_error_for_error_without_status_attribute():
+    assert not is_auth_error(ValueError("API key not valid"))

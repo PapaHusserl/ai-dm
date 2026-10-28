@@ -81,9 +81,11 @@ def merge_pack(bundle, registry, campaigns_dir) -> list[str]:
 class Reply:
     def __init__(
         self, lines=None, narration="", turn=None, pending=None, menu=None, hint=None, quit=False,
-        raw=None,
+        raw=None, request=None,
     ):
         self.lines = lines or []
+        # просьба к UI открыть окно (сейчас только "key" -- ввод ключа API)
+        self.request = request
         # готовые строки (карта боя): выводятся как есть, без переноса
         self.raw = raw or []
         self.narration = narration
@@ -546,6 +548,24 @@ class GameApp:
         runner.set_adapter(narrator_adapter)
         write_models(self.saves_root, self.world_id, provider, model)
         return None
+
+    def rekey(self, provider) -> str:
+        # после нового ключа: адаптеры ролей этого провайдера пересоздаются (ключ читается заново)
+        runner = self.runner
+        count = 0
+        if runner.adapter.info().provider == provider:
+            runner.set_adapter(self.adapter_factory(provider, runner.model), runner.model)
+            count += 1
+        for role in ("world", "summarizer"):
+            adapter = getattr(runner, f"{role}_adapter")
+            if adapter is None or adapter.info().provider != provider:
+                continue
+            model = getattr(runner, f"{role}_model") or adapter.info().model
+            setattr(runner, f"{role}_adapter", self.adapter_factory(provider, model))
+            count += 1
+        if count:
+            return f"Ключ {provider} подключён."
+        return f"Ключ {provider} сохранён: сменить модель — /model."
 
     def follow_provider(self, role, provider, narrator_model) -> str | None:
         # роль world/summarizer следует за рассказчиком: профиль его провайдера и модели

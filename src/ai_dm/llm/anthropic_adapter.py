@@ -105,7 +105,14 @@ class AnthropicAdapter:
             return LlmFatal(text)
         if code in (408, 429) or code >= 500:
             return LlmTransient(text, retry_after=retry_after_of(error), timeout=(code == 504))
-        return LlmFatal(text)
+        return LlmFatal(text, status=code)
+
+    def probe(self):
+        # пробный запрос для проверки ключа: список моделей
+        try:
+            self.get_client().models.list(limit=1)
+        except Exception as error:
+            raise self.translate_error(error) from error
 
     def thinking_of(self, req):
         mode = self.cfg.llm.thinking.get(req.role)

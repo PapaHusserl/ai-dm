@@ -38,6 +38,8 @@ class ProviderHost(BaseModel):
     # правила рассказчика: "openai" -- narrator_rules_openai.md, "base" -- общие
     narrator_rules: Literal["openai", "base"] = "openai"
     chars_per_token: float = Field(default=3.5, gt=0)
+    # путь пробного запроса при проверке ключа (GET от base_url)
+    probe_path: str = "/models"
 
 
 class AlternativesConfig(BaseModel):

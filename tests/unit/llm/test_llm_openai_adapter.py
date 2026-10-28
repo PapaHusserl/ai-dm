@@ -798,3 +798,65 @@ def test_response_round_trips_through_json_into_next_input():
     got = sent_input(history)
     assert got[1:3] == [i.dump for i in items]
     assert got[3] == {"type": "function_call_output", "call_id": "call_1", "output": "итог"}
+
+
+class FakeModelsList:
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def list(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        if self.error is not None:
+            raise self.error
+        return []
+
+
+def probing(error=None, api_key="k"):
+    models = FakeModelsList(error)
+    adapter = OpenAIAdapter(
+        MODEL, app_cfg(), client_factory=lambda **kw: SimpleNamespace(models=models),
+        api_key=api_key,
+    )
+    return adapter, models
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404])
+def test_fatal_status_error_keeps_status(code):
+    adapter, _ = make([StatusError(code)])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert info.value.status == code
+
+
+def test_fatal_error_without_status_code_has_no_status():
+    adapter, _ = make([ValueError("странное")])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert info.value.status is None
+
+
+def test_probe_lists_models():
+    adapter, models = probing()
+    adapter.probe()
+    assert models.calls == [((), {})]
+
+
+def test_probe_auth_error_is_fatal_with_status():
+    adapter, _ = probing(StatusError(401, "Incorrect API key"))
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert info.value.status == 401
+
+
+def test_probe_server_error_is_transient():
+    adapter, _ = probing(StatusError(503))
+    with pytest.raises(LlmTransient):
+        adapter.probe()
+
+
+def test_probe_error_text_has_no_key():
+    adapter, _ = probing(StatusError(401, "bad key sk-SECRET-1234"), api_key="sk-SECRET-1234")
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert "sk-SECRET-1234" not in str(info.value)

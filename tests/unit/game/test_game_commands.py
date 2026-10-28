@@ -25,8 +25,8 @@ from slots_kit import list_slots
 from ai_dm.persistence.store import load_slot
 
 ALL_COMMANDS = [
-    "help", "save", "load", "model", "cost", "sheet", "inv", "shop", "lore", "spells", "abilities",
-    "map", "quit", "report", "tone", "retire", "music", "difficulty", "fight",
+    "help", "save", "load", "model", "cost", "key", "sheet", "inv", "shop", "lore", "spells",
+    "abilities", "map", "quit", "report", "tone", "retire", "music", "difficulty", "fight",
 ]
 
 
@@ -190,6 +190,100 @@ def test_model_switches_narrator_adapter_and_requests(registry, tmp_path):
     app.handle("Иду")
     assert old.requests == []
     assert factory.made[0].requests[0].model == SONNET
+
+
+# /key и rekey (шаг 190)
+
+def test_key_command_asks_ui_for_key_window(registry, tmp_path):
+    reply = new_app(registry, tmp_path).handle("/key")
+    assert reply.request == "key"
+    assert text_of(reply) == "Ключ API: выберите провайдера."
+
+
+def test_key_command_ignores_argument_and_keeps_game_state(registry, tmp_path):
+    adapter = ReactiveAdapter()
+    app = new_app(registry, tmp_path, adapter, adapter_factory=FactorySpy())
+    reply = app.handle("/key anthropic")
+    assert (reply.request, reply.pending, app.adapter is adapter) == ("key", None, True)
+
+
+def test_other_commands_have_no_request(registry, tmp_path):
+    app = new_app(registry, tmp_path)
+    assert [app.handle(c).request for c in ("/help", "/cost", "/model")] == [None] * 3
+
+
+def test_help_mentions_key_command(registry, tmp_path):
+    assert "/key" in text_of(new_app(registry, tmp_path).handle("/help"))
+
+
+def test_rekey_rebuilds_narrator_of_that_provider_with_same_model(registry, tmp_path):
+    factory = FactorySpy()
+    old = ReactiveAdapter()
+    app = new_app(registry, tmp_path, old, adapter_factory=factory)
+    line = app.rekey("anthropic")
+    assert factory.calls == [("anthropic", OPUS)]
+    assert app.adapter is factory.made[0]
+    assert app.adapter is not old
+    assert line == "Ключ anthropic подключён."
+
+
+def test_rekey_leaves_models_json_untouched(registry, tmp_path):
+    app = new_app(registry, tmp_path, adapter_factory=FactorySpy())
+    app.rekey("anthropic")
+    assert not models_path(tmp_path).exists()
+
+
+def test_rekey_rebuilds_world_and_summarizer_of_that_provider(registry, tmp_path):
+    factory = FactorySpy()
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    runner = app.runner
+    runner.world_adapter = ReactiveAdapter(provider="gemini", model="gw")
+    runner.world_model = "gw"
+    runner.summarizer_adapter = ReactiveAdapter(provider="gemini", model="gs")
+    runner.summarizer_model = "gs"
+    old_narrator = app.adapter
+    app.rekey("gemini")
+    assert factory.calls == [("gemini", "gw"), ("gemini", "gs")]
+    assert app.adapter is old_narrator
+    assert runner.world_adapter is factory.made[0]
+    assert runner.summarizer_adapter is factory.made[1]
+
+
+def test_rekey_role_without_model_field_uses_adapter_model(registry, tmp_path):
+    factory = FactorySpy()
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    app.runner.summarizer_adapter = ReactiveAdapter(provider="gemini", model="gs")
+    app.runner.summarizer_model = None
+    app.rekey("gemini")
+    assert factory.calls == [("gemini", "gs")]
+
+
+def test_rekey_all_three_roles_of_one_provider(registry, tmp_path):
+    factory = FactorySpy()
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    app.runner.world_adapter = ReactiveAdapter(provider="anthropic", model="gw")
+    app.runner.world_model = "gw"
+    app.runner.summarizer_adapter = ReactiveAdapter(provider="anthropic", model="gs")
+    app.runner.summarizer_model = "gs"
+    app.rekey("anthropic")
+    assert [c[1] for c in factory.calls] == [OPUS, "gw", "gs"]
+
+
+def test_rekey_other_provider_builds_nothing_and_points_to_model(registry, tmp_path):
+    factory = FactorySpy()
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    line = app.rekey("openrouter")
+    assert factory.calls == []
+    assert line == "Ключ openrouter сохранён: сменить модель — /model."
+
+
+def test_rekey_does_not_touch_roles_of_other_providers(registry, tmp_path):
+    factory = FactorySpy()
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    world = ReactiveAdapter(provider="gemini", model="gw")
+    app.runner.world_adapter = world
+    app.rekey("anthropic")
+    assert app.runner.world_adapter is world
 
 
 def test_model_choice_is_stored_outside_slots(registry, tmp_path):

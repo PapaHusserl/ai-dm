@@ -2,6 +2,8 @@
 # dotenv_path=None) -> ModelAdapter. Ключ берётся через llm.keys (env важнее .env; env=None --
 # os.environ). Адаптер создаётся без обращения к SDK и сети (клиент -- лениво при первом вызове).
 # Нет ключа -> MissingKey (LlmFatal); неизвестный провайдер -> ValueError.
+from types import SimpleNamespace
+
 import pytest
 from llm_kit import app_cfg
 
@@ -9,7 +11,7 @@ from ai_dm.config.app import ProviderHost
 from ai_dm.llm.anthropic_adapter import AnthropicAdapter
 from ai_dm.llm.chat_adapter import ChatCompletionsAdapter
 from ai_dm.llm.errors import LlmFatal, MissingKey
-from ai_dm.llm.factory import make_adapter
+from ai_dm.llm.factory import adapter_for, make_adapter, verify_key
 from ai_dm.llm.gemini_adapter import GeminiAdapter
 from ai_dm.llm.openai_adapter import OpenAIAdapter
 
@@ -182,3 +184,154 @@ def test_unknown_provider_is_value_error_even_with_hosts_configured():
 )
 def test_info_model_equals_requested_model(provider, model):
     assert make_adapter(provider, model, app_cfg(), env=ENV).info().model == model
+
+
+@pytest.mark.parametrize(
+    "provider, cls",
+    [
+        ("openrouter", ChatCompletionsAdapter), ("anthropic", AnthropicAdapter),
+        ("gemini", GeminiAdapter), ("openai", OpenAIAdapter),
+    ],
+)
+def test_adapter_for_gives_class_and_key(provider, cls):
+    cfg = app_cfg()
+    adapter = adapter_for(provider, "m", cfg, "the-key")
+    assert (type(adapter), adapter.api_key, adapter.cfg) == (cls, "the-key", cfg)
+
+
+def test_adapter_for_unknown_provider_is_value_error():
+    with pytest.raises(ValueError, match="mistral"):
+        adapter_for("mistral", "m", app_cfg(), "k")
+
+
+def test_adapter_for_user_host_gives_chat_adapter():
+    cfg = app_cfg()
+    cfg.providers["myhost"] = ProviderHost(base_url="https://h.example/v1", key_env="H_KEY")
+    assert type(adapter_for("myhost", "m", cfg, "h")) is ChatCompletionsAdapter
+
+
+def test_openrouter_probe_path_is_key():
+    assert app_cfg().providers["openrouter"].probe_path == "/key"
+
+
+def test_provider_host_probe_path_defaults_to_models():
+    assert ProviderHost(base_url="https://h.example", key_env="K").probe_path == "/models"
+
+
+class StatusError(Exception):
+    def __init__(self, status=None, message="ошибка", code=None):
+        super().__init__(message)
+        self.status_code = status
+        self.code = code
+        self.response = SimpleNamespace(headers={})
+
+
+class ConnectError(Exception):
+    pass
+
+
+class FakeModels:
+    # list() у клиентов openai / anthropic / gemini; get() у хостера
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def list(self, *args, **kwargs):
+        return self.get("/models")
+
+    def get(self, path, **kwargs):
+        self.calls.append(path)
+        if self.error is not None:
+            raise self.error
+        return []
+
+
+def verified(monkeypatch, provider, error=None):
+    # настоящий адаптер провайдера на фейковом клиенте; verify_key получает его от adapter_for
+    client = FakeModels(error)
+    client.models = client
+    cfg = app_cfg()
+    key = "sec-1234"
+    if provider == "gemini":
+        adapter = GeminiAdapter("m", cfg, client=client, sdk=object(), api_key=key)
+    elif provider == "anthropic":
+        adapter = AnthropicAdapter("m", cfg, client_factory=lambda **kw: client, api_key=key)
+    elif provider == "openai":
+        adapter = OpenAIAdapter("m", cfg, client_factory=lambda **kw: client, api_key=key)
+    else:
+        adapter = ChatCompletionsAdapter(
+            provider, "m", cfg, client_factory=lambda **kw: client, api_key=key,
+        )
+    made = []
+
+    def fake_adapter_for(*args):
+        made.append(args)
+        return adapter
+
+    monkeypatch.setattr("ai_dm.llm.factory.adapter_for", fake_adapter_for)
+    return verify_key(provider, key, cfg), client, made
+
+
+@pytest.mark.parametrize("provider", ["openrouter", "anthropic", "gemini", "openai"])
+def test_verify_key_ok_on_200(monkeypatch, provider):
+    assert verified(monkeypatch, provider)[0] == "ok"
+
+
+@pytest.mark.parametrize("provider", ["openrouter", "anthropic", "openai"])
+@pytest.mark.parametrize("status", [401, 403])
+def test_verify_key_invalid_on_401_403(monkeypatch, provider, status):
+    assert verified(monkeypatch, provider, StatusError(status))[0] == "invalid"
+
+
+def test_verify_key_gemini_400_invalid_key_is_invalid(monkeypatch):
+    error = StatusError(None, "API key not valid. Please pass a valid API key.", code=400)
+    assert verified(monkeypatch, "gemini", error)[0] == "invalid"
+
+
+def test_verify_key_gemini_plain_400_is_unverified(monkeypatch):
+    error = StatusError(None, "bad request", code=400)
+    assert verified(monkeypatch, "gemini", error)[0] == ("unverified", "bad request")
+
+
+def test_verify_key_network_error_is_unverified(monkeypatch):
+    verdict = verified(monkeypatch, "openrouter", ConnectError("connection refused"))[0]
+    assert verdict == ("unverified", "нет сети")
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_verify_key_transient_status_is_unverified(monkeypatch, status):
+    verdict = verified(monkeypatch, "anthropic", StatusError(status, "сбой"))[0]
+    assert verdict == ("unverified", "нет сети")
+
+
+def test_verify_key_404_is_unverified_not_invalid(monkeypatch):
+    verdict = verified(monkeypatch, "openrouter", StatusError(404, "нет пути"))[0]
+    assert verdict == ("unverified", "нет пути")
+
+
+def test_verify_key_unknown_error_is_unverified(monkeypatch):
+    verdict = verified(monkeypatch, "openai", ValueError("странное"))[0]
+    assert verdict == ("unverified", "странное")
+
+
+def test_verify_key_openrouter_asks_key_path(monkeypatch):
+    assert verified(monkeypatch, "openrouter")[1].calls == ["/key"]
+
+
+def test_verify_key_openai_asks_models_list(monkeypatch):
+    assert verified(monkeypatch, "openai")[1].calls == ["/models"]
+
+
+def test_verify_key_builds_adapter_with_provider_and_key(monkeypatch):
+    _, _, made = verified(monkeypatch, "anthropic")
+    assert [(args[0], args[3]) for args in made] == [("anthropic", "sec-1234")]
+
+
+def test_verify_key_error_text_has_no_key(monkeypatch):
+    verdict = verified(monkeypatch, "openrouter", ConnectError("fail sec-1234"))[0]
+    assert "sec-1234" not in verdict[1]
+
+
+def test_verify_key_real_adapter_for_unknown_provider_is_value_error():
+    with pytest.raises(ValueError):
+        verify_key("mistral", "k", app_cfg())

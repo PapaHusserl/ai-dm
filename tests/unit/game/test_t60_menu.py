@@ -7,7 +7,7 @@ import pytest
 from game_kit import FactorySpy, make_app, scripted, text_step
 
 from ai_dm.game.models import model_options, read_models
-from ai_dm.llm.errors import MissingKey
+from ai_dm.llm.errors import LlmFatal, MissingKey
 from ai_dm.llm.mock import ScriptedAdapter
 
 FLASH = "gemini:gemini-3.8-flash"
@@ -178,6 +178,93 @@ def test_summarizer_boundary_failure_sets_only_summarizer(registry, tmp_path):
     assert models_of(app) == (FLASH, ARGON)
     assert reply.lines == [f"Модель summarizer: {ARGON}."]
     assert read_models(tmp_path, "w1") == {}
+
+
+# шаг 190: 401/403 посреди игры -- подсказка про /key, меню то же, ход не теряется
+
+class KeyFailAdapter:
+    def __init__(self, error, provider="gemini", model="gemini-3.8-flash"):
+        self.error = error
+        self.provider = provider
+        self.model = model
+        self.calls = 0
+
+    def info(self):
+        from ai_dm.llm.adapter import AdapterInfo
+
+        return AdapterInfo(provider=self.provider, model=self.model)
+
+    def complete(self, req):
+        self.calls += 1
+        raise self.error
+
+
+def auth_app(registry, tmp_path, error, factory=None, **kw):
+    factory = factory or FactorySpy()
+    app = make_app(registry, tmp_path, KeyFailAdapter(error, **kw), adapter_factory=factory)
+    return app, app.handle("Иду"), factory
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_auth_failure_hint_names_provider_and_key_command(registry, tmp_path, status):
+    app, reply, _ = auth_app(registry, tmp_path, LlmFatal("нет доступа", status=status))
+    assert reply.hint == "Ключ gemini не принят — введите новый: /key, затем «1. повтор»."
+    assert app.failed_reason == "auth"
+
+
+def test_auth_failure_keeps_the_same_error_menu(registry, tmp_path):
+    app, reply, _ = auth_app(registry, tmp_path, LlmFatal("x", status=401))
+    assert app.pending == "error_menu"
+    assert reply.menu == ["retry", "switch_model", "save_and_quit"]
+
+
+def test_auth_failure_hint_has_no_raw_error_text(registry, tmp_path):
+    _, reply, _ = auth_app(registry, tmp_path, LlmFatal("сырой текст провайдера", status=401))
+    assert "сырой текст" not in reply.hint
+
+
+def test_auth_failure_is_not_retried_automatically(registry, tmp_path):
+    app, _, _ = auth_app(registry, tmp_path, LlmFatal("x", status=401))
+    assert app.runner.adapter.calls == 1
+
+
+def test_gemini_400_with_invalid_key_text_is_auth(registry, tmp_path):
+    error = LlmFatal("API key not valid. Please pass a valid API key.", status=400)
+    app, reply, _ = auth_app(registry, tmp_path, error)
+    assert (app.failed_reason, "/key" in reply.hint) == ("auth", True)
+
+
+def test_gemini_400_without_those_words_is_plain_fatal(registry, tmp_path):
+    app, reply, _ = auth_app(registry, tmp_path, LlmFatal("bad request", status=400))
+    assert app.failed_reason == "fatal"
+    assert reply.hint == "bad request"
+
+
+@pytest.mark.parametrize("status", [None, 404, 500])
+def test_other_fatal_status_keeps_raw_hint(registry, tmp_path, status):
+    app, reply, _ = auth_app(registry, tmp_path, LlmFatal("сбой", status=status))
+    assert (app.failed_reason, reply.hint) == ("fatal", "сбой")
+
+
+def test_retry_after_rekey_passes_the_turn(registry, tmp_path):
+    app, _, factory = auth_app(registry, tmp_path, LlmFatal("x", status=401))
+    app.rekey("gemini")
+    reply = app.choose("retry")
+    assert app.pending is None
+    assert reply.narration == "Рассказ."
+    assert factory.calls == [("gemini", "gemini-3.8-flash")]
+
+
+def test_failure_hint_function():
+    from ai_dm.game.turn import AUTH_HINT, REFUSAL_HINT, failure_hint
+    from ai_dm.master.session import TurnFailed
+
+    assert failure_hint(TurnFailed("refusal", "x")) == REFUSAL_HINT
+    assert failure_hint(TurnFailed("auth", "x", detail="openai")) == AUTH_HINT.format(
+        provider="openai"
+    )
+    assert failure_hint(TurnFailed("fatal", "текст")) == "текст"
+    assert failure_hint(TurnFailed("network", "сеть")) == "сеть"
 
 
 def test_failed_reason_is_remembered_from_the_turn(registry, tmp_path):

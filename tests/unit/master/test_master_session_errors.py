@@ -13,6 +13,7 @@ from master_kit import (
     tools_step,
 )
 
+from ai_dm.llm.errors import LlmFatal
 from ai_dm.llm.types import Text, ToolResult
 from ai_dm.master.session import TurnFailed
 from ai_dm.protocol.apply import apply
@@ -242,6 +243,73 @@ def test_fatal_gives_fatal_failure_without_retries(tmp_path, registry, cfg):
 def test_turn_failed_has_message(tmp_path, registry, cfg):
     _, _, _, _, go = run([{"error": "fatal", "message": "плохой ключ"}], tmp_path, registry, cfg)
     assert str(failure_of(go))
+
+
+# Шаг 190: отказ по ключу -- причина auth (подсказка /key), прочая fatal
+
+class FatalAdapter:
+    def __init__(self, error, provider="gemini"):
+        self.error = error
+        self.provider = provider
+        self.requests = []
+
+    def info(self):
+        from ai_dm.llm.adapter import AdapterInfo
+
+        return AdapterInfo(provider=self.provider, model="m")
+
+    def complete(self, req):
+        self.requests.append(req)
+        raise self.error
+
+
+def auth_run(error, tmp_path, registry, cfg, provider="gemini"):
+    adapter = FatalAdapter(error, provider)
+    session, _, _, sleeps = make_session(adapter, tmp_path)
+    ctx = make_ctx(registry, cfg)
+    return adapter, sleeps, failure_of(lambda: session.run(ctx, "Иду.", apply, "explore"))
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_fatal_with_401_403_gives_auth_failure_with_provider(tmp_path, registry, cfg, status):
+    _, _, error = auth_run(LlmFatal("нет доступа", status=status), tmp_path, registry, cfg)
+    assert (error.reason, error.detail) == ("auth", "gemini")
+
+
+def test_auth_failure_keeps_message_and_has_no_retries(tmp_path, registry, cfg):
+    adapter, sleeps, error = auth_run(LlmFatal("ключ плох", status=401), tmp_path, registry, cfg)
+    assert str(error) == "ключ плох"
+    assert (sleeps, len(adapter.requests)) == ([], 1)
+
+
+def test_auth_failure_detail_is_the_adapter_provider(tmp_path, registry, cfg):
+    _, _, error = auth_run(
+        LlmFatal("x", status=401), tmp_path, registry, cfg, provider="openrouter"
+    )
+    assert error.detail == "openrouter"
+
+
+def test_gemini_400_with_invalid_key_text_is_auth(tmp_path, registry, cfg):
+    error = LlmFatal("API key not valid. Please pass a valid API key.", status=400)
+    assert auth_run(error, tmp_path, registry, cfg)[2].reason == "auth"
+
+
+def test_400_without_key_text_is_plain_fatal(tmp_path, registry, cfg):
+    _, _, error = auth_run(LlmFatal("bad request", status=400), tmp_path, registry, cfg)
+    assert (error.reason, error.detail) == ("fatal", None)
+
+
+@pytest.mark.parametrize("status", [None, 404, 500])
+def test_fatal_with_other_status_is_plain_fatal(tmp_path, registry, cfg, status):
+    assert auth_run(LlmFatal("x", status=status), tmp_path, registry, cfg)[2].reason == "fatal"
+
+
+def test_fatal_failure_function_maps_reasons():
+    from ai_dm.master.session import fatal_failure
+
+    assert fatal_failure(LlmFatal("a", status=403), "openai").reason == "auth"
+    assert fatal_failure(LlmFatal("a", status=403), "openai").detail == "openai"
+    assert fatal_failure(LlmFatal("a"), "openai").reason == "fatal"
 
 
 # B1: max_tokens вместе с tool_use

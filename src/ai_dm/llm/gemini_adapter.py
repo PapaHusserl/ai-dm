@@ -226,7 +226,14 @@ class GeminiAdapter:
             return LlmFatal(text)
         if code in (408, 429) or code >= 500:
             return LlmTransient(text, timeout=(code == 504))
-        return LlmFatal(text)
+        return LlmFatal(text, status=code)
+
+    def probe(self):
+        # пробный запрос для проверки ключа: список моделей
+        try:
+            self.get_client().models.list(config={"page_size": 1})
+        except Exception as error:
+            raise self.translate_error(error) from error
 
     def complete(self, req):
         contents = self.build_contents(req)

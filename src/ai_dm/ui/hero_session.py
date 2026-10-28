@@ -8,7 +8,7 @@ from ai_dm.game.hero_create import (
     sheet_fields_lines,
 )
 from ai_dm.game.models import check_model, model_options
-from ai_dm.game.turn import REFUSAL_HINT
+from ai_dm.game.turn import failure_hint
 from ai_dm.master.session import TurnFailed
 from ai_dm.protocol.handlers.hero import request_from_sheet
 from ai_dm.rules.builder import sheet_check
@@ -58,8 +58,7 @@ class RetryMenu:
 
     def fail(self, failure):
         self.state = "error_menu"
-        hint = REFUSAL_HINT if failure.reason == "refusal" else str(failure)
-        return Step([note_block(hint), menu_block(self.menu, ERROR_TITLE)])
+        return Step([note_block(failure_hint(failure)), menu_block(self.menu, ERROR_TITLE)])
 
     def choose(self, number):
         if self.state == "model_choice":

@@ -27,6 +27,8 @@ class Step:
     exit_code: int = 0
     # события хода для рисунков: death, victory, level_up
     events: list = field(default_factory=list)
+    # просьба к экрану открыть окно ("key" -- ввод ключа API)
+    request: str | None = None
 
 
 def turn_events(app, reply, level_before):
@@ -150,6 +152,7 @@ class PlaySession:
         app = self.app
         step = Step(reply_blocks(app, reply, before[0], before))
         step.events = turn_events(app, reply, level_before)
+        step.request = reply.request
         if reply.quit:
             step.quit = True
             return step

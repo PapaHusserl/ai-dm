@@ -15,7 +15,7 @@ from ai_dm.llm.cost import CostLedger, cost_nano
 from ai_dm.llm.errors import LlmError, LlmTransient
 from ai_dm.llm.gemini_adapter import GeminiAdapter
 from ai_dm.llm.journal import Journal
-from ai_dm.llm.keys import load_key, parse_dotenv, read_var, redact
+from ai_dm.llm.keys import load_key, parse_dotenv, read_var, redact, write_dotenv_var
 from ai_dm.llm.mock import ScriptedAdapter
 from ai_dm.llm.retry import call_with_retries
 from ai_dm.persistence.store import save_slot
@@ -185,6 +185,64 @@ def test_read_var_empty_env_falls_back_to_dotenv(tmp_path):
 def test_read_var_default_env_is_os_environ(monkeypatch):
     monkeypatch.setenv("AI_DM_TEST_VAR", "from-os")
     assert read_var("AI_DM_TEST_VAR") == "from-os"
+
+
+def test_write_dotenv_var_creates_missing_file_with_parents(tmp_path):
+    path = tmp_path / "cfg" / "sub" / ".env"
+    write_dotenv_var(path, "A", "1")
+    assert path.read_text(encoding="utf-8") == "A=1\n"
+
+
+def test_write_dotenv_var_file_mode_is_600(tmp_path):
+    path = tmp_path / ".env"
+    write_dotenv_var(path, "A", "1")
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_write_dotenv_var_leaves_no_tmp_file(tmp_path):
+    write_dotenv_var(tmp_path / ".env", "A", "1")
+    assert [p.name for p in tmp_path.iterdir()] == [".env"]
+
+
+def test_write_dotenv_var_appends_new_name_keeping_the_rest(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("# ключи\nA=1\n", encoding="utf-8")
+    write_dotenv_var(path, "B", "2")
+    assert path.read_text(encoding="utf-8") == "# ключи\nA=1\nB=2\n"
+
+
+def test_write_dotenv_var_replaces_only_its_line(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("# комментарий\nA=1\n\nB=2\nмусор\nC=3\n", encoding="utf-8")
+    write_dotenv_var(path, "B", "новое")
+    assert path.read_text(encoding="utf-8") == "# комментарий\nA=1\n\nB=новое\nмусор\nC=3\n"
+
+
+def test_write_dotenv_var_replaces_the_first_of_duplicates(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("A=1\nA=2\n", encoding="utf-8")
+    write_dotenv_var(path, "A", "9")
+    assert path.read_text(encoding="utf-8") == "A=9\nA=2\n"
+
+
+def test_write_dotenv_var_ignores_commented_line_with_the_name(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("# A=старое\n", encoding="utf-8")
+    write_dotenv_var(path, "A", "1")
+    assert path.read_text(encoding="utf-8") == "# A=старое\nA=1\n"
+
+
+def test_write_dotenv_var_does_not_match_name_prefix(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("AB=1\n", encoding="utf-8")
+    write_dotenv_var(path, "A", "2")
+    assert parse_dotenv(path.read_text(encoding="utf-8")) == {"AB": "1", "A": "2"}
+
+
+def test_write_dotenv_var_value_is_readable_back(tmp_path):
+    path = tmp_path / ".env"
+    write_dotenv_var(path, "OPENROUTER_API_KEY", "sk-or-abc==")
+    assert read_var("OPENROUTER_API_KEY", env={}, dotenv_path=path) == "sk-or-abc=="
 
 
 def test_redact_replaces_secret():

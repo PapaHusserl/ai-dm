@@ -35,3 +35,22 @@ def test_capture_output_text_joins_lines_with_newline():
     out.write("раз")
     out.write("два")
     assert out.text == "раз\nдва"
+
+
+def test_stdin_read_secret_uses_getpass_with_prompt(monkeypatch):
+    from ai_dm.ui.io import StdinInput
+
+    asked = []
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": asked.append(prompt) or "секрет")
+    assert StdinInput().read_secret("> ") == "секрет"
+    assert asked == ["> "]
+
+
+def test_stdin_read_secret_end_of_input_is_none(monkeypatch):
+    from ai_dm.ui.io import StdinInput
+
+    def eof(prompt=""):
+        raise EOFError
+
+    monkeypatch.setattr("getpass.getpass", eof)
+    assert StdinInput().read_secret() is None

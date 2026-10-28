@@ -11,7 +11,10 @@ class LlmTransient(LlmError):
 
 
 class LlmFatal(LlmError):
-    pass
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        # код ответа провайдера, если он был: по нему отличаем отказ по ключу
+        self.status = status
 
 
 class RetriesExhausted(LlmTransient):
@@ -51,6 +54,14 @@ TIMEOUT_NAMES = {
 
 def is_timeout_error(error):
     return any(cls.__name__ in TIMEOUT_NAMES for cls in type(error).__mro__)
+
+
+def is_auth_error(error):
+    # 401/403; Gemini на неверный ключ отвечает 400 с текстом «API key not valid»
+    status = getattr(error, "status", None)
+    if status in (401, 403):
+        return True
+    return status == 400 and "API key not valid" in str(error)
 
 
 def retry_after_of(error):

@@ -722,3 +722,65 @@ def test_response_without_request_id_attribute_gives_none():
     del response._request_id
     adapter, _, _ = make([response])
     assert adapter.complete(make_request()).request_id is None
+
+
+class FakeModelsList:
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def list(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        return []
+
+
+def probing(error=None, api_key="k"):
+    models = FakeModelsList(error)
+    adapter = AnthropicAdapter(
+        MODEL, app_cfg(), client_factory=lambda **kw: SimpleNamespace(models=models),
+        api_key=api_key,
+    )
+    return adapter, models
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404])
+def test_fatal_status_error_keeps_status(code):
+    adapter, _, _ = make([StatusError(code)])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request())
+    assert info.value.status == code
+
+
+def test_fatal_error_without_status_code_has_no_status():
+    adapter, _, _ = make([ValueError("странное")])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request())
+    assert info.value.status is None
+
+
+def test_probe_lists_one_model():
+    adapter, models = probing()
+    adapter.probe()
+    assert models.calls == [{"limit": 1}]
+
+
+def test_probe_auth_error_is_fatal_with_status():
+    adapter, _ = probing(StatusError(401, "invalid x-api-key"))
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert info.value.status == 401
+
+
+def test_probe_overloaded_is_transient():
+    adapter, _ = probing(StatusError(529))
+    with pytest.raises(LlmTransient):
+        adapter.probe()
+
+
+def test_probe_error_text_has_no_key():
+    adapter, _ = probing(StatusError(401, "bad sk-ant-SECRET-77"), api_key="sk-ant-SECRET-77")
+    with pytest.raises(LlmFatal) as info:
+        adapter.probe()
+    assert "sk-ant-SECRET-77" not in str(info.value)
