@@ -578,3 +578,49 @@ def test_each_refusal_text_is_specific(tmp_path):
     assert out.text.startswith("Для --import нужен --campaign")
     code, out, _ = run(tmp_path, campaign="a/b")
     assert out.text.startswith("--campaign: id пака")
+
+
+def test_missing_campaign_refusal_names_the_campaigns_dir(tmp_path):
+    _, out, root = run(tmp_path, campaign=None)
+    assert f"ляжетв{root})" in "".join(out.text.split())
+
+
+# поставленный пак и пользовательская папка паков
+
+def test_import_under_the_id_of_a_shipped_pack_is_refused(tmp_path):
+    code, out, root = run(tmp_path, campaign="vale")
+    assert code == 1
+    assert "Пак vale уже есть" in out.text
+    assert names(root) == []
+
+
+def test_import_without_campaigns_dir_here_goes_to_the_user_data_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    xdg = tmp_path / "xdg"
+    argv = ["--import", str(summary_file(tmp_path)), "--campaign", PACK_ID,
+            "--mock", str(IMPORT_SCRIPT), "--saves", str(tmp_path / "saves")]
+    code, _ = cli(argv, [], env={"XDG_DATA_HOME": str(xdg)})
+    assert code == 0
+    assert names(xdg / "ai-dm" / "campaigns") == [PACK_ID]
+    assert not (tmp_path / "campaigns").exists()
+
+
+def test_user_data_dir_folder_is_named_campaigns_in_lowercase(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    xdg = tmp_path / "xdg"
+    argv = ["--import", str(summary_file(tmp_path)), "--campaign", PACK_ID,
+            "--mock", str(IMPORT_SCRIPT), "--saves", str(tmp_path / "saves")]
+    cli(argv, [], env={"XDG_DATA_HOME": str(xdg)})
+    assert names(xdg / "ai-dm") == ["campaigns"]
+
+
+def test_import_with_campaigns_dir_here_goes_there_not_to_the_user_data_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "campaigns").mkdir()
+    xdg = tmp_path / "xdg"
+    argv = ["--import", str(summary_file(tmp_path)), "--campaign", PACK_ID,
+            "--mock", str(IMPORT_SCRIPT), "--saves", str(tmp_path / "saves")]
+    code, _ = cli(argv, [], env={"XDG_DATA_HOME": str(xdg)})
+    assert code == 0
+    assert names(tmp_path / "campaigns") == [PACK_ID]
+    assert not xdg.exists()

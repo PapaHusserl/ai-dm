@@ -89,14 +89,14 @@ def test_vale_prefixed_old_world_finds_the_vale_pack(tmp_path):
     assert "Предупреждение: миграция сейва" not in out.text
 
 
-def test_vale_prefixed_old_world_with_empty_campaigns_dir_plays_without_merge(tmp_path):
+def test_vale_prefixed_old_world_with_empty_campaigns_dir_merges_the_shipped_pack(tmp_path):
     root = make_world(tmp_path, "vale-old", fixture=FIXTURE_V2)
     empty = tmp_path / "no_packs"
     empty.mkdir()
     code, out = run_world(tmp_path, root, "vale-old", empty)
     assert code == 0
-    assert "Пака vale нет в" in out.text
-    assert "без догрузки" in out.text
+    assert "Из пака добавлено" in out.text
+    assert "Пака vale нет" not in out.text
 
 
 def test_old_world_without_vale_prefix_stays_without_campaign(tmp_path):
@@ -114,8 +114,9 @@ def test_world_with_missing_pack_dir_warns_and_plays_without_merge(tmp_path):
     code, out = run_world(tmp_path, root, "ghost-world", empty)
     assert code == 0
     assert "Предупреждение: миграция сейва" in out.text
-    assert "Пака ghost нет в" in out.text
-    assert "без догрузки" in out.text
+    squashed = "".join(out.text.split())
+    assert f"Пакаghostнетнив{empty},нивпоставке" in squashed
+    assert "бездогрузки" in squashed
 
 
 def test_world_with_missing_pack_dir_keeps_its_campaign_id(tmp_path):
@@ -159,11 +160,20 @@ def test_campaign_registry_of_pack_without_content_dir_is_base_content(tmp_path)
     assert registry.ids("item") == load_registry([]).ids("item")
 
 
-def test_campaign_registry_of_missing_pack_keeps_pack_dir_path(tmp_path):
+def test_campaign_registry_of_missing_pack_points_into_the_shipped_dir(tmp_path):
+    from ai_dm.campaign.loader import SHIPPED_DIR
     from ai_dm.ui.cli import campaign_registry
 
     pack_dir, _ = campaign_registry("ghost", tmp_path)
-    assert pack_dir == tmp_path / "ghost"
+    assert pack_dir == SHIPPED_DIR / "ghost"
+
+
+def test_campaign_registry_prefers_the_local_pack_over_the_shipped_one(tmp_path):
+    from ai_dm.ui.cli import campaign_registry
+
+    (tmp_path / "vale").mkdir()
+    pack_dir, _ = campaign_registry("vale", tmp_path)
+    assert pack_dir == tmp_path / "vale"
 
 
 # ТБ #56 (docs/plan-tb.md п.2): campaign_registry ставит monster_scope пака

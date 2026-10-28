@@ -16,6 +16,20 @@ def config_dir(env):
     return Path.home() / ".config" / "ai-dm"
 
 
+def data_dir(env):
+    # миры и пользовательские паки игрока; порядок переменных как у config_dir
+    if env.get("AI_DM_DATA_DIR"):
+        return Path(env["AI_DM_DATA_DIR"])
+    if env.get("XDG_DATA_HOME"):
+        return Path(env["XDG_DATA_HOME"]) / "ai-dm"
+    return Path.home() / ".local" / "share" / "ai-dm"
+
+
+def local_or_user(local, user):
+    # режим разработчика: что лежит рядом, то и берём
+    return local if local.exists() else user
+
+
 def read_toml(path):
     # текст файла или None; ошибку TOML называем по файлу
     if not path.exists():

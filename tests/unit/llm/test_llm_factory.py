@@ -94,6 +94,11 @@ def test_missing_key_message_does_not_contain_other_keys():
     assert "a-key" not in str(info.value)
 
 
+def test_missing_key_message_names_default_dotenv():
+    with pytest.raises(MissingKey, match=r"или \.env\)"):
+        make_adapter("anthropic", "claude-opus-5-5", app_cfg(), env={}, dotenv_path=None)
+
+
 def test_key_from_dotenv_is_enough(tmp_path):
     dotenv = tmp_path / ".env"
     dotenv.write_text("ANTHROPIC_API_KEY=from-file\n", encoding="utf-8")

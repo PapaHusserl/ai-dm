@@ -14,6 +14,7 @@ from pathlib import Path
 
 import yaml
 
+from ai_dm.campaign.presets import SHIPPED_DIR
 from ai_dm.core.rng import Rng
 from ai_dm.state.memory import Chronicle, Memory
 from ai_dm.state.save import Manifest, SaveBundle
@@ -21,7 +22,7 @@ from ai_dm.state.session import SessionState
 from ai_dm.state.world import WorldState
 
 ROOT = Path(__file__).resolve().parents[3]
-VALE_DIR = ROOT / "campaigns" / "vale"
+VALE_DIR = SHIPPED_DIR / "vale"
 SAVED_AT = "2026-01-01T12:00:00Z"
 
 

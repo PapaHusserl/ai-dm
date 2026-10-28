@@ -14,16 +14,23 @@ from pathlib import Path
 from ai_dm.audio import SilentSound, load_audio, make_sound
 from ai_dm.campaign.build import StartRefused, known_ids, taken_names
 from ai_dm.campaign.loader import (
-    CAMPAIGNS_DIR,
     PackError,
     load_pack,
     pack_content_dir,
+    pack_dir,
     pack_monster_scope,
     pack_npc_trade,
 )
-from ai_dm.campaign.presets import PACK_TONE, load_presets, preset_packs
+from ai_dm.campaign.presets import PACK_TONE, all_preset_packs, load_presets
 from ai_dm.config.app import ModelRole, profile_for
-from ai_dm.config.user import AUDIO_FILE, AudioPrefs, config_dir, load_user_settings
+from ai_dm.config.user import (
+    AUDIO_FILE,
+    AudioPrefs,
+    config_dir,
+    data_dir,
+    load_user_settings,
+    local_or_user,
+)
 from ai_dm.content.loader import load_registry
 from ai_dm.game import difficulty
 from ai_dm.game.app import SIMPLE_REASON, GameApp, merge_pack
@@ -132,10 +139,14 @@ def make_parser():
     )
     parser.add_argument(
         "--import", dest="import_file", metavar="FILE",
-        help="импорт пака из текстовой выжимки в campaigns/<id> (нужен --campaign <id>; "
+        help="импорт пака из текстовой выжимки в папку паков (./campaigns, если есть, иначе "
+        "~/.local/share/ai-dm/campaigns) под <id> (нужен --campaign <id>; "
         "с --mock -- сценарий вместо модели)",
     )
-    parser.add_argument("--saves", default="saves", help="папка сейвов")
+    parser.add_argument(
+        "--saves", default=None,
+        help="папка сейвов (по умолчанию ./saves, если есть, иначе ~/.local/share/ai-dm/saves)",
+    )
     parser.add_argument("--mute", action="store_true", help="без музыки в этом запуске")
     parser.add_argument("--simple", action="store_true", help="простой построчный режим без TUI")
     return parser
@@ -212,7 +223,7 @@ def preset_label(preset, hint=""):
 def pack_hints(campaigns_dir, current_id):
     # пресет -> паки, которым он подходит, кроме текущего
     hints = {}
-    for preset_id, packs in preset_packs(campaigns_dir).items():
+    for preset_id, packs in all_preset_packs(campaigns_dir).items():
         others = [pack for pack in packs if pack[0] != current_id]
         if others:
             hints[preset_id] = others
@@ -467,16 +478,19 @@ def choose_mode(args, injected, env, stdin_tty, stdout_tty):
 def main(argv=None, *, stdin=None, stdout=None, env=None, dotenv_path=None, mock_factory=None,
          campaigns_dir=None):
     args = make_parser().parse_args(argv)
-    if campaigns_dir is None:
-        campaigns_dir = CAMPAIGNS_DIR
     injected = stdin is not None or stdout is not None
     stdin = stdin or StdinInput()
     stdout = stdout or StdoutOutput()
     if env is None:
         env = os.environ
     mode = choose_mode(args, injected, env, sys.stdin.isatty(), sys.stdout.isatty())
+    # рядом есть -- берём (режим разработчика), нет -- пользовательские папки
+    if args.saves is None:
+        args.saves = local_or_user(Path("saves"), data_dir(env) / "saves")
+    if campaigns_dir is None:
+        campaigns_dir = local_or_user(Path("campaigns"), data_dir(env) / "campaigns")
     if dotenv_path is None:
-        dotenv_path = Path(".env")
+        dotenv_path = local_or_user(Path(".env"), config_dir(env) / ".env")
     secrets = []
     try:
         secrets = [load_key(provider, env=env, dotenv_path=dotenv_path) for provider in KEY_VARS]
@@ -494,7 +508,7 @@ def main(argv=None, *, stdin=None, stdout=None, env=None, dotenv_path=None, mock
         return 1
 
 
-def import_refusal(args, stdout):
+def import_refusal(args, stdout, campaigns_dir):
     # код выхода при неверных флагах --import или None
     others = (
         args.new, args.world, args.replay, args.replay_report, args.hero, args.hero_describe,
@@ -504,7 +518,7 @@ def import_refusal(args, stdout):
         say(stdout, "--import несовместим с игровыми флагами (--new, --world, --hero и другими).")
         return 2
     if not args.campaign:
-        say(stdout, "Для --import нужен --campaign <id> (под этим id пак ляжет в campaigns/).")
+        say(stdout, f"Для --import нужен --campaign <id> (под ним пак ляжет в {campaigns_dir}).")
         return 2
     if CAMPAIGN_ID_RE.fullmatch(args.campaign) is None:
         say(stdout, "--campaign: id пака — латиница, цифры, «_» и «-».")
@@ -514,7 +528,7 @@ def import_refusal(args, stdout):
 
 def import_text(args, stdout, setup, max_chars):
     # текст выжимки или код выхода: пак с этим id уже есть, файл не читается, выжимка не годится
-    if (Path(setup.campaigns_dir) / args.campaign).exists():
+    if pack_dir(setup.campaigns_dir, args.campaign).exists():
         say(stdout, f"Пак {args.campaign} уже есть: выберите другой id (--campaign).")
         return 1
     try:
@@ -541,7 +555,7 @@ def import_dialog(deps, session, stdin, stdout, width):
 
 def import_pack(args, stdin, stdout, setup):
     # ai-dm --import FILE --campaign ID: пак из выжимки в campaigns/<id>; вывод без TUI
-    refusal = import_refusal(args, stdout)
+    refusal = import_refusal(args, stdout, setup.campaigns_dir)
     if refusal is not None:
         return refusal
     settings = settings_of(setup)
@@ -554,6 +568,7 @@ def import_pack(args, stdin, stdout, setup):
     role = pick_import(args, settings, narrator)
     try:
         adapter = make_game_adapter(args, role, settings, setup, None)
+        Path(setup.campaigns_dir).mkdir(parents=True, exist_ok=True)
         folder = stage_dir(setup.campaigns_dir, args.campaign)
     except MissingKey as error:
         say(stdout, redact(str(error), setup.secrets))
@@ -661,18 +676,18 @@ def run_tui(args, app, opening, notes, setup):
 
 def campaign_registry(campaign_id, campaigns_dir):
     # возвращает (каталог пака или None, реестр с контентом пака)
-    pack_dir = None
+    folder = None
     if campaign_id is not None:
-        pack_dir = Path(campaigns_dir) / campaign_id
+        folder = pack_dir(campaigns_dir, campaign_id)
     content_dirs = []
-    if pack_dir is not None:
-        content_dir = pack_content_dir(pack_dir)
+    if folder is not None:
+        content_dir = pack_content_dir(folder)
         if content_dir is not None:
             content_dirs.append(content_dir)
     registry = load_registry(content_dirs)
-    if pack_dir is not None:
-        registry.monster_scope = pack_monster_scope(pack_dir)
-    return pack_dir, registry
+    if folder is not None:
+        registry.monster_scope = pack_monster_scope(folder)
+    return folder, registry
 
 
 def role_replay(records, role):

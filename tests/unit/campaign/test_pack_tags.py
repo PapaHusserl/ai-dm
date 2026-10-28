@@ -9,6 +9,7 @@ from campaign_kit import ROOT
 
 from ai_dm.audio.catalog import load_audio, theme_for_tags
 from ai_dm.audio.select import SoundState, pick_theme
+from ai_dm.campaign.loader import pack_dir
 from ai_dm.state.world import Location
 from ai_dm.ui.screen import location_tag_chain
 
@@ -16,7 +17,8 @@ PACKS = ["vale", "drunk_dragon"]
 
 
 def world_of(pack):
-    raw = yaml.safe_load((ROOT / "campaigns" / pack / "locations.yaml").read_text(encoding="utf-8"))
+    path = pack_dir(ROOT / "campaigns", pack) / "locations.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     places = [Location.model_validate(item) for item in raw]
     return SimpleNamespace(locations={p.id: p for p in places})
 

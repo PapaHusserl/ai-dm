@@ -8,6 +8,8 @@ from ai_dm.state.world import Tone
 
 # служебное значение «как в паке»: не пресет каталога
 PACK_TONE = "pack"
+# паки, поставляемые внутри пакета
+SHIPPED_DIR = Path(__file__).resolve().parents[1] / "campaigns"
 
 
 class WorldPreset(BaseModel):
@@ -68,3 +70,14 @@ def preset_packs(campaigns_dir) -> dict[str, list[tuple[str, str]]]:
         pack_id = data.get("id") or folder.name
         result.setdefault(data["preset"], []).append((pack_id, data.get("name") or pack_id))
     return result
+
+
+def all_preset_packs(campaigns_dir) -> dict[str, list[tuple[str, str]]]:
+    # паки поставки и локального корня; локальный пак с тем же id перекрывает поставленный
+    merged = {}
+    for packs in (preset_packs(SHIPPED_DIR), preset_packs(campaigns_dir)):
+        for preset, items in packs.items():
+            known = dict(merged.get(preset, []))
+            known.update(items)
+            merged[preset] = list(known.items())
+    return merged

@@ -708,3 +708,31 @@ def test_pack_monster_scope_keeps_manifest_order(tmp_path):
     assert scope_of(write_pack(tmp_path, with_monsters(["wolf", "boar", "guard"]))) == [
         "wolf", "boar", "guard",
     ]
+
+
+# pack_dir: локальный пак главнее поставленного
+
+def test_pack_dir_takes_the_local_pack_when_it_exists(tmp_path):
+    from ai_dm.campaign.loader import pack_dir
+
+    (tmp_path / "vale").mkdir()
+    assert pack_dir(tmp_path, "vale") == tmp_path / "vale"
+
+
+def test_pack_dir_falls_back_to_the_shipped_pack(tmp_path):
+    from ai_dm.campaign.loader import SHIPPED_DIR, pack_dir
+
+    assert pack_dir(tmp_path, "vale") == SHIPPED_DIR / "vale"
+
+
+def test_pack_dir_accepts_a_string_root(tmp_path):
+    from ai_dm.campaign.loader import pack_dir
+
+    (tmp_path / "mine").mkdir()
+    assert pack_dir(str(tmp_path), "mine") == tmp_path / "mine"
+
+
+def test_shipped_dir_holds_the_vale_pack():
+    from ai_dm.campaign.loader import SHIPPED_DIR
+
+    assert (SHIPPED_DIR / "vale" / "campaign.yaml").is_file()

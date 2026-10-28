@@ -13,7 +13,8 @@ def make_adapter(provider, model, app_cfg, *, env=None, dotenv_path=None):
     var = None if host is None else host.key_env
     key = load_key(provider, env=env, dotenv_path=dotenv_path, var=var)
     if key is None:
-        raise MissingKey(f"нет ключа {var or KEY_VARS[provider]} (переменная окружения или .env)")
+        name = var or KEY_VARS[provider]
+        raise MissingKey(f"нет ключа {name} (переменная окружения или {dotenv_path or '.env'})")
     if host is not None:
         return ChatCompletionsAdapter(provider, model, app_cfg, api_key=key)
     if provider == "anthropic":

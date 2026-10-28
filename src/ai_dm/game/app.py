@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ai_dm.audio import SilentSound
-from ai_dm.campaign.loader import CAMPAIGNS_DIR, PackError, load_pack, pack_npc_trade
+from ai_dm.campaign.loader import CAMPAIGNS_DIR, PackError, load_pack, pack_dir, pack_npc_trade
 from ai_dm.campaign.merge import merge_new
 from ai_dm.config.app import profile_for
 from ai_dm.core.rng import Rng
@@ -59,9 +59,11 @@ def merge_pack(bundle, registry, campaigns_dir) -> list[str]:
     campaign_id = bundle.world.campaign_id
     if campaign_id is None:
         return []
-    path = Path(campaigns_dir) / campaign_id
+    path = pack_dir(campaigns_dir, campaign_id)
     if not path.is_dir():
-        return [f"Пака {campaign_id} нет в {campaigns_dir}: игра идёт без догрузки."]
+        return [
+            f"Пака {campaign_id} нет ни в {campaigns_dir}, ни в поставке: игра идёт без догрузки."
+        ]
     try:
         pack = load_pack(path, registry)
     except PackError as error:
@@ -458,9 +460,9 @@ class GameApp:
     def load(self, slot) -> list[str]:
         try:
             campaign_id = self.bundle.world.campaign_id
-            pack_dir = None if campaign_id is None else Path(self.campaigns_dir) / campaign_id
+            folder = None if campaign_id is None else pack_dir(self.campaigns_dir, campaign_id)
             context = MigrationContext.from_registry(self.base_registry)
-            context.npc_trade = pack_npc_trade(pack_dir, self.base_registry)
+            context.npc_trade = pack_npc_trade(folder, self.base_registry)
             bundle = load_slot(self.saves_root, self.world_id, slot, context=context)
         except FileNotFoundError:
             return [f"нет сохранений в слоте {slot}."]

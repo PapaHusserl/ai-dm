@@ -6,13 +6,13 @@
 import copy
 import json
 
-from campaign_kit import SAVED_AT, VALE_DIR, ids
+from campaign_kit import ROOT, SAVED_AT, VALE_DIR, ids
 
 from ai_dm.config.settings import load_rules_config
 from ai_dm.core.rng import Rng
 
 SNAPSHOT = json.loads(
-    (VALE_DIR.parents[1] / "tests" / "fixtures" / "packs" / "vale_stage2_world.json")
+    (ROOT / "tests" / "fixtures" / "packs" / "vale_stage2_world.json")
     .read_text(encoding="utf-8")
 )
 
@@ -277,7 +277,7 @@ def test_vale_and_test_packs_have_no_monsters_list():
     from ai_dm.campaign.loader import pack_monster_scope
 
     assert pack_monster_scope(VALE_DIR) is None
-    assert pack_monster_scope(VALE_DIR.parent / "test") is None
+    assert pack_monster_scope(ROOT / "campaigns" / "test") is None
 
 
 def test_vale_narrator_sees_all_monsters():
@@ -290,5 +290,5 @@ def test_vale_narrator_sees_all_monsters():
 def test_test_pack_narrator_sees_all_monsters():
     from ai_dm.ui.cli import campaign_registry
 
-    _, reg = campaign_registry("test", VALE_DIR.parent)
+    _, reg = campaign_registry("test", ROOT / "campaigns")
     assert reg.narrator_monster_ids() == reg.ids("monster")

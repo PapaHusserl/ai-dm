@@ -10,18 +10,49 @@ CHECK_PATH = Path(__file__).parents[3] / "devtools" / "check_install.py"
 
 
 @pytest.fixture
-def commands(monkeypatch, tmp_path):
+def calls(monkeypatch, tmp_path):
+    # (команда, env, остальные аргументы run) в порядке вызова
     spec = importlib.util.spec_from_file_location("check_install", CHECK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     sent = []
-    monkeypatch.setattr(module, "run", lambda cmd, env=None: sent.append(list(cmd)))
+    monkeypatch.setattr(
+        module, "run", lambda cmd, env=None, **kw: sent.append((list(cmd), env, kw))
+    )
     monkeypatch.setattr(module.glob, "glob", lambda pattern: ["dist/ai_dm-0.1.0-py3-none-any.whl"])
     monkeypatch.setattr(os, "remove", lambda path: None)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(os, "chdir", lambda path: None)
     assert module.main() == 0
     return sent
+
+
+@pytest.fixture
+def commands(calls):
+    return [cmd for cmd, _env, _kw in calls]
+
+
+def new_world_call(calls):
+    return [c for c in calls if "--new" in c[0]][0]
+
+
+def test_installed_game_starts_a_new_world_on_mock(commands):
+    new = [c for c in commands if "--new" in c][0]
+    assert "--mock" in new
+    assert "--simple" in new
+
+
+def test_new_world_runs_from_a_clean_home_without_keys(calls):
+    _cmd, env, kw = new_world_call(calls)
+    assert env["HOME"] == str(kw["cwd"])
+    assert sorted(env) == ["HOME", "PATH"]
+    assert kw["input"] == "Здравствуйте\n"
+
+
+def test_one_world_is_expected_in_the_user_data_dir(commands):
+    check = commands[-1]
+    assert "iterdir" in check[2]
+    assert check[-1].endswith("home/.local/share/ai-dm/saves")
 
 
 def test_install_command_requests_audio_extra(commands):

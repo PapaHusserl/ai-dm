@@ -13,6 +13,7 @@ from rich.cells import cell_len
 from rich.text import Text
 
 import ai_dm.art as art_pkg
+from ai_dm.campaign.loader import pack_dir
 
 DATA = Path(art_pkg.__file__).resolve().parent / "data"
 ROOT = Path(__file__).resolve().parents[3]
@@ -136,7 +137,7 @@ def test_monster_ids_exist_in_srd(registry):
 def test_location_ids_exist_in_packs():
     known = set()
     for pack in ("vale", "drunk_dragon"):
-        text = (ROOT / "campaigns" / pack / "locations.yaml").read_text(encoding="utf-8")
+        text = (pack_dir(ROOT / "campaigns", pack) / "locations.yaml").read_text(encoding="utf-8")
         known |= {entry["id"] for entry in yaml.safe_load(text)}
     assert sorted(set(raw_index()["locations"]) - known) == []
 

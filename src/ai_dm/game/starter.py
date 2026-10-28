@@ -3,11 +3,11 @@ import uuid
 import yaml
 
 from ai_dm.campaign.build import build_world
-from ai_dm.campaign.loader import CAMPAIGNS_DIR, load_pack
+from ai_dm.campaign.loader import SHIPPED_DIR, load_pack
 from ai_dm.game.scene import start_scene
 from ai_dm.rules.builder import CharacterChoices
 
-VALE_DIR = CAMPAIGNS_DIR / "vale"
+VALE_DIR = SHIPPED_DIR / "vale"
 HEROES = ("arn", "liel", "grey")
 
 
@@ -54,7 +54,7 @@ def new_world_from_pack(
 
 
 def new_world(registry, cfg, *, hero, seed, world_id=None, saved_at):
-    # мир Вейла из пака campaigns/vale
+    # мир Вейла из поставляемого пака vale
     if hero not in HEROES:
         raise ValueError(f"неизвестный герой: {hero!r}")
     pack = load_pack(VALE_DIR, registry)

@@ -11,7 +11,9 @@ from ai_dm.config.user import (
     AudioPrefs,
     audio_prefs_text,
     config_dir,
+    data_dir,
     load_user_settings,
+    local_or_user,
     write_audio_prefs,
 )
 
@@ -49,6 +51,36 @@ def test_config_dir_falls_back_to_home_config(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path / "h"))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     assert config_dir({"HOME": str(tmp_path / "h")}) == tmp_path / "h" / ".config" / "ai-dm"
+
+
+# data_dir
+
+def test_data_dir_explicit_wins(tmp_path):
+    env = {"AI_DM_DATA_DIR": str(tmp_path / "a"), "XDG_DATA_HOME": str(tmp_path / "x"),
+           "HOME": str(tmp_path / "h")}
+    assert data_dir(env) == tmp_path / "a"
+
+
+def test_data_dir_xdg_when_no_explicit(tmp_path):
+    env = {"XDG_DATA_HOME": str(tmp_path / "x"), "HOME": str(tmp_path / "h")}
+    assert data_dir(env) == tmp_path / "x" / "ai-dm"
+
+
+def test_data_dir_falls_back_to_home_local_share(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "h"))
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    assert data_dir({}) == tmp_path / "h" / ".local" / "share" / "ai-dm"
+
+
+# local_or_user
+
+def test_local_or_user_takes_local_when_it_exists(tmp_path):
+    (tmp_path / "saves").mkdir()
+    assert local_or_user(tmp_path / "saves", tmp_path / "user") == tmp_path / "saves"
+
+
+def test_local_or_user_takes_user_when_local_is_missing(tmp_path):
+    assert local_or_user(tmp_path / "saves", tmp_path / "user") == tmp_path / "user"
 
 
 # load_user_settings

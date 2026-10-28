@@ -6,6 +6,9 @@ import pytest
 import yaml
 from campaign_kit import ROOT
 
+from ai_dm.campaign.loader import pack_dir
+from ai_dm.campaign.presets import all_preset_packs
+
 CATALOG = ROOT / "campaigns"
 THREE = ("vale", "drunk_dragon", "dusk_academy")
 
@@ -118,7 +121,7 @@ def test_index_does_not_validate_manifest(tmp_path):
 def catalog_index():
     return {
         preset: [pack for pack in packs if pack[0] in THREE]
-        for preset, packs in index(CATALOG).items()
+        for preset, packs in all_preset_packs(CATALOG).items()
         if any(pack[0] in THREE for pack in packs)
     }
 
@@ -146,8 +149,8 @@ def test_real_pack_loads_with_manifest_preset(name):
     from ai_dm.campaign.loader import load_pack, pack_content_dir
     from ai_dm.content.loader import load_registry
 
-    content = pack_content_dir(CATALOG / name)
-    pack = load_pack(CATALOG / name, load_registry([content] if content else []))
+    content = pack_content_dir(pack_dir(CATALOG, name))
+    pack = load_pack(pack_dir(CATALOG, name), load_registry([content] if content else []))
     assert pack.manifest.preset
 
 
@@ -157,8 +160,9 @@ def manifest_of(name):
     from ai_dm.campaign.loader import load_pack, pack_content_dir
     from ai_dm.content.loader import load_registry
 
-    content = pack_content_dir(CATALOG / name)
-    return load_pack(CATALOG / name, load_registry([content] if content else [])).manifest
+    content = pack_content_dir(pack_dir(CATALOG, name))
+    folder = pack_dir(CATALOG, name)
+    return load_pack(folder, load_registry([content] if content else [])).manifest
 
 
 @pytest.mark.parametrize("name", THREE)
@@ -232,6 +236,20 @@ def test_vale_default_tone_axes():
 def test_id_from_manifest_wins_over_dir_name(tmp_path):
     put(tmp_path, "somedir", {"id": "rose", "name": "Розы", "preset": "grim"})
     assert index(tmp_path) == {"grim": [("rose", "Розы")]}
+
+
+def test_all_preset_packs_of_an_empty_local_root_gives_the_shipped_packs(tmp_path):
+    assert all_preset_packs(tmp_path) == {"heroic": [("vale", "Вейл")]}
+
+
+def test_all_preset_packs_adds_local_packs_to_the_shipped_ones(tmp_path):
+    put(tmp_path, "rose", {"id": "rose", "name": "Розы", "preset": "heroic"})
+    assert all_preset_packs(tmp_path) == {"heroic": [("vale", "Вейл"), ("rose", "Розы")]}
+
+
+def test_local_pack_with_the_id_of_a_shipped_one_overrides_it(tmp_path):
+    put(tmp_path, "vale", {"id": "vale", "name": "Мой Вейл", "preset": "heroic"})
+    assert all_preset_packs(tmp_path) == {"heroic": [("vale", "Мой Вейл")]}
 
 
 def test_sorting_is_by_dir_walk_and_entries_keep_manifest_ids(tmp_path):

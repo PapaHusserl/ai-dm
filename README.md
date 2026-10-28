@@ -11,6 +11,8 @@ uv run pytest -q
 uv run ruff check src tests devtools
 ```
 
+Установка игроку одной командой: `uv tool install "ai-dm[audio] @ git+https://github.com/PapaHusserl/ai-dm"` (без звука — `ai-dm @ git+…`).
+
 Звук (необязательно): `uv sync --extra audio` или `pip install "ai-dm[audio]"`.
 
 ## Как играть
@@ -19,7 +21,7 @@ uv run ruff check src tests devtools
 Если нет ключа Gemini, игра сама возьмёт первый профиль, для которого есть ключ (anthropic, затем openai), и скажет об этом; мир,
 сохранённый под Anthropic или OpenAI, открывается без ключа Gemini. Явный выбор для нового мира: `--provider anthropic|gemini|openai`;
 в игре — `/model narrator openai:gpt-6.1-sol`. Ключ берётся из переменной окружения или из файла `.env` в папке, откуда запускаете игру
-(`.env` лежит в `.gitignore`, не коммитьте его):
+(нет такого — из `~/.config/ai-dm/.env`; `.env` лежит в `.gitignore`, не коммитьте его):
 
 ```
 ANTHROPIC_API_KEY=...
@@ -29,7 +31,7 @@ OPENAI_API_KEY=...
 
 Ключи нигде не печатаются и не попадают в журнал.
 
-Новый мир (пак кампании из `campaigns/<id>`, по умолчанию `vale`; герой — пресет пака: в Вейле Арн, Лиэль или Грей;
+Новый мир (пак кампании из `campaigns/<id>` или из поставки, по умолчанию `vale`; герой — пресет пака: в Вейле Арн, Лиэль или Грей;
 без `--hero` игра спросит):
 
 ```
@@ -46,7 +48,7 @@ uv run ai-dm --new [--campaign vale] [--hero arn|liel|grey | --hero-describe "о
 uv run ai-dm --world <id>
 ```
 
-Другая папка сейвов: `--saves DIR` (по умолчанию `./saves`).
+Другая папка сейвов: `--saves DIR` (по умолчанию `./saves`, если такая папка есть, иначе `~/.local/share/ai-dm/saves`).
 
 Режимы. В настоящем терминале игра по умолчанию открывается в TUI (Textual): лента рассказа, справа лист героя, «Броски»,
 «Бой» и «Получено», внизу строка состояния и поле ввода. `--simple` включает простой построчный режим без TUI. В простой режим игра
@@ -124,7 +126,7 @@ uv run ai-dm --import выжимка.txt --campaign my_pack [--provider anthropi
 Героев, событий (`events.yaml`) и стартовой памяти (`start/`) импорт не создаёт: герой создаётся при старте мира
 («на лету» или пошагово). После импорта правьте файлы руками, потом `ai-dm --new --campaign my_pack`.
 
-- Нужен `--campaign <id>`; если `campaigns/<id>` уже есть — отказ (код 1), файлы не меняются. Несовместим с `--new`, `--world`,
+- Нужен `--campaign <id>`; если `campaigns/<id>` (или поставленный пак) уже есть — отказ (код 1), файлы не меняются. Несовместим с `--new`, `--world`,
   `--hero`, `--hero-describe`, `--preset`, `--seed`, `--replay`, `--replay-report`, `--mock-world`, `--mock-summarizer` (код 2).
 - `--mock PATH` — сценарий вместо модели. Выжимка длиннее `[import] max_chars` (по умолчанию 60000 символов) отклоняется до вызова.
 - Модель — роль `import` (`[roles.import]`, `[profiles.*.import]`). Расход печатается строкой «Импорт пака: $…».

@@ -75,6 +75,37 @@ def test_key_from_dotenv_is_enough(tmp_path):
     assert "sk-from-file" not in out.text
 
 
+def test_key_from_the_config_dir_dotenv_is_enough_without_dotenv_here(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "xdg" / "ai-dm"
+    folder.mkdir(parents=True)
+    (folder / ".env").write_text("ANTHROPIC_API_KEY=sk-from-config\n", encoding="utf-8")
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "xdg"), "XDG_DATA_HOME": str(tmp_path / "data")}
+    code, out = cli(BASE + ["--saves", str(tmp_path / "saves")], env=env)
+    assert code == 0
+    assert "sk-from-config" not in out.text
+
+
+def test_dotenv_here_beats_the_config_dir_dotenv(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "xdg" / "ai-dm"
+    folder.mkdir(parents=True)
+    (folder / ".env").write_text("ANTHROPIC_API_KEY=sk-from-config\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("OTHER=1\n", encoding="utf-8")
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "xdg")}
+    code, out = cli(BASE + ["--saves", str(tmp_path / "saves")], env=env)
+    assert code != 0
+    assert "или .env)" in out.text
+
+
+def test_missing_key_names_the_config_dir_dotenv_that_was_looked_at(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "xdg")}
+    code, out = cli(BASE + ["--saves", str(tmp_path / "saves")], env=env)
+    assert code != 0
+    assert str(tmp_path / "xdg" / "ai-dm" / ".env") in "".join(out.text.split())
+
+
 def test_mock_needs_no_key(tmp_path):
     code, out = cli(BASE + mock_args(tmp_path), ["/quit"], env={})
     assert code == 0
@@ -105,10 +136,42 @@ def test_new_world_goes_to_the_saves_dir(tmp_path):
 
 def test_default_saves_dir_is_saves_in_current_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    (tmp_path / "saves").mkdir()
     script = write_script(tmp_path / "one.yaml")
-    code, _ = cli(BASE + ["--mock", str(script)], ["Здравствуйте"], env={})
+    xdg = tmp_path / "xdg"
+    code, _ = cli(BASE + ["--mock", str(script)], ["Здравствуйте"], env={"XDG_DATA_HOME": str(xdg)})
     assert code == 0
     assert len(world_dirs(tmp_path / "saves")) == 1
+    assert not xdg.exists()
+
+
+def test_without_saves_in_current_dir_the_world_goes_to_the_user_data_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    script = write_script(tmp_path / "one.yaml")
+    xdg = tmp_path / "xdg"
+    code, _ = cli(BASE + ["--mock", str(script)], ["Здравствуйте"], env={"XDG_DATA_HOME": str(xdg)})
+    assert code == 0
+    assert len(world_dirs(xdg / "ai-dm" / "saves")) == 1
+    assert not (tmp_path / "saves").exists()
+
+
+def test_user_data_dir_folder_is_named_saves_in_lowercase(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    script = write_script(tmp_path / "one.yaml")
+    xdg = tmp_path / "xdg"
+    cli(BASE + ["--mock", str(script)], ["Здравствуйте"], env={"XDG_DATA_HOME": str(xdg)})
+    assert world_dirs(xdg / "ai-dm") == ["saves"]
+
+
+def test_explicit_saves_beats_the_user_data_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    xdg = tmp_path / "xdg"
+    code, _ = cli(
+        BASE + mock_args(tmp_path), ["Здравствуйте"], env={"XDG_DATA_HOME": str(xdg)}
+    )
+    assert code == 0
+    assert len(world_dirs(tmp_path / "saves")) == 1
+    assert not xdg.exists()
 
 
 def test_two_new_worlds_get_different_ids(tmp_path):
@@ -1251,12 +1314,11 @@ def test_choose_hero_returns_preset_id_for_preset_item():
     from slots_kit import ScriptedInput
     from ui_kit import PlainOutput
 
-    from ai_dm.campaign.loader import load_pack
+    from ai_dm.campaign.loader import SHIPPED_DIR, load_pack
     from ai_dm.content.loader import load_registry
     from ai_dm.ui.cli import Setup, choose_hero
 
-    root = Path(__file__).resolve().parents[3] / "campaigns" / "vale"
-    pack = load_pack(root, load_registry())
+    pack = load_pack(SHIPPED_DIR / "vale", load_registry())
     out = PlainOutput()
     setup = Setup({}, Path("no.env"), None, [], Path("."), "simple")
     assert choose_hero(ScriptedInput(["2"]), out, out, pack, setup) == "liel"

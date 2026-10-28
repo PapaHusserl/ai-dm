@@ -61,12 +61,11 @@ def test_no_preset_has_no_preset_note(tmp_path):
 
 
 def default_pack_manifest():
-    from ai_dm.campaign.loader import load_pack
+    from ai_dm.campaign.loader import SHIPPED_DIR, load_pack
     from ai_dm.content.loader import load_registry
     from ai_dm.ui.cli import DEFAULT_CAMPAIGN
 
-    root = Path(__file__).resolve().parents[3] / "campaigns" / DEFAULT_CAMPAIGN
-    return load_pack(root, load_registry()).manifest
+    return load_pack(SHIPPED_DIR / DEFAULT_CAMPAIGN, load_registry()).manifest
 
 
 def assert_manifest_preset_tone(tmp_path):
@@ -472,21 +471,23 @@ def test_pack_hints_drops_current_pack_and_empty_lists(tmp_path):
     from ai_dm.ui.cli import pack_hints
 
     root = make_packs(tmp_path)
-    assert pack_hints(root, "rose") == {}
+    assert pack_hints(root, "rose") == {"heroic": [("vale", "Вейл")]}
 
 
 def test_pack_hints_keeps_other_packs(tmp_path):
     from ai_dm.ui.cli import pack_hints
 
     root = make_packs(tmp_path)
-    assert pack_hints(root, "mini") == {"romantic": [("rose", "Розы")]}
+    assert pack_hints(root, "mini") == {
+        "heroic": [("vale", "Вейл")], "romantic": [("rose", "Розы")],
+    }
 
 
 def test_pack_hints_keeps_second_pack_of_same_preset(tmp_path):
     from ai_dm.ui.cli import pack_hints
 
     root = make_packs(tmp_path, extra={"aa": {"id": "aa", "name": "Аа", "preset": "romantic"}})
-    assert pack_hints(root, "rose") == {"romantic": [("aa", "Аа")]}
+    assert pack_hints(root, "rose") == {"heroic": [("vale", "Вейл")], "romantic": [("aa", "Аа")]}
 
 
 def test_choose_preset_simple_puts_hint_only_into_its_item():
@@ -564,8 +565,13 @@ def test_preset_of_own_pack_prints_no_hint(tmp_path):
 
 
 def test_preset_without_pack_prints_no_hint(tmp_path):
-    _, out = packs_cli(tmp_path, make_packs(tmp_path), "--hero", "arn", "--preset", "heroic")
+    _, out = packs_cli(tmp_path, make_packs(tmp_path), "--hero", "arn", "--preset", "fairytale")
     assert HINT not in out.text
+
+
+def test_preset_with_a_shipped_pack_prints_its_hint(tmp_path):
+    _, out = packs_cli(tmp_path, make_packs(tmp_path), "--hero", "arn", "--preset", "heroic")
+    assert "пак«Вейл»:новыймир—ai-dm--new--campaignvale--presetheroic" in "".join(out.text.split())
 
 
 def test_preset_pack_prints_no_hint(tmp_path):

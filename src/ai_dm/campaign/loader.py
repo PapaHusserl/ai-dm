@@ -11,7 +11,7 @@ from ai_dm.campaign.models import (
     StartChronicle,
     StartMemory,
 )
-from ai_dm.campaign.presets import PACK_TONE, load_presets
+from ai_dm.campaign.presets import PACK_TONE, SHIPPED_DIR, load_presets
 from ai_dm.config.settings import load_rules_config
 from ai_dm.core.clock import GameClock
 from ai_dm.rules.builder import (
@@ -35,7 +35,15 @@ from ai_dm.state.triggers import (
 )
 from ai_dm.state.world import NPC, Faction, GlobalEvent, God, Location
 
+# корень паков репо: только разработка и тесты; у установленной игры его нет (паки -- SHIPPED_DIR)
 CAMPAIGNS_DIR = Path(__file__).resolve().parents[3] / "campaigns"
+
+
+def pack_dir(campaigns_dir, campaign_id) -> Path:
+    # локальный пак главнее поставленного
+    local = Path(campaigns_dir) / campaign_id
+    return local if local.exists() else SHIPPED_DIR / campaign_id
+
 
 # файл -> модель записи
 LIST_FILES = {
