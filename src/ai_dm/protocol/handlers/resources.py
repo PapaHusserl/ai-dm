@@ -810,6 +810,30 @@ def rest_wait_s(ctx, request):
     return wait_s if wait_s > 0 else None
 
 
+def long_rest_available(ctx):
+    # rest long сейчас пройдёт или подождёт кулдаун сам; оплата ночлега не учитывается
+    hero = ctx.hero
+    if hero.status == "dead" or hero.creature.hp_current == 0:
+        return False
+    next_s = next_long_rest_s(hero, ctx.cfg)
+    if next_s is None:
+        return True
+    wait_max = Duration.parse(ctx.cfg.limits.long_rest_wait_max).seconds
+    return next_s - ctx.bundle.world.clock.now_s <= wait_max
+
+
+def sleep_without_rest(ctx, seconds):
+    # сдвиг не меньше длинного отдыха при доступном отдыхе без rest в ходе -- сон, время не двигаем
+    if seconds < ctx.cfg.time.long_rest_s or ctx.rested or not long_rest_available(ctx):
+        return None
+    return rejected(
+        "сон без отдыха",
+        "Это сон: время не двигай, вызови rest long в этом же ходу — отдых сам сдвинет "
+        "часы и восстановит HP и ресурсы.",
+        report_tag="sleep_not_rest",
+    )
+
+
 def rest_redundant(ctx, request):
     # длинный отдых раньше кулдауна, и ждать дольше long_rest_wait_max: rejected до отдыха;
     # при меньшем ожидании отдых ждёт сам (wait_for_long_rest)
@@ -958,6 +982,9 @@ def time_by_category(ctx, request):
     world = ctx.bundle.world
     count = request.count or 1
     if request.category == "hour":
+        asleep = sleep_without_rest(ctx, count * ctx.cfg.time.advance_categories["hour"])
+        if asleep is not None:
+            return asleep
         seq = time_repeated(ctx, ctx.cfg.time.advance_categories["hour"])
         if seq is not None:
             return rejected(
@@ -1025,6 +1052,10 @@ def time_until(ctx, request):
         if target <= now_s:
             target += DAY
     seconds = target - now_s
+    if request.until != "long_rest":
+        asleep = sleep_without_rest(ctx, seconds)
+        if asleep is not None:
+            return asleep
     world.clock.advance(seconds)
     ctx.until_done = True
     result = {"seconds": seconds, "now_s": world.clock.now_s}

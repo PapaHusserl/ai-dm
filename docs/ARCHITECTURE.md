@@ -505,7 +505,9 @@ ui ──> game ──> master ──> llm
 прежний Invalid `rest_impossible`); `award_xp` — отказ `xp_repeat`, если в `recent_turns` текущей сцены уже `[limits]
 xp_awards_per_scene` (1) записей с outcome «Опыт: +» (0 — выкл.); `advance_time` с `category: hour` — отказ
 `time_repeat`, если за последние `[limits] time_repeat_turns` (2) ходов был тот же сдвиг («Время идёт: 3600 с») на ходу
-без дела (в `requests` только `advance_time`/`offer_choices`; путь `travel_to` не затрагивается; 0 — выкл.). Строки
+без дела (в `requests` только `advance_time`/`offer_choices`; путь `travel_to` не затрагивается; 0 — выкл.);
+`advance_time` с `until` (кроме `long_rest`) или `category: hour` на сдвиг ≥ `[time] long_rest_s` без `rest` в ходу при
+доступном долгом отдыхе — отказ `sleep_not_rest` («сон — `rest long`»; `long_rest_available`, `sleep_without_rest`). Строки
 лога — константы `XP_LOG`, `TIME_LOG` в `protocol/handlers/resources.py`.
 
 ## C4. Журнал и Replay

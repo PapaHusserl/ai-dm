@@ -169,6 +169,25 @@ def test_time_repeat_writes_one_report_with_tag(registry, tmp_path):
     assert meta_of(found[0])["tags"] == ["time_repeat"]
 
 
+# sleep_not_rest (шаг 217)
+
+def test_sleep_not_rest_writes_report_with_tag(registry, tmp_path):
+    bundle = make_bundle(registry)
+    bundle.world.clock.now_s = 20 * 3600
+    call = {
+        "id": "u1", "name": "advance_time",
+        "input": {"type": "advance_time", "until": "morning"},
+    }
+    steps = [tools_step(call), text_step("Спишь.")]
+    app = make_app(registry, tmp_path, scripted(steps), bundle=bundle, auto_reports=True)
+    reply = app.handle("Ложусь спать")
+    assert reply.turn.report_tags == ["sleep_not_rest"]
+    found = issues(tmp_path)
+    assert len(found) == 1
+    assert found[0].name.endswith("-t1-sleep_not_rest")
+    assert meta_of(found[0])["tags"] == ["sleep_not_rest"]
+
+
 # обе метки в одном ходу -- один каталог
 
 def test_both_tags_in_one_turn_make_one_report(registry, tmp_path):

@@ -648,6 +648,8 @@ def test_advance_time_needs_exactly_one_of_category_and_travel(registry, cfg):
 def clock_at(registry, cfg, now_s):
     ctx = make_ctx(registry, cfg)
     ctx.bundle.world.clock.now_s = now_s
+    # кулдаун 12 ч: долгий отдых недоступен, сдвиг на ≥ 8 ч -- не сон (шаг 217)
+    ctx.hero.long_rest_end_s = now_s
     return ctx
 
 

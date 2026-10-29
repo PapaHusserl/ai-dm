@@ -1240,17 +1240,6 @@ updated: 2026-10-28
 `run(app, steps)`; повтор отдельно — прошёл. Причина не установлена; относится ли к правкам 190 (меню ошибки) или
 падает и на HEAD — не проверено.
 
-## 217. Сон перемоткой времени не восстанавливает ячейки
-status: idea
-priority: medium
-updated: 2026-10-28
-
-Репорт t1341 (drunk_dragon, «полный сон не восстановил магию»): рассказчик уложил героя спать через
-`advance_time until=morning` (+10 ч) без `rest long`; `protocol/handlers/resources.py` (`time_until`) сдвиг принял,
-отдых был доступен (кулдаун прошёл, боя нет); ячейки 1-го круга остались 1 из 4. Правило «сон — только rest long»
-в `narrator_rules.md:134` есть, модель его нарушила. Рядом — закрытые 100, 131, 173. Решение проектировщика —
-NOTES.md 2026-10-29.
-
 ## 218. Мутанты на старых строках функций шага 190
 status: idea
 priority: low
@@ -1260,3 +1249,21 @@ mutmut шага 190 (docs/plan-190.md, «Правки по ревью», мут�
 `ai_dm.ui.cli.x_prepare__mutmut_651` (`opening = OPENING` → `None`), `ai_dm.ui.tui.x_run_tui__mutmut_19/20`
 (`TuiStartError(str(error))`); segfault-мутанты `PlaySession.render_step`, `MasterSession.call`, `cli.prepare`,
 `pick_narrator` — не перепроверены узким прогоном, какие из них на строках 190 — не сопоставлено.
+
+## 219. Второе часовое дело подряд теряет час (time_repeat)
+status: idea
+priority: medium
+updated: 2026-10-29
+
+Репорты saves/drunk_dragon-00000001/issues t1364 (стрелы после чистки снаряжения) и t1367 (баня): `advance_time hour`
+отклонён — «час уже прошёл на ходу N без пути и дела»; ход принят без часа. Защита `time_repeat`
+(resources.py, `idle = {"advance_time", "offer_choices"}`) считает часовую работу ходом «без дела», хотя промпт
+велит `hour` для работы на час. Найдено свинопасом при груминге 217; правило — из 070 и ДН (docs/plan-dn.md).
+
+## 220. Мутанты на старых строках функций шага 217
+status: idea
+priority: low
+updated: 2026-10-29
+
+mutmut шага 217 (docs/plan-217.md), resources.py, строки вне диффа: `x_time_by_category__mutmut_33/40/41/60/61`
+(survived), `_79/80` (timeout), `x_time_until__mutmut_21/22` (survived).
