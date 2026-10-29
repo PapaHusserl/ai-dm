@@ -1,7 +1,7 @@
 # Этап 5, P1: выбор режима (простой / TUI) и fallback. Ожидаемый API (по коду P1):
 #   cli.main(..., stdin=, stdout=) -- подменённый ввод/вывод всегда даёт простой режим;
 #   --simple; не-tty и TERM=dumb -- простой;
-#   ai_dm.ui.tui.run_tui(game, notes, replay, secrets, opening) -> int;
+#   ai_dm.ui.tui.run_tui(game, notes, replay, opening, key_factory) -> int;
 #   ai_dm.ui.tui.TuiStartError -- ошибка до первого кадра;
 #   ai_dm.ui.tui.AiDmApp(game, session, notes).
 # Режим TUI в тестах не запускается по-настоящему: run_tui подменяется записывающей функцией.
@@ -61,7 +61,7 @@ def ran_tui(monkeypatch):
 
     calls = []
 
-    def fake(game, notes=(), replay=False, secrets=(), opening=None):
+    def fake(game, notes=(), replay=False, opening=None, key_factory=None):
         calls.append({"notes": list(notes), "replay": replay, "opening": opening})
         return 0
 
@@ -542,3 +542,105 @@ def test_mock_without_mock_summarizer_still_uses_plain_fallback(tmp_path):
     assert code == 0, out.text
     scenes = last_auto_scenes(tmp_path / "saves")
     assert [s.source for s in scenes] == ["fallback"]
+
+
+# шаг 190, П2: ввод ключа окном TUI
+
+def tui_setup(tmp_path, mode, secrets=None):
+    return Setup({}, tmp_path / ".env", None, [] if secrets is None else secrets,
+                 tmp_path / "campaigns", mode)
+
+
+def test_enter_key_in_tui_mode_opens_tui_window_and_returns_its_session(tmp_path, monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    seen = []
+    monkeypatch.setattr(tui, "enter_key", lambda session: seen.append(session) or "окно")
+    notes = CaptureOutput()
+    result = cli_module.enter_key(
+        ScriptedInput([]), CaptureOutput(), notes, tui_setup(tmp_path, "tui"), "сессия"
+    )
+    assert (result, seen, notes.lines) == ("окно", ["сессия"], [])
+
+
+def test_enter_key_tui_start_failure_falls_back_to_simple_with_note(tmp_path, monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    def broken(session):
+        raise tui.TuiStartError("нет терминала")
+
+    monkeypatch.setattr(tui, "enter_key", broken)
+    simple = []
+    monkeypatch.setattr(
+        cli_module, "enter_key_simple", lambda stdin, stdout, session: simple.append(session) or "п"
+    )
+    notes = CaptureOutput()
+    result = cli_module.enter_key(
+        ScriptedInput([]), CaptureOutput(), notes, tui_setup(tmp_path, "tui"), "сессия"
+    )
+    assert result == "п"
+    assert simple == ["сессия"]
+    assert "Ввод ключа в TUI не запустился: нет терминала, простой режим." in notes.text
+
+
+def test_enter_key_in_simple_mode_does_not_touch_tui(tmp_path, monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    monkeypatch.setattr(tui, "enter_key", lambda session: pytest.fail("TUI не нужен"))
+    monkeypatch.setattr(cli_module, "enter_key_simple", lambda stdin, stdout, session: "п")
+    notes = CaptureOutput()
+    result = cli_module.enter_key(
+        ScriptedInput([]), CaptureOutput(), notes, tui_setup(tmp_path, "simple"), "сессия"
+    )
+    assert (result, notes.lines) == ("п", [])
+
+
+def test_enter_key_tui_returns_session_and_no_reason(monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    monkeypatch.setattr(tui, "enter_key", lambda session: "окно")
+    assert cli_module.enter_key_tui("с") == ("окно", None)
+
+
+def test_enter_key_tui_returns_start_error_as_reason(monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    error = tui.TuiStartError("нет терминала")
+
+    def broken(session):
+        raise error
+
+    monkeypatch.setattr(tui, "enter_key", broken)
+    assert cli_module.enter_key_tui("с") == (None, error)
+
+
+def test_run_tui_gives_key_factory_without_secrets(tmp_path, monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    got = {}
+
+    def fake(game, **kwargs):
+        got.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(tui, "run_tui", fake)
+    setup = tui_setup(tmp_path, "tui", secrets=["секрет"])
+    args = make_parser().parse_args(BASE + mock_args(tmp_path))
+    code, reason = cli_module.run_tui(args, type("A", (), {"audio": None})(), None,
+                                      CaptureOutput(), setup)
+    assert (code, reason) == (0, None)
+    assert got["key_factory"] is not None
+    assert "secrets" not in got
+
+
+def test_run_tui_key_factory_builds_session_sharing_setup_secrets(tmp_path, monkeypatch):
+    import ai_dm.ui.tui as tui
+
+    got = {}
+    monkeypatch.setattr(tui, "run_tui", lambda game, **kwargs: got.update(kwargs) or 0)
+    setup = tui_setup(tmp_path, "tui", secrets=["секрет"])
+    args = make_parser().parse_args(BASE + mock_args(tmp_path))
+    cli_module.run_tui(args, type("A", (), {"audio": None})(), None, CaptureOutput(), setup)
+    session = got["key_factory"]()
+    assert session.deps.secrets is setup.secrets
+    assert session.deps.dotenv_path == setup.dotenv_path

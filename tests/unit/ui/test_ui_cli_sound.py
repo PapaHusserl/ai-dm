@@ -70,9 +70,8 @@ def ran_tui(monkeypatch, effect=None):
 
     calls = []
 
-    def fake(game, notes=(), replay=False, secrets=(), opening=None):
-        calls.append({"game": game, "notes": list(notes), "replay": replay, "secrets": secrets,
-                      "opening": opening})
+    def fake(game, notes=(), replay=False, opening=None, key_factory=None):
+        calls.append({"game": game, "notes": list(notes), "replay": replay, "opening": opening})
         if effect is not None:
             effect(game)
         return 0
@@ -349,7 +348,6 @@ def test_run_tui_passes_arguments_to_tui(monkeypatch, tmp_path, no_library):
     cli_module.run_tui(args, app, "вступление", notes, setup)
     assert calls[0]["notes"] == ["старт"]
     assert calls[0]["replay"] is True
-    assert calls[0]["secrets"] == ("sk-1",)
     assert calls[0]["opening"] == "вступление"
 
 

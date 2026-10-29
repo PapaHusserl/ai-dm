@@ -232,6 +232,27 @@ def test_write_dotenv_var_ignores_commented_line_with_the_name(tmp_path):
     assert path.read_text(encoding="utf-8") == "# A=старое\nA=1\n"
 
 
+def test_write_dotenv_var_skips_line_without_equals_even_if_it_is_the_name(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("мусор\n", encoding="utf-8")
+    write_dotenv_var(path, "мусор", "1")
+    assert path.read_text(encoding="utf-8") == "мусор\nмусор=1\n"
+
+
+def test_write_dotenv_var_skips_comment_even_if_it_looks_like_the_name(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("#A=старое\n", encoding="utf-8")
+    write_dotenv_var(path, "#A", "1")
+    assert path.read_text(encoding="utf-8") == "#A=старое\n#A=1\n"
+
+
+def test_write_dotenv_var_replaces_line_whose_value_contains_equals(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text("A=x=y\nB=2\n", encoding="utf-8")
+    write_dotenv_var(path, "A", "1")
+    assert path.read_text(encoding="utf-8") == "A=1\nB=2\n"
+
+
 def test_write_dotenv_var_does_not_match_name_prefix(tmp_path):
     path = tmp_path / ".env"
     path.write_text("AB=1\n", encoding="utf-8")

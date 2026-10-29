@@ -217,6 +217,15 @@ InvModal {
     border-top: solid $primary;
 }
 
+KeyModal {
+    align: center middle;
+}
+
+#key-menu {
+    height: auto;
+    max-height: 8;
+}
+
 MoreModal {
     align: center middle;
 }

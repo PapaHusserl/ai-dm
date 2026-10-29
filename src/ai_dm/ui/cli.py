@@ -320,8 +320,26 @@ def create_hero(stdin, stdout, notes, setup, session):
     return create_hero_simple(stdin, stdout, session)
 
 
+def enter_key_tui(session):
+    # ввод ключа окном TUI: (сессия | None, причина отказа запуска)
+    try:
+        from ai_dm.ui import tui
+    except ImportError as error:
+        return None, error
+    try:
+        return tui.enter_key(session), None
+    except tui.TuiStartError as error:
+        return None, error
+
+
 def enter_key(stdin, stdout, notes, setup, session):
-    # ввод ключа API; сессия (saved=True, если ключ записан); экран TUI -- партия 2, пока простой
+    # ввод ключа API; сессия (saved=True, если ключ записан); в TUI окно, при сбое простой режим
+    if setup.mode == "tui":
+        entered, reason = enter_key_tui(session)
+        if reason is None:
+            return entered
+        text = f"Ввод ключа в TUI не запустился: {reason}, простой режим."
+        say(notes, redact(text, setup.secrets))
     return enter_key_simple(stdin, stdout, session)
 
 
@@ -680,7 +698,6 @@ def attach_sound(args, app, setup):
 
 def run_tui(args, app, opening, notes, setup):
     # textual импортируется только здесь, лениво; возвращает (код, причина отказа запуска)
-    secrets = setup.secrets
     try:
         from ai_dm.ui import tui
     except ImportError as error:
@@ -690,7 +707,8 @@ def run_tui(args, app, opening, notes, setup):
         notes.lines.append(line)
     try:
         code = tui.run_tui(
-            app, notes=notes.lines, replay=args.replay, secrets=secrets, opening=opening
+            app, notes=notes.lines, replay=args.replay, opening=opening,
+            key_factory=functools.partial(key_session_of, setup),
         )
     except tui.TuiStartError as error:
         # дальше простой режим: звука в нём нет, строки про звук тоже

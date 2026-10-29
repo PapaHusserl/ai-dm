@@ -56,6 +56,12 @@ def test_start_shows_four_providers_in_order(tmp_path):
     assert list(menus[0].items) == ["OpenRouter", "Gemini", "Anthropic", "OpenAI"]
 
 
+def test_start_menu_has_provider_title(tmp_path):
+    session, *_ = make(tmp_path)
+    menus = [b for b in session.start().blocks if b.kind == "menu"]
+    assert menus[0].title == "Провайдер:"
+
+
 def test_start_does_not_finish(tmp_path):
     session, *_ = make(tmp_path)
     assert session.start().quit is False

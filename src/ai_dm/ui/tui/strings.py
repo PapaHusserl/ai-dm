@@ -39,6 +39,10 @@ MODAL_TITLES = {
     "/cost": "Расход",
     "/model": "Модель",
 }
+KEY_TITLE = "Ключ API"
+KEY_PLACEHOLDER = "Вставьте ключ (ввод скрыт, Esc — отмена)"
+KEY_MASK = "••••"
+KEY_UNAVAILABLE = "Ввод ключа здесь недоступен."
 SCENE_LINE = "─── {title} ───"
 MODEL_PICK = "Модель рассказчика (цифра, щелчок или Enter, Esc — закрыть без смены):"
 MODEL_CURRENT = "{key} (текущая)"

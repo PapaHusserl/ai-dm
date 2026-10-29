@@ -2,9 +2,10 @@ from ai_dm.ui.session import PlaySession
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.app import AiDmApp
 from ai_dm.ui.tui.create import HeroCreateApp
+from ai_dm.ui.tui.key_modal import KeyApp
 from ai_dm.ui.tui.modals import PickerApp
 
-__all__ = ["AiDmApp", "TuiStartError", "create_hero", "pick", "run_tui"]
+__all__ = ["AiDmApp", "TuiStartError", "create_hero", "enter_key", "pick", "run_tui"]
 
 
 class TuiStartError(Exception):
@@ -12,9 +13,9 @@ class TuiStartError(Exception):
     pass
 
 
-def run_tui(game, notes=(), replay=False, secrets=(), opening=None):
-    session = PlaySession(game, replay=replay, secrets=secrets, opening=opening)
-    app = AiDmApp(session, notes)
+def run_tui(game, notes=(), replay=False, opening=None, key_factory=None):
+    session = PlaySession(game, replay=replay, secrets=game.secrets, opening=opening)
+    app = AiDmApp(session, notes, key_factory)
     try:
         app.run()
     except Exception as error:
@@ -33,6 +34,17 @@ def pick(title, names, splash=False):
         return picker.run()
     except Exception as error:
         raise TuiStartError(str(error)) from error
+
+
+def enter_key(session):
+    # окно ввода ключа до игры: сессия (saved -- ключ записан); сбой -- TuiStartError
+    app = KeyApp(session)
+    try:
+        return app.run()
+    except Exception as error:
+        if not app.shown:
+            raise TuiStartError(str(error)) from error
+        raise
 
 
 def create_hero(session, placeholder=strings.CREATE_PLACEHOLDER):

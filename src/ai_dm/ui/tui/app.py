@@ -24,6 +24,7 @@ from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.blocks import inv_rows, map_lines, modal_lines, pickable, spell_rows
 from ai_dm.ui.tui.inv_sections import inv_tabs, shop_tabs
+from ai_dm.ui.tui.key_modal import KeyModal
 from ai_dm.ui.tui.modals import (
     CostModal,
     InvModal,
@@ -53,7 +54,7 @@ WIDE = 120
 PANEL_WIDTH = 54
 MODALS = (
     TextModal, ModelModal, SpellModal, InvModal, ShopModal, MoreModal, LoreModal, NpcModal,
-    QtyModal,
+    QtyModal, KeyModal,
 )
 
 
@@ -74,9 +75,10 @@ class AiDmApp(App):
         Binding(str(n), f"pick({n})", show=False, priority=True) for n in range(1, 10)
     ] + [Binding("0", "pick(10)", show=False, priority=True)]
 
-    def __init__(self, session, startup=()):
+    def __init__(self, session, startup=(), key_factory=None):
         super().__init__()
         self.session = session
+        self.key_factory = key_factory
         self.game = session.app
         self.startup = list(startup)
         self.shown = False
@@ -471,7 +473,9 @@ class AiDmApp(App):
         entry.focus()
         lore = self.lore_modal(title, words) if modal_text and command == "/lore" else None
         # отчёт /cost считаем повторно сознательно: так не трогаем Reply
-        if modal_text and command == "/cost":
+        if step.request == "key":
+            self.open_key()
+        elif modal_text and command == "/cost":
             self.push_screen(CostModal(title, cost_report(self.game)), lambda _: entry.focus())
         elif modal_text and command == "/spells" and self.can_cast_by_menu():
             self.push_screen(SpellModal(title, spell_rows(self.game)), self.spell_chosen)
@@ -603,6 +607,38 @@ class AiDmApp(App):
         # как /model narrator <ключ>: результат или ошибка -- строкой в ленту
         self.busy = False
         self.write_feed([error if error is not None else strings.MODEL_CHANGED.format(key=key)])
+        self.query_one("#status", StatusBar).set_busy(False)
+        entry = self.query_one("#input", Input)
+        entry.disabled = False
+        entry.focus()
+        if self.quit_requested:
+            self.close()
+
+    def open_key(self):
+        # /key: окно ввода ключа; без фабрики (replay и т.п.) -- строка в ленту
+        if self.key_factory is None:
+            self.write_feed([strings.KEY_UNAVAILABLE])
+            return
+        self.push_screen(KeyModal(self.key_factory()), self.key_entered)
+
+    def key_entered(self, session):
+        if not session.saved:
+            self.query_one("#input", Input).focus()
+            return
+        self.busy = True
+        self.query_one("#input", Input).disabled = True
+        self.query_one("#status", StatusBar).set_busy(True)
+        self.run_worker(lambda: self.rekey(session.provider), thread=True, exclusive=True)
+
+    def rekey(self, provider):
+        line = self.game.rekey(provider)
+        if not self.abandon:
+            self.call_from_thread(self.finish_rekey, line)
+
+    def finish_rekey(self, line):
+        # как finish_switch: результат -- строкой в ленту
+        self.busy = False
+        self.write_feed([line])
         self.query_one("#status", StatusBar).set_busy(False)
         entry = self.query_one("#input", Input)
         entry.disabled = False

@@ -269,6 +269,35 @@ def test_rekey_all_three_roles_of_one_provider(registry, tmp_path):
     assert [c[1] for c in factory.calls] == [OPUS, "gw", "gs"]
 
 
+def test_rekey_keeps_narrator_model_on_runner(registry, tmp_path):
+    app = new_app(registry, tmp_path, adapter_factory=FactorySpy())
+    app.rekey("anthropic")
+    assert app.runner.model == OPUS
+
+
+def test_rekey_passes_runner_model_even_if_new_adapter_reports_another(registry, tmp_path):
+    def factory(provider, model):
+        return ReactiveAdapter(provider=provider, model="другая")
+
+    app = new_app(registry, tmp_path, adapter_factory=factory)
+    app.rekey("anthropic")
+    assert app.runner.model == OPUS
+
+
+def test_rekey_narrator_and_one_role_still_reports_connected(registry, tmp_path):
+    app = new_app(registry, tmp_path, adapter_factory=FactorySpy())
+    app.runner.world_adapter = ReactiveAdapter(provider="anthropic", model="gw")
+    app.runner.world_model = "gw"
+    assert app.rekey("anthropic") == "Ключ anthropic подключён."
+
+
+def test_rekey_only_role_of_provider_reports_connected(registry, tmp_path):
+    app = new_app(registry, tmp_path, adapter_factory=FactorySpy())
+    app.runner.world_adapter = ReactiveAdapter(provider="gemini", model="gw")
+    app.runner.world_model = "gw"
+    assert app.rekey("gemini") == "Ключ gemini подключён."
+
+
 def test_rekey_other_provider_builds_nothing_and_points_to_model(registry, tmp_path):
     factory = FactorySpy()
     app = new_app(registry, tmp_path, adapter_factory=factory)

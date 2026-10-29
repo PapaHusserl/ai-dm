@@ -482,6 +482,13 @@ def test_status_errors_that_are_fatal(status):
         adapter.complete(make_request())
 
 
+def test_error_without_status_code_is_fatal_and_keeps_message():
+    adapter, _, _ = make([ValueError("странное")])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request())
+    assert str(info.value) == "странное"
+
+
 def test_fatal_is_not_transient():
     adapter, _, _ = make([StatusError(400)])
     with pytest.raises(LlmFatal) as info:

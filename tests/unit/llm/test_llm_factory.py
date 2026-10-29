@@ -304,6 +304,11 @@ def test_verify_key_transient_status_is_unverified(monkeypatch, status):
     assert verdict == ("unverified", "нет сети")
 
 
+def test_verify_key_builds_adapter_with_empty_model(monkeypatch):
+    _, _, made = verified(monkeypatch, "openrouter")
+    assert made[0][:2] == ("openrouter", "")
+
+
 def test_verify_key_404_is_unverified_not_invalid(monkeypatch):
     verdict = verified(monkeypatch, "openrouter", StatusError(404, "нет пути"))[0]
     assert verdict == ("unverified", "нет пути")

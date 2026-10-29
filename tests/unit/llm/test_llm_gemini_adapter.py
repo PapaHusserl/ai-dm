@@ -773,6 +773,20 @@ def test_fatal_code_error_keeps_status(code):
     assert info.value.status == code
 
 
+def test_fatal_code_error_keeps_message():
+    adapter, _ = make([ApiError(404)])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert str(info.value) == "ошибка"
+
+
+def test_fatal_error_without_code_keeps_message():
+    adapter, _ = make([ValueError("странное")])
+    with pytest.raises(LlmFatal) as info:
+        adapter.complete(make_request(model=MODEL))
+    assert str(info.value) == "странное"
+
+
 def test_fatal_error_without_code_has_no_status():
     adapter, _ = make([ValueError("странное")])
     with pytest.raises(LlmFatal) as info:
