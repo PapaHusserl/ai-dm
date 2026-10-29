@@ -198,6 +198,16 @@ def test_npc_update_with_location_moves_npc(registry, cfg, tmp_path):
     assert rig.runner.bundle.world.npcs["aldric"].location_id == "town"
 
 
+def test_npc_update_with_unknown_location_is_invalid(registry, cfg, tmp_path):
+    steps = world_step(npc_update_call("aldric", GRAIL, location_id="nowhere"))
+    rig = make_world_rig(
+        registry, cfg, tmp_path, grail_turn(), steps, bundle=grail_bundle(registry, cfg)
+    )
+    rig.play()
+    assert rig.runner.bundle.world.npcs["aldric"].location_id == "tavern"
+    assert "unknown_location" in tool_results_text(rig.world.requests[1])
+
+
 def test_npc_update_without_then_ref_is_invalid(registry, cfg, tmp_path):
     steps = world_step(npc_update_call("aldric", "", location_id="town"))
     steps += world_step()
@@ -226,9 +236,10 @@ class SaveThenKill:
     provider = "anthropic"
     model = "claude-sonnet-5-5"
 
-    def __init__(self, roller="mara"):
+    def __init__(self, roller="mara", status="dead"):
         self.requests = []
         self.roller = roller
+        self.status = status
 
     def info(self):
         from ai_dm.llm.adapter import AdapterInfo
@@ -250,7 +261,7 @@ class SaveThenKill:
         elif n == 2:
             ref = json.loads(results)["result"]["roll_ref"]
             call = npc_update_call(
-                "mara", GRAIL, status="dead", cause="goal", evidence_ref=ref
+                "mara", GRAIL, status=self.status, cause="goal", evidence_ref=ref
             )
             content = [ToolCall(id="nu-1", name="npc_update", input=call["input"])]
         else:
@@ -267,6 +278,50 @@ def test_death_with_npc_saving_throw_evidence_is_accepted(registry, cfg, tmp_pat
     )
     rig.play()
     assert rig.runner.bundle.world.npcs["mara"].status == "dead"
+
+
+def test_offscreen_gone_without_roll_is_accepted(registry, cfg, tmp_path):
+    # 145: уход за кадром не требует ни причины, ни броска
+    steps = world_step(npc_update_call("mara", GRAIL, status="gone"))
+    rig = make_world_rig(
+        registry, cfg, tmp_path, grail_turn(), steps, bundle=grail_bundle(registry, cfg)
+    )
+    rig.play()
+    mara = rig.runner.bundle.world.npcs["mara"]
+    assert mara.status == "gone"
+    assert mara.death.cause == "left"
+
+
+def test_offscreen_death_by_foreign_roll_is_rejected(registry, cfg, tmp_path):
+    # смерть за кадром: бросок-доказательство должен быть броском этого же NPC
+    rig = make_world_rig(
+        registry, cfg, tmp_path, grail_turn(), SaveThenKill(roller="aldric"),
+        bundle=grail_bundle(registry, cfg),
+    )
+    rig.play()
+    assert rig.runner.bundle.world.npcs["mara"].status == "alive"
+
+
+def test_offscreen_gone_by_foreign_roll_is_left(registry, cfg, tmp_path):
+    rig = make_world_rig(
+        registry, cfg, tmp_path, grail_turn(), SaveThenKill(roller="aldric", status="gone"),
+        bundle=grail_bundle(registry, cfg),
+    )
+    rig.play()
+    mara = rig.runner.bundle.world.npcs["mara"]
+    assert mara.status == "gone"
+    assert mara.death.cause == "left"
+
+
+def test_offscreen_gone_by_own_roll_keeps_cause(registry, cfg, tmp_path):
+    rig = make_world_rig(
+        registry, cfg, tmp_path, grail_turn(), SaveThenKill(status="gone"),
+        bundle=grail_bundle(registry, cfg),
+    )
+    rig.play()
+    mara = rig.runner.bundle.world.npcs["mara"]
+    assert mara.status == "gone"
+    assert mara.death.cause == "goal"
 
 
 def test_request_outside_world_set_is_not_available(registry, cfg, tmp_path):

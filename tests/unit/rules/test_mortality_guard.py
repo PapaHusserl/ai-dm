@@ -81,6 +81,23 @@ def test_gone_without_cause_is_rejected():
     assert world.npcs["oldrik"].status == "alive"
 
 
+def test_left_cause_with_gone_is_accepted():
+    world = make_world()
+    result = remove_creature(world, "oldrik", "gone", "left")
+    assert not isinstance(result, Rejected)
+    assert world.npcs["oldrik"].status == "gone"
+    assert world.npcs["oldrik"].death.cause == "left"
+
+
+def test_left_cause_with_dead_is_rejected():
+    world = make_world()
+    result = remove_creature(world, "oldrik", "dead", "left")
+    assert isinstance(result, Rejected)
+    assert result.report_tag == "invalid-death"
+    assert world.npcs["oldrik"].status == "alive"
+    assert world.npcs["oldrik"].death is None
+
+
 def test_unknown_status_is_error():
     with pytest.raises(ValueError):
         remove_creature(make_world(), "oldrik", "alive", "goal")
@@ -261,7 +278,7 @@ def test_mark_dead_ends_concentration_and_its_effects():
 
 # mark_dead с невалидной причиной (аудит 1 п. 2.9)
 
-@pytest.mark.parametrize("cause", [None, "boredom", ""])
+@pytest.mark.parametrize("cause", [None, "boredom", "", "left"])
 def test_mark_dead_with_invalid_cause_is_rejected(cause):
     result = mark_dead(make_hero(), cause, None, 500)
     assert isinstance(result, Rejected)
@@ -320,7 +337,7 @@ def test_remove_hero_gone_has_no_hero_died_event():
     assert [e.type for e in events] == ["creature_removed"]
 
 
-@pytest.mark.parametrize("cause", [None, "boredom"])
+@pytest.mark.parametrize("cause", [None, "boredom", "left"])
 def test_remove_hero_without_valid_cause_is_rejected(cause):
     hero = make_hero()
     result = remove_hero(hero, "gone", cause, 700)

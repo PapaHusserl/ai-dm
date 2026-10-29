@@ -1,4 +1,6 @@
 from ai_dm.rules import goals
+from ai_dm.rules.knowledge import current_hero
+from ai_dm.rules.knowledge import mentions as name_mentioned
 from ai_dm.rules.triggers_eval import is_ready
 
 
@@ -36,13 +38,34 @@ def npc_reason_set(bundle, npc, location_id, text, nearby_ids) -> set[str]:
         reasons.add("active")
     if npc.key:
         reasons.add("key")
-    if npc.name != "" and npc.name.lower() in text:
+    if name_mentioned(npc.name.lower(), text):
         reasons.add("said")
     if npc.location_id in nearby_ids and npc.location_id != location_id:
         reasons.add("nearby")
     if npc.trade is not None or npc.services:
         reasons.add("merchant")
     return reasons
+
+
+def previous_narration(bundle) -> str:
+    # рассказ последнего хода, если он из текущей сцены; иначе пусто
+    scene = bundle.session.current_scene
+    turns = bundle.memory.recent_turns
+    if scene is None or not turns or turns[-1].scene_id != scene.id:
+        return ""
+    return turns[-1].narration
+
+
+def absent_mentions(bundle, text) -> list[str]:
+    # id именованных живых NPC вне локации героя, чьё имя (с падежами) есть в тексте; по id
+    here = current_hero(bundle).location_id
+    if here is None:
+        return []
+    return sorted(
+        npc.id for npc in bundle.world.npcs.values()
+        if npc.named and npc.status == "alive" and npc.location_id != here
+        and name_mentioned(npc.name.lower(), text.lower())
+    )
 
 
 def npc_reasons(bundle, nearby_ids=()) -> dict[str, set[str]]:

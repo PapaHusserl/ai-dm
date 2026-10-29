@@ -52,7 +52,10 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # ДН: фразы о time.part, ночном визите, count (minute без count) и location_create перед
 # travel_to + поле count в advance_time, time.hour и правило «сон — rest long, без until»
 # (замер 23921; 23680 -> 23940).
-STATIC_MAX = 23940
+# ФС П2: фраза правил о scene_recap (замер 23997; 23940 -> 24030).
+# ФС П3: поле location_id в npc_update, фразы о absent_npcs, переносе и уходе gone без причины
+# (замер 24212; 24030 -> 24240).
+STATIC_MAX = 24240
 
 MODES = sorted(MODE_TOOLS)
 

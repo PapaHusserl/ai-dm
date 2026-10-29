@@ -843,8 +843,8 @@ def test_world_death_without_own_roll_is_rejected_with_tag(registry, cfg):
         "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого вызова"
     )
     assert decision.signal_to_master == (
-        "Олдрик остаётся жив: смерть или уход без причины goal/hazard и "
-        "evidence_ref на не потраченный бросок этого вызова не принимаются."
+        "Олдрик остаётся жив: смерть без причины goal/hazard и "
+        "evidence_ref на не потраченный бросок этого вызова не принимается."
     )
     assert "invalid-death" in ctx.marks
     assert aldric(ctx).status == "alive"

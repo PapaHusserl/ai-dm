@@ -652,6 +652,69 @@ def test_message_known_npcs_do_not_leak_motive_or_secrets(registry, cfg):
         assert set(npc) == {"id", "name", "location_id", "key"}
 
 
+def olgerd_ctx(
+    registry, cfg, narration="Вы вспомнили Ольгерда.", scene_id="scene_1", where="forest"
+):
+    # Ольгерд назван в прошлом ходу; where -- его локация
+    from ai_dm.state.world import NPC
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["olgerd"] = NPC(
+        id="olgerd", name="Ольгерд", named=True, means=["меч"], location_id=where
+    )
+    record = turn_record(1, narration)
+    record.scene_id = scene_id
+    ctx.bundle.memory.recent_turns.append(record)
+    return ctx
+
+
+def test_absent_npcs_lists_npc_named_in_previous_turn_of_scene(registry, cfg):
+    data = data_of(build(olgerd_ctx(registry, cfg)))
+    assert data["absent_npcs"] == [{"id": "olgerd", "name": "Ольгерд", "location_id": "forest"}]
+
+
+def test_absent_npc_is_in_known_npcs_with_location(registry, cfg):
+    known = {n["id"]: n for n in data_of(build(olgerd_ctx(registry, cfg)))["known_npcs"]}
+    assert known["olgerd"]["location_id"] == "forest"
+
+
+def test_no_absent_npcs_when_previous_turn_is_of_other_scene(registry, cfg):
+    data = data_of(build(olgerd_ctx(registry, cfg, scene_id="scene_0")))
+    assert "absent_npcs" not in data
+
+
+def test_no_absent_npcs_when_npc_is_in_hero_location(registry, cfg):
+    data = data_of(build(olgerd_ctx(registry, cfg, where="vale")))
+    assert "absent_npcs" not in data
+
+
+def test_no_absent_npcs_when_npc_is_not_named_in_previous_turn(registry, cfg):
+    data = data_of(build(olgerd_ctx(registry, cfg, narration="Тихо.")))
+    assert "absent_npcs" not in data
+
+
+def test_scene_npcs_have_npc_moved_to_hero_location(registry, cfg):
+    from protocol_kit import req
+
+    from ai_dm.protocol.apply import apply
+
+    ctx = olgerd_ctx(registry, cfg)
+    apply(ctx, req("npc_update", npc_id="olgerd", location_id="vale"))
+    data = data_of(build(ctx))
+    assert "olgerd" in [n["id"] for n in data["scene_npcs"]]
+    assert "absent_npcs" not in data
+
+
+def test_gone_npc_is_not_in_scene_npcs(registry, cfg):
+    from protocol_kit import req
+
+    from ai_dm.protocol.apply import apply
+
+    ctx = olgerd_ctx(registry, cfg, where="vale")
+    apply(ctx, req("npc_update", npc_id="olgerd", status="gone"))
+    assert "olgerd" not in [n["id"] for n in data_of(build(ctx))["scene_npcs"]]
+
+
 def test_vale_start_world_fits_state_json_with_cellar_and_grakh(registry, cfg):
     from ai_dm.config.settings import load_rules_config
     from ai_dm.game.starter import new_world

@@ -8,10 +8,12 @@ from ai_dm.protocol.handlers.world import (
     change_follows,
     change_goal,
     change_identity,
+    change_location,
     change_status,
     death_refused,
     favor_change_for,
     goal_problem,
+    location_problem,
     nothing_to_change,
     rejected,
 )
@@ -111,7 +113,7 @@ def basic_problem(ctx, npc, request):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
         return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не идёт с героем")
-    return goal_problem(ctx, npc, request)
+    return goal_problem(ctx, npc, request) or location_problem(ctx.bundle.world, npc, request)
 
 
 def npc_update(ctx, request):
@@ -127,27 +129,18 @@ def npc_update(ctx, request):
     invalid = basic_problem(ctx, npc, request)
     if invalid is not None:
         return invalid
-    if request.location_id is not None:
-        if request.location_id not in world.locations:
-            return Invalid(
-                code="unknown_location",
-                message=f"нет локации {request.location_id!r}" + allowed(world.locations),
-            )
-        if npc.status != "alive":
-            return Invalid(code="npc_not_alive", message=f"{npc.name} не жив: не перемещается")
     # смерть за кадром: бросок-доказательство должен быть броском этого же NPC
     own_roll = ctx.roll_actors.get(request.evidence_ref) == npc.id
-    if request.status is not None and (not own_roll or death_refused(ctx, npc, request)):
+    if request.status is not None and death_refused(ctx, npc, request, own_roll=own_roll):
         return rejected(
             "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого вызова",
-            f"{npc.name} остаётся жив: смерть или уход без причины goal/hazard и "
-            "evidence_ref на не потраченный бросок этого вызова не принимаются.",
+            f"{npc.name} остаётся жив: смерть без причины goal/hazard и "
+            "evidence_ref на не потраченный бросок этого вызова не принимается.",
             report_tag="invalid-death",
         )
     decision = Decision(status="accepted")
     if request.location_id is not None:
-        npc.location_id = request.location_id
-        decision.log.append(f"{npc.name}: теперь в {world.locations[npc.location_id].name}")
+        change_location(ctx, npc, request, decision)
     if request.follows is not None:
         change_follows(ctx, npc, request, decision)
     change_identity(npc, request, decision)
@@ -156,7 +149,7 @@ def npc_update(ctx, request):
     if request.goal_kind is not None:
         change_goal(ctx, npc, request, decision)
     if request.status is not None:
-        change_status(ctx, npc, request, decision)
+        change_status(ctx, npc, request, decision, own_roll)
     return decision
 
 

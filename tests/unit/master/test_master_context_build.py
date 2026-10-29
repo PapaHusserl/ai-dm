@@ -273,9 +273,6 @@ def test_request_matches_plan(registry, cfg, share):
         if stage == "npcs":
             assert item not in known
     shown = [x["id"] for x in data["locations"]]
-    for stage, item in dropped:
-        if stage == "locations":
-            assert item not in shown
     assert shown[0] == "vale"
 
 
@@ -405,20 +402,14 @@ def test_all_neighbor_locations_shown_when_roomy(registry, cfg):
     assert shown_locations(request) == ["vale", "far", "forest", "mid", "rev", "tie_a", "tie_b"]
 
 
-def test_neighbor_locations_are_never_dropped(registry, cfg):
-    _, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
-    assert [i for s, i in builder.last_plan.dropped if s == "locations"] == []
-
-
 def test_all_neighbors_shown_when_nothing_fits(registry, cfg):
     request, _ = build(make_scenario(registry, cfg), app=app_with(cap=1))
     assert shown_locations(request) == NEIGHBORS
 
 
 def test_current_location_is_never_dropped(registry, cfg):
-    request, builder = build(make_scenario(registry, cfg), app=app_with(cap=1))
+    request, _ = build(make_scenario(registry, cfg), app=app_with(cap=1))
     assert shown_locations(request)[0] == "vale"
-    assert ("locations", "vale") not in builder.last_plan.dropped
     assert data_of(request)["location"]["id"] == "vale"
 
 
@@ -426,11 +417,6 @@ def test_candidates_fix_current_and_all_neighbors(registry, cfg):
     c = PromptBuilder(app_with()).candidates(make_scenario(registry, cfg))
     assert c.fixed_locations[0] == "vale"
     assert sorted(c.fixed_locations) == sorted(NEIGHBORS)
-
-
-def test_candidates_have_no_removable_locations(registry, cfg):
-    c = PromptBuilder(app_with()).candidates(make_scenario(registry, cfg))
-    assert c.locations == []
 
 
 def test_candidates_without_hero_location_fix_nothing(registry, cfg):
@@ -442,9 +428,8 @@ def test_candidates_without_hero_location_fix_nothing(registry, cfg):
 def test_hero_without_location_has_no_candidate_locations(registry, cfg):
     ctx = make_scenario(registry, cfg)
     ctx.hero.location_id = None
-    request, builder = build(ctx, app=app_with(cap=1))
+    request, _ = build(ctx, app=app_with(cap=1))
     assert data_of(request)["locations"] == []
-    assert [s for s, _ in builder.last_plan.dropped if s == "locations"] == []
 
 
 # G1: неустранимое > cap
@@ -852,7 +837,7 @@ def test_roomy_request_has_all_chapters_in_order(registry, cfg):
     assert [c.id for c in builder.last_plan.chapters] == ["ch1", "ch2", "ch3", "ch4"]
 
 
-def test_chapters_are_dropped_last_after_locations(registry, cfg):
+def test_chapters_are_dropped_last_after_npcs(registry, cfg):
     _, builder = build(chapters_scenario(registry, cfg), app=app_with(cap=1))
     assert builder.last_plan.dropped == FULL_ORDER + CHAPTER_TAIL
 

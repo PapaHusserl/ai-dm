@@ -12,6 +12,12 @@ FIGHT_WORDS = {"victory": "победа", "fled": "бегство", "ended_by_ma
 FIGHT_LOST = "поражение"
 # имя не длиннее этого ищется в тексте только целым словом
 SHORT_NAME = 3
+# падежи слова имени: гласные, отбрасываемые из основы, и закрытый список окончаний
+STEM_VOWELS = "аяоеёйьыи"
+CASE_ENDINGS = (
+    "ами", "ями", "ой", "ей", "ою", "ею", "ом", "ем", "ам", "ям", "ах", "ях", "ов", "ев",
+    "а", "я", "у", "ю", "ы", "и", "е", "о",
+)
 # значимые слова секрета и доля их попадания в текст заметки, с которой это пересказ секрета
 SECRET_WORD_MIN = 4
 SPOIL_SHARE = 0.6
@@ -53,11 +59,20 @@ def evict_oldest(hero, kind, ref) -> None:
     hero.knowledge.remove(min(victims, key=lambda e: e.at_s))
 
 
+def word_pattern(word) -> str:
+    # слово ≥ 4 знаков: основа (без последней гласной) и закрытый список падежных окончаний;
+    # короткое -- целиком, иначе «Ян» найдётся в «Яндексе»
+    if len(word) <= SHORT_NAME:
+        return rf"(?<!\w){re.escape(word)}(?!\w)"
+    stem = word[:-1] if word[-1] in STEM_VOWELS else word
+    endings = "|".join((*CASE_ENDINGS, word[len(stem):]))
+    return rf"(?<!\w){re.escape(stem)}(?:{endings})?(?!\w)"
+
+
 def mentions(name, text) -> bool:
-    # имя с начала слова (русские окончания допустимы: «Олдрику»); короткое имя -- только целым
-    # словом, иначе «Ян» найдётся в «Яндексе» (оба в нижнем регистре)
-    tail = r"(?!\w)" if len(name) <= SHORT_NAME else ""
-    return re.search(rf"(?<!\w){re.escape(name)}{tail}", text) is not None
+    # все слова имени найдены в тексте, с падежами («у матушки Греты»); оба в нижнем регистре
+    words = name.split()
+    return bool(words) and all(re.search(word_pattern(word), text) for word in words)
 
 
 def remember_fact(hero, entry, cfg) -> bool:

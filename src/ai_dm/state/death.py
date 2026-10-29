@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 class DeathRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    cause: Literal["goal", "hazard", "chance", "old_age"]
+    cause: Literal["goal", "hazard", "chance", "old_age", "left"]
     by: str | None = None
     at_s: int
     location_id: str | None = None

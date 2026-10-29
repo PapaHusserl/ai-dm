@@ -13,7 +13,14 @@ from ai_dm.master.context import (
     window_budget,
 )
 from ai_dm.master.leaks import cut_leaks
-from ai_dm.master.relevance import nearby_locations, npc_reasons, rank_npcs
+from ai_dm.master.recap import RECAP_MAX, scene_recap
+from ai_dm.master.relevance import (
+    absent_mentions,
+    nearby_locations,
+    npc_reasons,
+    previous_narration,
+    rank_npcs,
+)
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
 from ai_dm.rules.boons import BOONS
@@ -48,6 +55,22 @@ def clip(text, limit):
 
 def dump(data):
     return json.dumps(data, sort_keys=True, ensure_ascii=False)
+
+
+def absent_data(ctx):
+    # {"absent_npcs": [...]} -- NPC, названные в рассказе прошлого хода этой сцены, но не в локации
+    # героя (214); пусто -- {}
+    bundle = ctx.bundle
+    world = bundle.world
+    ids = absent_mentions(bundle, previous_narration(bundle))
+    if not ids:
+        return {}
+    return {
+        "absent_npcs": [
+            {"id": i, "name": world.npcs[i].name, "location_id": world.npcs[i].location_id}
+            for i in ids
+        ]
+    }
 
 
 def identity_data(who):
@@ -251,7 +274,7 @@ def draft_plan(c):
     # черновик плана для оценки запроса при вытеснении (budget/cap/estimate не используются)
     return ContextPlan(
         budget=0, cap=0, estimate=0, turns=c.turns, scene_summaries=c.scenes,
-        npc_ids=c.fixed_npcs + c.npcs, location_ids=c.fixed_locations + c.locations,
+        npc_ids=c.fixed_npcs + c.npcs, location_ids=c.fixed_locations,
         dropped=[], raised=False, overflow=False, chapters=c.chapters + c.fixed_chapters,
     )
 
@@ -357,11 +380,15 @@ class PromptBuilder:
             fixed_locations = [place.id, *(x["id"] for x in nearby)]
         reasons = npc_reasons(bundle, {x["id"] for x in nearby})
         fixed_npcs, npcs = rank_npcs(reasons)
+        # назван в прошлом ходу, а не в локации героя (214): его location_id нужен в known_npcs
+        absent = absent_mentions(bundle, previous_narration(bundle))
+        fixed_npcs = sorted({*fixed_npcs, *absent})
+        npcs = [npc_id for npc_id in npcs if npc_id not in absent]
         return Candidates(
             turns=recent_window(memory, cfg.recent_turns),
             floor=cfg.recent_turns_floor,
             scenes=[s for s in memory.scenes if s.chapter_id == chapter_id],
-            npcs=npcs, locations=[], chapters=folded,
+            npcs=npcs, chapters=folded,
             fixed_npcs=fixed_npcs, fixed_locations=fixed_locations,
             fixed_chapters=fixed_chapters,
         )
@@ -629,6 +656,11 @@ class PromptBuilder:
         }
         if known_locations:
             data["known_locations"] = known_locations
+        data.update(absent_data(ctx))
+        kept = {t.turn_seq for t in context_plan.turns}
+        recap = scene_recap(ctx.bundle, kept, max_chars=RECAP_MAX)
+        if recap:
+            data["scene_recap"] = recap
         data.update(self.knowledge_data(ctx, context_plan, scene_npcs))
         data.update(items_trail_data(world, session, ctx.registry))
         data.update(trade_data(world, scene_npcs, ctx, hero.sheet.level))

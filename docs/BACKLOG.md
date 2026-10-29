@@ -705,32 +705,6 @@ updated: 2026-10-21
 расходников/зелий (SRD 5.2, паки); (2) живой ассортимент — набор при пополнении, редкие новинки; (3) завоз новинок
 рассказчиком. Связано с: BACKLOG 92, 94 (функциональные вещи рассказчика), 23 (торговля, done/).
 
-## 134. context_cap вытесняет recent_turns при верной оценке
-status: idea
-priority:
-updated: 2026-10-21
-
-(папа-кабан, план Фикс ЖП4 — docs/plan-fix-zhp4.md «Находки для беклога») `context_cap = 16000` вытесняет 3–5 из 8
-`recent_turns` и при верной оценке токенов (openai 3,5: 31,5k факт, ходы 612–622; gemini 34,1k/32,3k, t624–t626).
-Потолок динамики, не калибровка: 129 возвращает точность, не ходы. Последствия как в 109 (ложный `xp_repeat`).
-Варианты: поднять `context_cap` (сторож `STATIC_MAX + cap ≤ window80`, окна моделей ≥ 128k) или сократить состояние хода.
-
-## 135. Мёртвая ступень locations планировщика контекста
-status: idea
-priority: low
-updated: 2026-10-21
-
-(папа-кабан, docs/plan-fix-zhp4.md, Р2 = (1)) После 129 у рассказчика `locations = []`, ступень `locations` в
-`STAGES`/`Candidates` мертва. Чистка — вместе с ближайшим касанием `master/context.py`.
-
-## 137. Упоминание NPC по имени не ловит падежи
-status: idea
-priority: low
-updated: 2026-10-21
-
-(папа-кабан, docs/plan-fix-zhp4.md) `npc_reason_set`, причина `said`: ищется `npc.name.lower()` целиком — «у матушки
-Греты» не находит «Матушка Грета». При касании relevance — хотя бы по фамилии/последнему слову имени.
-
 ## 138. Потолок блока known_locations у рассказчика
 status: idea
 priority: low
@@ -758,16 +732,6 @@ updated: 2026-10-22
 `unsupported_action` или `attack:improvised_thrown` по одной цели; `holy_water` в реестре нет. SRD: Holy Water —
 бросок как импровизированный снаряд, 2d6 излучением по нежити/исчадию. Предложение: предмет реестра и действие
 броска расходника (`combat/available.py`); связь с 48, 94.
-
-## 145. Отпущенный NPC (status gone) отклоняется как invalid-death
-status: idea
-priority: low
-updated: 2026-10-22
-
-(разбор репортов 2026-10-22, t360) Герой отпустил пленника Радмила: `npc_update(status=gone, cause=none)` ×3 —
-отказ «у смерти должна быть причина» (правило 4.1, `requests.py:518`); Радмил остаётся в `scene_npcs`, хотя в рассказе
-ушёл. Варианты (решение проектировщика, граница правила 4.1): `cause=released`, отдельный статус ухода без причины
-или требовать причину только у `dead`.
 
 ## 147. Проклятие бога при благосклонности ≤ −9 (ТЗ 4.2)
 status: idea
@@ -1211,17 +1175,6 @@ updated: 2026-10-28
 `game.app:merge_pack` 24, 26, 27; `game.app:GameApp.load` 27, 37, 38, 41, 44, 59, 60, 65, 66, 68, 69, 88–91 — и 105
 segfault (`make_parser`, `main`, `make_adapter`). Разобрать при касании этих функций.
 
-## 214. Известный NPC введён в сцену только текстом и «пропадает»
-status: idea
-priority: medium
-updated: 2026-10-28
-
-Живой прогон drunk_dragon 2026-10-28, t1300–1310 (репорт t1310-manual): рассказчик привёл Ольгерда из `known_npcs`
-(локация Чернолесье) в пещеру только текстом, в `scene_npcs` он не попал; после обрезки ходов (134) рассказчик на t1310
-сказал, что Ольгерда здесь нет. Решение проектировщика 2026-10-28: движок ловит в тексте имя NPC из `known_npcs`,
-которого нет в `scene_npcs`, и шлёт рассказчику сигнал «перенеси в сцену или не используй»; одного правила в промпте
-мало. Связь: 134.
-
 ## 215. Бандаж Вингтейла не подхватывает боеприпасы после боя
 status: idea
 priority: low
@@ -1267,3 +1220,11 @@ updated: 2026-10-29
 
 mutmut шага 217 (docs/plan-217.md), resources.py, строки вне диффа: `x_time_by_category__mutmut_33/40/41/60/61`
 (survived), `_79/80` (timeout), `x_time_until__mutmut_21/22` (survived).
+
+## 221. Мутанты на старых строках функций шага ФС
+status: idea
+priority: low
+updated: 2026-10-29
+
+mutmut шага ФС (docs/plan-fs.md), строки вне диффа (survived): `master.prompt.xǁPromptBuilderǁstate_data__mutmut_7`;
+`protocol.handlers.world.x_death_problem__mutmut_5/16/17`; `rules.mortality_guard.x_remove_creature__mutmut_1/3/29/54/55`.

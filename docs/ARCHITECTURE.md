@@ -302,7 +302,9 @@ ai-dm/
     лечение; death saves 5e (nat 20 → 1 HP, nat 1 → 2 провала, урон при 0 HP → провал/2 при крите,
     массивный урон); истощение (−2 × уровень, 6 → смерть); короткий/длинный отдых.
 12. **Страж 4.1** — `remove_creature(state, id, status, cause)`, `DeathCause` = `Goal` / `Hazard` /
-    `Chance` / `OldAge`; без причины — `Rejected(invalid-death)`.
+    `Chance` / `OldAge`; без причины — `Rejected(invalid-death)`. Исключение (ФС П3, BACKLOG 145): уход NPC
+    `status="gone"` в `npc_update` рассказчика и за кадром — без причины и броска, `DeathRecord.cause = "left"`
+    (принимает только `remove_creature` при `gone`); смерть `dead` — как раньше.
 13. **Инвентарь и деньги** — экипировка, расходники, медяки, выбор ценных предметов для ограбления.
 14. **Триггеры и секреты** — трёхзначная логика `TRUE | FALSE | NEEDS_NARRATIVE`; 10 структурных
     условий; `validate_refs`; `is_ready` (`once`/`cooldown`); `check_reveal`; авто-флаги
@@ -636,7 +638,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, static + master.context_cap=16000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,7k после Ж1), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`, у OpenAI `input + cache_read + cache_write` (три непересекающихся числа адаптера); вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, static + master.context_cap=32000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,7k после Ж1), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`, у OpenAI `input + cache_read + cache_write` (три непересекающихся числа адаптера); вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |
@@ -686,12 +688,21 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 Никогда не выкидываются: правила, мир/истины, tools, герой и сцена, NPC сцены (с памятью, целями и заметками, E11),
 спутники, NPC с активным триггером, `game_summary` и выжимки глав, ещё не свёрнутые в него (`fixed_chapters`).
 По порядку (`STAGES`): сырые ходы (до 1 последнего) → выжимки сцен текущей главы → неактивные NPC
-(упомянутые → ключевые → соседние → торговцы) → соседние локации (у рассказчика не вытесняются: цели `travel_to`,
-129; ступень остаётся в планировщике) → выжимки глав с `number ≤ game_summary_chapter` (пятая ступень,
+(упомянутые → ключевые → соседние → торговцы) → выжимки глав с `number ≤ game_summary_chapter` (пятая ступень,
 Ж0, BACKLOG 15; самые ранние первыми; `Candidates.chapters`, `ContextPlan.chapters`). Не влезло — запрос уходит,
-авто-репорт `context_overflow`. Потолок: `static + context_cap` (16000, динамика без кэшируемой статики), не больше 80%
+авто-репорт `context_overflow`. Потолок: `static + context_cap` (32000, динамика без кэшируемой статики), не больше 80%
 окна; сторож в тестах — `STATIC_MAX + context_cap ≤ window80` для моделей рассказчика (модель с окном < ≈ 25k после
 Ж0 непригодна: одна статика больше 8000 и динамика вытесняется целиком).
+Конспект сцены (ФС П2, BACKLOG 134): ходы текущей сцены (`TurnRecord.scene_id`), которых нет в `recent_turns` запроса
+(вытесненные по cap и за окном `recent_turns`), движок сводит без ИИ в ключ состояния `scene_recap`
+(`master/recap.py`): `turns` («t1–t7 (7 ходов)»), `npcs` (именованные живые NPC, упомянутые в их рассказе) и `events`
+(строки `outcomes` принятых запросов, без «отклонено», каждая ≤ `RECAP_LINE_MAX` = 120 знаков, имена `npcs` и `events` вместе
+≤ `RECAP_MAX` = 1200; при переполнении уходят старые события; сами имена `npcs` не режутся: при именах длиннее потолка `events` пусты, и конспект может превысить `RECAP_MAX`). Пересчитывается каждый ход, в сейве поля нет; ключа нет, если выпавших ходов нет.
+Отсутствующие NPC (ФС П3, BACKLOG 214): именованные живые NPC вне локации героя, названные в `narration` прошлого хода
+этой сцены (матчер `rules.knowledge.mentions` с падежами, `master/relevance.py:absent_mentions`), движок отдаёт ключом
+состояния `absent_npcs` (`id`, `name`, `location_id`; они же неустранимы в `known_npcs`). Рассказчик переносит NPC
+`npc_update.location_id` (проверка как у мира: `unknown_location`, `npc_not_alive`). Если и в этом ходу NPC назван, а не
+перенесён, `TurnRunner.note_absent` добавляет тег авто-репорта `npc_absent_ignored`.
 Бюджет пересчитывается на каждый ход от текущей модели (`/model`). Оценка — локальная, одинаковая в live/replay/моке.
 
 ## E5. Сейв v5
@@ -743,7 +754,7 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `CURRENT_SCHEMA_VERSION = 11`, миграция `m0011_v10_to_v11` (чистая `dict -> dict`, `deepcopy`, `setdefault`, контекст не
 нужен). Отпечаток — `tests/schema/save_v11.schema.json`, фикстура `tests/fixtures/saves/v10`, золотой ход
 `tests/golden/zh0_turn.json` (тот же ход на мигрированной фикстуре даёт тот же снимок). Принцип (решение 0): поля под
-Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 в итоге ушла Ж2 — «Цели NPC (Ж2)» ниже; М0 → v13, С0 → v14).
+Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 в итоге ушла Ж2 — «Цели NPC (Ж2)» ниже; v13 занята ФС; М0 → v14, С0 → v15).
 
 | Где | Поле | Смысл |
 |---|---|---|
@@ -902,7 +913,12 @@ then=текст цели, once=True)` в `npc.opportunity`. Структура: 
 `tests/fixtures/saves/v11`; `scripts/migrate_dusk_18plus.py` принимает сейвы v9–v12. Единственное новое поле —
 `WorldSim.goals_checked_s: int | None` (время последней проверки триггеров целей, смысл — «Редкая проверка» выше).
 `WorldSim.pending_acts` существовало в v11 (Ж0) и получило код в Ж2; поля запросов `goal_*`, смена бога и hazard полей
-сейва не добавляли. Старые триггеры `debt_<hero>` миграцией не переводятся: остаются как есть, без цели. М0 → v13, С0 → v14.
+сейва не добавляли. Старые триггеры `debt_<hero>` миграцией не переводятся: остаются как есть, без цели. М0 → v14, С0 → v15 (v13 занята ФС).
+
+### Сейв v13 (ФС П3)
+
+`CURRENT_SCHEMA_VERSION = 13`, миграция `m0013_v12_to_v13` (пустышка: `deepcopy`, данных не меняет): `DeathRecord.cause`
+получил значение `left` (уход NPC без причины). Отпечаток — `tests/schema/save_v13.schema.json`; `save_v12` — история.
 
 ## E12. Журнал знаний героя (Ж3)
 

@@ -21,6 +21,7 @@ from protocol_kit import ScriptedRng, dump, make_bundle, make_ctx, req
 
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision, Invalid
+from ai_dm.protocol.handlers.world import change_status, evidence_ok
 
 RESERVED = [
     "npc_dead:aldric", "hero_dead:hero", "visited:forest", "combat_ended:c1",
@@ -376,12 +377,129 @@ def test_death_with_unknown_evidence_is_rejected(registry, cfg):
     assert_alive_and_invalid_death(ctx, kill(ctx, cause="goal", evidence_ref="r42"))
 
 
-def test_gone_without_cause_is_rejected_too(registry, cfg):
+def test_gone_without_cause_and_roll_is_accepted(registry, cfg):
     ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].follows = ctx.hero.id
     d = kill(ctx, status="gone")
-    assert d.status == "rejected"
-    assert d.report_tag == "invalid-death"
-    assert ctx.bundle.world.npcs["aldric"].status == "alive"
+    assert d.status == "accepted"
+    npc = ctx.bundle.world.npcs["aldric"]
+    assert npc.status == "gone"
+    assert npc.death.cause == "left"
+    assert npc.follows is None
+
+
+def test_gone_does_not_spend_rolls(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    kill(ctx, status="gone")
+    assert ctx.used_rolls == set()
+
+
+def test_dead_without_cause_is_still_rejected_with_gone_allowed(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    assert_alive_and_invalid_death(ctx, kill(ctx, status="dead"))
+
+
+def test_death_rejection_tells_master_what_is_missing(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = kill(ctx)
+    assert d.reason == (
+        "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого хода"
+    )
+    assert d.signal_to_master == (
+        "Олдрик остаётся жив: смерть без причины goal/hazard и "
+        "evidence_ref на не потраченный бросок этого хода не принимается. Опиши иначе."
+    )
+
+
+def test_change_status_dead_keeps_cause_even_without_evidence(registry, cfg):
+    # смерть как статус всегда «доказана» этим вызовом: причина не подменяется на left
+    ctx = make_ctx(registry, cfg)
+    npc = ctx.bundle.world.npcs["aldric"]
+    request = req("npc_update", npc_id="aldric", status="dead", cause="hazard")
+    change_status(ctx, npc, request, Decision(status="accepted"), own_roll=False)
+    assert npc.status == "dead"
+    assert npc.death.cause == "hazard"
+
+
+def test_evidence_ok_requires_own_roll_by_default(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    request = req("npc_update", npc_id="aldric", status="dead", cause="goal", evidence_ref=ref)
+    assert evidence_ok(ctx, request) is True
+    assert evidence_ok(ctx, request, own_roll=False) is False
+
+
+# npc_update: перенос рассказчиком (214)
+
+def move(ctx, location_id, **kwargs):
+    return apply(ctx, req("npc_update", npc_id="aldric", location_id=location_id, **kwargs))
+
+
+def test_npc_update_moves_npc_to_location(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = move(ctx, "vale")
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["aldric"].location_id == "vale"
+    assert d.result["location_id"] == "vale"
+    assert d.log
+
+
+def test_npc_update_move_to_unknown_location_is_invalid(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = move(ctx, "nowhere")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_location"
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("status", ["dead", "gone"])
+def test_npc_update_move_of_departed_npc_is_npc_not_alive(status, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].status = status
+    d = move(ctx, "vale")
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_not_alive"
+
+
+@pytest.mark.parametrize("cause", ["goal", "hazard"])
+def test_gone_with_cause_but_without_roll_is_recorded_as_left(cause, registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    assert kill(ctx, status="gone", cause=cause).status == "accepted"
+    assert ctx.bundle.world.npcs["aldric"].death.cause == "left"
+
+
+def test_gone_with_roll_but_without_cause_is_left_and_roll_is_not_spent(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    assert kill(ctx, status="gone", evidence_ref=ref).status == "accepted"
+    npc = ctx.bundle.world.npcs["aldric"]
+    assert npc.status == "gone"
+    assert npc.death.cause == "left"
+    assert ref not in ctx.used_rolls
+
+
+def test_gone_with_unknown_roll_is_left_and_nothing_is_spent(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    assert kill(ctx, status="gone", cause="goal", evidence_ref="r42").status == "accepted"
+    assert ctx.bundle.world.npcs["aldric"].death.cause == "left"
+    assert ctx.used_rolls == set()
+
+
+def test_gone_with_already_spent_roll_is_left(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    ctx.used_rolls.add(ref)
+    assert kill(ctx, status="gone", cause="goal", evidence_ref=ref).status == "accepted"
+    assert ctx.bundle.world.npcs["aldric"].death.cause == "left"
+
+
+def test_gone_with_roll_keeps_its_own_cause(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1]))
+    ref = roll_ref(ctx)
+    kill(ctx, status="gone", cause="hazard", evidence_ref=ref)
+    assert ctx.bundle.world.npcs["aldric"].death.cause == "hazard"
+    assert ref in ctx.used_rolls
 
 
 def test_death_by_goal_with_evidence_is_accepted(registry, cfg):

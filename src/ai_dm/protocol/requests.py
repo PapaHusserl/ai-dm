@@ -558,7 +558,8 @@ class NpcUpdateBase(Request):
         "none", description="Смерть или уход из игры; none = не менять."
     )
     cause: Literal["none", "goal", "hazard", "chance", "old_age"] = Field(
-        "none", description="Причина смерти; мастеру доступны goal и hazard; none без смерти."
+        "none", description="Причина смерти (dead); мастеру доступны goal и hazard; "
+        "none = без причины (для gone)."
     )
     evidence_ref: str = Field("", description="roll_ref броска этого хода; пусто = нет.")
     by: str = Field("", description="Кто виновник (id существа); пусто = нет.")
@@ -593,8 +594,12 @@ class NpcUpdateBase(Request):
 
 
 class NpcUpdate(NpcUpdateBase):
-    """Изменить NPC: отношение к герою, смерть или уход (только с причиной и доказательством)."""
+    """Изменить NPC: отношение к герою, перенос, смерть (с причиной и броском) или уход."""
 
+    location_id: str = Field(
+        "", description="Id локации, куда NPC перешёл (пришёл к герою — id локации героя); "
+        "пусто = не менять."
+    )
     trade_kind: str = Field(
         "none", description="Сделать NPC торговцем типа (пресет ассортимента); none = не менять."
     )
@@ -613,8 +618,8 @@ class NpcUpdate(NpcUpdateBase):
         [], description="Добавить NPC платные услуги (id видов); пусто = не менять."
     )
     NEUTRAL: ClassVar[dict] = {
-        **NpcUpdateBase.NEUTRAL, "trade_kind": "none", "memory_kind": "none", "memory_text": "",
-        "name": "", "services": [],
+        **NpcUpdateBase.NEUTRAL, "location_id": "", "trade_kind": "none", "memory_kind": "none",
+        "memory_text": "", "name": "", "services": [],
     }
 
 

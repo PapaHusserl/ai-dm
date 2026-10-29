@@ -229,6 +229,124 @@ def test_mention_is_case_insensitive(registry):
     assert "branka" in relevant_npcs(bundle)
 
 
+def test_npc_named_in_oblique_case_is_relevant(registry):
+    # 137: «подошёл к Бранке» -- падеж имени
+    from master_kit import turn_record
+
+    bundle = make_bundle(registry)
+    far_npc(bundle)
+    bundle.memory.recent_turns.append(turn_record(1, "Вы подошли к Бранке."))
+    assert "branka" in relevant_npcs(bundle)
+
+
+def test_two_word_name_is_found_in_cases(registry):
+    from master_kit import turn_record
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "greta", name="Матушка Грета", location_id="forest")
+    bundle.memory.recent_turns.append(turn_record(1, "Вы живёте у матушки Греты."))
+    assert "greta" in relevant_npcs(bundle)
+
+
+def test_short_name_is_not_found_inside_longer_word(registry):
+    from master_kit import turn_record
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "yan", name="Ян", location_id="forest")
+    bundle.memory.recent_turns.append(turn_record(1, "Вы зашли в Яндексе поискать."))
+    assert "yan" not in relevant_npcs(bundle)
+
+
+# absent_mentions / previous_narration (214)
+
+def scene_turn(bundle, narration, scene_id="scene_1", n=1):
+    from master_kit import turn_record
+
+    record = turn_record(n, narration)
+    record.scene_id = scene_id
+    bundle.memory.recent_turns.append(record)
+
+
+def test_previous_narration_is_last_turn_of_current_scene(registry):
+    from ai_dm.master.relevance import previous_narration
+
+    bundle = make_bundle(registry)
+    scene_turn(bundle, "Первый.", n=1)
+    scene_turn(bundle, "Второй.", n=2)
+    assert previous_narration(bundle).startswith("Второй.")
+
+
+def test_previous_narration_of_other_scene_is_empty(registry):
+    from ai_dm.master.relevance import previous_narration
+
+    bundle = make_bundle(registry)
+    scene_turn(bundle, "Чужая сцена.", scene_id="scene_0")
+    assert previous_narration(bundle) == ""
+
+
+def test_previous_narration_without_turns_or_scene_is_empty(registry):
+    from ai_dm.master.relevance import previous_narration
+
+    bundle = make_bundle(registry)
+    assert previous_narration(bundle) == ""
+    scene_turn(bundle, "Ход.")
+    bundle.session.current_scene = None
+    assert previous_narration(bundle) == ""
+
+
+def test_absent_mentions_finds_named_npc_elsewhere_in_case(registry):
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    far_npc(bundle)
+    assert absent_mentions(bundle, "Вы ждёте Бранку.") == ["branka"]
+
+
+def test_absent_mentions_ignores_npc_in_hero_location(registry):
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "branka", name="Бранка", location_id="vale")
+    assert absent_mentions(bundle, "Бранка рядом.") == []
+
+
+def test_absent_mentions_ignores_dead_unnamed_and_unmentioned(registry):
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "dead_one", name="Покойник", location_id="forest", status="dead")
+    add_npc(bundle, "rat", name="Крыса", named=False, location_id="forest")
+    far_npc(bundle)
+    assert absent_mentions(bundle, "Покойник и Крыса.") == []
+
+
+def test_absent_mentions_is_sorted_by_id(registry):
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "zed", name="Зед", location_id="forest")
+    far_npc(bundle)
+    assert absent_mentions(bundle, "Зед и Бранка.") == ["branka", "zed"]
+
+
+def test_absent_mentions_counts_mentioned_npc_without_location_as_absent(registry):
+    # текущее поведение: location_id=None != локации героя -- NPC отсутствует
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "branka", name="Бранка")
+    assert absent_mentions(bundle, "Вы ждёте Бранку.") == ["branka"]
+
+
+def test_absent_mentions_without_hero_location_is_empty(registry):
+    from ai_dm.master.relevance import absent_mentions
+
+    bundle = make_bundle(registry)
+    far_npc(bundle)
+    bundle.heroes[0].location_id = None
+    assert absent_mentions(bundle, "Бранка.") == []
+
+
 def test_unmentioned_far_npc_is_not_relevant(registry):
     from master_kit import turn_record
 

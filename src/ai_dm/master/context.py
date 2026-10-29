@@ -8,7 +8,7 @@ from ai_dm.state.memory import ChapterSummary, Memory, SceneSummary
 from ai_dm.state.scene import TurnRecord
 
 # порядок вытеснения (ТЗ 11)
-STAGES = ("turns", "scenes", "npcs", "locations", "chapters")
+STAGES = ("turns", "scenes", "npcs", "chapters")
 
 
 class Candidates(BaseModel):
@@ -18,7 +18,6 @@ class Candidates(BaseModel):
     floor: int = 0
     scenes: list[SceneSummary] = []
     npcs: list[str] = []
-    locations: list[str] = []
     # главы, уже свёрнутые в game_summary (старшие первыми)
     chapters: list[ChapterSummary] = []
     # неустранимое: в запросе всегда
@@ -120,7 +119,7 @@ def plan(
         turns=left.turns,
         scene_summaries=left.scenes,
         npc_ids=left.fixed_npcs + left.npcs,
-        location_ids=left.fixed_locations + left.locations,
+        location_ids=left.fixed_locations,
         dropped=dropped,
         raised=raised,
         overflow=raised,

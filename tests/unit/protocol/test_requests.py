@@ -306,7 +306,9 @@ OPTIONAL_FIELDS = {
     "rest": ["hit_dice", "prey_swap"],  # prepared_swap -- вложенный объект: см. тесты cut_swap ниже
     "npc_create": ["named", "key", "motive", "location_id"],
     "location_create": ["parent_id", "description", "connections"],
-    "npc_update": ["attitude_delta", "status", "cause", "evidence_ref", "by", "text"],
+    "npc_update": [
+        "attitude_delta", "status", "cause", "evidence_ref", "by", "text", "location_id",
+    ],
     "event_start": ["cause", "regions"],
     "end_scene": ["summary"],
     "end_chapter": ["title"],

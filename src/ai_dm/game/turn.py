@@ -9,6 +9,7 @@ from ai_dm.game import boundary, combat_flow, combat_fold
 from ai_dm.game.controllers import PlayerController
 from ai_dm.game.scene import check_close, hero_of
 from ai_dm.master.prompt import PromptBuilder
+from ai_dm.master.relevance import absent_mentions, previous_narration
 from ai_dm.master.session import MasterSession, TurnFailed
 from ai_dm.master.summarizer import SummarizerSession
 from ai_dm.master.world import WorldSession
@@ -477,6 +478,7 @@ class TurnRunner:
         self.take_scene_fields(ctx, result)
         self.take_master_tags(master, result)
         narration = master.narration
+        self.note_absent(work, narration, result)
         state = work.session.active_combat
         if state is None:
             self.check_told(master)
@@ -489,6 +491,13 @@ class TurnRunner:
             )
             self.end_fight(work, result, fold=False)
         return narration
+
+    def note_absent(self, work, narration, result):
+        # NPC назван и в прошлом ходу сцены, и в этом, а в локации героя его нет (рассказчик
+        # сигнал absent_npcs не исполнил): авто-репорт npc_absent_ignored (214)
+        before = absent_mentions(work, previous_narration(work))
+        if set(before) & set(absent_mentions(work, narration)):
+            self.take_tags(["npc_absent_ignored"], result)
 
     def check_told(self, master):
         # инструменты были, а рассказа почти нет (сцену модель написала в мышлении)

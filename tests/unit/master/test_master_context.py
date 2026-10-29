@@ -1,7 +1,7 @@
 # Ожидаемый API (STAGE4-P3 spec, §2): ai_dm.master.context -- STAGES, Candidates, ContextPlan,
 # window_budget, budget, estimate_tokens, request_tokens, recent_window, plan.
 # Единый сборщик контекста: бюджет Д1 (min(80% окна, context_cap)), вытеснение ТЗ 11 по ступеням
-# turns -> scenes -> npcs -> locations, G1 (неустранимое > cap -> потолок = 80% окна).
+# turns -> scenes -> npcs -> chapters, G1 (неустранимое > cap -> потолок = 80% окна).
 # Здесь plan проверяется на искусственном render: размеры известны, пороги считаются точно.
 import json
 
@@ -74,7 +74,7 @@ def test_window_budget_is_80_percent_of_window():
 
 
 def test_budget_of_1m_window_is_capped_by_context_cap():
-    assert budget(app_cfg(), OPUS, 0) == 16_000
+    assert budget(app_cfg(), OPUS, 0) == 32_000
 
 
 def test_budget_of_small_window_is_80_percent():
@@ -98,14 +98,14 @@ def test_budget_equal_cap_and_window_80():
 
 
 def test_budget_adds_static_to_context_cap():
-    assert budget(app_cfg(), OPUS, 20_000) == 36_000
+    assert budget(app_cfg(), OPUS, 20_000) == 52_000
 
 
 def test_budget_depends_on_model():
     app = app_cfg().model_copy(deep=True)
     app.context_windows[HAIKU] = 5_000
     assert budget(app, HAIKU, 0) == 4_000
-    assert budget(app, OPUS, 0) == 16_000
+    assert budget(app, OPUS, 0) == 32_000
 
 
 # оценка токенов
@@ -176,7 +176,6 @@ def test_request_json_keeps_cyrillic_unescaped():
 TURN_CHARS = 50
 SCENE_CHARS = 70
 NPC_CHARS = 40
-LOC_CHARS = 30
 BASE_CHARS = 200
 CHAPTER_CHARS = 60
 
@@ -189,7 +188,6 @@ def make_render(calls=None):
         text += "T" * (TURN_CHARS * len(c.turns))
         text += "S" * (SCENE_CHARS * len(c.scenes))
         text += "N" * (NPC_CHARS * len(c.npcs))
-        text += "L" * (LOC_CHARS * len(c.locations))
         text += "C" * (CHAPTER_CHARS * (len(c.chapters) + len(c.fixed_chapters)))
         return make_req(text)
 
@@ -200,13 +198,12 @@ def scene(n):
     return SceneSummary(id=f"sc{n}", chapter_id="ch", title=f"С{n}", summary=f"Выжимка {n}")
 
 
-def cands(turns=8, scenes=4, npcs=3, locations=3, floor=1):
+def cands(turns=8, scenes=4, npcs=3, floor=1):
     return Candidates(
         turns=[turn_record(n) for n in range(1, turns + 1)],
         floor=floor,
         scenes=[scene(n) for n in range(1, scenes + 1)],
         npcs=[f"npc{n}" for n in range(1, npcs + 1)],
-        locations=[f"loc{n}" for n in range(1, locations + 1)],
     )
 
 
@@ -229,17 +226,17 @@ def run_plan(c, cap, window80=BIG, cpt=CPT, calls=None, static=0):
     return plan(c, make_render(calls), cap=cap, window80=window80, cpt=cpt, static=static)
 
 
-def trimmed(c, turns=None, scenes=None, npcs=None, locations=None, chapters=None):
+def trimmed(c, turns=None, scenes=None, npcs=None, chapters=None):
     # те же кандидаты без первых N элементов по ступеням
     return Candidates(
         turns=c.turns[turns or 0:], floor=c.floor, scenes=c.scenes[scenes or 0:],
-        npcs=c.npcs[npcs or 0:], locations=c.locations[locations or 0:],
+        npcs=c.npcs[npcs or 0:],
         chapters=c.chapters[chapters or 0:], fixed_chapters=c.fixed_chapters,
     )
 
 
 def test_stages_order():
-    assert STAGES == ("turns", "scenes", "npcs", "locations", "chapters")
+    assert STAGES == ("turns", "scenes", "npcs", "chapters")
 
 
 # ничего не вытесняется
@@ -253,7 +250,7 @@ def test_nothing_dropped_when_it_fits():
     assert result.turns == c.turns
     assert result.scene_summaries == c.scenes
     assert result.npc_ids == c.npcs
-    assert result.location_ids == c.locations
+    assert result.location_ids == []
 
 
 def test_estimate_is_size_of_rendered_request():
@@ -296,12 +293,11 @@ def test_three_oldest_turns_are_dropped_first():
     assert [t.turn_seq for t in result.turns] == [4, 5, 6, 7, 8]
 
 
-def test_turn_stage_keeps_scenes_npcs_and_locations():
+def test_turn_stage_keeps_scenes_and_npcs():
     c = cands()
     result = run_plan(c, cap=size(trimmed(c, turns=3)))
     assert result.scene_summaries == c.scenes
     assert result.npc_ids == c.npcs
-    assert result.location_ids == c.locations
 
 
 def test_turn_drop_is_minimal():
@@ -319,10 +315,10 @@ def test_turn_id_is_turn_seq_as_string():
 
 def test_floor_keeps_last_turn_while_everything_else_is_dropped():
     c = cands(floor=1)
-    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3)))
+    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3)))
     assert [t.turn_seq for t in result.turns] == [8]
     assert result.raised is False
-    assert len(result.dropped) == 7 + 4 + 3 + 3
+    assert len(result.dropped) == 7 + 4 + 3
 
 
 def test_floor_two_keeps_two_last_turns():
@@ -333,7 +329,7 @@ def test_floor_two_keeps_two_last_turns():
 
 def test_floor_zero_can_drop_all_turns():
     c = cands(floor=0)
-    result = run_plan(c, cap=size(trimmed(c, turns=8, scenes=4, npcs=3, locations=3)))
+    result = run_plan(c, cap=size(trimmed(c, turns=8, scenes=4, npcs=3)))
     assert result.turns == []
     assert result.raised is False
 
@@ -346,7 +342,7 @@ def test_floor_above_turn_count_never_drops_turns():
 
 
 def test_no_turns_no_scenes_is_fine():
-    c = cands(turns=0, scenes=0, npcs=0, locations=0)
+    c = cands(turns=0, scenes=0, npcs=0)
     result = run_plan(c, cap=BIG)
     assert result.dropped == []
     assert result.turns == []
@@ -372,11 +368,10 @@ def test_oldest_scenes_are_dropped_first_after_turns():
     assert [t.turn_seq for t in result.turns] == [8]
 
 
-def test_scene_drop_keeps_npcs_and_locations():
+def test_scene_drop_keeps_npcs():
     c = cands()
     result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=2)))
     assert result.npc_ids == c.npcs
-    assert result.location_ids == c.locations
 
 
 def test_scene_drop_is_minimal():
@@ -400,7 +395,6 @@ def test_npcs_are_dropped_in_given_order_after_scenes():
     assert result.dropped[-2:] == [("npcs", "npc1"), ("npcs", "npc2")]
     assert result.npc_ids == ["npc3"]
     assert result.scene_summaries == []
-    assert result.location_ids == c.locations
 
 
 def test_npcs_are_not_dropped_while_scenes_remain():
@@ -410,20 +404,6 @@ def test_npcs_are_not_dropped_while_scenes_remain():
     assert [s for s, _ in result.dropped].count("npcs") == 0
 
 
-def test_locations_are_dropped_in_given_order_last():
-    c = cands()
-    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=2)))
-    assert result.dropped[-2:] == [("locations", "loc1"), ("locations", "loc2")]
-    assert result.location_ids == ["loc3"]
-    assert result.npc_ids == []
-
-
-def test_locations_are_not_dropped_while_npcs_remain():
-    c = cands()
-    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=2)))
-    assert result.location_ids == c.locations
-
-
 def test_full_drop_order_by_stages():
     c = cands()
     result = run_plan(c, cap=1)
@@ -431,19 +411,25 @@ def test_full_drop_order_by_stages():
         [("turns", str(n)) for n in range(1, 8)]
         + [("scenes", f"sc{n}") for n in range(1, 5)]
         + [("npcs", f"npc{n}") for n in range(1, 4)]
-        + [("locations", f"loc{n}") for n in range(1, 4)]
     )
 
 
+def test_location_ids_are_fixed_locations_even_when_everything_is_dropped():
+    c = cands()
+    c.fixed_locations = ["vale", "far"]
+    assert run_plan(c, cap=BIG).location_ids == ["vale", "far"]
+    assert run_plan(c, cap=1).location_ids == ["vale", "far"]
+
+
 def test_stages_never_go_backwards():
-    c = cands(turns=6, scenes=3, npcs=5, locations=4)
+    c = cands(turns=6, scenes=3, npcs=5)
     for cap in range(size(c), 0, -37):
         stages = [STAGES.index(s) for s, _ in run_plan(c, cap=cap).dropped]
         assert stages == sorted(stages)
 
 
 def test_drop_is_a_prefix_of_full_order_for_every_cap():
-    c = cands(turns=6, scenes=3, npcs=5, locations=4)
+    c = cands(turns=6, scenes=3, npcs=5)
     full = run_plan(c, cap=1).dropped
     for cap in range(size(c), 0, -29):
         dropped = run_plan(c, cap=cap).dropped
@@ -451,7 +437,7 @@ def test_drop_is_a_prefix_of_full_order_for_every_cap():
 
 
 def test_next_stage_starts_only_when_previous_is_empty():
-    c = cands(turns=6, scenes=3, npcs=5, locations=4, floor=2)
+    c = cands(turns=6, scenes=3, npcs=5, floor=2)
     for cap in range(size(c), 0, -23):
         result = run_plan(c, cap=cap)
         stages = [s for s, _ in result.dropped]
@@ -459,8 +445,6 @@ def test_next_stage_starts_only_when_previous_is_empty():
             assert len(result.turns) == 2
         if "npcs" in stages:
             assert result.scene_summaries == []
-        if "locations" in stages:
-            assert result.npc_ids == []
 
 
 # итог: estimate <= budget и равен размеру итогового запроса
@@ -468,16 +452,15 @@ def test_next_stage_starts_only_when_previous_is_empty():
 @pytest.mark.parametrize("turns", [0, 1, 8])
 @pytest.mark.parametrize("scenes", [0, 5])
 @pytest.mark.parametrize("npcs", [0, 6])
-@pytest.mark.parametrize("locations", [0, 4])
 @pytest.mark.parametrize("floor", [0, 2])
-def test_estimate_fits_budget_and_matches_final_request(turns, scenes, npcs, locations, floor):
-    c = cands(turns, scenes, npcs, locations, floor)
+def test_estimate_fits_budget_and_matches_final_request(turns, scenes, npcs, floor):
+    c = cands(turns, scenes, npcs, floor)
     total = size(c)
     for cap in (BIG, total, total - 1, total * 2 // 3, total // 2, total // 3, 1):
         result = run_plan(c, cap=cap)
         final = Candidates(
             turns=result.turns, floor=floor, scenes=result.scene_summaries,
-            npcs=result.npc_ids, locations=result.location_ids,
+            npcs=result.npc_ids,
         )
         assert result.estimate == size(final)
         assert result.estimate <= result.budget
@@ -490,14 +473,13 @@ def test_dropped_count_matches_what_is_missing():
     result = run_plan(c, cap=size(c) // 2)
     kept = (
         len(result.turns) + len(result.scene_summaries) + len(result.npc_ids)
-        + len(result.location_ids)
     )
-    assert kept + len(result.dropped) == 8 + 4 + 3 + 3
+    assert kept + len(result.dropped) == 8 + 4 + 3
 
 
 def test_render_is_called_with_whole_candidates_each_time():
     calls = []
-    c = cands(turns=3, scenes=0, npcs=0, locations=0, floor=0)
+    c = cands(turns=3, scenes=0, npcs=0, floor=0)
     run_plan(c, cap=size(trimmed(c, turns=2)), calls=calls)
     assert [len(x.turns) for x in calls] == [3, 2, 1]
 
@@ -533,14 +515,13 @@ def test_raised_plan_drops_everything_droppable_and_keeps_floor():
     assert [t.turn_seq for t in result.turns] == [7, 8]
     assert result.scene_summaries == []
     assert result.npc_ids == []
-    assert result.location_ids == []
-    assert len(result.dropped) == 6 + 4 + 3 + 3
+    assert len(result.dropped) == 6 + 4 + 3
 
 
 def test_raised_estimate_is_unavoidable_part():
     c = cands(floor=1)
     result = run_plan(c, cap=1)
-    assert result.estimate == size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    assert result.estimate == size(trimmed(c, turns=7, scenes=4, npcs=3))
     assert result.estimate > result.cap
 
 
@@ -555,17 +536,17 @@ def test_estimate_above_window_80_still_returns_plan():
 
 def test_cap_exactly_at_unavoidable_is_not_raised():
     c = cands(floor=1)
-    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3))
     result = run_plan(c, cap=bare)
     assert result.raised is False
     assert result.overflow is False
     assert result.budget == bare
-    assert len(result.dropped) == 17
+    assert len(result.dropped) == 14
 
 
 def test_cap_one_below_unavoidable_is_raised():
     c = cands(floor=1)
-    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3))
     result = run_plan(c, cap=bare - 1, window80=BIG)
     assert result.raised is True
     assert result.budget == BIG
@@ -575,7 +556,7 @@ def test_raised_does_not_bring_dropped_back():
     c = cands()
     low = run_plan(c, cap=1, window80=BIG)
     assert len(low.turns) == 1
-    assert len(low.dropped) == 7 + 4 + 3 + 3
+    assert len(low.dropped) == 7 + 4 + 3
 
 
 # meta и неизменяемость
@@ -656,7 +637,7 @@ def test_static_does_not_change_what_is_dropped():
 
 def test_raised_compares_estimate_with_total_cap_including_static():
     c = cands(floor=1)
-    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3))
     result = run_plan(c, cap=bare, static=bare // 2)
     assert result.raised is False
     assert result.budget == bare
@@ -664,7 +645,7 @@ def test_raised_compares_estimate_with_total_cap_including_static():
 
 def test_raised_one_below_unavoidable_with_static():
     c = cands(floor=1)
-    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3))
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3))
     result = run_plan(c, cap=bare - 1, static=bare // 2, window80=BIG)
     assert result.raised is True
     assert result.overflow is True
@@ -708,25 +689,25 @@ def test_estimate_counts_chapters():
     assert run_plan(c, cap=BIG).estimate == size(cands()) + 4 * CHAPTER_CHARS
 
 
-def test_chapters_are_not_touched_while_locations_remain():
+def test_chapters_are_not_touched_while_npcs_remain():
     c = with_chapters(cands())
-    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=2)))
+    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=2)))
     assert [s for s, _ in result.dropped if s == "chapters"] == []
     assert [x.id for x in result.chapters] == ["ch1", "ch2", "ch3", "ch4"]
 
 
-def test_oldest_chapters_are_dropped_first_after_locations():
+def test_oldest_chapters_are_dropped_first_after_npcs():
     c = with_chapters(cands())
-    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3, chapters=2)))
+    result = run_plan(c, cap=size(trimmed(c, turns=7, scenes=4, npcs=3, chapters=2)))
     assert result.dropped[-2:] == [("chapters", "ch1"), ("chapters", "ch2")]
     assert [x.id for x in result.chapters] == ["ch3", "ch4"]
-    assert result.location_ids == []
+    assert result.npc_ids == []
     assert result.raised is False
 
 
 def test_chapter_drop_is_minimal():
     c = with_chapters(cands())
-    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, locations=3, chapters=2))
+    bare = size(trimmed(c, turns=7, scenes=4, npcs=3, chapters=2))
     result = run_plan(c, cap=bare + CHAPTER_CHARS - 1)
     assert [i for s, i in result.dropped if s == "chapters"] == ["ch1", "ch2"]
 
@@ -747,7 +728,7 @@ def test_fixed_chapters_never_leave():
 
 
 def test_fixed_chapters_alone_are_not_dropped_even_when_over_cap():
-    c = cands(turns=0, scenes=0, npcs=0, locations=0)
+    c = cands(turns=0, scenes=0, npcs=0)
     c.fixed_chapters = [chapter(1), chapter(2)]
     result = run_plan(c, cap=1)
     assert result.dropped == []
@@ -762,7 +743,6 @@ def test_full_drop_order_ends_with_chapters():
         [("turns", str(n)) for n in range(1, 8)]
         + [("scenes", f"sc{n}") for n in range(1, 5)]
         + [("npcs", f"npc{n}") for n in range(1, 4)]
-        + [("locations", f"loc{n}") for n in range(1, 4)]
         + [("chapters", f"ch{n}") for n in range(1, 4)]
     )
 
@@ -772,7 +752,6 @@ def test_chapters_stage_comes_only_when_everything_before_it_is_gone():
     for cap in range(size(c), 0, -31):
         result = run_plan(c, cap=cap)
         if any(s == "chapters" for s, _ in result.dropped):
-            assert result.location_ids == []
             assert result.npc_ids == []
             assert result.scene_summaries == []
 

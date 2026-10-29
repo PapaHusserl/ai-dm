@@ -173,7 +173,7 @@ recent_turns = 8
 recent_turns_keep = 50
 key_npc_consult_hp_percent = 50
 # потолок динамики запроса (без кэшируемой статики: правила, мир, схемы), не меньше 8000
-context_cap = 16000
+context_cap = 32000
 chars_per_token = 2.5
 recent_turns_floor = 1
 # рассказ короче (символы) после раунда инструментов -- один повтор хода; 0 = выкл.

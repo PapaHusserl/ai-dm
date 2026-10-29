@@ -4,6 +4,8 @@ from ai_dm.rules.results import Rejected
 from ai_dm.state.death import DeathRecord
 
 CAUSES = ("goal", "hazard", "chance", "old_age")
+# left -- уход NPC без причины (npc_update status=gone), только для remove_creature
+NPC_CAUSES = (*CAUSES, "left")
 STATUSES = ("dead", "gone")
 
 
@@ -63,7 +65,7 @@ def remove_creature(
     npc = state.npcs[creature_id]
     if npc.status == "dead":
         return Rejected(reason="already_dead", report_tag=None)
-    if cause not in CAUSES:
+    if cause not in NPC_CAUSES or (cause == "left" and status != "gone"):
         return Rejected(
             reason=f"у смерти должна быть причина (goal/hazard/chance/old_age), дано: {cause!r}",
             report_tag="invalid-death",

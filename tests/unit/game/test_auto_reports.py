@@ -1,5 +1,6 @@
 # Ожидаемый API: авто-репорты в GameApp (этап 6а, P0): ход с метками (missing-mechanic,
-# limit-exceeded, invalid-death, refusal, invalid-defeat, context_overflow, метки границы сцены)
+# limit-exceeded, invalid-death, refusal, invalid-defeat, context_overflow, npc_absent_ignored,
+# метки границы сцены)
 # при auto_reports=True пишет saves/<world>/issues/<имя>/ и добавляет строку «Записан репорт: ...»;
 # две метки -- один каталог; ход без меток -- файла нет; auto_reports=False -- метка в журнале,
 # файла нет; ошибка записи не роняет ход; ключи API в файлы репорта не попадают.
@@ -306,6 +307,66 @@ def test_world_boundary_tag_is_in_report_of_the_turn(registry, tmp_path):
     assert meta["tags"] == ["invalid-death"]
     # run_id границы -- в списке вызовов хода
     assert any(run_id.startswith("bnd-") for run_id in meta["run_ids"])
+
+
+# 214: NPC назван в двух ходах подряд, а в локации героя его нет
+
+def olgerd_bundle(registry):
+    from protocol_kit import make_bundle
+
+    from ai_dm.state.world import NPC
+
+    bundle = make_bundle(registry)
+    bundle.world.npcs["olgerd"] = NPC(
+        id="olgerd", name="Ольгерд", named=True, means=["меч"], location_id="forest"
+    )
+    return bundle
+
+
+def move_olgerd_call(location_id="vale"):
+    return {
+        "id": "nu-9", "name": "npc_update",
+        "input": {"type": "npc_update", "npc_id": "olgerd", "location_id": location_id},
+    }
+
+
+def test_absent_npc_named_twice_without_move_writes_report(registry, tmp_path):
+    steps = [text_step("Вы вспоминаете Ольгерда."), text_step("Ольгерд всё не идёт.")]
+    app = make_app(
+        registry, tmp_path, scripted(steps), bundle=olgerd_bundle(registry), auto_reports=True
+    )
+    first = app.handle("Жду")
+    assert "npc_absent_ignored" not in first.turn.report_tags
+    second = app.handle("Жду ещё")
+    assert "npc_absent_ignored" in second.turn.report_tags
+    assert len(issues(tmp_path)) == 1
+    assert issues(tmp_path)[0].name.endswith("-t2-npc_absent_ignored")
+
+
+def test_absent_npc_named_once_writes_no_report(registry, tmp_path):
+    steps = [text_step("Вы вспоминаете Ольгерда."), text_step("Тихо.")]
+    app = make_app(
+        registry, tmp_path, scripted(steps), bundle=olgerd_bundle(registry), auto_reports=True
+    )
+    app.handle("Жду")
+    second = app.handle("Жду ещё")
+    assert "npc_absent_ignored" not in second.turn.report_tags
+    assert issues(tmp_path) == []
+
+
+def test_absent_npc_moved_to_hero_writes_no_report(registry, tmp_path):
+    steps = [
+        text_step("Вы вспоминаете Ольгерда."),
+        tools_step(move_olgerd_call()), text_step("Ольгерд вошёл."),
+    ]
+    app = make_app(
+        registry, tmp_path, scripted(steps), bundle=olgerd_bundle(registry), auto_reports=True
+    )
+    app.handle("Жду")
+    second = app.handle("Жду ещё")
+    assert app.bundle.world.npcs["olgerd"].location_id == "vale"
+    assert "npc_absent_ignored" not in second.turn.report_tags
+    assert issues(tmp_path) == []
 
 
 def cfg_of(registry):

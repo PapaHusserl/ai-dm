@@ -17,6 +17,7 @@ from ai_dm.rules.knowledge import (
     evict_oldest,
     has_entry,
     is_near,
+    mentions,
     met_npc_ids,
     normalize,
     note_combat,
@@ -389,6 +390,41 @@ def test_four_letter_name_takes_ending(registry):
     bundle.world.npcs["grakh"].name = "Тарн"
     note_presence(hero, bundle.world, "Отвечаю Тарну.", CFG)
     assert has_entry(hero, "npc", "grakh", "Знакомство: ")
+
+
+@pytest.mark.parametrize("text", [
+    "подошёл к бранке", "бранка ушла", "видел бранку", "с бранкой", "о бранке", "нет бранки",
+])
+def test_mentions_name_in_cases(text):
+    assert mentions("бранка", text)
+
+
+@pytest.mark.parametrize("text", ["у матушки греты", "матушка грета здесь", "матушку грету"])
+def test_mentions_two_word_name_in_cases(text):
+    assert mentions("матушка грета", text)
+
+
+def test_mentions_two_word_name_needs_every_word():
+    assert not mentions("матушка грета", "только матушка пришла")
+    assert not mentions("матушка грета", "только грета пришла")
+
+
+@pytest.mark.parametrize("text", ["в яндексе", "яндекс", "к яну"])
+def test_mentions_short_name_is_not_inside_longer_word(text):
+    assert not mentions("ян", text)
+
+
+def test_mentions_short_name_as_whole_word():
+    assert mentions("ян", "ян кивнул")
+
+
+def test_mentions_stem_is_not_inside_other_word():
+    assert not mentions("бранка", "сверхбранка")
+    assert not mentions("бранка", "бранковый")
+
+
+def test_mentions_empty_name_is_never_found():
+    assert not mentions("", "любой текст")
 
 
 def test_met_by_name_with_ending_in_summary(registry):

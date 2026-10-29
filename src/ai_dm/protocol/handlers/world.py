@@ -328,24 +328,36 @@ def change_identity(npc, request, decision):
         decision.log.append(f"{npc_label(npc)}: местоимения {npc.pronouns or 'не заданы'}")
 
 
-def death_refused(ctx, npc, request) -> bool:
-    # смерть или уход принимаются: причина goal/hazard и ещё не потраченный бросок этого хода
-    evidence = ctx.rolls.get(request.evidence_ref)
-    if request.cause not in MASTER_DEATH_CAUSES or evidence is None:
-        return True
-    return request.evidence_ref in ctx.used_rolls
+def evidence_ok(ctx, request, own_roll=True) -> bool:
+    # причина goal/hazard и ещё не потраченный бросок этого хода (own_roll -- за кадром бросок
+    # должен быть броском этого же NPC)
+    ref = request.evidence_ref
+    return (
+        own_roll and request.cause in MASTER_DEATH_CAUSES and ctx.rolls.get(ref) is not None
+        and ref not in ctx.used_rolls
+    )
 
 
-def change_status(ctx, npc, request, decision):
+def death_refused(ctx, npc, request, own_roll=True) -> bool:
+    # отказ только для смерти; уход (gone) -- без причины и броска, отказа нет
+    return request.status == "dead" and not evidence_ok(ctx, request, own_roll)
+
+
+def change_status(ctx, npc, request, decision, own_roll=True):
     world = ctx.bundle.world
+    # уход без проверенной причины и броска -- причина left, непроверенная причина в сейв не
+    # пишется, бросок не тратится
+    proven = request.status == "dead" or evidence_ok(ctx, request, own_roll)
+    cause = request.cause if proven else "left"
     done = remove_creature(
-        world, npc.id, request.status, request.cause, by=request.by, text=request.text or ""
+        world, npc.id, request.status, cause, by=request.by, text=request.text or ""
     )
     if isinstance(done, list):
-        ctx.used_rolls.add(request.evidence_ref)
+        if proven:
+            ctx.used_rolls.add(request.evidence_ref)
         apply_events(world, done)
         ctx.events.extend(done)
-        decision.log.append(f"{npc_label(npc)}: {request.status} ({request.cause})")
+        decision.log.append(f"{npc_label(npc)}: {request.status} ({cause})")
         if request.status == "dead" and request.by == ctx.hero.id:
             goals.on_npc_killed(ctx.bundle, ctx.hero, npc, ctx.cfg)
     else:
@@ -432,7 +444,7 @@ def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
-        "memory_kind", "memory_text", "name", "services", *GOAL_FIELDS,
+        "memory_kind", "memory_text", "name", "services", "location_id", *GOAL_FIELDS,
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -451,9 +463,31 @@ def merchant_goal_problem(ctx, npc, request):
     # отдельная функция: пятый операнд цепочки в update_problem даёт smell «Complex binary
     # expression»
     return (
-        merchant_update_problem(ctx, npc, request) or services_problem(ctx, request)
+        location_problem(ctx.bundle.world, npc, request)
+        or merchant_update_problem(ctx, npc, request) or services_problem(ctx, request)
         or goal_problem(ctx, npc, request)
     )
+
+
+def location_problem(world, npc, request):
+    # Invalid, если перенос NPC не принимается: нет такой локации или NPC не жив; иначе None
+    if request.location_id is None:
+        return None
+    if request.location_id not in world.locations:
+        return Invalid(
+            code="unknown_location",
+            message=f"нет локации {request.location_id!r}" + allowed(world.locations),
+        )
+    if npc.status != "alive":
+        return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: не перемещается")
+    return None
+
+
+def change_location(ctx, npc, request, decision):
+    world = ctx.bundle.world
+    npc.location_id = request.location_id
+    decision.log.append(f"{npc_label(npc)}: теперь в {world.locations[npc.location_id].name}")
+    decision.result["location_id"] = npc.location_id
 
 
 def name_problem(ctx, npc, request):
@@ -507,8 +541,8 @@ def death_problem(ctx, npc, request):
     # до любых изменений: отношение тоже не применяется
     return rejected(
         "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого хода",
-        f"{npc_label(npc)} остаётся жив: смерть или уход без причины goal/hazard и "
-        "evidence_ref на не потраченный бросок этого хода не принимаются. Опиши иначе.",
+        f"{npc_label(npc)} остаётся жив: смерть без причины goal/hazard и "
+        "evidence_ref на не потраченный бросок этого хода не принимается. Опиши иначе.",
         report_tag="invalid-death",
     )
 
@@ -524,6 +558,8 @@ def npc_update(ctx, request):
     if problem is not None:
         return problem
     decision = Decision(status="accepted")
+    if request.location_id is not None:
+        change_location(ctx, npc, request, decision)
     if request.follows is not None:
         change_follows(ctx, npc, request, decision)
     if request.name is not None:
