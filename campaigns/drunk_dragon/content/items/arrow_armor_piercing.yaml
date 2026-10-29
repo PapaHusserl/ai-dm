@@ -7,6 +7,7 @@ ammo_for:
 - longbow
 - composite_longbow
 - shortbow
+- composite_longbow_bound
 effects:
 - type: pierce_armor
   value: 12

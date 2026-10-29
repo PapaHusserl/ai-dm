@@ -6,6 +6,7 @@ source: campaign:drunk_dragon
 ammo_for:
 - longbow
 - composite_longbow
+- composite_longbow_bound
 - shortbow
 effects:
 - type: extra_damage

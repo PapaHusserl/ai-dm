@@ -1,7 +1,7 @@
 # /sheet показывает экипировку и раскладку КД (docs/plan-stage3.md, A1, A5).
-# Грей из реального пака campaigns/drunk_dragon: Мифриловая кольчужная рубаха 13, Лов 17 (+3),
-# предел среднего доспеха 2 -> КД 15. Ожидаемый формат строки:
-#   «КД 15 = Мифриловая кольчужная рубаха 13 + Лов 2 (предел средн. доспеха 2)»
+# Грей из реального пака campaigns/drunk_dragon: Мифриловая кольчужная рубаха 15, Лов 17 (+3),
+# предел среднего доспеха 2 -> КД 17. Ожидаемый формат строки:
+#   «КД 17 = Мифриловая кольчужная рубаха 15 + Лов 2 (предел средн. доспеха 2)»
 # эффекты -- слагаемыми: «Каменная Кожа +2 (до HH:MM)» (ActiveEffect id="stoneskin_elixir",
 # kind="ac", params {"label", "amount"}, Expiry(kind="seconds", value=<момент окончания>))
 import re
@@ -35,14 +35,14 @@ def sheet(app):
 
 def test_sheet_shows_ac_breakdown(dragon_app):
     text = sheet(dragon_app)
-    assert "КД 15 = Мифриловая кольчужная рубаха 13 + Лов 2 (предел средн. доспеха 2)" in text
+    assert "КД 17 = Мифриловая кольчужная рубаха 15 + Лов 2 (предел средн. доспеха 2)" in text
 
 
 def test_sheet_ac_matches_engine_formula(dragon_app):
     from ai_dm.rules.derived import armor_class
 
     hero = dragon_app.bundle.heroes[0]
-    assert armor_class(hero, dragon_app.registry) == 15
+    assert armor_class(hero, dragon_app.registry) == 17
 
 
 def test_sheet_shows_worn_armor_and_weapon_in_hand(dragon_app):
@@ -68,5 +68,5 @@ def test_sheet_ac_effect_is_a_separate_term(dragon_app):
         )
     )
     text = sheet(dragon_app)
-    assert "КД 17 = " in text
+    assert "КД 19 = " in text
     assert re.search(r"Каменная Кожа \+?2 \(до \d\d:\d\d\)", text)

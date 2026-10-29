@@ -8,6 +8,7 @@ ammo_for:
 - longbow
 - composite_longbow
 - shortbow
+- composite_longbow_bound
 effects:
 - type: extra_damage
   dice: 2d6

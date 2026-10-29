@@ -162,7 +162,7 @@ def test_sheet_has_feats_style_speed_passive_and_companion(dragon_app):
 
 def test_sheet_keeps_ac_and_hp(dragon_app):
     text = text_of(dragon_app, "/sheet")
-    assert "КД 15 = Мифриловая кольчужная рубаха 13" in text
+    assert "КД 17 = Мифриловая кольчужная рубаха 15" in text
     hero = dragon_app.bundle.heroes[0]
     assert f"{hero.creature.hp_current}/{hero.creature.hp_max}" in text
 

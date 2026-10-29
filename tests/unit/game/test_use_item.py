@@ -61,11 +61,11 @@ def test_use_item_elixir_spends_one_item(dragon, cfg):
     assert count_item(bundle.heroes[0], ELIXIR) == before - 1
 
 
-def test_use_item_elixir_gives_ac_17(dragon, cfg):
+def test_use_item_elixir_raises_ac_by_2(dragon, cfg):
     registry, bundle = dragon
-    assert ac_now(registry, bundle) == 15
-    drink(registry, cfg, bundle)
     assert ac_now(registry, bundle) == 17
+    drink(registry, cfg, bundle)
+    assert ac_now(registry, bundle) == 19
 
 
 def test_use_item_elixir_adds_ac_and_resist_effects(dragon, cfg):
@@ -83,12 +83,12 @@ def test_use_item_elixir_writes_log_line(dragon, cfg):
     assert "+2 КД" in text
 
 
-def test_sheet_shows_ac_17_after_use_item(dragon, cfg, tmp_path):
+def test_sheet_shows_ac_with_elixir_after_use_item(dragon, cfg, tmp_path):
     registry, bundle = dragon
     drink(registry, cfg, bundle)
     app = make_app(registry, tmp_path, ReactiveAdapter(), bundle=bundle)
     text = "\n".join(app.handle("/sheet").lines)
-    assert "КД 17 = " in text
+    assert "КД 19 = " in text
     assert "Каменная Кожа" in text
 
 
@@ -98,7 +98,7 @@ def test_effect_from_outside_combat_stays_in_combat(dragon, cfg):
     d = apply(ctx, combat_request())
     assert d.status == "accepted"
     assert bundle.session.active_combat is not None
-    assert ac_now(registry, bundle) == 17
+    assert ac_now(registry, bundle) == 19
     assert kinds(bundle).count("resist") == 2
 
 
@@ -106,7 +106,7 @@ def test_effect_is_gone_after_an_hour(dragon, cfg):
     registry, bundle = dragon
     drink(registry, cfg, bundle)
     bundle.world.clock.now_s += 3601
-    assert ac_now(registry, bundle) == 15
+    assert ac_now(registry, bundle) == 17
     assert kinds(bundle) == []
 
 
@@ -114,7 +114,7 @@ def test_effect_is_alive_before_an_hour(dragon, cfg):
     registry, bundle = dragon
     drink(registry, cfg, bundle)
     bundle.world.clock.now_s += 3500
-    assert ac_now(registry, bundle) == 17
+    assert ac_now(registry, bundle) == 19
 
 
 def test_use_item_healing_potion_heals_outside_combat(dragon, cfg):
@@ -372,7 +372,7 @@ def test_second_elixir_does_not_stack_ac(dragon, cfg):
     registry, bundle = dragon
     drink(registry, cfg, bundle)
     drink(registry, cfg, bundle)
-    assert ac_now(registry, bundle) == 17
+    assert ac_now(registry, bundle) == 19
 
 
 def test_second_elixir_is_still_spent(dragon, cfg):

@@ -1248,3 +1248,14 @@ updated: 2026-10-28
 `tests/unit/ui/tui/test_tui_entry_points.py::test_error_menu_save_and_quit_ends_app_and_saves` — `DeadlockError` в
 `run(app, steps)`; повтор отдельно — прошёл. Причина не установлена; относится ли к правкам 190 (меню ошибки) или
 падает и на HEAD — не проверено.
+
+## 217. Сон перемоткой времени не восстанавливает ячейки
+status: idea
+priority: medium
+updated: 2026-10-28
+
+Репорт t1341 (drunk_dragon, «полный сон не восстановил магию»): рассказчик уложил героя спать через
+`advance_time until=morning` (+10 ч) без `rest long`; `protocol/handlers/resources.py` (`time_until`) сдвиг принял,
+отдых был доступен (кулдаун прошёл, боя нет); ячейки 1-го круга остались 1 из 4. Правило «сон — только rest long»
+в `narrator_rules.md:134` есть, модель его нарушила. Рядом — закрытые 100, 131, 173. Решение проектировщика —
+NOTES.md 2026-10-29.

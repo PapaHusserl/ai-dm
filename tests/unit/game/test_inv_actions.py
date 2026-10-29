@@ -828,7 +828,7 @@ def test_second_elixir_extends_the_first(dragon_app):
     dragon_app.handle("/inv выпить эликсир")
     reply = dragon_app.handle("/inv выпить эликсир")
     assert "продлена" in flat(reply)
-    assert ac_of(dragon_app) == 17
+    assert ac_of(dragon_app) == 19
 
 
 # бой

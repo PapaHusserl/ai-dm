@@ -1,6 +1,6 @@
 # Эффекты видны (stage3-live-effects-visible, E1, E2, T). Грей и эликсир «Каменная Кожа» из
 # campaigns/drunk_dragon. Ожидание: заголовок хода и строка состояния --
-# «КД 17 (Каменная Кожа до ЧЧ:ММ)»,
+# «КД 19 (Каменная Кожа до ЧЧ:ММ)»,
 # строка «Действует: Каменная Кожа (+2 КД, сопр. рубящему/дробящему) до ЧЧ:ММ»;
 # повторный эликсир в меню -- «Выпить: Каменная Кожа (уже действует до ЧЧ:ММ)».
 from pathlib import Path
@@ -52,7 +52,7 @@ def test_turn_header_shows_ac_with_effect(world):
     drink(world)
     start_fight(world)
     text = play(world[3], []).text
-    assert f"КД 17 (Каменная Кожа до {until(world[2])})" in text
+    assert f"КД 19 (Каменная Кожа до {until(world[2])})" in text
 
 
 def test_turn_header_shows_active_effects_line(world):
@@ -72,7 +72,7 @@ def test_turn_header_without_effect_has_no_effects_line(world):
 
 def test_status_line_shows_ac_with_effect(world):
     drink(world)
-    assert f"КД 17 (Каменная Кожа до {until(world[2])})" in status_line(world[3])
+    assert f"КД 19 (Каменная Кожа до {until(world[2])})" in status_line(world[3])
 
 
 def test_status_line_without_effect_has_no_effect_note(world):
