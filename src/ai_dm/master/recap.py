@@ -25,7 +25,7 @@ def scene_recap(bundle, kept_seqs, *, max_chars):
     npcs = sorted(
         n.name
         for n in bundle.world.npcs.values()
-        if n.named and n.status == "alive" and n.name != "" and mentions(n.name.lower(), text)
+        if n.named and n.status == "alive" and mentions(n.name.lower(), text)
     )
     events = [
         shorten_text(f"t{t.turn_seq}: {line}", RECAP_LINE_MAX)

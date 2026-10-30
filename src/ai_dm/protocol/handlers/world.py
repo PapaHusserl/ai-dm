@@ -338,7 +338,7 @@ def evidence_ok(ctx, request, own_roll=True) -> bool:
     )
 
 
-def death_refused(ctx, npc, request, own_roll=True) -> bool:
+def death_refused(ctx, request, own_roll=True) -> bool:
     # отказ только для смерти; уход (gone) -- без причины и броска, отказа нет
     return request.status == "dead" and not evidence_ok(ctx, request, own_roll)
 
@@ -536,7 +536,7 @@ def memory_problem(ctx, npc, request):
 
 
 def death_problem(ctx, npc, request):
-    if request.status is None or not death_refused(ctx, npc, request):
+    if request.status is None or not death_refused(ctx, request):
         return None
     # до любых изменений: отношение тоже не применяется
     return rejected(

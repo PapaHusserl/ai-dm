@@ -131,7 +131,7 @@ def npc_update(ctx, request):
         return invalid
     # смерть за кадром: бросок-доказательство должен быть броском этого же NPC
     own_roll = ctx.roll_actors.get(request.evidence_ref) == npc.id
-    if request.status is not None and death_refused(ctx, npc, request, own_roll=own_roll):
+    if request.status is not None and death_refused(ctx, request, own_roll=own_roll):
         return rejected(
             "у смерти должна быть причина (goal или hazard) и не потраченный бросок этого вызова",
             f"{npc.name} остаётся жив: смерть без причины goal/hazard и "
