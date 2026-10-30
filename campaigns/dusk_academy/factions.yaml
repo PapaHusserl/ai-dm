@@ -45,10 +45,11 @@
   - kurt
   - leo
   - henry
+  - orlando
   opportunity:
   - id: arrival
     # заглушка: срок и активацию ставит scripts/migrate_dusk_ship.py (спящий триггер)
     if: {time_after: 0}
-    then: "К Паромному пирсу пришвартовалась «Бродячая Луна», вольное судно, на котором Нокс полвека ходил по миру. Выполни npc_update для killian, zimmer, kurt, leo и henry → location_id ferry_pier (команда остаётся в Гавани, на корабле и у пирса). Затем одна world_notice visible: в Туманную Гавань пришло вольное судно «Бродячая Луна» с шумной командой."
+    then: "К Паромному пирсу пришвартовалась «Бродячая Луна», вольное судно, на котором Нокс полвека ходил по миру. Выполни npc_update для killian, zimmer, kurt, leo, henry и orlando → location_id ferry_pier (команда остаётся в Гавани, на корабле и у пирса). Затем одна world_notice visible: в Туманную Гавань пришло вольное судно «Бродячая Луна» с шумной командой."
     once: true
     state: disabled

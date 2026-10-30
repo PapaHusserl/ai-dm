@@ -15,7 +15,7 @@ SCRIPT = Path(__file__).parents[3] / "scripts" / "migrate_dusk_ship.py"
 WORLD_ID = "dusk_academy-d3de6c57"  # id мира зашит в скрипте; каталог -- синтетический, во tmp_path
 NOW_S = 22700000
 DAY = 86400
-NPC_IDS = ["killian", "zimmer", "kurt", "leo", "henry"]
+NPC_IDS = ["killian", "zimmer", "kurt", "leo", "henry", "orlando"]
 RUMOR = "В гавани видели паруса «Бродячей Луны»: вольное судно идёт к Паромному пирсу."
 OLD_KNOX_NOTES = "Нокс любит героиню и хочет сделать ей предложение."
 
@@ -395,6 +395,15 @@ def test_pack_henry_is_halfling_from_heroine_village(registry):
     assert "полурослик" in npc.notes.casefold()
     assert "родной деревни" in npc.notes
     assert "около 20 лет" in npc.notes
+
+
+def test_pack_orlando_is_gnome_cook_who_only_lightly_flirts_with_mira(registry):
+    npc = next(n for n in dusk_pack(registry).npcs if n.id == "orlando")
+    assert "гном" in npc.notes
+    assert "коком" in npc.notes
+    assert "совсем чуть-чуть" in npc.notes
+    assert "помогает ей по хозяйству" in npc.notes
+    assert "побаивается" in npc.notes
 
 
 # сквозное: пак -> догрузка -> скрипт -> границы сцены
