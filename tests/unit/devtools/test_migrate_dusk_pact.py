@@ -449,8 +449,9 @@ def pack_trigger(registry, trigger_id):
     return next(t for t in pact_faction_of_pack(registry).opportunity if t.id == trigger_id)
 
 
-def test_pack_version_is_four(registry):
-    assert dusk_pack(registry).manifest.version == "4"
+def test_pack_version_is_at_least_four(registry):
+    # версия пака растёт (5 -- корабль «Бродячая Луна»); Договор пришёл с версией 4
+    assert int(dusk_pack(registry).manifest.version) >= 4
 
 
 def test_pack_loads_without_errors(registry):

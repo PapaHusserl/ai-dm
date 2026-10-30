@@ -36,3 +36,19 @@
     once: false
     cooldown: 30d
     state: disabled
+- id: wandering_moon_crew
+  name: Команда «Бродячей Луны»
+  motive: Найти Нокса, своего старого друга, и вернуть его в плавание; а заодно очаровать его любимую.
+  members:
+  - killian
+  - zimmer
+  - kurt
+  - leo
+  - henry
+  opportunity:
+  - id: arrival
+    # заглушка: срок и активацию ставит scripts/migrate_dusk_ship.py (спящий триггер)
+    if: {time_after: 0}
+    then: "К Паромному пирсу пришвартовалась «Бродячая Луна», вольное судно, на котором Нокс полвека ходил по миру. Выполни npc_update для killian, zimmer, kurt, leo и henry → location_id ferry_pier (команда остаётся в Гавани, на корабле и у пирса). Затем одна world_notice visible: в Туманную Гавань пришло вольное судно «Бродячая Луна» с шумной командой."
+    once: true
+    state: disabled
