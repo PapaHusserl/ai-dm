@@ -143,7 +143,25 @@ def test_digit_picks_attack_on_default_target_and_echoes_full_label(cfg, tmp_pat
     key, before, after, text = run(app, steps)
     assert key == "1"
     assert after == before + 1
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 1" in text
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 1" in text
+
+
+def test_shot_lowers_the_stock_in_the_next_menu(cfg, tmp_path, tui):
+    app, game = goblins_app(cfg, tmp_path)
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        before = [label for label in menu_rows(app).values() if LONGBOW in label]
+        await pilot.press(row_key(app, LONGBOW))
+        await settle(app, pilot)
+        await pilot.press(row_key(app, "Закончить ход"))
+        await settle(app, pilot)
+        after = [label for label in menu_rows(app).values() if LONGBOW in label]
+        return before, after
+
+    before, after = run(app, steps)
+    assert len(before) == 1 and "(осталось 20)" in before[0]
+    assert len(after) == 1 and "(осталось 19)" in after[0]
 
 
 def test_menu_replaces_flat_numbering_with_visible_rows(cfg, tmp_path, tui):
@@ -199,7 +217,7 @@ def test_tab_switches_target_and_digit_attacks_new_target(cfg, tmp_path, tui):
         return feed(tui, app)
 
     text = run(app, steps)
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 2" in text
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 2" in text
 
 
 def test_tab_keeps_focus_in_input(cfg, tmp_path, tui):
@@ -226,7 +244,7 @@ def test_shift_tab_goes_back_around_the_circle(cfg, tmp_path, tui):
         return feed(tui, app), app.query_one("#input").has_focus
 
     text, focus = run(app, steps)
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 4" in text
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 4" in text
     assert focus is True
 
 
@@ -242,7 +260,7 @@ def test_tab_four_times_returns_to_first_target(cfg, tmp_path, tui):
         await settle(app, pilot)
         return feed(tui, app)
 
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 1" in run(app, steps)
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 1" in run(app, steps)
 
 
 def test_click_on_target_chip_switches_target(cfg, tmp_path, tui):
@@ -258,7 +276,7 @@ def test_click_on_target_chip_switches_target(cfg, tmp_path, tui):
         return feed(tui, app), app.query_one("#input").has_focus
 
     text, focus = run(app, steps)
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 2" in text
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 2" in text
     assert focus is True
 
 
@@ -274,7 +292,7 @@ def test_click_on_compact_target_line_switches_to_next_target(cfg, tmp_path, tui
         await settle(app, pilot)
         return feed(tui, app)
 
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 2" in run(app, steps)
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 2" in run(app, steps)
 
 
 def test_click_on_menu_row_makes_the_same_turn_as_digit(cfg, tmp_path, tui):
@@ -515,7 +533,7 @@ def test_tab_does_not_switch_target_when_field_is_not_empty(cfg, tmp_path, tui):
         await settle(app, pilot)
         return feed(tui, app)
 
-    assert f"▸ Ты: {LONGBOW} → {GOBLIN} 1" in run(app, steps)
+    assert f"▸ Ты: {LONGBOW} (осталось 20) → {GOBLIN} 1" in run(app, steps)
 
 
 def test_typed_digit_and_enter_is_visible_row_number(cfg, tmp_path, tui):

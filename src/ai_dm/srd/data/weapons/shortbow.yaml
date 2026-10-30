@@ -10,6 +10,7 @@ cost_cp: 2500
 properties:
 - ammunition
 - two_handed
+ammo: arrows
 mastery: vex
 range_normal_ft: 80
 range_long_ft: 320

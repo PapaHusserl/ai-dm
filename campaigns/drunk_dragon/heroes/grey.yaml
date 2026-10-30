@@ -51,6 +51,8 @@ inventory_extra:
   qty: 1
 - item_id: harpoon_dart
   qty: 1
+- item_id: arrows
+  qty: 20
 - item_id: arrow_armor_piercing
   qty: 20
 - item_id: arrow_frost

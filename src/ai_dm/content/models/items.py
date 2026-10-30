@@ -18,6 +18,8 @@ class Weapon(ContentObject):
     range_long_ft: int | None = None
     # особые эффекты оружия (Клинок Северного Ветра)
     effects: list[EffectSpec] = []
+    # id предмета-боеприпаса, который тратит выстрел (у оружия со свойством ammunition)
+    ammo: str | None = None
 
 
 class Armor(ContentObject):
@@ -41,9 +43,11 @@ class Item(Behavior):
     magic: bool = False
     # боеприпас: id оружия, которым он стреляется
     ammo_for: list[str] = []
+    # название во множественном числе для строк лога боеприпасов («Зажигательные стрелы»); "" = name
+    name_plural: str = ""
     # короткое название для пунктов действий («Каменная Кожа»)
     short_name: str = ""
     # группа в /inv для предметов без оружия/доспеха/боеприпаса/эффектов; "" = снаряжение
-    category: Literal["", "consumable", "clothing", "gear", "valuable", "quest"] = ""
+    category: Literal["", "consumable", "clothing", "gear", "valuable", "quest", "ammo"] = ""
     # вес в сотых долях фунта (задан только у сюжетных предметов мира)
     weight_centilb: int | None = None

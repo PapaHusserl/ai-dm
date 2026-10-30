@@ -1,5 +1,6 @@
 from ai_dm.combat import downed, mastery, monster_traits
 from ai_dm.combat.actions import features
+from ai_dm.combat.ammo import spend as spend_ammo
 from ai_dm.combat.controllers import is_quarreling, quarrel_targets
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice
@@ -17,7 +18,7 @@ from ai_dm.rules.derived import (
     improvised_attack,
     unarmed_attack,
 )
-from ai_dm.rules.inventory import equip, remove_item
+from ai_dm.rules.inventory import equip
 from ai_dm.rules.roll_pipeline import DAMAGE_TYPE_WORDS, RollRequest, roll
 from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 
@@ -496,8 +497,7 @@ def attack(
         notes.append("бронебойная")
     if ac != engine.armor_class(target_ref, pierce):
         notes.append("рассекает магические щиты")
-    if ammo is not None:
-        remove_item(engine.heroes[ref], ammo)
+    spend_ammo(engine, ref, info, ammo)
     result = roll_attack(
         engine, ref, target_ref, info.bonus, base_adv, info.name, info.bonus_parts, ac,
         ", ".join(notes), base_label(engine, ref, target_ref, info),

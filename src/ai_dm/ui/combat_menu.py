@@ -153,22 +153,33 @@ def is_free_spell(option, enemies):
     return option.kind == "cast" and target_of(option) not in enemies
 
 
-def ammo_after(bow, options, target, nonlethal):
+def ammo_after(weapon, options, target, nonlethal):
     # строки после атаки луком: группа «Стрелы ▸» или, если вид один, сама стрела;
     # id стрелы -- «attack:<лук>:<цель>:ammo:<стрела>»
-    group = [MenuRow(AMMO_LABEL, kind="expand", group=f"{AMMO_GROUP}{bow.params['weapon']}")]
+    group = [MenuRow(AMMO_LABEL, kind="expand", group=f"{AMMO_GROUP}{weapon}")]
     ammo = [
         attack_row(o, options, target, nonlethal)
         for o in options
-        if o.id.startswith(f"{bow.id}:ammo:")
+        if o.id.startswith(f"attack:{weapon}:{target}:ammo:")
     ]
     return group if len(ammo) > AMMO_INLINE else ammo
+
+
+def orphan_ammo(options, target, nonlethal):
+    # особые стрелы лука без строки обычного выстрела (обычные кончились): перед остальными атаками
+    here = [o for o in options if o.kind == "attack" and target_of(o) == target]
+    plain = {o.params["weapon"] for o in here if "ammo" not in o.params}
+    weapons = dict.fromkeys(o.params["weapon"] for o in here if "ammo" in o.params)
+    return [
+        row for w in weapons if w not in plain
+        for row in ammo_after(w, options, target, nonlethal)
+    ]
 
 
 def target_block(options, target, nonlethal):
     if target is None:
         return []
-    rows = []
+    rows = orphan_ammo(options, target, nonlethal)
     spells = []
     # стрелы -- после атаки своим луком (ammo_after), оглушающие версии -- через attack_row
     for option in [o for o in options if "ammo" not in o.params and not o.params.get("nonlethal")]:
@@ -177,7 +188,7 @@ def target_block(options, target, nonlethal):
         elif CATEGORY_BY_KIND.get(option.kind) == "target" and target_of(option) == target:
             if option.kind == "attack":
                 rows.append(attack_row(option, options, target, nonlethal))
-                rows += ammo_after(option, options, target, nonlethal)
+                rows += ammo_after(option.params["weapon"], options, target, nonlethal)
             else:
                 rows.append(option_row(option, "target", target))
     if len(spells) <= SPELLS_INLINE:

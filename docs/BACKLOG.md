@@ -1142,14 +1142,6 @@ updated: 2026-10-28
 `game.app:merge_pack` 24, 26, 27; `game.app:GameApp.load` 27, 37, 38, 41, 44, 59, 60, 65, 66, 68, 69, 88–91 — и 105
 segfault (`make_parser`, `main`, `make_adapter`). Разобрать при касании этих функций.
 
-## 215. Бандаж Вингтейла не подхватывает боеприпасы после боя
-status: idea
-priority: low
-updated: 2026-10-28
-
-Живой прогон drunk_dragon 2026-10-28, репорт t1301-manual (ветка gemini, откаченная): после боя бандаж Вингтейла
-не подобрал боеприпасы. Код подбора не разобран.
-
 ## 216. Pilot-тест падает DeadlockError под нагрузкой
 status: idea
 priority: low
@@ -1249,6 +1241,8 @@ updated: 2026-10-30
 `tests/unit/ui/test_ui_cli_mode.py::test_pilot_quit_ends_app` упал в `make cov` шага 212 (2026-10-30,
 `textual.worker.WorkerCancelled: Worker was cancelled, and did not complete`; load average к концу прогона ~74),
 отдельный повтор — passed. Шаг 212 ui не трогал. Причина не установлена — docs/plan-212.md.
+Тот же симптом в шаге БП (2026-10-30, под xdist; отдельно проходят): `test_command_answers_in_tui[/quit]`,
+`test_soft_limit_save_and_quit…` — docs/plan-bp.md.
 
 ## 227. Перезарядка (свойство loading) у арбалетов и огнестрела
 status: idea
@@ -1280,3 +1274,35 @@ updated: 2026-10-30
 
 По SRD воин может сменить одно мастерство после долгого отдыха; в К2 — только выбор 4-го мастерства на 4 ур.
 (Р18, docs/plan-k2.md).
+
+## 231. Граница версий сейва в скриптах migrate_dusk_* — одним местом
+status: idea
+priority: low
+updated: 2026-10-30
+
+`SCHEMA_VERSIONS` четырёх скриптов `scripts/migrate_dusk_{ferry,18plus,pact,ship}.py` правятся руками при каждом
+подъёме схемы (Ж0 +11, Ж2 +12, ФС +13, БП +14); howto отстали (числа 9–11, 9–12, 9–13 при коде 9–14);
+`migrate_dusk_knox.py` без проверки версии и без теста. Единый источник границы и howto без чисел — при следующем
+подъёме схемы (docs/plan-bp.md, «Правки по ревью» п. 11).
+
+## 232. Мутанты на старых строках функций шага БП
+status: idea
+priority: low
+updated: 2026-10-30
+
+`make mutate-diff` шага БП (2026-10-30), выжившие на строках до шага:
+- `ai_dm.combat.available.x_attack_options__mutmut_{32,76,77,78,79}`;
+- `ai_dm.combat.actions.attack.x_attack__mutmut_{44,45,74,76,153,154}`;
+- `ai_dm.ui.combat_menu.x_ammo_after__mutmut_13`.
+Шаг — docs/plan-bp.md.
+
+## 233. Калибровка MEMORY_CONTEXT_CAP в сценарии памяти — руками на каждый шаг
+status: idea
+priority: low
+updated: 2026-10-30
+
+`MEMORY_CONTEXT_CAP` в `tests/scenarios/memory_script.py` подбирается руками при каждом сдвиге динамики контекста
+(ЖП3 П3 2775 → 2806, ЖП4 П1 → 2950, ФС П2 → 3020, БП → 3010); рабочее окно < 20 токенов. Одна константа держит два
+встречных assert-а: `test_stage4_memory` (ступень chapters сработала) и `test_zh0_npc_memory` (`no_overflow`).
+Решить: cap вычислять из прогона или развести chapters и переполнение по разным сценариям; попутно — тест ширины
+окна. Делать при следующем сдвиге (К2), не раньше — docs/plan-bp.md, «Правки по ревью» п. 12.

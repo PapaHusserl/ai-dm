@@ -1,5 +1,6 @@
 id: arrow_frost
 name: Морозная стрела
+name_plural: Морозные стрелы
 description: +1d8 холодом, тушит серное пламя.
 cost_cp: 0
 source: campaign:drunk_dragon

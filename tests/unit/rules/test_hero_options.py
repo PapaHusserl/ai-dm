@@ -292,6 +292,16 @@ def test_kit_label_counts_repeated_items(registry):
     )
 
 
+def test_kit_label_folds_twenty_arrows_of_ranger_kit(registry):
+    from ai_dm.rules.hero_options import kit_label
+
+    kit = registry.get("class", "ranger").starting_kits[0]
+    assert kit_label(registry, kit) == (
+        "Проклёпанная кожа, Скимитар, Короткий меч, Длинный лук, Стрелы ×20, Колчан, "
+        "Фокусировка друидов, Набор путешественника; +7 зм"
+    )
+
+
 def test_kit_label_shows_id_of_unknown_item(registry):
     from types import SimpleNamespace
 

@@ -1,5 +1,6 @@
 id: arrow_fire
 name: Зажигательная стрела
+name_plural: Зажигательные стрелы
 description: Поджигает цель и горючее.
 cost_cp: 0
 source: campaign:drunk_dragon

@@ -126,10 +126,11 @@ def haggle_call(call_id):
 
 
 def buy_call(call_id):
+    # колчан (100 мед.): стрелы стали поштучными по 5 мед. (шаг БП), а проверка цены — на 100 мед.
     return {
         "id": call_id, "name": "trade",
         "input": {
-            "type": "trade", "npc_id": "mara", "direction": "buy", "item_id": "arrows",
+            "type": "trade", "npc_id": "mara", "direction": "buy", "item_id": "quiver",
             "qty": 1, "quality": "any",
         },
     }

@@ -161,7 +161,7 @@ def inv_group(kind, item):
         return "weapon"
     if kind == "armor":
         return "armor"
-    if item.ammo_for:
+    if item.ammo_for or item.category == "ammo":
         return "ammo"
     if item.effects:
         return "consumable"

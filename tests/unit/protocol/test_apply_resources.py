@@ -443,7 +443,9 @@ def test_consumable_limit_resets_in_new_scene(registry, cfg):
 def test_unknown_item_invalid_lists_allowed_ids(registry, cfg):
     d = apply(make_ctx(registry, cfg), req("give_item", item_id="nope", qty=1))
     assert "crowbar" in d.message
-    assert "potion_of_healing" in d.message
+    # подсказка показывает первые 20 id по алфавиту; пять новых id боеприпасов (arrows, bolts, …)
+    # вытеснили potion_of_healing за обрезку, поэтому проверяем предмет из начала списка
+    assert "arrows" in d.message
 
 
 def test_no_route_invalid_lists_reachable_locations(registry, cfg):

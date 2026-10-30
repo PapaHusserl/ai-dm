@@ -23,6 +23,6 @@ choices:
   background_bonus: {dex: 2, wis: 1}
   class_skills: [perception, insight, nature]
   weapon_masteries: [longbow, scimitar]
-  inventory: [studded_leather, scimitar, shortsword, longbow, arrows, quiver, druidic_focus, explorers_pack]
+  inventory: [studded_leather, scimitar, shortsword, longbow, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, arrows, quiver, druidic_focus, explorers_pack]
   equip: [studded_leather, longbow]
   species_choices: {skill: intimidation, feat: savage_attacker}

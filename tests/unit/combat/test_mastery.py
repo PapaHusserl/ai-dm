@@ -52,7 +52,8 @@ def mastery_duel(registry, cfg, rng, weapon, masteries=None, goblin_hp=None, gob
 
 
 def effect_ids(engine, ref):
-    return [e.id for e in creature(engine, ref).active_effects]
+    # расход боеприпасов (ammo_spent) -- не эффект мастерства
+    return [e.id for e in creature(engine, ref).active_effects if e.id != "ammo_spent"]
 
 
 # Graze: двуручный меч (СИЛ +3)
@@ -142,7 +143,7 @@ def vex_duel(registry, cfg, rng, goblin_hp=None):
 def test_vex_gives_the_attacker_an_effect_against_the_target(registry, cfg):
     engine = vex_duel(registry, cfg, ScriptedRng(d20=[15], d6=[1]))
     engine.perform("hero", "attack:shortbow:goblin_1")
-    effects = creature(engine, "hero").active_effects
+    effects = [e for e in creature(engine, "hero").active_effects if e.id != "ammo_spent"]
     assert [e.id for e in effects] == ["vex"]
     assert effects[0].params["against"] == "goblin_1"
 

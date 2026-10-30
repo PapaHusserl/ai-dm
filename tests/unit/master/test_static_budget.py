@@ -55,7 +55,8 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # ФС П2: фраза правил о scene_recap (замер 23997; 23940 -> 24030).
 # ФС П3: поле location_id в npc_update, фразы о absent_npcs, переносе и уходе gone без причины
 # (замер 24212; 24030 -> 24240).
-STATIC_MAX = 24240
+# БП: фраза правил о поштучных боеприпасах в give_item (замер 24281; 24240 -> 24300).
+STATIC_MAX = 24300
 
 MODES = sorted(MODE_TOOLS)
 

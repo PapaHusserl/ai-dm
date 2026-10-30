@@ -192,6 +192,9 @@ def give_weapon(hero, registry, weapon_id):
     # кладёт оружие в main_hand (двуручное -- без щита)
     if count_item(hero, weapon_id) == 0:
         add_item(hero, weapon_id, cost_cp=0)
+    ammo = registry.get("weapon", weapon_id).ammo
+    if ammo is not None and count_item(hero, ammo) == 0:
+        add_item(hero, ammo, 20, cost_cp=0)
     if "two_handed" in registry.get("weapon", weapon_id).properties:
         hero.equipped.shield = None
     equip(hero, weapon_id, registry)

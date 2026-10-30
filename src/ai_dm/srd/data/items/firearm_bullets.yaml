@@ -1,0 +1,6 @@
+id: firearm_bullets
+name: Пули для огнестрела
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 30
+category: ammo

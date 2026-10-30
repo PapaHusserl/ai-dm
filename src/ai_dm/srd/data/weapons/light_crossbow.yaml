@@ -11,6 +11,7 @@ properties:
 - ammunition
 - loading
 - two_handed
+ammo: bolts
 mastery: slow
 range_normal_ft: 80
 range_long_ft: 320

@@ -1,5 +1,6 @@
 id: arrow_armor_piercing
 name: Бронебойная стрела
+name_plural: Бронебойные стрелы
 description: Пробивает доспехи и щиты культистов.
 cost_cp: 0
 source: campaign:drunk_dragon

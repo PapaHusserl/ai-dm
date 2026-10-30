@@ -83,7 +83,7 @@ def test_quest_item_goes_to_the_story_group(registry):
 
 
 def test_story_group_is_first(registry):
-    lines = lines_of(registry, [custom()], extra=lambda h: add_item(h, "arrows", cost_cp=1))
+    lines = lines_of(registry, [custom()], extra=lambda h: add_item(h, "crowbar", cost_cp=1))
     assert titles(lines)[0] == "Сюжетное:"
     assert "Снаряжение и инструменты:" in titles(lines)
 

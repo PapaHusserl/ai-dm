@@ -115,6 +115,7 @@
 
 | English | Русский | Id | Примечание |
 |---|---|---|---|
+| Ammunition | Боеприпас | `ammunition` (свойство), `Weapon.ammo` | стрелы, болты, пули, иглы; поштучно, выстрел тратит один, после боя возвращается половина (docs/plan-bp.md) |
 | Longsword | Длинный меч | `longsword` | |
 | Greatsword | Двуручный меч | `greatsword` | |
 | Scimitar | Скимитар | `scimitar` | |

@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 WORLD_ID = "dusk_academy-d3de6c57"
-SCHEMA_VERSIONS = (9, 10, 11, 12, 13)
+SCHEMA_VERSIONS = (9, 10, 11, 12, 13, 14)
 DAYS = 1
 DAY_S = 86400
 FACTION_ID = "pact_keepers"

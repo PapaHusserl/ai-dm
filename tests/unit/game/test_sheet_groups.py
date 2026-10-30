@@ -77,6 +77,13 @@ def test_inv_ammo_group_lists_special_arrows_with_qty(dragon_app):
         assert str(qty) in next(x for x in group.split("\n") if name in x)
 
 
+def test_inv_ammo_group_lists_plain_arrows_per_piece(dragon_app):
+    group = group_of(dragon_app, "Боеприпасы")
+    line = next(x for x in group.split("\n") if "Стрелы" in x)
+    assert "20" in line
+    assert "5 мм" in line
+
+
 def test_inv_potions_group_has_elixir_with_effect(dragon_app):
     group = group_of(dragon_app, "Зелья и расходники")
     line = next(x for x in group.split("\n") if "Каменная Кожа" in x)
@@ -102,7 +109,9 @@ def test_inv_money_is_last_line(dragon_app):
 
 def test_inv_empty_groups_are_not_printed(dragon_app):
     hero = dragon_app.bundle.heroes[0]
-    hero.inventory = [e for e in hero.inventory if not e.item_id.startswith("arrow_")]
+    hero.inventory = [
+        e for e in hero.inventory if e.item_id != "arrows" and not e.item_id.startswith("arrow_")
+    ]
     text = text_of(dragon_app, "/inv")
     assert "Боеприпасы" not in text
     assert "Оружие" in text

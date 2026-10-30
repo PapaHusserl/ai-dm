@@ -9,6 +9,7 @@ properties:
 - ammunition
 - heavy
 - two_handed
+ammo: arrows
 mastery: slow
 range_normal_ft: 150
 range_long_ft: 600

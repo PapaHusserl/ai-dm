@@ -131,6 +131,20 @@ def test_potion_of_healing_exists(registry):
     assert registry.has("item", "potion_of_healing")
 
 
+def test_arrows_are_ammo_items_and_longbow_uses_them(registry):
+    assert registry.get("item", "arrows").category == "ammo"
+    assert registry.get("weapon", "longbow").ammo == "arrows"
+
+
+def test_soldier_background_gives_twenty_arrows(registry):
+    assert registry.get("background", "soldier").equipment.count("arrows") == 20
+
+
+def test_fighter_kit_b_gives_twenty_arrows(registry):
+    kit = registry.get("class", "fighter").starting_kits[1]
+    assert kit.items.count("arrows") == 20
+
+
 @pytest.mark.parametrize("spell_id", SPELLS)
 def test_spell_exists(registry, spell_id):
     assert registry.has("spell", spell_id)

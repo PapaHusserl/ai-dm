@@ -105,7 +105,7 @@ def scimitar(cost_cp, qty=1, quality=None):
 def test_unknown_npc_is_invalid_and_lists_merchants(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     before = dump(ctx)
-    d = buy(ctx, "arrows", npc_id="nobody")
+    d = buy(ctx, "quiver", npc_id="nobody")
     assert isinstance(d, Invalid)
     assert d.code == "unknown_npc"
     assert "mara" in d.message
@@ -115,7 +115,7 @@ def test_unknown_npc_is_invalid_and_lists_merchants(registry, cfg):
 def test_merchant_in_another_location_is_absent(registry, cfg):
     ctx = trade_ctx(registry, cfg, location_id="forest")
     before = dump(ctx)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Invalid)
     assert d.code == "npc_absent"
     assert dump(ctx) == before
@@ -123,7 +123,7 @@ def test_merchant_in_another_location_is_absent(registry, cfg):
 
 def test_merchant_without_location_is_absent(registry, cfg):
     ctx = trade_ctx(registry, cfg, location_id=None)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Invalid)
     assert d.code == "npc_absent"
 
@@ -132,7 +132,7 @@ def test_merchant_without_location_is_absent(registry, cfg):
 def test_not_alive_merchant_is_invalid(registry, cfg, status):
     ctx = trade_ctx(registry, cfg, status=status)
     before = dump(ctx)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Invalid)
     assert d.code in ("unknown_npc", "npc_absent")
     assert dump(ctx) == before
@@ -141,7 +141,7 @@ def test_not_alive_merchant_is_invalid(registry, cfg, status):
 def test_npc_without_trade_is_not_a_merchant(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     before = dump(ctx)
-    d = buy(ctx, "arrows", npc_id="grakh")
+    d = buy(ctx, "quiver", npc_id="grakh")
     assert isinstance(d, Invalid)
     assert d.code == "not_merchant"
     assert dump(ctx) == before
@@ -151,7 +151,7 @@ def test_trade_during_combat_is_invalid(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     apply(ctx, combat_request())
     before = dump(ctx)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Invalid)
     assert d.code == "in_combat"
     assert dump(ctx) == before
@@ -161,7 +161,7 @@ def test_trade_during_combat_is_invalid(registry, cfg):
 def test_qty_below_one_is_bad_amount(registry, cfg, qty):
     ctx = trade_ctx(registry, cfg)
     for direction in ("buy", "sell"):
-        d = trade(ctx, direction, "arrows", qty)
+        d = trade(ctx, direction, "quiver", qty)
         assert isinstance(d, Invalid)
         assert d.code == "bad_amount"
 
@@ -172,7 +172,7 @@ def test_qty_below_one_is_bad_amount(registry, cfg, qty):
 def test_hostile_merchant_refuses(registry, cfg, attitude):
     ctx = trade_ctx(registry, cfg, attitude=attitude)
     before = dump(ctx)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Decision)
     assert d.status == "rejected"
     assert d.signal_to_master
@@ -190,12 +190,12 @@ def test_hostile_merchant_refuses_to_buy_from_hero_too(registry, cfg):
 
 def test_attitude_just_above_refusal_trades(registry, cfg):
     ctx = trade_ctx(registry, cfg, attitude=-49)
-    assert buy(ctx, "arrows").status == "accepted"
+    assert buy(ctx, "quiver").status == "accepted"
 
 
 def test_good_attitude_makes_buying_cheaper(registry, cfg):
     ctx = trade_ctx(registry, cfg, attitude=60)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert d.result["price_cp"] == 90
     assert ctx.hero.money_cp == 910
 
@@ -209,7 +209,7 @@ def test_good_attitude_makes_selling_dearer(registry, cfg):
 
 def test_attitude_below_good_uses_base_prices(registry, cfg):
     ctx = trade_ctx(registry, cfg, attitude=49)
-    assert buy(ctx, "arrows").result["price_cp"] == 100
+    assert buy(ctx, "quiver").result["price_cp"] == 100
 
 
 # покупка
@@ -217,55 +217,55 @@ def test_attitude_below_good_uses_base_prices(registry, cfg):
 def test_buy_pays_and_gives_the_item_with_its_price(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     hero_has(ctx)
-    d = buy(ctx, "arrows", 3)
+    d = buy(ctx, "quiver", 3)
     assert isinstance(d, Decision)
     assert d.status == "accepted"
     assert ctx.hero.money_cp == 700
-    assert stacks(ctx, "arrows") == [(100, None, 3)]
+    assert stacks(ctx, "quiver") == [(100, None, 3)]
 
 
 def test_buy_result_has_all_fields(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    d = buy(ctx, "arrows", 3)
+    d = buy(ctx, "quiver", 3)
     assert d.result == {
-        "direction": "buy", "item_id": "arrows", "qty": 3, "price_cp": 100, "total_cp": 300,
+        "direction": "buy", "item_id": "quiver", "qty": 3, "price_cp": 100, "total_cp": 300,
         "money_cp": 700, "purse_cp": 5000,
     }
 
 
 def test_buy_log_names_item_and_total(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    d = buy(ctx, "arrows", 3)
+    d = buy(ctx, "quiver", 3)
     assert len(d.log) == 1
     assert d.log[0].startswith("Куплено: ")
-    assert registry.get("item", "arrows").name in d.log[0]
+    assert registry.get("item", "quiver").name in d.log[0]
     assert format_cp(300) in d.log[0]
 
 
 def test_buy_emits_item_gained(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    buy(ctx, "arrows", 3)
+    buy(ctx, "quiver", 3)
     gained = [(e.data["item"], e.data["qty"]) for e in ctx.events if e.type == "item_gained"]
-    assert gained == [("arrows", 3)]
+    assert gained == [("quiver", 3)]
 
 
 def test_buy_more_than_money_is_clamped(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=1000)
     hero_has(ctx)
-    d = buy(ctx, "arrows", 20)
+    d = buy(ctx, "quiver", 20)
     assert d.status == "clamped"
     assert d.signal_to_master
     assert d.report_tag == "limit-exceeded"
     assert d.result["qty"] == 10
     assert d.result["total_cp"] == 1000
     assert ctx.hero.money_cp == 0
-    assert stacks(ctx, "arrows") == [(100, None, 10)]
+    assert stacks(ctx, "quiver") == [(100, None, 10)]
 
 
 def test_buy_without_money_is_rejected_and_changes_nothing(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=0)
     before = dump(ctx)
-    d = buy(ctx, "arrows", 5)
+    d = buy(ctx, "quiver", 5)
     assert d.status == "rejected"
     assert d.signal_to_master
     assert dump(ctx) == before
@@ -274,13 +274,13 @@ def test_buy_without_money_is_rejected_and_changes_nothing(registry, cfg):
 def test_buy_with_money_less_than_one_item_is_rejected(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=99)
     before = dump(ctx)
-    assert buy(ctx, "arrows").status == "rejected"
+    assert buy(ctx, "quiver").status == "rejected"
     assert dump(ctx) == before
 
 
 def test_buy_exact_money_is_accepted(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=100)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert d.status == "accepted"
     assert ctx.hero.money_cp == 0
 
@@ -288,7 +288,7 @@ def test_buy_exact_money_is_accepted(registry, cfg):
 def test_buy_is_capped_by_give_item_max_qty(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=100000)
     hero_has(ctx)
-    d = buy(ctx, "arrows", cfg.limits.give_item_max_qty + 5)
+    d = buy(ctx, "quiver", cfg.limits.give_item_max_qty + 5)
     assert d.status == "clamped"
     assert d.result["qty"] == cfg.limits.give_item_max_qty
     assert ctx.hero.money_cp == 100000 - 100 * cfg.limits.give_item_max_qty
@@ -296,9 +296,9 @@ def test_buy_is_capped_by_give_item_max_qty(registry, cfg):
 
 def test_buy_does_not_add_item_stack_with_other_price(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    hero_has(ctx, InventoryEntry(item_id="arrows", qty=2, cost_cp=70))
-    buy(ctx, "arrows", 1)
-    assert stacks(ctx, "arrows") == [(70, None, 2), (100, None, 1)]
+    hero_has(ctx, InventoryEntry(item_id="quiver", qty=2, cost_cp=70))
+    buy(ctx, "quiver", 1)
+    assert stacks(ctx, "quiver") == [(70, None, 2), (100, None, 1)]
 
 
 def test_buy_item_outside_the_preset_is_not_sold(registry, cfg):
@@ -313,7 +313,7 @@ def test_buy_item_outside_the_preset_is_not_sold(registry, cfg):
 
 def test_buy_not_sold_lists_at_most_twenty_ids(registry, cfg):
     extra = [
-        registry.get("item", "arrows").model_copy(update={"id": f"thing_{n:02d}"})
+        registry.get("item", "quiver").model_copy(update={"id": f"thing_{n:02d}"})
         for n in range(25)
     ]
     ctx = trade_ctx(registry.with_items({"item": extra}), cfg)
@@ -325,7 +325,7 @@ def test_buy_not_sold_lists_at_most_twenty_ids(registry, cfg):
 
 def test_not_sold_message_lists_what_the_merchant_sells(registry, cfg):
     ctx = trade_ctx(registry, cfg, kind="armorer")
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert "leather_armor" in d.message
 
 
@@ -668,6 +668,17 @@ def test_sell_category_the_merchant_does_not_buy_is_rejected(registry, cfg):
     assert dump(ctx) == before
 
 
+def test_smith_sells_single_arrows_at_five_copper(registry, cfg):
+    ctx = trade_ctx(registry, cfg, kind="smith")
+    hero_has(ctx)
+    d = buy(ctx, "arrows", 20)
+    assert d.status == "accepted"
+    assert d.result["price_cp"] == 5
+    assert d.result["total_cp"] == 100
+    assert ctx.hero.money_cp == 900
+    assert stacks(ctx, "arrows") == [(5, None, 20)]
+
+
 def test_sell_category_the_merchant_buys_is_accepted(registry, cfg):
     ctx = trade_ctx(registry, cfg, kind="smith")
     hero_has(ctx, scimitar(1000))
@@ -729,7 +740,7 @@ def test_ops_per_scene_limit_is_rejected(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     ctx.scene.trades = cfg.trade.ops_per_scene
     before = dump(ctx)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert d.status == "rejected"
     assert d.signal_to_master
     assert dump(ctx) == before
@@ -737,28 +748,28 @@ def test_ops_per_scene_limit_is_rejected(registry, cfg):
 
 def test_each_accepted_trade_counts_in_the_scene(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    buy(ctx, "arrows")
-    buy(ctx, "arrows")
+    buy(ctx, "quiver")
+    buy(ctx, "quiver")
     assert ctx.scene.trades == 2
 
 
 def test_last_trade_under_the_limit_is_accepted(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     ctx.scene.trades = cfg.trade.ops_per_scene - 1
-    assert buy(ctx, "arrows").status == "accepted"
+    assert buy(ctx, "quiver").status == "accepted"
     assert ctx.scene.trades == cfg.trade.ops_per_scene
 
 
 def test_rejected_trade_is_not_counted(registry, cfg):
     ctx = trade_ctx(registry, cfg, money=0)
-    buy(ctx, "arrows")
+    buy(ctx, "quiver")
     assert ctx.scene.trades == 0
 
 
 def test_trade_works_without_a_scene(registry, cfg):
     ctx = make_ctx(registry, cfg, bundle=make_bundle(registry, with_scene=False))
     add_merchant(ctx)
-    assert buy(ctx, "arrows").status == "accepted"
+    assert buy(ctx, "quiver").status == "accepted"
 
 
 # сюжетные предметы (разд. 4)
@@ -954,7 +965,7 @@ def test_unknown_npc_message_lists_only_living_merchants_here(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     add_merchant(ctx, "dead_one", status="dead")
     add_merchant(ctx, "far_one", location_id="forest")
-    d = buy(ctx, "arrows", npc_id="nobody")
+    d = buy(ctx, "quiver", npc_id="nobody")
     assert "mara" in d.message
     assert "dead_one" not in d.message
     assert "far_one" not in d.message
@@ -970,7 +981,7 @@ def test_not_sold_message_puts_the_stock_first_and_has_no_duplicates(registry, c
 def test_not_sold_message_includes_the_stock_outside_the_preset(registry, cfg):
     stock = [InventoryEntry(item_id="healers_kit", qty=1, cost_cp=100, quality="junk")]
     ctx = trade_ctx(registry, cfg, kind="smith", stock=stock)
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert "healers_kit" in d.message
 
 
@@ -1013,7 +1024,7 @@ def test_same_price_other_quality_is_a_separate_stock_entry(registry, cfg):
 
 def test_not_sold_list_of_a_magic_merchant_is_built_for_the_hero_level(registry, cfg):
     ctx = trade_ctx(registry, cfg, kind="alchemist")
-    d = buy(ctx, "arrows")
+    d = buy(ctx, "quiver")
     assert isinstance(d, Invalid)
     assert "potion_of_healing" in d.message
 
@@ -1057,12 +1068,12 @@ def test_buy_from_stock_of_a_too_rare_magic_item_is_rejected(registry, cfg):
 
 def test_buy_srd_item_with_quality_new_is_accepted(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    assert buy(ctx, "arrows", quality="new").status == "accepted"
+    assert buy(ctx, "quiver", quality="new").status == "accepted"
 
 
 def test_buy_srd_item_with_a_quality_that_the_merchant_lacks_is_not_sold(registry, cfg):
     ctx = trade_ctx(registry, cfg)
-    d = buy(ctx, "arrows", quality="junk")
+    d = buy(ctx, "quiver", quality="junk")
     assert isinstance(d, Invalid)
     assert d.code == "not_sold"
 

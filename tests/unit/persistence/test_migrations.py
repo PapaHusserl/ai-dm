@@ -129,8 +129,8 @@ def step_1_to_2(data, context=None):
     return data
 
 
-def test_current_schema_version_is_thirteen():
-    assert CURRENT_SCHEMA_VERSION == 13
+def test_current_schema_version_is_fourteen():
+    assert CURRENT_SCHEMA_VERSION == 14
 
 
 def test_registry_has_step_from_v0():

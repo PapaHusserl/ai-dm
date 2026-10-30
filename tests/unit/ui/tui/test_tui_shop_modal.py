@@ -354,14 +354,16 @@ def test_arrows_switch_between_goods_and_services_tabs(registry, tmp_path, tui):
     async def steps(app, pilot):
         await open_shop(tui, app, pilot)
         first = str(app.screen.query_one("#inv-tabs").active_tab.label)
-        await pilot.press("right")
-        await pilot.pause()
+        for _ in range(2):
+            await pilot.press("right")
+            await pilot.pause()
         second = str(app.screen.query_one("#inv-tabs").active_tab.label)
-        await pilot.press("left")
-        await pilot.pause()
+        for _ in range(2):
+            await pilot.press("left")
+            await pilot.pause()
         return first, second, str(app.screen.query_one("#inv-tabs").active_tab.label)
 
-    assert run(new_app(game), steps) == ("Снаряжение", "Услуги", "Снаряжение")
+    assert run(new_app(game), steps) == ("Боеприпасы", "Услуги", "Боеприпасы")
 
 
 def test_description_shows_the_kind_description_and_the_hint(registry, tmp_path, tui):

@@ -25,7 +25,7 @@ from ai_dm.campaign.loader import load_pack, pack_content_dir
 from ai_dm.content.loader import load_registry
 from ai_dm.game.starter import new_world_from_pack
 from ai_dm.rules.derived import attack_bonus
-from ai_dm.rules.inventory import count_item, equip
+from ai_dm.rules.inventory import count_item, equip, remove_item
 from ai_dm.state.creature import ActiveEffect
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -182,6 +182,79 @@ def test_option_disappears_at_zero(dragon, cfg):
     engine.perform("hero", arrow_option(engine, "arrow_silver").id)
     assert not [o for o in engine.available_actions("hero") if "arrow_silver" in o.id]
     assert count_item(engine.heroes["hero"], "arrow_silver") == 0
+
+
+def test_last_special_arrow_log_line_is_plural(dragon, cfg):
+    registry, hero = dragon
+    hero = fresh_hero(hero, registry)
+    for entry in hero.inventory:
+        if entry.item_id == "arrow_silver":
+            entry.qty = 1
+    engine = make_engine(
+        registry, cfg, heroes=[hero], rng=ScriptedRng(d20=[1]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")], hero_zone="door",
+    )
+    engine.perform("hero", arrow_option(engine, "arrow_silver").id)
+    assert any("Грей: серебряные стрелы кончились" in line for line in engine.state.log)
+
+
+def test_every_pack_ammo_item_has_a_plural_name(dragon):
+    registry, _ = dragon
+    ammo = [i for i in registry.all("item") if i.ammo_for]
+    assert len(ammo) >= 6
+    assert [i.id for i in ammo if not i.name_plural] == []
+
+
+# обычные стрелы пака (БП): Грей начинает с 20, особые их не трогают
+
+def test_pack_grey_starts_with_twenty_plain_arrows(dragon, cfg):
+    engine = make(dragon, cfg, ScriptedRng())
+    assert count_item(engine.heroes["hero"], "arrows") == 20
+
+
+def test_plain_shot_label_shows_the_plain_stock(dragon, cfg):
+    engine = make(dragon, cfg, ScriptedRng())
+    label = [o.label for o in engine.available_actions("hero") if o.id == SHOOT][0]
+    assert "(осталось 20)" in label
+
+
+def test_special_arrow_does_not_spend_plain_arrows(dragon, cfg):
+    engine, _ = shoot(dragon, cfg, fire, d6=[4])
+    assert count_item(engine.heroes["hero"], "arrows") == 20
+
+
+def test_plain_shot_does_not_spend_special_arrows(dragon, cfg):
+    engine, _ = shoot(dragon, cfg, plain)
+    assert count_item(engine.heroes["hero"], "arrows") == 19
+    assert count_item(engine.heroes["hero"], "arrow_fire") == 10
+
+
+def without_plain(dragon, cfg, rng):
+    engine = make(dragon, cfg, rng)
+    remove_item(engine.heroes["hero"], "arrows", 20)
+    return engine
+
+
+def test_without_plain_arrows_only_special_shots_remain(dragon, cfg):
+    engine = without_plain(dragon, cfg, ScriptedRng())
+    ids = option_ids(engine, "hero")
+    assert SHOOT not in ids
+    assert f"{SHOOT}:ammo:arrow_fire" in ids
+
+
+def test_special_arrows_are_picked_up_after_victory(dragon, cfg):
+    rng = ScriptedRng(d20=[1] * 4 + [hit_roll(dragon, 3)], d8=[5, 5], d6=[4])
+    engine = make(dragon, cfg, rng)
+    fire_id = f"{SHOOT}:ammo:arrow_fire"
+    for _ in range(4):
+        engine.start_turn("hero")
+        engine.perform("hero", fire_id)
+    set_hp(engine, "goblin_1", 1)
+    engine.start_turn("hero")
+    engine.perform("hero", fire_id)
+    assert engine.state.outcome == "victory"
+    assert count_item(engine.heroes["hero"], "arrow_fire") == 5 + 2
+    assert any("Грей: подобрал зажигательные стрелы ×2" in line for line in engine.state.log)
 
 
 # зажигательная

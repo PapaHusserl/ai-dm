@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import disarm, shove
+from ai_dm.combat import ammo, disarm, shove
 from ai_dm.combat.actions import cast, parley
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
@@ -36,7 +36,8 @@ def target_text(engine, target) -> str:
 
 def attack_options(engine, ref) -> list[ActionOption]:
     result = []
-    for info in attacks_of(engine, ref):
+    for info in [i for i in attacks_of(engine, ref) if ammo.can_shoot(engine, ref, i)]:
+        stock = ammo.stock_text(engine, ref, info)
         for target_ref in attack_targets(engine, ref):
             if base_advantage(engine, ref, target_ref, info) is None:
                 continue
@@ -46,7 +47,7 @@ def attack_options(engine, ref) -> list[ActionOption]:
             result.append(
                 ActionOption(
                     id=f"attack:{info.id}:{target_ref}", kind="attack",
-                    label=f"Атака: {info.name or info.id} → {engine.name(target_ref)}",
+                    label=f"Атака: {info.name or info.id}{stock} → {engine.name(target_ref)}",
                     params=params,
                 )
             )
@@ -388,7 +389,7 @@ def horde_options(engine, ref) -> list[ActionOption]:
         return []
     params = flags[0].params
     infos = [i for i in attacks_of(engine, ref) if i.id == params["weapon"]]
-    if not infos:
+    if not infos or not ammo.can_shoot(engine, ref, infos[0]):
         return []
     info = infos[0]
     targets = [

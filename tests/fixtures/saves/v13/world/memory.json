@@ -1,0 +1,46 @@
+{
+  "scenes": [],
+  "chapters": [],
+  "game_summary": "",
+  "game_summary_chapter": 0,
+  "recent_turns": [
+    {
+      "turn_seq": 1,
+      "at_s": 0,
+      "player_input": "(Начало игры.)",
+      "narration": "В таверне «Хромой гусь» пахнет луком и дубом. За стойкой Гарт натирает кружку, у печи сидит Мирра, а в углу дремлет старый Там.",
+      "requests": [
+        "offer_choices"
+      ],
+      "rolls": [],
+      "scene_id": "",
+      "outcomes": [],
+      "money_delta_cp": 0
+    },
+    {
+      "turn_seq": 2,
+      "at_s": 900,
+      "player_input": "Расспросить Гарта о подвале",
+      "narration": "Гарт понижает голос: гоблины пробили кладку и таскают припасы по ночам.",
+      "requests": [
+        "advance_time",
+        "offer_choices"
+      ],
+      "rolls": [],
+      "scene_id": "scene_2",
+      "outcomes": [],
+      "money_delta_cp": 0
+    },
+    {
+      "turn_seq": 3,
+      "at_s": 3636,
+      "player_input": "Осматриваюсь",
+      "narration": "Мирра поднимает глаза от кружки и кивает тебе.",
+      "requests": [],
+      "rolls": [],
+      "scene_id": "scene_2",
+      "outcomes": [],
+      "money_delta_cp": 0
+    }
+  ]
+}

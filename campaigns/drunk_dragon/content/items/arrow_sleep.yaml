@@ -1,5 +1,6 @@
 id: arrow_sleep
 name: Сонная стрела
+name_plural: Сонные стрелы
 description: Сонный яд Греты, +1d4 ядом; спасбросок Телосложения, при провале цель отравлена и спит.
 cost_cp: 0
 source: campaign:drunk_dragon

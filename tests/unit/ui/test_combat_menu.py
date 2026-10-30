@@ -445,11 +445,53 @@ def test_one_arrow_kind_stays_a_row_after_own_bow():
     assert ids(view.target_rows) == ["attack:bow:g1", "attack:bow:g1:ammo:sleep", "attack:sword:g1"]
 
 
+def without_plain_shot(*arrows):
+    # обычные стрелы кончились: строки «attack:bow:g1» нет, особые остались
+    return [o for o in two_bows(*arrows) if o.id != "attack:bow:g1"]
+
+
+def test_group_without_plain_shot_stands_before_other_attacks():
+    view = build_view(without_plain_shot("sleep", "fire"), roster(2), "g1")
+    assert labels(view.target_rows) == ["Стрелы ▸", "Атака: меч"]
+
+
+def test_single_special_arrow_without_plain_shot_is_a_row_before_other_attacks():
+    view = build_view(without_plain_shot("sleep"), roster(2), "g1")
+    assert ids(view.target_rows) == ["attack:bow:g1:ammo:sleep", "attack:sword:g1"]
+
+
+def test_group_without_plain_shot_expands_to_its_arrows():
+    view = build_view(without_plain_shot("sleep", "fire"), roster(2), "g1", expanded="ammo:bow")
+    assert ids(view.rows[:3]) == [None, "attack:bow:g1:ammo:sleep", "attack:bow:g1:ammo:fire"]
+
+
+def test_group_with_plain_shot_is_not_duplicated_before_the_attacks():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1")
+    assert labels(view.target_rows).count("Стрелы ▸") == 1
+
+
 def test_ammo_group_lists_short_labels_for_chosen_target_only():
     view = build_view(two_bows("sleep", "fire"), roster(2), "g1", expanded="ammo:bow")
     assert labels(view.rows[:3]) == [BACK_LABEL, "Sleep (осталось 9)", "Fire (осталось 9)"]
     assert len(view.rows) == 3
     assert ids(view.rows[:3]) == [None, "attack:bow:g1:ammo:sleep", "attack:bow:g1:ammo:fire"]
+
+
+def test_inline_arrow_after_plain_shot_keeps_nonlethal_note():
+    view = build_view(two_bows("sleep"), roster(2), "g1", True)
+    assert ids(view.target_rows)[:2] == ["attack:bow:g1", "attack:bow:g1:ammo:sleep"]
+    assert "дальнобойным — не оглушить" in view.target_rows[1].label
+
+
+def test_inline_arrow_without_plain_shot_keeps_nonlethal_note():
+    view = build_view(without_plain_shot("sleep"), roster(2), "g1", True)
+    assert ids(view.target_rows)[0] == "attack:bow:g1:ammo:sleep"
+    assert "дальнобойным — не оглушить" in view.target_rows[0].label
+
+
+def test_inline_arrow_without_plain_shot_has_no_note_without_nonlethal():
+    view = build_view(without_plain_shot("sleep"), roster(2), "g1", False)
+    assert "оглуш" not in view.target_rows[0].label
 
 
 def test_ammo_group_rows_keep_nonlethal_note():

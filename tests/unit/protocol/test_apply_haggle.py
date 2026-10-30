@@ -49,7 +49,7 @@ def merchant(ctx):
     return ctx.bundle.world.npcs["mara"].trade
 
 
-def buy(ctx, item_id="arrows", npc_id="mara"):
+def buy(ctx, item_id="quiver", npc_id="mara"):
     return apply(
         ctx, req("trade", npc_id=npc_id, direction="buy", item_id=item_id, qty=1, quality="any")
     )
@@ -352,8 +352,8 @@ def test_list_after_haggle_uses_the_new_price(registry, cfg):
     before = {i["item_id"]: i["price_cp"] for i in listing(ctx, "gear").result["items"]}
     haggle(ctx)
     after = {i["item_id"]: i["price_cp"] for i in listing(ctx, "gear").result["items"]}
-    assert after["arrows"] == 90
-    assert before["arrows"] == 100
+    assert after["quiver"] == 90
+    assert before["quiver"] == 100
 
 
 def test_buy_from_stock_after_haggle(registry, cfg):

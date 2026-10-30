@@ -1,4 +1,4 @@
-from ai_dm.combat import disarm, downed, trophies
+from ai_dm.combat import ammo, disarm, downed, trophies
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.creatures import end_concentration
@@ -107,6 +107,7 @@ def settle_ground(engine) -> None:
         elif item.owner_ref in engine.heroes:
             engine.log(f"{name} ({engine.name(item.owner_ref)}) остался на поле боя")
     state.ground_items = []
+    ammo.recover(engine, bool(won))
     if won:
         state.gear = trophies.enemy_gear(engine, disarm.weapon_ids)
         trophies.mark_looted(engine)

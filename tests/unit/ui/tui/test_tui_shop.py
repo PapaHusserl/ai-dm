@@ -62,7 +62,7 @@ def test_shop_with_one_merchant_opens_shop_window_with_assortment(registry, tmp_
     assert window is True
     assert title == "Торговля"
     assert strings.SHOP_PICK in text
-    assert "Колчан — 1 зм" in text
+    assert "Стрелы — 5 мм" in text
 
 
 def test_shop_modal_is_not_a_turn(registry, tmp_path, tui):

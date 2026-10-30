@@ -1,5 +1,6 @@
 id: arrows
-name: Стрелы (20 шт.)
+name: Стрелы
 source: srd-5.2
 license: CC-BY-4.0
-cost_cp: 100
+cost_cp: 5
+category: ammo

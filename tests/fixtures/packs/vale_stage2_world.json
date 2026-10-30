@@ -52,7 +52,7 @@
     },
     {
      "item_id": "arrows",
-     "qty": 1
+     "qty": 20
     },
     {
      "item_id": "gaming_set",
@@ -111,6 +111,25 @@
      "equipment": [
       "spear",
       "shortbow",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
+      "arrows",
       "arrows",
       "gaming_set",
       "healers_kit",
