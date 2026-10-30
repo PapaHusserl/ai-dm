@@ -155,17 +155,28 @@ def test_xp_repeat_writes_one_report_with_tag(registry, tmp_path):
     assert meta_of(found[0])["tags"] == ["xp_repeat"]
 
 
+def three_hour_turns(registry, tmp_path):
+    steps = [
+        tools_step(hour_call()), text_step("Раз."),
+        tools_step(hour_call()), text_step("Два."),
+        tools_step(hour_call()), text_step("Три."),
+    ]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    return app.handle("Первый"), app.handle("Второй"), app.handle("Третий")
+
+
 def test_time_repeat_tag_is_in_reply_turn(registry, tmp_path):
-    first, second = two_turns(registry, tmp_path, hour_call)
+    first, second, third = three_hour_turns(registry, tmp_path)
     assert first.turn.report_tags == []
-    assert second.turn.report_tags == ["time_repeat"]
+    assert second.turn.report_tags == []
+    assert third.turn.report_tags == ["time_repeat"]
 
 
 def test_time_repeat_writes_one_report_with_tag(registry, tmp_path):
-    two_turns(registry, tmp_path, hour_call)
+    three_hour_turns(registry, tmp_path)
     found = issues(tmp_path)
     assert len(found) == 1
-    assert found[0].name.endswith("-t2-time_repeat")
+    assert found[0].name.endswith("-t3-time_repeat")
     assert meta_of(found[0])["tags"] == ["time_repeat"]
 
 

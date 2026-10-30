@@ -216,7 +216,7 @@ class LimitsConfig(BaseModel):
     gold_repeat_turns: int = Field(default=3, ge=0)
     # наград опыта за сцену; сверх лимита award_xp отклоняется; 0 -- выкл.
     xp_awards_per_scene: int = Field(default=1, ge=0)
-    # окно последних ходов, где повтор часа без пути и дела отклоняется; 0 -- выкл.
+    # сколько праздных часов подряд терпит движок; следующий hour отклоняется; 0 -- выкл.
     time_repeat_turns: int = Field(default=2, ge=0)
     # кулдаун повторного длинного отдыха от конца предыдущего (строка Duration)
     long_rest_cooldown: str = "12h"

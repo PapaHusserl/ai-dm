@@ -3,11 +3,11 @@
 #     outcomes есть строка с префиксом «Опыт: +»; нет сцены -- [].
 #   award_xp: если таких записей >= cfg.limits.xp_awards_per_scene (0 -- выкл.) -> Decision
 #     rejected (reason "повтор награды", report_tag "xp_repeat"), герой и бандл не меняются.
-#   time_repeated(ctx, seconds) -> int | None: в последних cfg.limits.time_repeat_turns записях
-#     есть outcome «Время идёт: <seconds> с» и requests хода только из {advance_time,
-#     offer_choices} -> turn_seq.
-#   advance_time hour при повторе -> rejected (report_tag "time_repeat"), часы и концентрация
-#     не меняются.
+#   time_repeated(ctx, seconds) -> list[int]: если ВСЕ последние cfg.limits.time_repeat_turns
+#     записей (их ровно окно) -- праздные часы (outcome «Время идёт: <кратно seconds> с», requests
+#     только из {advance_time, offer_choices}) -> их turn_seq; иначе [].
+#   advance_time hour при повторе (два праздных часа подряд при окне 2) -> rejected
+#     (report_tag "time_repeat"), часы и концентрация не меняются.
 import pytest
 from protocol_kit import dump, make_bundle, make_ctx, req
 
@@ -186,101 +186,151 @@ def test_known_limitation_two_awards_in_one_turn_are_not_caught(registry, cfg):
 
 # time_repeated
 
-def test_time_repeated_returns_seq_of_idle_hour(registry, cfg):
+def test_time_repeated_returns_seqs_of_two_idle_hours(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
+    assert time_repeated(ctx, 3600) == [3, 4]
+
+
+def test_time_repeated_single_idle_hour_is_empty(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
-    assert time_repeated(ctx, 3600) == 4
+    assert time_repeated(ctx, 3600) == []
 
 
-def test_time_repeated_window_two_sees_second_from_end(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(1), turn(2), turn(3)])
-    assert cfg.limits.time_repeat_turns == 2
-    assert time_repeated(ctx, 3600) is None
+def test_time_repeated_idle_hour_between_other_turns_is_empty(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [turn(1), hour_turn(2), turn(3)])
-    assert time_repeated(ctx, 3600) == 2
+    assert cfg.limits.time_repeat_turns == 2
+    assert time_repeated(ctx, 3600) == []
 
 
-def test_time_repeated_window_zero_is_none(registry):
+def test_time_repeated_looks_only_at_last_window(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(1), turn(2), hour_turn(3), hour_turn(4)])
+    assert time_repeated(ctx, 3600) == [3, 4]
+
+
+def test_time_repeated_window_zero_is_empty(registry):
     cfg = limits_cfg(time_repeat_turns=0)
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
-    assert time_repeated(ctx, 3600) is None
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
+    assert time_repeated(ctx, 3600) == []
 
 
 def test_time_repeated_window_from_config(registry):
     cfg = limits_cfg(time_repeat_turns=1)
     ctx = make_ctx_with(registry, cfg, [hour_turn(1), turn(2)])
-    assert time_repeated(ctx, 3600) is None
+    assert time_repeated(ctx, 3600) == []
+    ctx = make_ctx_with(registry, cfg, [turn(1), hour_turn(2)])
+    assert time_repeated(ctx, 3600) == [2]
 
 
-def test_time_repeated_none_without_records(registry, cfg):
-    assert time_repeated(make_ctx_with(registry, cfg, []), 3600) is None
+def test_time_repeated_empty_without_records(registry, cfg):
+    assert time_repeated(make_ctx_with(registry, cfg, []), 3600) == []
 
 
-def test_time_repeated_none_when_hour_came_with_skill_check(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4, ("advance_time", "skill_check"))])
-    assert time_repeated(ctx, 3600) is None
+def test_time_repeated_empty_when_hour_came_with_skill_check(registry, cfg):
+    ctx = make_ctx_with(
+        registry, cfg, [hour_turn(3), hour_turn(4, ("advance_time", "skill_check"))],
+    )
+    assert time_repeated(ctx, 3600) == []
 
 
 def test_time_repeated_idle_with_offer_choices_counts(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4, ("advance_time", "offer_choices"))])
-    assert time_repeated(ctx, 3600) == 4
+    ctx = make_ctx_with(
+        registry, cfg, [hour_turn(3), hour_turn(4, ("advance_time", "offer_choices"))],
+    )
+    assert time_repeated(ctx, 3600) == [3, 4]
 
 
-def test_time_repeated_other_seconds_is_none(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 900 с"], ["advance_time"])])
-    assert time_repeated(ctx, 3600) is None
+def test_time_repeated_other_seconds_is_empty(registry, cfg):
+    ctx = make_ctx_with(
+        registry, cfg, [hour_turn(3), turn(4, ["Время идёт: 900 с"], ["advance_time"])],
+    )
+    assert time_repeated(ctx, 3600) == []
 
 
-def test_time_repeated_none_for_travel_turn(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Путь: до леса"], ["advance_time"])])
-    assert time_repeated(ctx, 3600) is None
+def test_time_repeated_empty_for_travel_turn(registry, cfg):
+    ctx = make_ctx_with(
+        registry, cfg, [hour_turn(3), turn(4, ["Путь: до леса"], ["advance_time"])],
+    )
+    assert time_repeated(ctx, 3600) == []
 
 
-def test_time_repeated_none_for_folded_combat_record(registry, cfg):
+def test_time_repeated_empty_for_folded_combat_record(registry, cfg):
     folded = TurnRecord(
         turn_seq=12, at_s=900, player_input="", narration="Бой окончен.", requests=[], outcomes=[],
     )
-    assert time_repeated(make_ctx_with(registry, cfg, [folded]), 3600) is None
+    ctx = make_ctx_with(registry, cfg, [hour_turn(11), folded])
+    assert time_repeated(ctx, 3600) == []
+
+
+def test_time_repeated_multiple_shift_counts_as_idle(registry, cfg):
+    day = turn(3, ["Время идёт: 86400 с"], ["advance_time"])
+    ctx = make_ctx_with(registry, cfg, [day, hour_turn(4)])
+    assert time_repeated(ctx, 3600) == [3, 4]
 
 
 # advance_time
 
 def test_repeated_hour_is_rejected(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     d = apply(ctx, hour())
     assert isinstance(d, Decision)
     assert d.status == "rejected"
     assert d.report_tag == "time_repeat"
-    assert "ходу 4" in d.signal_to_master
+    assert "ходах 3, 4" in d.signal_to_master
+    assert d.signal_to_master.startswith("Два часа подряд уже прошли")
 
 
 def test_repeated_hour_reason_and_signal_text(registry, cfg):
-    d = apply(make_ctx_with(registry, cfg, [hour_turn(4)]), hour())
+    d = apply(make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)]), hour())
     assert d.reason == "повтор часа"
     assert "сцену по факту, а ожидание продолжай только по просьбе героя." in d.signal_to_master
 
 
+def test_repeated_hour_signal_full_text(registry, cfg):
+    d = apply(make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)]), hour())
+    assert d.signal_to_master.endswith(
+        "без пути и дела. Время не двигай: "
+        "опиши сцену по факту, а ожидание продолжай только по просьбе героя."
+    )
+
+
+def test_single_idle_hour_after_other_turn_is_accepted_t1364(registry, cfg):
+    gold = turn(3, ["Золото: +5"], ["take_item"])
+    ctx = make_ctx_with(registry, cfg, [gold, hour_turn(4)])
+    start = ctx.bundle.world.clock.now_s
+    d = apply(ctx, hour())
+    assert d.status == "accepted"
+    assert d.log == [HOUR_LOG]
+    assert ctx.bundle.world.clock.now_s == start + 3600
+
+
+def test_hour_after_idle_hour_with_action_before_is_accepted_t1367(registry, cfg):
+    ctx = make_ctx_with(
+        registry, cfg, [hour_turn(3, ("advance_time", "skill_check")), hour_turn(4)],
+    )
+    assert apply(ctx, hour()).status == "accepted"
+
+
 def test_hour_rhythm_on_real_turn_records(registry, cfg):
-    # 1-й час принят, 2-й и 3-й отклонены (окно 2 хода), 4-й принят: ходы пишутся как на commit
+    # принят, принят, отклонён (два праздных часа), принят, принят, отклонён; ходы как на commit
     ctx = make_ctx_with(registry, cfg, [])
     statuses = []
-    for seq in range(1, 5):
+    for seq in range(1, 7):
         d = apply(ctx, hour())
         statuses.append(d.status)
-        ctx.bundle.memory.recent_turns.append(
-            turn(seq, d.log, ["advance_time"])
-        )
-    assert statuses == ["accepted", "rejected", "rejected", "accepted"]
+        outcomes = d.log or ["advance_time: отклонено (повтор часа)"]
+        ctx.bundle.memory.recent_turns.append(turn(seq, outcomes, ["advance_time"]))
+    assert statuses == ["accepted", "accepted", "rejected", "accepted", "accepted", "rejected"]
 
 
 def test_repeated_hour_keeps_clock_and_bundle(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     before = dump(ctx)
     apply(ctx, hour())
     assert dump(ctx) == before
 
 
 def test_repeated_hour_has_no_log_and_no_concentration_note(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     ctx.hero.creature.concentration = Concentration(spell_id="bless", circle=1, until_s=0)
     ctx.bundle.world.clock.now_s = 7200
     d = apply(ctx, hour())
@@ -310,14 +360,62 @@ def test_hour_after_hour_with_action_is_accepted(registry, cfg):
 
 
 def test_hour_outside_window_is_accepted(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(1), turn(2), turn(3)])
+    ctx = make_ctx_with(registry, cfg, [hour_turn(1), hour_turn(2), turn(3)])
     assert apply(ctx, hour()).status == "accepted"
 
 
 def test_window_zero_accepts_repeated_hour(registry):
     cfg = limits_cfg(time_repeat_turns=0)
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     assert apply(ctx, hour()).status == "accepted"
+
+
+def test_window_one_rejects_single_idle_hour(registry):
+    cfg = limits_cfg(time_repeat_turns=1)
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    assert apply(ctx, hour()).status == "rejected"
+
+
+def test_window_one_signal_names_single_turn(registry):
+    cfg = limits_cfg(time_repeat_turns=1)
+    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+    signal = apply(ctx, hour()).signal_to_master
+    assert signal.startswith("Час уже прошёл на ходу 4 без пути и дела.")
+
+
+def test_window_three_accepts_two_idle_hours(registry):
+    cfg = limits_cfg(time_repeat_turns=3)
+    ctx = make_ctx_with(registry, cfg, [turn(2), hour_turn(3), hour_turn(4)])
+    assert apply(ctx, hour()).status == "accepted"
+
+
+def test_window_three_rejects_three_idle_hours(registry):
+    cfg = limits_cfg(time_repeat_turns=3)
+    ctx = make_ctx_with(registry, cfg, [hour_turn(2), hour_turn(3), hour_turn(4)])
+    d = apply(ctx, hour())
+    assert d.status == "rejected"
+    assert d.report_tag == "time_repeat"
+    assert "ходах 2, 3, 4" in d.signal_to_master
+    assert d.signal_to_master.startswith("Часы уже прошли")
+
+
+def test_sleep_check_goes_before_repeat(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
+    d = apply(ctx, counted("hour", 8))
+    assert d.status == "rejected"
+    assert d.report_tag == "sleep_not_rest"
+
+
+def test_day_after_two_idle_hours_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
+    assert apply(ctx, req("advance_time", category="day")).status == "accepted"
+
+
+def test_until_after_two_idle_hours_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
+    ctx.bundle.world.clock.now_s = 5 * 3600
+    d = apply(ctx, req("advance_time", until="hour", until_hour=6))
+    assert d.status == "accepted"
 
 
 def test_travel_is_not_affected_by_hour_record(registry, cfg):
@@ -425,6 +523,25 @@ def test_count_over_year_is_invalid_and_clock_stays(registry, cfg):
     assert ctx.bundle.world.clock.now_s == start
 
 
+def test_count_over_year_message_text(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    year_days = ctx.bundle.world.clock.calendar.days_in_year
+    d = apply(ctx, counted("day", year_days + 1))
+    assert d.message == "за раз можно сдвинуть время не больше чем на год: уменьши count"
+
+
+def test_until_long_rest_already_possible_is_rejected_with_text(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [])
+    now_s = 2 * 3600 + 900
+    ctx.bundle.world.clock.now_s = now_s
+    ctx.hero.long_rest_end_s = None
+    d = apply(ctx, req("advance_time", until="long_rest"))
+    assert d.status == "rejected"
+    assert d.reason == "отдых уже можно"
+    assert d.signal_to_master == "Длинный отдых уже возможен: вызови rest long, время не двигай."
+    assert ctx.bundle.world.clock.now_s == now_s
+
+
 def test_count_exactly_one_year_is_accepted(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
     year_days = ctx.bundle.world.clock.calendar.days_in_year
@@ -477,22 +594,34 @@ def test_count_one_with_travel_to_is_not_invalid(registry, cfg):
 
 
 def test_count_hour_after_same_total_record_is_rejected_as_repeat(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+    three = turn(3, ["Время идёт: 10800 с"], ["advance_time"])
+    ctx = make_ctx_with(registry, cfg, [three, hour_turn(4)])
     d = apply(ctx, counted("hour", 3))
     assert d.status == "rejected"
     assert d.report_tag == "time_repeat"
 
 
-def test_count_hour_after_single_hour_record_is_rejected(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+def test_count_hour_after_single_same_total_record_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+    assert apply(ctx, counted("hour", 3)).status == "accepted"
+
+
+def test_count_hour_after_two_hour_records_is_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     d = apply(ctx, counted("hour", 2))
     assert d.status == "rejected"
     assert d.report_tag == "time_repeat"
 
 
-def test_hour_after_three_hours_record_is_rejected(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+def test_hour_after_three_hours_record_and_hour_is_rejected(registry, cfg):
+    three = turn(3, ["Время идёт: 10800 с"], ["advance_time"])
+    ctx = make_ctx_with(registry, cfg, [three, hour_turn(4)])
     assert apply(ctx, hour()).status == "rejected"
+
+
+def test_hour_after_single_three_hours_record_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 10800 с"], ["advance_time"])])
+    assert apply(ctx, hour()).status == "accepted"
 
 
 def test_count_hour_after_three_hours_record_other_request_is_not_repeat(registry, cfg):
@@ -507,15 +636,17 @@ def test_hour_after_900_seconds_record_is_accepted(registry, cfg):
     assert apply(ctx, hour()).status == "accepted"
 
 
-def test_hour_after_day_record_is_rejected_as_repeat(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 86400 с"], ["advance_time"])])
+def test_hour_after_day_record_and_hour_is_rejected_as_repeat(registry, cfg):
+    day = turn(3, ["Время идёт: 86400 с"], ["advance_time"])
+    ctx = make_ctx_with(registry, cfg, [day, hour_turn(4)])
     d = apply(ctx, hour())
     assert d.status == "rejected"
     assert d.report_tag == "time_repeat"
 
 
-def test_hour_after_until_giving_whole_hours_is_rejected(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 28800 с"], ["advance_time"])])
+def test_hour_after_until_giving_whole_hours_and_hour_is_rejected(registry, cfg):
+    until = turn(3, ["Время идёт: 28800 с"], ["advance_time"])
+    ctx = make_ctx_with(registry, cfg, [until, hour_turn(4)])
     assert apply(ctx, hour()).status == "rejected"
 
 
@@ -527,9 +658,14 @@ def test_time_log_seconds_parses_number_and_ignores_other_lines():
     assert time_log_seconds("Время идёт: много с") is None
 
 
-def test_hour_without_count_after_hour_record_is_still_rejected(registry, cfg):
-    ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
+def test_hour_without_count_after_two_hour_records_is_still_rejected(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
     assert apply(ctx, hour()).status == "rejected"
+
+
+def test_hour_after_single_day_shift_is_accepted(registry, cfg):
+    ctx = make_ctx_with(registry, cfg, [turn(4, ["Время идёт: 86400 с"], ["advance_time"])])
+    assert apply(ctx, hour()).status == "accepted"
 
 
 def test_count_day_after_hour_record_is_accepted(registry, cfg):

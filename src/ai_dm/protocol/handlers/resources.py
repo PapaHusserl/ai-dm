@@ -965,17 +965,20 @@ def time_log_seconds(text):
 
 
 def time_repeated(ctx, seconds):
-    # turn_seq хода из последних time_repeat_turns, где уже шёл сдвиг времени, кратный seconds,
-    # без пути и дела (в requests только advance_time и offer_choices), или None
+    # turn_seq ходов, если все последние time_repeat_turns ходов — праздные часы (сдвиг времени,
+    # кратный seconds, без пути и дела: в requests только advance_time и offer_choices); иначе []
     window = ctx.cfg.limits.time_repeat_turns
     if window == 0:
-        return None
+        return []
     idle = {"advance_time", "offer_choices"}
-    for turn in ctx.bundle.memory.recent_turns[-window:]:
+    turns = ctx.bundle.memory.recent_turns[-window:]
+    if len(turns) < window:
+        return []
+    for turn in turns:
         shifts = [time_log_seconds(text) for text in turn.outcomes]
-        if any(n and n % seconds == 0 for n in shifts) and set(turn.requests) <= idle:
-            return turn.turn_seq
-    return None
+        if not (any(n and n % seconds == 0 for n in shifts) and set(turn.requests) <= idle):
+            return []
+    return [turn.turn_seq for turn in turns]
 
 
 def time_by_category(ctx, request):
@@ -985,12 +988,15 @@ def time_by_category(ctx, request):
         asleep = sleep_without_rest(ctx, count * ctx.cfg.time.advance_categories["hour"])
         if asleep is not None:
             return asleep
-        seq = time_repeated(ctx, ctx.cfg.time.advance_categories["hour"])
-        if seq is not None:
+        seqs = time_repeated(ctx, ctx.cfg.time.advance_categories["hour"])
+        if seqs:
+            lead = {1: "Час уже прошёл на ходу", 2: "Два часа подряд уже прошли на ходах"}.get(
+                len(seqs), "Часы уже прошли на ходах"
+            )
             return rejected(
                 "повтор часа",
-                f"Час уже прошёл на ходу {seq} без пути и дела. Время не двигай: опиши "
-                "сцену по факту, а ожидание продолжай только по просьбе героя.",
+                f"{lead} {', '.join(map(str, seqs))} без пути и дела. Время не двигай: "
+                "опиши сцену по факту, а ожидание продолжай только по просьбе героя.",
                 report_tag="time_repeat",
             )
     seconds = 0
