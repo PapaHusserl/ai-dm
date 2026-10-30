@@ -19,8 +19,6 @@
 - Проектировщику: t513 в BACKLOG 11 и north_wind_blade в 66.
 - Строгий потолок `RECAP_MAX` — пункт BACKLOG по слову Влада.
 - Pilot-тесты флакают под нагрузкой: BACKLOG 216 и 226 — причина не установлена; возможно, свести в один.
-- Бэкапы сейва не удалены (Влад сказал «да», классификатор заблокировал rm): Влад сам —
-  `! cd saves && rm -rf drunk_dragon-00000001.bak-20261028-t1279 drunk_dragon-00000001.bak-rollback-20261028-* drunk_dragon-207-*`
 - Отклик 197 — semia-kabanov/otkliki/orkestrator/ai-dm/2026-10-30-197.md.
 
 ## Ссылки
