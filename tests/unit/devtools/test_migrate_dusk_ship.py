@@ -162,7 +162,7 @@ def test_apply_appends_jealousy_to_knox_notes(tmp_path):
     slot = make_slot(tmp_path)
     run(slot)
     notes = world_of(slot)["npcs"]["knox"]["notes"]
-    assert notes.startswith(OLD_KNOX_NOTES + "\n")
+    assert notes.startswith(OLD_KNOX_NOTES + "\n\nРевность к старым приятелям")
     assert "ревнует" in notes
     assert "не до разрыва" in notes
 
@@ -394,6 +394,7 @@ def test_pack_henry_is_halfling_from_heroine_village(registry):
     npc = next(n for n in dusk_pack(registry).npcs if n.id == "henry")
     assert "полурослик" in npc.notes.casefold()
     assert "родной деревни" in npc.notes
+    assert "около 20 лет" in npc.notes
 
 
 # сквозное: пак -> догрузка -> скрипт -> границы сцены

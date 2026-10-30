@@ -321,9 +321,9 @@ def dusk_pack(registry):
     return load_pack(DUSK_DIR, load_registry([content] if content is not None else []))
 
 
-def test_pack_version_is_five(registry):
-    # корабль «Бродячая Луна» -- версия 5; Договор Хранителей был версией 4, услуги -- 3, паром -- 2
-    assert dusk_pack(registry).manifest.version == "5"
+def test_pack_version_is_at_least_two(registry):
+    # паром пришёл с версией 2; версия пака растёт
+    assert int(dusk_pack(registry).manifest.version) >= 2
 
 
 def test_pack_has_ferry_faction_with_members(registry):

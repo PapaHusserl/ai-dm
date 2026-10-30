@@ -91,7 +91,7 @@ def main():
     )
     knox = world["npcs"][KNOX_ID]
     notes = knox.get("notes", "")
-    knox["notes"] = f"{notes}\n{KNOX_JEALOUSY}" if notes else KNOX_JEALOUSY
+    knox["notes"] = f"{notes}\n\n{KNOX_JEALOUSY}" if notes else KNOX_JEALOUSY
     tmp = world_path.with_name("world.json.tmp")
     tmp.write_text(json.dumps(world, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(world_path)
