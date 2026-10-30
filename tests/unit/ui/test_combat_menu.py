@@ -349,14 +349,14 @@ def test_target_block_includes_unarmed_improvised_and_special_ammo_only_for_targ
     options = [
         attack("sword", "g1", "melee"), attack("unarmed", "g1", "melee"),
         attack("improvised_melee", "g1", "melee"),
-        attack("bow", "g1", ammo="fire"),
+        attack("bow", "g1"), attack("bow", "g1", ammo="fire"),
         attack("sword", "g2", "melee"), attack("unarmed", "g2", "melee"),
-        attack("bow", "g2", ammo="fire"),
+        attack("bow", "g2"), attack("bow", "g2", ammo="fire"),
     ] + free_block_options(("hall",))
     view = build_view(options, roster(2), "g1")
     assert ids(view.target_rows) == [
         "attack:sword:g1", "attack:unarmed:g1", "attack:improvised_melee:g1",
-        "attack:bow:g1:ammo:fire",
+        "attack:bow:g1", "attack:bow:g1:ammo:fire",
     ]
 
 
@@ -412,6 +412,131 @@ def test_nonlethal_does_not_duplicate_rows():
     options = [attack("sword", "g1", "melee"), stun("sword", "g1"), attack("bow", "g1")]
     view = build_view(options + free_block_options(("hall",)), roster(1), "g1", nonlethal=True)
     assert len(view.target_rows) == 2
+
+
+# особые стрелы: «Стрелы ▸» под строкой своего лука
+
+def two_bows(*arrows):
+    options = [attack("bow", "g1", "ranged", "лук"), attack("sword", "g1", "melee", "меч")]
+    options += [attack("bow", "g1", "ranged", "лук", ammo=a) for a in arrows]
+    options += [attack("bow", "g2", "ranged", "лук", ammo=a) for a in arrows]
+    for option in options:
+        if option.params.get("ammo"):
+            option.label = option.label.replace(
+                "лук", f"лук — {option.params['ammo']} (осталось 9)", 1
+            )
+    return options + free_block_options(("hall",))
+
+
+def test_two_arrow_kinds_collapse_into_group_row_after_own_bow():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1")
+    assert labels(view.target_rows) == ["Атака: лук", "Стрелы ▸", "Атака: меч"]
+    group = view.target_rows[1]
+    assert (group.kind, group.group, group.rank) == ("expand", "ammo:bow", 0)
+
+
+def test_group_row_has_no_nonlethal_note_with_nonlethal_on():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1", True)
+    assert view.target_rows[1].label == "Стрелы ▸"
+
+
+def test_one_arrow_kind_stays_a_row_after_own_bow():
+    view = build_view(two_bows("sleep"), roster(2), "g1")
+    assert ids(view.target_rows) == ["attack:bow:g1", "attack:bow:g1:ammo:sleep", "attack:sword:g1"]
+
+
+def test_ammo_group_lists_short_labels_for_chosen_target_only():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1", expanded="ammo:bow")
+    assert labels(view.rows[:3]) == [BACK_LABEL, "Sleep (осталось 9)", "Fire (осталось 9)"]
+    assert len(view.rows) == 3
+    assert ids(view.rows[:3]) == [None, "attack:bow:g1:ammo:sleep", "attack:bow:g1:ammo:fire"]
+
+
+def test_ammo_group_rows_keep_nonlethal_note():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1", True, "ammo:bow")
+    assert "дальнобойным — не оглушить" in view.rows[1].label
+    plain_view = build_view(two_bows("sleep", "fire"), roster(2), "g1", False, "ammo:bow")
+    assert "оглуш" not in plain_view.rows[1].label
+
+
+def bows_fight(bows, arrows, enemies=1, melee=()):
+    options = []
+    for ref in list(NAMES)[:enemies]:
+        options += [attack(w, ref, "melee", w) for w in melee]
+        for bow in bows:
+            options.append(attack(bow, ref, "ranged", bow))
+            options += [
+                attack(bow, ref, "ranged", f"{bow} — {a} (осталось 9)", ammo=a) for a in arrows
+            ]
+    return options + free_block_options(("hall",))
+
+
+def test_group_view_has_no_ammo_ids_in_target_rows_but_more_lists_them():
+    view = build_view(two_bows("sleep", "fire"), roster(2), "g1")
+    assert not any(":ammo:" in (i or "") for i in ids(view.target_rows))
+    assert {"attack:bow:g1:ammo:sleep", "attack:bow:g1:ammo:fire"} <= {o.id for o in view.more}
+
+
+def test_two_bows_each_get_group_right_after_own_row():
+    view = build_view(bows_fight(["bow1", "bow2"], ["a", "b", "c"]), roster(1), "g1")
+    rows = view.target_rows
+    assert labels(rows) == ["Атака: bow1", "Стрелы ▸", "Атака: bow2", "Стрелы ▸"]
+    assert [r.group for r in rows] == [None, "ammo:bow1", None, "ammo:bow2"]
+
+
+def test_bow_without_special_arrows_has_no_group_row():
+    view = build_view(bows_fight(["bow"], []), roster(1), "g1")
+    assert labels(view.target_rows) == ["Атака: bow"]
+
+
+def test_ammo_group_is_limited_to_chosen_bow():
+    options = bows_fight(["bow1", "bow2"], ["a", "b"])
+    view = build_view(options, roster(1), "g1", expanded="ammo:bow2")
+    assert ids(view.rows[1:3]) == ["attack:bow2:g1:ammo:a", "attack:bow2:g1:ammo:b"]
+    assert len(view.rows) == 3
+
+
+def test_state_set_target_collapses_ammo_group():
+    state = state_with()
+    state.expanded = "ammo:bow"
+    state.set_target("g2")
+    assert state.expanded is None
+
+
+def test_long_ammo_group_keeps_limit_and_ends_with_more_row():
+    arrows = [f"a{i}" for i in range(12)]
+    view = build_view(bows_fight(["bow"], arrows), roster(1), "g1", expanded="ammo:bow")
+    assert len(view.rows) == MAX_ROWS
+    assert view.rows[0].kind == "back"
+    assert view.rows[-1].kind == "more"
+    assert {f"attack:bow:g1:ammo:a{i}" for i in range(12)} <= {o.id for o in view.more}
+
+
+def test_two_bows_six_arrows_five_targets_fit_limit():
+    options = bows_fight(["bow1", "bow2"], [f"a{i}" for i in range(6)], 5, ("sword",))
+    view = build_view(options, roster(5), "g1")
+    assert len(view.rows) <= MAX_ROWS
+    assert view.rows[-1].kind == "more"
+
+
+def test_nine_weapons_and_two_bows_keep_groups_visible():
+    arrows = [f"a{i}" for i in range(6)]
+    tail = len(free_block_options(("hall",)))
+
+    def part(bows, melee):
+        return bows_fight(bows, arrows, 1, melee)[:-tail]
+
+    # порядок как в замере t446: лук, три клинка, второй лук, остальные клинки
+    options = (
+        part(["bow1"], ()) + part([], ("w0", "w1", "w2")) + part(["bow2"], ())
+        + part([], ("w3", "w4", "w5", "w6")) + free_block_options(("hall",))
+    )
+    view = build_view(options, roster(1), "g1")
+    shown = labels(view.rows)
+    assert len(view.rows) <= MAX_ROWS
+    assert shown.count("Стрелы ▸") == 2
+    assert shown[shown.index("Атака: bow1") + 1] == "Стрелы ▸"
+    assert shown[-1] == MORE_LABEL
 
 
 # заклинания, зоны, неизвестное, пустые случаи
@@ -819,6 +944,19 @@ def test_real_fight_view_fits_and_has_all_three_weapons(cfg, tmp_path):
     for weapon in ("composite_longbow", "harpoon_dart", "improvised_thrown"):
         assert f"attack:{weapon}:g2" in shown
     assert not any(i and i.endswith(":g1") for i in shown)
+
+
+def test_real_fight_folds_arrows_of_longbow_into_group(cfg, tmp_path):
+    game = goblins_game(cfg, tmp_path, 3)
+    options = game.runner.preview_turn()
+    chips = [TargetChip(f"g{i}", f"Воин-гоблин {i}", "7/7") for i in (1, 2, 3)]
+    view = build_view(options, chips, "g2")
+    assert ids(view.target_rows)[:2] == ["attack:composite_longbow:g2", None]
+    assert labels(view.target_rows)[1] == "Стрелы ▸"
+    opened = build_view(options, chips, "g2", expanded="ammo:composite_longbow")
+    assert len(opened.rows) == 5
+    assert all(i.startswith("attack:composite_longbow:g2:ammo:") for i in ids(opened.rows[1:]))
+    assert all(" — " not in label and "→" not in label for label in labels(opened.rows[1:]))
 
 
 # fit в build_view: стабилизация и мультиатака вытесняются раньше атаки по цели

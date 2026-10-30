@@ -669,6 +669,44 @@ def test_f3_marks_ranged_attack_as_not_stunning(cfg, tmp_path, tui):
     assert "(" in rows[1]
 
 
+def test_arrows_group_expands_lists_arrows_and_escape_returns(cfg, tmp_path, tui):
+    app, _ = goblins_app(cfg, tmp_path)
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        before = menu_rows(app)
+        await pilot.press(row_key(app, "Стрелы ▸"))
+        await pilot.pause()
+        opened = menu_rows(app)
+        await pilot.press("escape")
+        await pilot.pause()
+        return before, opened, menu_rows(app)
+
+    before, opened, after = run(app, steps)
+    assert before[2] == "Стрелы ▸"
+    assert opened[1] == "← Назад"
+    assert len(opened) == 5 and "осталось" in opened[2]
+    assert after == before
+
+
+def test_arrow_digit_in_group_makes_turn_and_echoes_full_label(cfg, tmp_path, tui):
+    app, game = goblins_app(cfg, tmp_path)
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        await pilot.press(row_key(app, "Стрелы ▸"))
+        await pilot.pause()
+        before = game.bundle.session.turn_seq
+        await pilot.press("2")
+        await settle(app, pilot)
+        return before, game.bundle.session.turn_seq, feed(tui, app)
+
+    before, after, text = run(app, steps)
+    assert after == before + 1
+    assert f"▸ Ты: {LONGBOW} — " in text
+    assert "(осталось" in text and f"→ {GOBLIN} 1" in text
+
+
 def test_more_modal_digits_pick_options_one_to_nine(cfg, tmp_path, tui):
     app, game = goblins_app(cfg, tmp_path)
 

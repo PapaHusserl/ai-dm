@@ -1,10 +1,11 @@
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from ai_dm.combat.available import HIDDEN_KINDS
 
 # Меню хода героя: цель + действия против неё, короткий блок бесцелевых, остальное в «Ещё…».
 # Слой отображения поверх плоского списка вариантов: движок и нумерация протокола не меняются.
+# Особые стрелы лука (≥ 2 вида) сворачиваются в «Стрелы ▸» под строкой лука.
 MAX_ROWS = 10
 SPELLS_INLINE = 2
 BACK_LABEL = "← Назад"
@@ -12,6 +13,9 @@ MORE_LABEL = "Ещё…"
 MOVE_LABEL = "Идти ▸"
 SPELLS_TARGET_LABEL = "Заклинания на цель ▸"
 SPELLS_FREE_LABEL = "Заклинания без цели ▸"
+AMMO_LABEL = "Стрелы ▸"
+AMMO_INLINE = 1
+AMMO_GROUP = "ammo:"
 NO_STUN_NOTE = " (дальнобойным — не оглушить)"
 # новый kind без записи уезжает в «Ещё…»
 CATEGORY_BY_KIND = {
@@ -35,6 +39,7 @@ SPECIAL_FREE = ("end_turn", "escape")
 TARGET_PARAM_KINDS = ("attack", "cast", "transfer_mark", "parley", "disarm")
 SUFFIX = re.compile(r" \(ещё (\d+) из 2\)$")
 NAME = re.compile(r" → [^()]*?(?= \(|$)")
+AMMO_PREFIX = re.compile(r"^Атака: .*? — ")
 
 
 @dataclass
@@ -148,19 +153,31 @@ def is_free_spell(option, enemies):
     return option.kind == "cast" and target_of(option) not in enemies
 
 
+def ammo_after(bow, options, target, nonlethal):
+    # строки после атаки луком: группа «Стрелы ▸» или, если вид один, сама стрела;
+    # id стрелы -- «attack:<лук>:<цель>:ammo:<стрела>»
+    group = [MenuRow(AMMO_LABEL, kind="expand", group=f"{AMMO_GROUP}{bow.params['weapon']}")]
+    ammo = [
+        attack_row(o, options, target, nonlethal)
+        for o in options
+        if o.id.startswith(f"{bow.id}:ammo:")
+    ]
+    return group if len(ammo) > AMMO_INLINE else ammo
+
+
 def target_block(options, target, nonlethal):
     if target is None:
         return []
     rows = []
     spells = []
-    for option in options:
+    # стрелы -- после атаки своим луком (ammo_after), оглушающие версии -- через attack_row
+    for option in [o for o in options if "ammo" not in o.params and not o.params.get("nonlethal")]:
         if is_target_spell(option, target):
             spells.append(option)
-        elif option.params.get("nonlethal"):
-            continue
         elif CATEGORY_BY_KIND.get(option.kind) == "target" and target_of(option) == target:
             if option.kind == "attack":
                 rows.append(attack_row(option, options, target, nonlethal))
+                rows += ammo_after(option, options, target, nonlethal)
             else:
                 rows.append(option_row(option, "target", target))
     if len(spells) <= SPELLS_INLINE:
@@ -185,7 +202,14 @@ def free_block(options, enemies):
     return rows + [option_row(o, "free") for o in options if o.kind == "end_turn"]
 
 
-def group_rows(options, target, enemies, group):
+def group_rows(options, target, enemies, group, nonlethal=False):
+    if group.startswith(AMMO_GROUP):
+        prefix = f"attack:{group[len(AMMO_GROUP) :]}:{target}:ammo:"
+        ammo = [o for o in options if o.id.startswith(prefix)]
+        rows = [attack_row(o, options, target, nonlethal) for o in ammo]
+        # «Атака: лук — стрела (осталось 9)» -> «Стрела (осталось 9)»: в группе лук известен
+        rows = [replace(row, label=AMMO_PREFIX.sub("", row.label).capitalize()) for row in rows]
+        return [MenuRow(BACK_LABEL, kind="back")] + rows
     if group == "move":
         chosen = [option for option in options if option.kind == "move"]
     elif group == "spells_target":
@@ -205,7 +229,7 @@ def build_view(options, roster, target, nonlethal=False, expanded=None):
     view = MenuView(target, targets(options, roster), header_of(options), more=list(options))
     enemies = {chip.ref for chip in roster}
     if expanded is not None:
-        rows = group_rows(options, target, enemies, expanded)
+        rows = group_rows(options, target, enemies, expanded, nonlethal)
         if len(rows) > MAX_ROWS:
             # длинная группа: хвост уходит в «Ещё…» (там полный список)
             rows = rows[: MAX_ROWS - 1] + [MenuRow(MORE_LABEL, kind="more", block="free")]
