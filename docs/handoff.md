@@ -24,5 +24,5 @@
 - Отклик 197 — semia-kabanov/otkliki/orkestrator/ai-dm/2026-10-30-197.md.
 
 ## Ссылки
-- docs/plan-197.md («Итог»); последний коммит — пока нет.
+- docs/plan-197.md («Итог»); последний коммит — c7d0c92.
 - Очередь — docs/ROADMAP.md; беклог — docs/BACKLOG.md; NOTES.md. AGENTS.md, docs/RULES.md.
