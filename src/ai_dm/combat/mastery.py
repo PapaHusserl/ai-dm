@@ -56,7 +56,69 @@ def on_hit(engine, ref, target_ref, info, damage, provoked=False) -> list[Domain
         prone = AppliedCondition(id="prone", source=ref)
         if saved.outcome == "fail" and engine.impose(target_ref, prone):
             engine.log(f"  {engine.name(target_ref)} сбит с ног")
+    if mastery == "slow" and damage > 0:
+        slow(engine, ref, target_ref)
+    if mastery == "cleave" and not provoked:
+        mark_cleave(engine, ref, target_ref, info)
+    if mastery == "push":
+        return push(engine, ref, target_ref)
     return []
+
+
+def slow(engine, ref, target_ref) -> None:
+    # Замедление: -10 фт скорости цели до начала следующего хода героя;
+    # одна метка на цель, от кого бы ни была
+    effects = engine.creature(target_ref).active_effects
+    if any(e.id == "slow" for e in effects):
+        return
+    effects.append(
+        ActiveEffect(
+            id="slow", source=ref, kind="speed", params={"amount": -10},
+            expires=Expiry(kind="start_of_turn", owner=ref),
+        )
+    )
+    engine.log(f"  {engine.name(target_ref)}: Замедление, скорость −10 фт")
+
+
+def mark_cleave(engine, ref, target_ref, info) -> None:
+    # Рассечение: раз в ход попадание открывает вторую атаку по другой цели в зоне первой
+    effects = engine.creature(ref).active_effects
+    if info.kind != "melee" or any(e.id == "cleave_ready" for e in effects):
+        return
+    effects.append(
+        ActiveEffect(
+            id="cleave_ready", source=ref, kind="flag",
+            params={
+                "weapon": info.id, "target": target_ref,
+                "zone": engine.part(target_ref).zone_id, "used": False,
+            },
+            expires=Expiry(kind="end_of_turn", value=0, owner=ref),
+        )
+    )
+
+
+def push_zone(engine, target_ref) -> str | None:
+    # куда отбрасывает Толчок: соседняя зона ниже по высоте, иначе первая соседняя
+    zones = engine.state.zones
+    here = [z for z in zones if z.id == engine.part(target_ref).zone_id][0]
+    near = [z for z in zones if z.id in here.adjacent]
+    lower = sorted((z for z in near if z.elevation < here.elevation), key=lambda z: z.elevation)
+    chosen = lower or near
+    return chosen[0].id if chosen else None
+
+
+def push(engine, ref, target_ref) -> list[DomainEvent]:
+    # Толчок: цель не крупнее Large уходит в соседнюю зону (падение -- как у толчка монстра)
+    # локальные импорты: цикл импортов attack <-> mastery
+    from ai_dm.combat import falling
+    from ai_dm.combat.actions.attack import SIZES, target_size
+
+    if SIZES.index(target_size(engine, target_ref)) > SIZES.index("large"):
+        return []
+    zone = push_zone(engine, target_ref)
+    if zone is None:
+        return []
+    return falling.push(engine, ref, target_ref, zone)
 
 
 def on_miss(engine, ref, target_ref, info) -> tuple[int, list[DomainEvent]]:

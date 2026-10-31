@@ -31,7 +31,7 @@ from test_dragon_arrows import arrow_option, build_dragon, fresh_hero, hit_roll
 from ai_dm.combat import end
 from ai_dm.combat.downed import wake_sleeping
 from ai_dm.content.models.common import EffectSpec
-from ai_dm.rules.inventory import add_item
+from ai_dm.rules.inventory import add_item, equip
 from ai_dm.state.creature import AppliedCondition, Expiry
 
 FAIL = 11
@@ -156,7 +156,11 @@ def test_sleep_arrow_is_spent(dragon, cfg):
 
 def melee_again(engine, registry):
     # дальняя атака по лежащему цели идёт с помехой (гасит преимущество), поэтому бьём вблизи
-    give_weapon(engine.heroes["hero"], registry, "longsword")
+    hero = engine.heroes["hero"]
+    give_weapon(hero, registry, "longsword")
+    # со щитом длинный меч бьёт 1d8 (одной рукой), без щита -- 1d10 (К2, решение 12)
+    add_item(hero, "shield", cost_cp=0)
+    equip(hero, "shield", registry)
     move_to(engine, "hero", "hall")
     attack_again(engine, "attack:longsword:goblin_1")
 
@@ -378,5 +382,6 @@ def test_fire_arrow_burns_target_that_endures_at_one_hp(dragon, cfg):
     engine.rng.queues["d6"] = [4]
     set_hp(engine, "goblin_1", 5)
     engine.perform("hero", arrow_option(engine, "arrow_fire").id)
-    kinds = [e.kind for e in creature(engine, "goblin_1").active_effects]
+    # Замедление от мастерства лука -- не про этот тест
+    kinds = [e.kind for e in creature(engine, "goblin_1").active_effects if e.id != "slow"]
     assert (hp(engine, "goblin_1"), kinds) == (1, ["burning"])

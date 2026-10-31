@@ -268,13 +268,26 @@ def attack_bonus(hero, registry, weapon_id: str) -> int:
     return sum(value for _, value in attack_parts(hero, registry, weapon_id))
 
 
-def damage_parts(hero, registry, weapon_id: str) -> list[tuple[str, int]]:
+def bare_off_hand(hero, registry, modifier: int) -> bool:
+    # удар второй рукой: модификатор характеристики не прибавляется, если он не отрицательный и
+    # нет стиля «Бой двумя оружиями»
+    styled = any(e.when == "off_hand" for e in feat_effects(hero, registry, "weapon_damage"))
+    return modifier >= 0 and not styled
+
+
+def damage_parts(hero, registry, weapon_id: str, off_hand=False) -> list[tuple[str, int]]:
     weapon = registry.get("weapon", weapon_id)
-    return [ability_part(hero, weapon_ability(hero, weapon))]
+    part = ability_part(hero, weapon_ability(hero, weapon))
+    if off_hand and bare_off_hand(hero, registry, part[1]):
+        return []
+    return [part]
 
 
-def damage_bonus(hero, registry, weapon_id: str) -> int:
-    return weapon_ability_mod(hero, registry.get("weapon", weapon_id))
+def damage_bonus(hero, registry, weapon_id: str, off_hand=False) -> int:
+    bonus = weapon_ability_mod(hero, registry.get("weapon", weapon_id))
+    if off_hand and bare_off_hand(hero, registry, bonus):
+        return 0
+    return bonus
 
 
 def unarmed_attack(hero, registry) -> tuple[int, list, int, list]:

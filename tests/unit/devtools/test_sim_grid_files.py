@@ -67,19 +67,19 @@ def test_sim_grid_is_not_part_of_quality_or_test():
             assert "sim-grid" not in line
 
 
-# К7д: сцена cellar в базовой линии, goblins3 прежняя
+# К7д: сцена cellar в базовой линии; К2: линия goblins3 после Скрытой атаки и авто-героя
 
-GOBLINS3_K7K = {
-    "fighter": {1: 32.0, 2: 69.5, 3: 87.0, 4: 97.5, 5: 99.5},
-    "rogue": {1: 0.0, 2: 1.0, 3: 1.5, 4: 7.5, 5: 17.0},
+GOBLINS3_K2 = {
+    "fighter": {1: 32.0, 2: 81.0, 3: 91.0, 4: 99.5, 5: 100.0},
+    "rogue": {1: 0.5, 2: 0.0, 3: 37.5, 4: 57.5, 5: 89.5},
     "cleric": {1: 0.0, 2: 0.0, 3: 1.0, 4: 5.0, 5: 11.0},
     "wizard": {1: 0.0, 2: 8.0, 3: 27.0, 4: 52.0, 5: 67.5},
     "ranger": {1: 1.5, 2: 6.0, 3: 14.0, 4: 22.0, 5: 88.0},
 }
 
 
-def test_repo_baseline_goblins3_is_unchanged():
-    assert repo_baseline()["goblins3"] == GOBLINS3_K7K
+def test_repo_baseline_goblins3_is_the_k2_line():
+    assert repo_baseline()["goblins3"] == GOBLINS3_K2
 
 
 def test_repo_baseline_covers_the_whole_cellar_grid():

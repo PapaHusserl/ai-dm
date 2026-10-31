@@ -1,7 +1,7 @@
 # Мастерство оружия (шаг 17, TZ 6, ARCHITECTURE «Мастерство оружия»): Graze, Sap, Vex, Topple.
 #   Срабатывает только если id оружия в hero.sheet.weapon_masteries (у героя) и оружие имеет
-#   это mastery (Weapon.mastery). Nick и Slow -- данные без механики: атака с таким оружием
-#   работает как обычная, эффектов не добавляет.
+#   это mastery (Weapon.mastery). Nick (удар второй рукой, К2) и Slow (метка speed -10 фт на
+#   цели до начала следующего хода героя, К2) -- см. отдельные тесты К2.
 #   graze  -- при ПРОМАХЕ цель теряет урон, равный модификатору характеристики атаки (без кубиков)
 #   sap    -- при попадании на цель ActiveEffect(id="sap", kind="modifier",
 #             params={"target": "attack_roll", "mode": "disadvantage", "consume": True},
@@ -22,6 +22,7 @@
 from combat_kit import (
     ScriptedRng,
     creature,
+    custom_registry,
     down_hero,
     give_weapon,
     hp,
@@ -209,22 +210,129 @@ def test_nick_weapon_attacks_normally(registry, cfg):
     engine.perform("hero", "attack:dagger:goblin_1")
     assert hp(engine, "goblin_1") == 10 - 5
     assert effect_ids(engine, "goblin_1") == []
-    assert effect_ids(engine, "hero") == []
+    # на герое только флаг «атаковал лёгким оружием» для удара второй рукой (К2)
+    assert effect_ids(engine, "hero") == ["light_attack"]
 
 
-def test_slow_weapon_attacks_normally(registry, cfg):
-    # лёгкий арбалет: +3 (ЛОВ 1 + мастерство 2); 1d8 + 1
-    engine = mastery_duel(
-        registry, cfg, ScriptedRng(d20=[12], d8=[4]), "light_crossbow", goblin_zone="balcony"
+def test_nick_does_not_add_conditions(registry, cfg):
+    engine = mastery_duel(registry, cfg, ScriptedRng(d20=[10], d4=[2]), "dagger")
+    engine.perform("hero", "attack:dagger:goblin_1")
+    assert creature(engine, "goblin_1").conditions == []
+
+
+# Slow (К2): лёгкий арбалет, +3 (ЛОВ 1 + мастерство 2); 1d8 + 1
+
+def slow_duel(registry, cfg, rng, masteries=None):
+    return mastery_duel(
+        registry, cfg, rng, "light_crossbow", masteries=masteries, goblin_zone="balcony"
     )
+
+
+def slow_effects(engine):
+    return [e for e in creature(engine, "goblin_1").active_effects if e.id == "slow"]
+
+
+def test_slow_hit_puts_a_speed_effect_on_the_target(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
     engine.perform("hero", "attack:light_crossbow:goblin_1")
     assert hp(engine, "goblin_1") == 10 - 5
+    assert [(e.kind, e.params["amount"], e.source) for e in slow_effects(engine)] == [
+        ("speed", -10, "hero")
+    ]
+
+
+def test_slow_lasts_until_the_attacker_next_turn(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    expires = slow_effects(engine)[0].expires
+    assert (expires.kind, expires.owner) == ("start_of_turn", "hero")
+
+
+def test_slow_is_removed_at_the_start_of_the_hero_turn(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    engine.start_turn("hero")
+    assert slow_effects(engine) == []
+
+
+def test_slow_is_not_removed_at_the_start_of_the_target_turn(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    engine.start_turn("goblin_1")
+    assert len(slow_effects(engine)) == 1
+
+
+def test_slow_log_line(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    assert any("Замедление, скорость −10 фт" in line for line in engine.state.log)
+
+
+def test_slow_does_not_stack(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12, 12], d8=[1, 1]))
+    creature(engine, "goblin_1").hp_current = 30
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    engine.state.participants[0].turn.action = True
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    assert len(slow_effects(engine)) == 1
+
+
+def test_slow_logs_once_when_not_stacking(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12, 12], d8=[1, 1]))
+    creature(engine, "goblin_1").hp_current = 30
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    engine.state.participants[0].turn.action = True
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    assert len([line for line in engine.state.log if "Замедление" in line]) == 1
+
+
+def test_no_slow_when_the_hit_deals_no_damage(registry, cfg):
+    # иммунитет к колющему: попадание есть, итоговый урон 0
+    reg = custom_registry(registry, immune={"damage_immunities": ["piercing"]})
+    hero = make_fighter(reg)
+    give_weapon(hero, reg, "light_crossbow")
+    hero.sheet.weapon_masteries = ["light_crossbow"]
+    engine = make_engine(
+        reg, cfg, heroes=[hero], rng=ScriptedRng(d20=[12], d8=[4]),
+        monsters=[mon("goblin_1", "immune", "balcony")],
+    )
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    assert (hp(engine, "goblin_1"), effect_ids(engine, "goblin_1")) == (10, [])
+
+
+def test_two_heroes_with_slow_leave_one_mark_and_one_line(registry, cfg):
+    heroes = []
+    for hero_id in ("hero", "hero2"):
+        hero = make_fighter(registry, hero_id)
+        give_weapon(hero, registry, "light_crossbow")
+        hero.sheet.weapon_masteries = ["light_crossbow"]
+        heroes.append(hero)
+    engine = make_engine(
+        registry, cfg, heroes=heroes, rng=ScriptedRng(d20=[12, 12], d8=[1, 1]),
+        monsters=[mon("goblin_1", "goblin_warrior", "balcony")],
+    )
+    creature(engine, "goblin_1").hp_current = 30
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    engine.perform("hero2", "attack:light_crossbow:goblin_1")
+    lines = [line for line in engine.state.log if "Замедление" in line]
+    assert (len(slow_effects(engine)), len(lines)) == (1, 1)
+
+
+def test_no_slow_on_a_miss(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[2]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
     assert effect_ids(engine, "goblin_1") == []
 
 
-def test_nick_and_slow_do_not_add_conditions(registry, cfg):
-    engine = mastery_duel(registry, cfg, ScriptedRng(d20=[10], d4=[2]), "dagger")
-    engine.perform("hero", "attack:dagger:goblin_1")
+def test_slow_needs_the_mastery(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]), masteries=[])
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
+    assert effect_ids(engine, "goblin_1") == []
+
+
+def test_slow_adds_no_conditions(registry, cfg):
+    engine = slow_duel(registry, cfg, ScriptedRng(d20=[12], d8=[4]))
+    engine.perform("hero", "attack:light_crossbow:goblin_1")
     assert creature(engine, "goblin_1").conditions == []
 
 

@@ -16,7 +16,35 @@ def second_wind(engine, ref, option) -> list[DomainEvent]:
     amount += effect_amount(effect, hero, engine.registry)
     healed = heal(hero, amount)
     engine.log(f"{engine.name(ref)}: Второе дыхание +{healed}, {engine.hp_text(ref)}")
+    if "tactical_shift" in hero_feature_ids(hero, engine.registry):
+        engine.part(ref).turn.disengaged = True
+        engine.log("  Тактический сдвиг: ход не провоцирует атаки")
     return []
+
+
+def athlete_crit(engine, ref, crit) -> None:
+    # Выдающийся атлет: после критического попадания ход не провоцирует атаки
+    if not crit or not engine.is_hero(ref):
+        return
+    if "remarkable_athlete" in hero_feature_ids(engine.heroes[ref], engine.registry):
+        engine.part(ref).turn.disengaged = True
+        engine.log("  Выдающийся атлет: ход не провоцирует атаки")
+
+
+def light_mark(engine, ref, info) -> None:
+    # атака лёгким оружием в действии Атака открывает удар второй рукой (флаг до конца хода)
+    if not engine.is_hero(ref) or info.weapon_id is None:
+        return
+    if "light" not in engine.registry.get("weapon", info.weapon_id).properties:
+        return
+    effects = engine.creature(ref).active_effects
+    effects[:] = [e for e in effects if e.id != "light_attack"]
+    effects.append(
+        ActiveEffect(
+            id="light_attack", source=ref, kind="flag", params={"weapon": info.weapon_id},
+            expires=Expiry(kind="end_of_turn", value=0, owner=ref),
+        )
+    )
 
 
 def horde_mark(engine, ref, info, target_ref) -> None:

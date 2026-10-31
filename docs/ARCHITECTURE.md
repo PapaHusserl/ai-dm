@@ -257,7 +257,7 @@ ai-dm/
 | Виды | Все 4 с механическими чертами: человек (Resourceful, Skillful, Versatile), эльф (Fey Ancestry), дварф (Dwarven Resilience), полурослик (Luck, Brave). |
 | Предыстории | 4 SRD как данные + валидатор структуры 5.2 для произвольной. |
 | Черты происхождения | Alert, Savage Attacker, Skilled — механически; Magic Initiate — только данные. |
-| Мастерство оружия | Механизм + Graze, Sap, Vex, Topple. Nick и Slow — данными (для точности оружия SRD), механика — позже; Push/Cleave — позже. |
+| Мастерство оружия | Механизм + Graze, Sap, Vex, Topple; в К2 — Push, Cleave, Slow (метка `speed` на цели, как у морозной стрелы) и Nick (удар второй рукой без бонусного действия). |
 | Оружие и доспехи | Длинный меч, двуручный меч, скимитар, короткий меч, кинжал, короткий лук, лёгкий арбалет, копьё; кожаный, кольчуга, щит. |
 | Расходники | Зелье лечения. |
 | Заклинания | Fire Bolt, Magic Missile, Burning Hands, Cure Wounds, Bless. |
@@ -1101,7 +1101,8 @@ ui.cli ──> ui.simple ─┐
 → `MenuView{target, targets, header, target_rows, free_rows, more}`, `CATEGORY_BY_KIND`/`RANK_BY_KIND` (новый kind без записи
 — в «Ещё…»), `MAX_ROWS = 10`, `MenuState` (цель помнится между шагами боя, оглушающий, раскрытая группа). Блок цели: вся
 доступная атака по цели (оружие вытесняется последним), переговоры, обезоруживание, заклинания (>2 — «Заклинания на цель ▸»),
-особые стрелы (по луку — «Стрелы ▸»); бесцелевой: «Идти», Рывок, Уклонение, Отход, Второе дыхание,
+особые стрелы (по луку — «Стрелы ▸»), Удар второй рукой, Истребитель орд, Рассечение; бесцелевой: «Идти», Рывок, Уклонение,
+Отход, Второе дыхание, Всплеск действий, Верный прицел, Хитрое действие, «Хитрый удар ▸» (группа, `STRIKE_GROUP`),
 Стабилизировать, «Заклинания без цели ▸», «Закончить ход»;
 последняя строка — «Ещё…» (`MoreModal`: полный плоский список). В TUI `CombatMenu` (`#actions`) с `TargetBar` и `MenuLine`:
 цифры 1–9, 0 — строки, Tab/Shift+Tab — цель, F3 — оглушающий, F4 — «Ещё…», Esc — назад из группы; «цифра+Enter» в поле —
@@ -1206,3 +1207,25 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
 - Сетка: `devtools/sim_cellar.py` (`CELLAR_POOL`, `fill_budget` — жадный набор по бюджету боя, `build_cellar`), сцена
   `cellar` в `sim_combat.SCENARIOS` и `sim_grid.SCENES`; `--difficulty` меняет её состав (`tier_of` → `party_budget`).
   Подвал Вейла: локация `old_crypt` (родитель `cellar`), тег `disarmer` у `goblin_boss` и `wight`.
+
+## К2. Воин и плут 1–5 (сейв не меняется, docs/plan-k2.md)
+
+- **Флаги хода** — `ActiveEffect(kind="flag")` с `Expiry(end_of_turn, 0, owner)`, без полей в `TurnState`: `light_attack`/
+  `offhand_used` (`combat/offhand.py`), `cleave_ready`, `horde_breaker`, `moved`, `cunning_strike` (`params["effect"]`),
+  `sneak_used` (раз в ход для всех: `sneak.reset` из `CombatEngine.start_turn` снимает его по id у всех участников, как
+  `colossus_used`). Верный прицел — `kind="modifier"` с `consume` (как «Досада»).
+- **Модули боя.** `combat/thrown.py` (`drop` — брошенное оружие на землю), `combat/offhand.py`, `combat/actions/fighter.py`
+  (Всплеск действий, Рассечение), `combat/sneak.py` (`eligible`, `damage`: кости по `tables/sneak_attack.yaml`, вызов из
+  `attack.attack` после Убийцы колоссов), `combat/actions/rogue.py` (`steady_aim`, `cunning_strike`, `strike_effect`, `resolve`,
+  `uncanny_dodge` — вызов из `attack.attack` перед `engine.damage`, `mark_moved` из `move.perform`). Модули `sneak`/`rogue`
+  импортируют `attack` лениво (цикл импортов, как `mastery.push`).
+- **Меню.** Бонусные действия (`available.bonus_actions`): Второе дыхание → Удар второй рукой → Хитрое действие
+  (`dash_bonus`, `disengage_bonus`, `hide_bonus` — вид `hide_bonus` отдельный, чтобы обычное «Спрятаться» оставалось в «Ещё…»)
+  → Верный прицел → предметы → Метка → Проворное бегство. «Хитрый удар ▸» — свободные пункты `cunning_strike:<эффект>`
+  (`available.strike_options`, не тратят бонусное действие и появляются, пока Скрытая атака в этом ходу не сработала);
+  в `ui/combat_menu` — группа `cunning_strike` в бесцелевом блоке (rank 2), раскрытие как у `move`.
+- **Модификаторы умений** — `rules/modifiers/features.FeatureSource` (Улучшенный крит, преимущество инициативы и Атлетики у
+  Выдающегося атлета); Тактический ум — `rules/tactical_mind.apply` из `skill_check`.
+- **Авто-герой** (`AutoHeroController`): Второе дыхание → Верный прицел (враг в своей зоне) → стабилизация/Истребитель орд →
+  подбор → заклинание → тактика движка → Всплеск действий, когда делать больше нечего (`pick_own` — первые четыре шага).
+  Метательное оружие авто-герой не бросает (`EngineTactics.pick_attack` отсеивает `*_thrown`).

@@ -310,9 +310,11 @@ def test_frost_slow_ends_with_its_next_turn(dragon, cfg):
     assert not [e for e in creature(engine, "goblin_1").active_effects if e.id == "arrow_frost"]
 
 
-def test_ordinary_shot_does_not_slow(dragon, cfg):
+def test_ordinary_shot_puts_no_arrow_effect(dragon, cfg):
+    # мастерство оружия (Замедление) -- не эффект стрелы
     engine, _ = shoot(dragon, cfg, plain)
-    assert not creature(engine, "goblin_1").active_effects
+    ids = [e.id for e in creature(engine, "goblin_1").active_effects]
+    assert [i for i in ids if i != "slow"] == []
 
 
 # бронебойная

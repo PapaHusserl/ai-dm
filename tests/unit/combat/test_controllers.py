@@ -21,11 +21,13 @@ from combat_kit import (
     ScriptedRng,
     creature,
     down_hero,
+    give_weapon,
     make_engine,
     make_fighter,
     make_wizard,
     mon,
     move_to,
+    option_ids,
     part,
     set_hp,
     turn,
@@ -39,6 +41,7 @@ from ai_dm.combat.controllers import (
     quarrel_targets,
 )
 from ai_dm.core.rng import Rng
+from ai_dm.rules.inventory import add_item
 from ai_dm.state.combat import DecisionPoint
 from ai_dm.state.creature import ActiveEffect
 
@@ -294,6 +297,29 @@ def test_auto_hero_walks_to_a_distant_enemy(registry, cfg):
         registry, cfg, heroes=[(make_fighter(registry), "door")],
         monsters=[mon("goblin_1", "goblin_warrior", "hall")],
     )
+    assert decide(AutoHeroController(engine), engine, "hero") == "move:hall"
+
+
+def test_auto_hero_does_not_throw_his_weapon_in_the_same_zone(registry, cfg):
+    # решение 46 К2: бросок своего оружия авто-герой не выбирает, бьёт в ближнем бою
+    hero = make_fighter(registry)
+    give_weapon(hero, registry, "dagger")
+    add_item(hero, "dagger", cost_cp=0)
+    engine = make_engine(
+        registry, cfg, heroes=[hero], monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    assert "attack:dagger_thrown:goblin_1" in option_ids(engine, "hero")
+    assert decide(AutoHeroController(engine), engine, "hero") == "attack:dagger:goblin_1"
+
+
+def test_auto_hero_with_only_thrown_options_left_walks_to_the_enemy(registry, cfg):
+    hero = make_fighter(registry)
+    give_weapon(hero, registry, "javelin")
+    engine = make_engine(
+        registry, cfg, heroes=[(hero, "door")],
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    assert "attack:javelin_thrown:goblin_1" in option_ids(engine, "hero")
     assert decide(AutoHeroController(engine), engine, "hero") == "move:hall"
 
 

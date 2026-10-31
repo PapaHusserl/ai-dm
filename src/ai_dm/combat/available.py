@@ -1,12 +1,19 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import ammo, disarm, shove
-from ai_dm.combat.actions import cast, parley
+from ai_dm.combat import ammo, disarm, offhand, shove, sneak
+from ai_dm.combat.actions import cast, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
 from ai_dm.rules.death_saves import is_dying
 from ai_dm.rules.derived import clock_text, free_cast_pool
-from ai_dm.rules.inventory import InventoryError, active_item_until, equip, find_item, item_totals
+from ai_dm.rules.inventory import (
+    InventoryError,
+    active_item_until,
+    count_item,
+    equip,
+    find_item,
+    item_totals,
+)
 from ai_dm.rules.modifiers.conditions import with_implied
 from ai_dm.rules.names import SKILL_NAMES
 
@@ -38,6 +45,7 @@ def attack_options(engine, ref) -> list[ActionOption]:
     result = []
     for info in [i for i in attacks_of(engine, ref) if ammo.can_shoot(engine, ref, i)]:
         stock = ammo.stock_text(engine, ref, info)
+        verb = "Бросок" if info.grip == "thrown" else "Атака"
         for target_ref in attack_targets(engine, ref):
             if base_advantage(engine, ref, target_ref, info) is None:
                 continue
@@ -47,7 +55,7 @@ def attack_options(engine, ref) -> list[ActionOption]:
             result.append(
                 ActionOption(
                     id=f"attack:{info.id}:{target_ref}", kind="attack",
-                    label=f"Атака: {info.name or info.id}{stock} → {engine.name(target_ref)}",
+                    label=f"{verb}: {info.name or info.id}{stock} → {engine.name(target_ref)}",
                     params=params,
                 )
             )
@@ -83,7 +91,7 @@ def ammo_options(engine, ref) -> list[ActionOption]:
         return []
     result = []
     for info in attacks_of(engine, ref):
-        if info.kind != "ranged" or info.weapon_id is None:
+        if info.kind != "ranged" or info.weapon_id is None or info.grip == "thrown":
             continue
         weapon = engine.registry.get("weapon", info.id)
         for item, qty in special_ammo(engine, ref, info.id):
@@ -384,7 +392,17 @@ def shove_options(engine, ref) -> list[ActionOption]:
 
 def horde_options(engine, ref) -> list[ActionOption]:
     # Истребитель орд: бесплатная атака тем же оружием по другой цели в зоне первой
-    flags = [e for e in engine.creature(ref).active_effects if e.id == "horde_breaker"]
+    return free_attack_options(engine, ref, "horde_breaker", "horde_breaker", "Истребитель орд")
+
+
+def cleave_options(engine, ref) -> list[ActionOption]:
+    # Рассечение: то же, но по мастерству оружия; к урону не прибавляется модификатор
+    return free_attack_options(engine, ref, "cleave_ready", "cleave", "Рассечение")
+
+
+def free_attack_options(engine, ref, flag_id, kind, title) -> list[ActionOption]:
+    # бесплатная атака тем же оружием по другой цели в зоне первой (флаг хода открывает её)
+    flags = [e for e in engine.creature(ref).active_effects if e.id == flag_id]
     if not flags or flags[0].params["used"]:
         return []
     params = flags[0].params
@@ -399,8 +417,8 @@ def horde_options(engine, ref) -> list[ActionOption]:
     ]
     return [
         ActionOption(
-            id=f"horde_breaker:{t}", kind="horde_breaker",
-            label=f"Истребитель орд: {info.name or info.id} → {engine.name(t)}",
+            id=f"{kind}:{t}", kind=kind,
+            label=f"{title}: {info.name or info.id} → {engine.name(t)}",
             params={"weapon": info.id, "target": t}, cost="free",
         )
         for t in targets
@@ -512,11 +530,91 @@ def has_nimble_escape(engine, ref) -> bool:
     return "nimble_escape" in engine.monster(ref).traits
 
 
+def surge_options(engine, ref) -> list[ActionOption]:
+    # Всплеск действий: когда действие потрачено, а заряд есть; даёт ещё одно действие
+    if not engine.is_hero(ref):
+        return []
+    pool = engine.creature(ref).resources.get("action_surge")
+    if pool is None or pool.current <= 0:
+        return []
+    return [
+        ActionOption(id="action_surge", kind="action_surge", label="Всплеск действий", cost="free")
+    ]
+
+
+def offhand_options(engine, ref) -> list[ActionOption]:
+    # удар второй рукой: бонусным действием, с Проворством -- свободно (раз в ход)
+    one = offhand.info(engine, ref)
+    if one is None or not ammo.can_shoot(engine, ref, one):
+        return []
+    cost = offhand.cost(engine, ref, one.weapon_id)
+    if cost is None:
+        return []
+    note = " (Проворство)" if cost == "free" else ""
+    return [
+        ActionOption(
+            id=f"offhand_attack:{target}", kind="offhand_attack",
+            label=f"Удар второй рукой{note}: {one.name} → {engine.name(target)}",
+            params={"weapon": one.id, "target": target}, cost=cost,
+        )
+        for target in attack_targets(engine, ref)
+        if base_advantage(engine, ref, target, one) is not None
+    ]
+
+
+def cunning_action_options(engine, ref) -> list[ActionOption]:
+    # Хитрое действие: Рывок, Отход, Спрятаться бонусным действием
+    if not rogue.has(engine, ref, "cunning_action"):
+        return []
+    result = [
+        ActionOption(
+            id="dash_bonus", kind="dash", label="Хитрое действие: Рывок",
+            params={"bonus": True}, cost="bonus",
+        ),
+        ActionOption(
+            id="disengage_bonus", kind="disengage", label="Хитрое действие: Отход",
+            params={"bonus": True}, cost="bonus",
+        ),
+    ]
+    if can_hide(engine, ref):
+        result.append(
+            ActionOption(
+                id="hide_bonus", kind="hide_bonus", label="Хитрое действие: Спрятаться",
+                params={"bonus": True}, cost="bonus",
+            )
+        )
+    return result
+
+
+def steady_aim_options(engine, ref) -> list[ActionOption]:
+    if not rogue.can_aim(engine, ref):
+        return []
+    return [ActionOption(id="steady_aim", kind="steady_aim", label="Верный прицел", cost="bonus")]
+
+
+def strike_options(engine, ref) -> list[ActionOption]:
+    # Хитрый удар: выбор эффекта следующей Скрытой атаки (бесплатно, до самой атаки);
+    # «Отравить» -- только с набором отравителя
+    if not rogue.has(engine, ref, "cunning_strike"):
+        return []
+    if any(e.id == sneak.USED for e in engine.creature(ref).active_effects):
+        return []
+    kit = count_item(engine.heroes[ref], "poisoners_kit") > 0
+    return [
+        ActionOption(
+            id=f"cunning_strike:{effect}", kind="cunning_strike", label=name,
+            params={"effect": effect}, cost="free",
+        )
+        for effect, name in rogue.EFFECTS.items()
+        if effect != "poison" or kit
+    ]
+
+
 def standard_actions(engine, ref, conditions) -> list[ActionOption]:
     # пункты, которые стоят действие: рывок, отход, уклонение, помощь, стабилизация, бегство
     p = engine.part(ref)
     if not p.turn.action:
-        return []
+        return surge_options(engine, ref)
     options = []
     options.append(ActionOption(id="dash", kind="dash", label="Рывок"))
     options.append(ActionOption(id="disengage", kind="disengage", label="Отход"))
@@ -536,7 +634,8 @@ def standard_actions(engine, ref, conditions) -> list[ActionOption]:
 
 def bonus_actions(engine, ref) -> list[ActionOption]:
     if not engine.part(ref).turn.bonus:
-        return []
+        # Проворство не тратит бонусное действие
+        return offhand_options(engine, ref)
     options = []
     if has_second_wind(engine, ref):
         options.append(
@@ -544,6 +643,8 @@ def bonus_actions(engine, ref) -> list[ActionOption]:
                 id="second_wind", kind="second_wind", label="Второе дыхание", cost="bonus"
             )
         )
+    options += offhand_options(engine, ref)
+    options += cunning_action_options(engine, ref) + steady_aim_options(engine, ref)
     options += item_options(engine, ref)
     options += transfer_mark_options(engine, ref)
     if has_nimble_escape(engine, ref):
@@ -572,9 +673,10 @@ def list_options(engine, ref) -> list[ActionOption]:
         options += multiattack_options(engine, ref)
     options += cast_options(engine, ref)
     options += move_options(engine, ref)
-    options += bonus_actions(engine, ref)
+    options += bonus_actions(engine, ref) + strike_options(engine, ref)
     options += standard_actions(engine, ref, conditions)
     options += pickup_options(engine, ref) + horde_options(engine, ref)
+    options += cleave_options(engine, ref)
     options.append(end_turn)
     if p.turn.attacks_left > 0 and not p.turn.action:
         for option in options:

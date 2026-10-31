@@ -1,3 +1,4 @@
+from ai_dm.combat.actions.standard import spend_action
 from ai_dm.combat.zones import has_hiding_place
 from ai_dm.rules.checks import skill_check
 from ai_dm.rules.derived import ability_modifier
@@ -27,7 +28,7 @@ def can_hide(engine, ref) -> bool:
 
 
 def hide(engine, ref, option) -> list:
-    engine.part(ref).turn.action = False
+    spend_action(engine, ref, option)
     result = skill_check(
         engine.heroes[ref], engine.registry, engine.rng, "stealth", dc=HIDE_DC,
         now_s=engine.world.clock.now_s,

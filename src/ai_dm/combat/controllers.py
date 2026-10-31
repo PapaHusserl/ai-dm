@@ -165,10 +165,12 @@ class EngineTactics:
         return sorted(refs, key=lambda r: (engine.creature(r).hp_current, r))[0]
 
     def pick_attack(self, options, ref):
-        # импровизированное оружие рядовые участники не берут: подручное вместо шага не бросают
+        # импровизированное оружие рядовые участники не берут: подручное вместо шага не бросают;
+        # своё оружие авто-герой тоже не бросает
         attacks = [
             o for o in options if o.kind == "attack" and not o.params["nonlethal"]
             and not o.params["weapon"].startswith("improvised")
+            and not o.params["weapon"].endswith("_thrown")
         ]
         own_zone = [t for t in self.enemies(ref, "active") if self.zone(t) == self.zone(ref)]
         if not own_zone and self.uses_kill(ref):
@@ -217,10 +219,28 @@ class EngineTactics:
 class AutoHeroController(EngineTactics):
     # тактика + то, что делает сам герой без игрока
     def choose_turn(self, options, ref) -> str:
+        chosen = self.pick_own(options, ref)
+        if chosen is not None:
+            return chosen
+        spell = self.pick_spell(options)
+        if spell is not None:
+            return spell
+        chosen = super().choose_turn(options, ref)
+        # Всплеск действий: когда делать больше нечего, а враги ещё есть
+        if chosen == "end_turn" and self.enemies(ref, "active"):
+            surge = [o.id for o in options if o.kind == "action_surge"]
+            return surge[0] if surge else chosen
+        return chosen
+
+    def pick_own(self, options, ref):
+        # что герой делает сам раньше заклинаний и атаки: лечение, прицел, стабилизация, подбор
         ids = [o.id for o in options]
         creature = self.engine.creature(ref)
         if creature.hp_current <= creature.hp_max // 2 and "second_wind" in ids:
             return "second_wind"
+        # Верный прицел перед атакой по врагу в своей зоне (ходить после него нельзя)
+        if "steady_aim" in ids and self.enemy_here(ref):
+            return "steady_aim"
         for option in options:
             if option.kind in ("stabilize", "horde_breaker"):
                 return option.id
@@ -228,10 +248,10 @@ class AutoHeroController(EngineTactics):
             for option in options:
                 if option.kind == "pickup":
                     return option.id
-        spell = self.pick_spell(options)
-        if spell is not None:
-            return spell
-        return super().choose_turn(options, ref)
+        return None
+
+    def enemy_here(self, ref) -> bool:
+        return any(self.zone(t) == self.zone(ref) for t in self.enemies(ref, "active"))
 
     def pick_spell(self, options):
         for spell_id in ("magic_missile", "fire_bolt"):

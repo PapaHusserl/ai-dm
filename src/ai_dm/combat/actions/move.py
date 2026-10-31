@@ -1,4 +1,5 @@
 from ai_dm.combat import downed, opportunity
+from ai_dm.combat.actions import rogue
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.combat.zones import hazards, is_difficult
 from ai_dm.core.events import DomainEvent
@@ -35,6 +36,7 @@ def perform(engine, ref, option) -> list[DomainEvent]:
         # атака уронила уходящего: он остаётся на месте
         return events
     p.turn.move -= 1
+    rogue.mark_moved(engine, ref)
     engine.record_move(ref, p.zone_id, new_zone)
     p.zone_id = new_zone
     engine.log(f"{engine.name(ref)} идёт: {zone_of(engine, new_zone).name}")

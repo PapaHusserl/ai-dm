@@ -1,3 +1,4 @@
+from ai_dm.combat.actions.improvise import REJECT_WORDS
 from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.combat.controllers import EngineTactics
 from ai_dm.protocol.apply import apply
@@ -33,7 +34,8 @@ class PlayerController:
                 target=spec.target, zone=spec.zone,
             )
             if isinstance(done, Rejected):
-                engine.log(f"{name}: импровизация невозможна ({done.reason})")
+                reason = REJECT_WORDS.get(done.reason, done.reason)
+                engine.log(f"{name}: импровизация невозможна ({reason})")
         if self.parley is not None and not engine.is_over and engine.is_capable(point.actor):
             spec = self.parley
             self.parley = None

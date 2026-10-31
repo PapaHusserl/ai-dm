@@ -1,13 +1,15 @@
-from ai_dm.combat import disarm, downed, end, initiative, roles, shove, stealth
+from ai_dm.combat import disarm, downed, end, initiative, offhand, roles, shove, sneak, stealth
 from ai_dm.combat.actions import (
     attack,
     cast,
     features,
+    fighter,
     improvise,
     item,
     move,
     multiattack,
     parley,
+    rogue,
     standard,
 )
 from ai_dm.combat.actions.attack import roll_damage, split_dice
@@ -46,6 +48,7 @@ PERFORM = {
     "disengage": standard.disengage,
     "dodge": standard.dodge,
     "hide": stealth.hide,
+    "hide_bonus": stealth.hide,
     "help": standard.help_ally,
     "stabilize": standard.stabilize,
     "flee": standard.flee,
@@ -54,6 +57,11 @@ PERFORM = {
     "pickup": disarm.pickup,
     "shove": shove.perform,
     "horde_breaker": features.horde_breaker,
+    "cleave": fighter.cleave,
+    "action_surge": fighter.action_surge,
+    "steady_aim": rogue.steady_aim,
+    "cunning_strike": rogue.cunning_strike,
+    "offhand_attack": offhand.perform,
     "second_wind": features.second_wind,
     "use_item": item.use,
     "equip": item.swap,
@@ -379,6 +387,8 @@ class CombatEngine:
         # Убийца колоссов: раз в ход, в том числе при атаке по возможности в чужой ход
         for other in self.state.participants:
             other.turn.colossus_used = False
+        # Скрытая атака -- раз в ход, в том числе при атаке по возможности в чужой ход
+        sneak.reset(self)
         self.state.savage_used = []
         events = self.burn(ref)
         self.expire("start_of_turn", ref)

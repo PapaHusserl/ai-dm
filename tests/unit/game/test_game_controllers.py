@@ -650,6 +650,28 @@ def test_text_rejected_improvise_keeps_turn_open(registry, cfg):
     assert any("импровизация невозможна" in line for line in engine.state.log)
 
 
+def test_text_improvise_prone_of_a_huge_target_explains_why(registry, cfg):
+    # решение 47 К2: отказ по размеру -- словами для рассказчика, не кодом
+    from combat_kit import custom_registry
+
+    from ai_dm.game.controllers import PlayerController
+    from ai_dm.protocol.requests import ImproviseSpec
+
+    huge = custom_registry(registry, goblin_warrior={"size": "huge"})
+    _, engine = hero_engine(huge, cfg)
+    spec = ImproviseSpec(skill="athletics", category="medium", effect="prone", target="g1")
+    controller = PlayerController([], improvise=spec)
+    controller.attach(engine)
+    engine.controllers["hero"] = controller
+    engine.run_controller("hero")
+    expected = (
+        "Слишком велик, чтобы сбить с ног или оттолкнуть: цель больше героя минимум на два размера"
+    )
+    assert any(expected in line for line in engine.state.log)
+    assert not any("target_too_large" in line for line in engine.state.log)
+    assert engine.part("hero").turn.action is True
+
+
 # M5 и Extra Attack: после первой атаки ход открыт, после второй закрыт
 
 def ranger_extra_attack_engine(registry, cfg):

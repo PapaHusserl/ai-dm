@@ -87,6 +87,19 @@ def check_end(engine) -> list[DomainEvent]:
     return conclude(engine)
 
 
+def award_ground(engine, item, alive_heroes) -> None:
+    # оружие с земли после победы: своё подбирает владелец, чужое достаётся первому живому герою
+    name = engine.registry.get("weapon", item.item_id).name.lower()
+    owner = item.owner_ref if item.owner_ref in alive_heroes else alive_heroes[0]
+    add_item(
+        engine.heroes[owner], item.item_id, item.qty, cost_cp=item.cost_cp, quality=item.quality
+    )
+    if item.owner_ref == owner:
+        engine.log(f"{engine.name(owner)}: подобрал {name}")
+    else:
+        engine.log(f"{name}: достаётся {engine.name(owner)}")
+
+
 def settle_ground(engine) -> None:
     # выбитое оружие: после победы достаётся героям (своё -- владельцу), иначе остаётся на поле;
     # метки disarmed на существах бой не переживают
@@ -94,17 +107,10 @@ def settle_ground(engine) -> None:
     alive_heroes = [ref for ref, hero in engine.heroes.items() if hero.status == "active"]
     won = state.outcome in ("victory", "ended_by_master") and alive_heroes
     for item in state.ground_items:
-        name = engine.registry.get("weapon", item.item_id).name.lower()
         if won:
-            owner = alive_heroes[0]
-            if item.owner_ref in alive_heroes:
-                owner = item.owner_ref
-            add_item(
-                engine.heroes[owner], item.item_id, item.qty,
-                cost_cp=item.cost_cp, quality=item.quality,
-            )
-            engine.log(f"{name}: достаётся {engine.name(owner)}")
+            award_ground(engine, item, alive_heroes)
         elif item.owner_ref in engine.heroes:
+            name = engine.registry.get("weapon", item.item_id).name.lower()
             engine.log(f"{name} ({engine.name(item.owner_ref)}) остался на поле боя")
     state.ground_items = []
     ammo.recover(engine, bool(won))

@@ -4,7 +4,8 @@ from combat_kit import make_engine, make_fighter, make_wizard, make_zones, mon, 
 
 HERO_FIGHTER = [
     "attack:longsword:goblin_1", "attack:longsword:goblin_1:nonlethal", "attack:spear:goblin_1",
-    "attack:spear:goblin_1:nonlethal", "attack:unarmed:goblin_1",
+    "attack:spear:goblin_1:nonlethal", "attack:spear_thrown:goblin_1",
+    "attack:spear_thrown:goblin_2", "attack:unarmed:goblin_1",
     "attack:unarmed:goblin_1:nonlethal", "attack:improvised:goblin_1",
     "attack:improvised:goblin_1:nonlethal", "attack:improvised_thrown:goblin_1",
     "attack:improvised_thrown:goblin_2", "disarm:goblin_1:scimitar", "disarm:goblin_1:shortbow",
@@ -35,7 +36,7 @@ WIZARD = [
 ]
 
 EXIT_HERO = [
-    "attack:improvised_thrown:boss", "dash", "disengage", "dodge",
+    "attack:spear_thrown:boss", "attack:improvised_thrown:boss", "dash", "disengage", "dodge",
     "parley:boss:intimidation:surrender", "parley:boss:persuasion:defect",
     "parley:boss:deception:flee", "flee", "second_wind", "move:hall", "end_turn",
 ]
@@ -51,7 +52,7 @@ HERO_ACTION_SPENT = [
 
 HERO_BONUS_SPENT = [
     "attack:longsword:goblin_1", "attack:longsword:goblin_1:nonlethal", "attack:spear:goblin_1",
-    "attack:spear:goblin_1:nonlethal", "attack:unarmed:goblin_1",
+    "attack:spear:goblin_1:nonlethal", "attack:spear_thrown:goblin_1", "attack:unarmed:goblin_1",
     "attack:unarmed:goblin_1:nonlethal", "attack:improvised:goblin_1",
     "attack:improvised:goblin_1:nonlethal", "attack:improvised_thrown:goblin_1",
     "disarm:goblin_1:scimitar", "disarm:goblin_1:shortbow", "dash", "disengage", "dodge",

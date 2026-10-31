@@ -29,7 +29,8 @@ from combat_kit import (
     set_hp,
 )
 
-from ai_dm.combat.actions.attack import attack_targets
+from ai_dm.combat.actions.attack import attack_targets, attacks_of
+from ai_dm.rules.inventory import add_item, equip
 from ai_dm.rules.results import Rejected
 from ai_dm.state.creature import ActiveEffect, AppliedCondition
 
@@ -378,3 +379,138 @@ def test_quarreling_monster_gets_attack_options_against_mates_only(registry, cfg
     quarrel_flag(engine)
     ids = [i for i in option_ids(engine, "goblin_1") if i.startswith("attack:")]
     assert ids and all(i.endswith(":goblin_2") for i in ids)
+
+
+# К2 П2: универсальное оружие двумя руками (решение 12) и «Бой двуручным оружием» (решение 9)
+
+def hero_info(engine, weapon_id):
+    return [i for i in attacks_of(engine, "hero") if i.id == weapon_id][0]
+
+
+def versatile_duel(
+    registry, cfg, rng=None, shield=True, style=None, savage=False, weapon="longsword"
+):
+    hero = make_fighter(registry)
+    if weapon != "longsword":
+        give_weapon(hero, registry, weapon)
+    if not shield:
+        hero.equipped.shield = None
+    hero.sheet.feats += [f for f in (style, "savage_attacker" if savage else None) if f]
+    return duel(registry, cfg, rng, hero=hero)
+
+
+def log_text(engine):
+    return "\n".join(engine.state.log)
+
+
+def test_versatile_weapon_with_a_shield_hits_with_the_one_hand_die(registry, cfg):
+    engine = versatile_duel(registry, cfg)
+    assert hero_info(engine, "longsword").dice == "1d8"
+
+
+def test_versatile_weapon_with_a_free_hand_hits_with_the_two_hand_die(registry, cfg):
+    engine = versatile_duel(registry, cfg, shield=False)
+    info = hero_info(engine, "longsword")
+    assert (info.dice, info.grip) == ("1d10", "two_handed")
+
+
+def test_versatile_weapon_with_a_weapon_in_the_left_hand_uses_the_one_hand_die(registry, cfg):
+    engine = versatile_duel(registry, cfg, shield=False)
+    hero = engine.heroes["hero"]
+    add_item(hero, "dagger", cost_cp=0)
+    equip(hero, "dagger", registry, "off_hand")
+    assert hero_info(engine, "longsword").dice == "1d8"
+
+
+def test_versatile_two_hand_die_is_rolled_in_damage(registry, cfg):
+    engine = versatile_duel(registry, cfg, ScriptedRng(d20=[15], d10=[9]), shield=False)
+    engine.perform("hero", "attack:longsword:goblin_1")
+    # 1d10 (9) + Сил 3 = 12 из 10 HP: гоблин убит
+    assert hp(engine, "goblin_1") == 0
+
+
+def test_thrown_versatile_weapon_rolls_the_plain_die(registry, cfg):
+    hero = make_fighter(registry)
+    give_weapon(hero, registry, "spear")
+    hero.equipped.shield = None
+    engine = duel(registry, cfg, hero=hero, hero_zone="door", goblin_zone="hall")
+    assert hero_info(engine, "spear_thrown").dice == "1d6"
+
+
+def test_two_handed_melee_weapon_has_the_two_handed_grip(registry, cfg):
+    engine = versatile_duel(registry, cfg, weapon="greatsword")
+    assert hero_info(engine, "greatsword").grip == "two_handed"
+
+
+def test_great_weapon_fighting_raises_low_dice_of_a_two_handed_sword(registry, cfg):
+    rng = ScriptedRng(d20=[15], d6=[1, 2])
+    engine = versatile_duel(registry, cfg, rng, style="great_weapon_fighting", weapon="greatsword")
+    engine.perform("hero", "attack:greatsword:goblin_1")
+    # 2d6: 1→3, 2→3 = 6, + Сил 3 = 9
+    assert "2d6 (1→3, 2→3) + 3 Сил = 9" in log_text(engine)
+    assert hp(engine, "goblin_1") == 1
+
+
+def test_great_weapon_fighting_does_not_touch_dice_of_three_and_more(registry, cfg):
+    rng = ScriptedRng(d20=[15], d6=[3, 6])
+    engine = versatile_duel(registry, cfg, rng, style="great_weapon_fighting", weapon="greatsword")
+    engine.perform("hero", "attack:greatsword:goblin_1")
+    # 2d6 (3, 6) + 3 Сил = 12 -- без «→»; гоблин (10 HP) убит
+    assert "2d6 (3, 6) + 3 Сил = 12" in log_text(engine)
+    assert hp(engine, "goblin_1") == 0
+
+
+def test_great_weapon_fighting_works_for_a_versatile_weapon_in_two_hands(registry, cfg):
+    rng = ScriptedRng(d20=[15], d10=[1])
+    engine = versatile_duel(registry, cfg, rng, shield=False, style="great_weapon_fighting")
+    engine.perform("hero", "attack:longsword:goblin_1")
+    assert "1d10 (1→3) + 3 Сил = 6" in log_text(engine)
+
+
+def test_great_weapon_fighting_does_not_work_with_a_shield(registry, cfg):
+    rng = ScriptedRng(d20=[15], d8=[1])
+    engine = versatile_duel(registry, cfg, rng, style="great_weapon_fighting")
+    engine.perform("hero", "attack:longsword:goblin_1")
+    assert hp(engine, "goblin_1") == 10 - (1 + 3)
+    assert "→3" not in log_text(engine)
+
+
+def test_great_weapon_fighting_does_not_work_for_a_one_handed_weapon(registry, cfg):
+    rng = ScriptedRng(d20=[15], d6=[1])
+    hero = make_fighter(registry)
+    hero.sheet.feats.append("great_weapon_fighting")
+    give_weapon(hero, registry, "scimitar")
+    engine = duel(registry, cfg, rng, hero=hero)
+    engine.perform("hero", "attack:scimitar:goblin_1")
+    assert hp(engine, "goblin_1") == 10 - (1 + 3)
+
+
+def test_great_weapon_fighting_does_not_work_for_a_bow(registry, cfg):
+    rng = ScriptedRng(d20=[15], d6=[1])
+    hero = make_fighter(registry)
+    hero.sheet.feats.append("great_weapon_fighting")
+    give_weapon(hero, registry, "shortbow")
+    engine = duel(registry, cfg, rng, hero=hero, hero_zone="door", goblin_zone="hall")
+    engine.perform("hero", "attack:shortbow:goblin_1")
+    assert "→3" not in log_text(engine)
+
+
+def test_great_weapon_fighting_applies_to_the_crit_dice_too(registry, cfg):
+    rng = ScriptedRng(d20=[20], d6=[1, 1, 5, 5])
+    engine = versatile_duel(registry, cfg, rng, style="great_weapon_fighting", weapon="greatsword")
+    set_hp(engine, "goblin_1", 100)
+    engine.perform("hero", "attack:greatsword:goblin_1")
+    # 4d6: 1→3, 1→3, 5, 5 = 16, + 3
+    assert hp(engine, "goblin_1") == 100 - 19
+
+
+def test_savage_attacker_and_great_weapon_fighting_work_together(registry, cfg):
+    rng = ScriptedRng(d20=[15], d6=[1, 1, 5, 1])
+    engine = versatile_duel(
+        registry, cfg, rng, style="great_weapon_fighting", savage=True, weapon="greatsword"
+    )
+    set_hp(engine, "goblin_1", 100)
+    engine.perform("hero", "attack:greatsword:goblin_1")
+    # первый бросок 1→3, 1→3 = 6; второй 5, 1→3 = 8; берётся лучший: 8 + 3 = 11
+    assert hp(engine, "goblin_1") == 100 - 11
+    assert rng.left("d6") == 0

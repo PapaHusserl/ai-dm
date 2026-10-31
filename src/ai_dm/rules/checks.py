@@ -1,4 +1,5 @@
 from ai_dm.content.models.common import SKILLS
+from ai_dm.rules import tactical_mind
 from ai_dm.rules.derived import saving_throw_bonus, saving_throw_parts, skill_bonus, skill_parts
 from ai_dm.rules.roll_pipeline import RollRequest, roll
 
@@ -38,7 +39,8 @@ def skill_check(
         dc=dc,
         now_s=now_s,
     )
-    return roll(request, rng, registry, modifiers=modifiers, rerollers=rerollers)
+    result = roll(request, rng, registry, modifiers=modifiers, rerollers=rerollers)
+    return tactical_mind.apply(hero, registry, rng, result)
 
 
 def saving_throw(

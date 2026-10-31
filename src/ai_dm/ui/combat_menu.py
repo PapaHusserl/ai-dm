@@ -14,15 +14,20 @@ MOVE_LABEL = "Идти ▸"
 SPELLS_TARGET_LABEL = "Заклинания на цель ▸"
 SPELLS_FREE_LABEL = "Заклинания без цели ▸"
 AMMO_LABEL = "Стрелы ▸"
+STRIKE_LABEL = "Хитрый удар ▸"
+STRIKE_GROUP = "cunning_strike"
 AMMO_INLINE = 1
 AMMO_GROUP = "ammo:"
 NO_STUN_NOTE = " (дальнобойным — не оглушить)"
 # новый kind без записи уезжает в «Ещё…»
 CATEGORY_BY_KIND = {
     **dict.fromkeys(("attack", "parley", "disarm"), "target"),
+    **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), "target"),
     **dict.fromkeys(("cast", "transfer_mark"), "spell"),
     "move": "move",
     **dict.fromkeys(("dash", "disengage", "dodge", "second_wind", "stabilize"), "free"),
+    "hide_bonus": "free",
+    **dict.fromkeys(("action_surge", "steady_aim"), "free"),
     **dict.fromkeys(("multiattack", "end_turn", "escape"), "free"),
 }
 # чем меньше, тем позже строку вытесняют в «Ещё…» при нехватке места; оружие вытесняется последним
@@ -30,13 +35,17 @@ RANK_BY_KIND = {
     "escape": -2,
     "end_turn": -1,
     **dict.fromkeys(("attack", "stabilize", "multiattack"), 0),
+    **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), 0),
     "move": 1,
-    **dict.fromkeys(("dodge", "second_wind"), 2),
-    **dict.fromkeys(("dash", "disengage", "cast", "transfer_mark"), 3),
+    **dict.fromkeys(("dodge", "second_wind", "action_surge", "steady_aim"), 2),
+    **dict.fromkeys(("dash", "disengage", "hide_bonus", "cast", "transfer_mark"), 3),
     **dict.fromkeys(("parley", "disarm"), 5),
 }
 SPECIAL_FREE = ("end_turn", "escape")
-TARGET_PARAM_KINDS = ("attack", "cast", "transfer_mark", "parley", "disarm")
+TARGET_PARAM_KINDS = (
+    "attack", "cast", "transfer_mark", "parley", "disarm", "offhand_attack", "horde_breaker",
+    "cleave",
+)
 SUFFIX = re.compile(r" \(ещё (\d+) из 2\)$")
 NAME = re.compile(r" → [^()]*?(?= \(|$)")
 AMMO_PREFIX = re.compile(r"^Атака: .*? — ")
@@ -206,6 +215,12 @@ def free_block(options, enemies):
     for option in options:
         if CATEGORY_BY_KIND.get(option.kind) == "free" and option.kind not in SPECIAL_FREE:
             rows.append(option_row(option, "free"))
+    # одна строка группы «Хитрый удар ▸», если есть хоть один его пункт
+    strikes = [o for o in options if o.kind == STRIKE_GROUP]
+    rows += [
+        MenuRow(STRIKE_LABEL, kind="expand", group=STRIKE_GROUP, rank=2, block="free")
+        for _ in strikes[:1]
+    ]
     if any(is_free_spell(option, enemies) for option in options):
         rows.append(
             MenuRow(SPELLS_FREE_LABEL, kind="expand", group="spells_free", rank=4, block="free")
@@ -221,8 +236,9 @@ def group_rows(options, target, enemies, group, nonlethal=False):
         # «Атака: лук — стрела (осталось 9)» -> «Стрела (осталось 9)»: в группе лук известен
         rows = [replace(row, label=AMMO_PREFIX.sub("", row.label).capitalize()) for row in rows]
         return [MenuRow(BACK_LABEL, kind="back")] + rows
-    if group == "move":
-        chosen = [option for option in options if option.kind == "move"]
+    if group in ("move", STRIKE_GROUP):
+        # имя группы совпадает с видом её пунктов
+        chosen = [option for option in options if option.kind == group]
     elif group == "spells_target":
         chosen = [option for option in options if is_target_spell(option, target)]
     else:

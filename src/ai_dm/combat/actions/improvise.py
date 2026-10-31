@@ -19,6 +19,13 @@ EFFECT_WORDS = {
 }
 
 
+# отказы движка, понятные рассказчику (в лог боя вместо кода)
+REJECT_WORDS = {
+    "target_too_large": "Слишком велик, чтобы сбить с ног или оттолкнуть: "
+    "цель больше героя минимум на два размера",
+}
+
+
 def rejected(reason) -> Rejected:
     return Rejected(reason=reason, report_tag=None)
 
@@ -40,8 +47,8 @@ def spec_problem(state, effect, target, zone) -> str | None:
 
 
 def size_problem(engine, ref, effect, target) -> str | None:
-    # толчок только цели не больше чем на одну категорию размера крупнее
-    if effect == "push" and not shove.size_ok(engine, ref, target):
+    # толчок и «сбить с ног» -- только цели не больше чем на одну категорию размера крупнее
+    if effect in ("push", "prone") and not shove.size_ok(engine, ref, target):
         return "target_too_large"
     return None
 

@@ -6,20 +6,25 @@ from ai_dm.rules.roll_pipeline import RollRequest, roll
 from ai_dm.state.creature import ActiveEffect, Expiry
 
 
+def spend_action(engine, ref, option) -> None:
+    # действие или, с params["bonus"] (Хитрое действие, Проворное бегство), бонусное действие
+    turn = engine.part(ref).turn
+    if option.params.get("bonus"):
+        turn.bonus = False
+    else:
+        turn.action = False
+
+
 def dash(engine, ref, option) -> list[DomainEvent]:
-    p = engine.part(ref)
-    p.turn.action = False
-    p.turn.move += 1
+    spend_action(engine, ref, option)
+    engine.part(ref).turn.move += 1
     engine.log(f"{engine.name(ref)}: рывок")
     return []
 
 
 def disengage(engine, ref, option) -> list[DomainEvent]:
     p = engine.part(ref)
-    if option.params.get("bonus"):
-        p.turn.bonus = False
-    else:
-        p.turn.action = False
+    spend_action(engine, ref, option)
     p.turn.disengaged = True
     engine.log(f"{engine.name(ref)}: отход")
     return []

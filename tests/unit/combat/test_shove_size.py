@@ -130,8 +130,22 @@ def test_push_of_a_small_target_works(registry, cfg):
     assert part(engine, "thing_1").zone_id == "balcony"
 
 
-def test_prone_of_a_huge_target_is_still_allowed(registry, cfg):
+def test_prone_of_a_huge_target_is_rejected(registry, cfg):
+    # решение 8': «сбить с ног» не действует на цель на 2+ размера крупнее героя
     engine = push_engine(registry, cfg, "huge", ScriptedRng(d20=[10]))
+    result = push(engine, "prone", zone=None)
+    assert (type(result), result.reason) == (Rejected, "target_too_large")
+
+
+def test_rejected_prone_keeps_the_action_and_the_roll(registry, cfg):
+    rng = ScriptedRng(d20=[10])
+    engine = push_engine(registry, cfg, "huge", rng)
+    push(engine, "prone", zone=None)
+    assert (turn(engine, "hero").action, rng.left("d20")) == (True, 1)
+
+
+def test_prone_of_a_large_target_works(registry, cfg):
+    engine = push_engine(registry, cfg, "large", ScriptedRng(d20=[10]))
     result = push(engine, "prone", zone=None)
     assert not isinstance(result, Rejected)
     assert turn(engine, "hero").action is False

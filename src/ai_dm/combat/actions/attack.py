@@ -1,5 +1,5 @@
-from ai_dm.combat import downed, mastery, monster_traits
-from ai_dm.combat.actions import features
+from ai_dm.combat import downed, mastery, monster_traits, sneak, thrown
+from ai_dm.combat.actions import features, rogue
 from ai_dm.combat.ammo import spend as spend_ammo
 from ai_dm.combat.controllers import is_quarreling, quarrel_targets
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
@@ -28,7 +28,7 @@ class AttackInfo:
     def __init__(
         self, id, kind, bonus, dice, damage_bonus, damage_type, weapon_id=None,
         advantage_dice=None, range_normal_ft=None, range_long_ft=None, name="",
-        bonus_parts=None, damage_parts=None, action=None,
+        bonus_parts=None, damage_parts=None, action=None, grip=None,
     ):
         self.id = id
         self.kind = kind
@@ -48,6 +48,9 @@ class AttackInfo:
         self.damage_parts = damage_parts or []
         # только у монстра: действие из статблока (доп. урон, эффект при попадании)
         self.action = action
+        # только у героя: хват оружия -- two_handed (двумя руками), off_hand (вторая рука),
+        # thrown (бросок); None -- обычная атака одной рукой
+        self.grip = grip
 
 
 def split_dice(expr: str) -> tuple[str, int]:
@@ -58,6 +61,29 @@ def split_dice(expr: str) -> tuple[str, int]:
 
 def action_id(name: str) -> str:
     return name.lower().replace(" ", "_")
+
+
+def weapon_info(engine, hero, weapon_id, grip=None) -> AttackInfo:
+    # атака оружием героя: grip thrown -- бросок, off_hand -- вторая рука; универсальное оружие
+    # бьёт большей костью, когда левая рука свободна (нет щита и оружия), и держится двумя руками
+    weapon = engine.registry.get("weapon", weapon_id)
+    free_hand = hero.equipped.shield is None and hero.equipped.off_hand is None
+    dice = weapon.damage_dice
+    if grip is None and "versatile" in weapon.properties and free_hand:
+        dice, grip = weapon.versatile_dice or dice, "two_handed"
+    if grip is None and "two_handed" in weapon.properties and weapon.kind == "melee":
+        grip = "two_handed"
+    thrown = grip == "thrown"
+    return AttackInfo(
+        f"{weapon_id}_thrown" if thrown else weapon_id,
+        "ranged" if thrown else weapon.kind, attack_bonus(hero, engine.registry, weapon_id),
+        dice, damage_bonus(hero, engine.registry, weapon_id, grip == "off_hand"),
+        weapon.damage_type, weapon_id=weapon_id,
+        range_normal_ft=weapon.range_normal_ft, range_long_ft=weapon.range_long_ft,
+        name=weapon.name.lower(), bonus_parts=attack_parts(hero, engine.registry, weapon_id),
+        damage_parts=damage_parts(hero, engine.registry, weapon_id, grip == "off_hand"),
+        grip=grip,
+    )
 
 
 def attacks_of(engine, ref) -> list[AttackInfo]:
@@ -77,17 +103,9 @@ def attacks_of(engine, ref) -> list[AttackInfo]:
             two_handed = "two_handed" in weapon.properties
             if weapon_id != hero.equipped.main_hand and two_handed and busy_hand:
                 continue
-            result.append(
-                AttackInfo(
-                    weapon_id, weapon.kind, attack_bonus(hero, engine.registry, weapon_id),
-                    weapon.damage_dice, damage_bonus(hero, engine.registry, weapon_id),
-                    weapon.damage_type, weapon_id=weapon_id,
-                    range_normal_ft=weapon.range_normal_ft, range_long_ft=weapon.range_long_ft,
-                    name=weapon.name.lower(),
-                    bonus_parts=attack_parts(hero, engine.registry, weapon_id),
-                    damage_parts=damage_parts(hero, engine.registry, weapon_id),
-                )
-            )
+            result.append(weapon_info(engine, hero, weapon_id))
+            if "thrown" in weapon.properties and weapon.kind == "melee":
+                result.append(weapon_info(engine, hero, weapon_id, "thrown"))
         # безоружный и импровизированное оружие есть всегда (SRD 5.2)
         unarmed = unarmed_attack(hero, engine.registry)
         result.append(
@@ -256,9 +274,10 @@ def roll_attack(
 
 
 def roll_damage(
-    engine, ref, dice, bonus, crit, weapon=False, label="", parts=None, damage_type=""
+    engine, ref, dice, bonus, crit, weapon=False, label="", parts=None, damage_type="",
+    two_handed=False,
 ):
-    tags = {"crit": crit, "weapon": weapon}
+    tags = {"crit": crit, "weapon": weapon, "two_handed": two_handed}
     if ref in engine.state.savage_used:
         tags["savage_attacker_used"] = True
     request = RollRequest(
@@ -505,24 +524,28 @@ def attack(
     events = []
     if result.outcome in ("hit", "crit"):
         crit = result.outcome == "crit"
+        features.athlete_crit(engine, ref, crit)
         if info.dice is None:
             total = fixed_damage(engine, info)
         else:
             rolled = roll_damage(
                 engine, ref, info.dice, info.damage_bonus, crit, engine.is_hero(ref),
                 label=f"Урон ({info.name})", parts=info.damage_parts,
-                damage_type=info.damage_type,
+                damage_type=info.damage_type, two_handed=info.grip == "two_handed",
             )
             total = rolled.total
         total += colossus_damage(engine, ref, target_ref, crit, info.damage_type)
+        total += sneak.damage(engine, ref, target_ref, info, result)
         if result.advantage == "advantage" and info.advantage_dice is not None:
             total += roll_damage(
                 engine, ref, info.advantage_dice, 0, crit, label=f"Урон ({info.name}, доп.)",
                 damage_type=info.damage_type,
             ).total
+        total = rogue.uncanny_dodge(engine, target_ref, total)
         dealt = engine.damage(target_ref, total, info.damage_type)
         dealt = mark_damage(engine, ref, target_ref, crit, dealt)
         dealt = special_damage(engine, ref, target_ref, crit, dealt, effects)
+        rogue.resolve_pending(engine, ref, target_ref, dealt)
         dealt = monster_traits.extra_damage(engine, (ref, target_ref), crit, dealt, info)
         dealt = monster_traits.on_hit(engine, (ref, target_ref), info, dealt, provoked)
         engine.log_notes(dealt)
@@ -545,8 +568,9 @@ def attack(
 
 def spend_attack(engine, ref) -> None:
     # одна атака из действия Атака: первая тратит действие, вторая (Доп. атака) -- attacks_left
+    # остаток прежней Атаки тратится первым: Всплеск действий его не обнуляет
     turn = engine.part(ref).turn
-    if turn.action:
+    if turn.attacks_left <= 0 and turn.action:
         turn.action = False
         if engine.is_hero(ref) and "extra_attack" in hero_feature_ids(
             engine.heroes[ref], engine.registry
@@ -559,13 +583,16 @@ def spend_attack(engine, ref) -> None:
 def perform(engine, ref, option) -> list[DomainEvent]:
     spend_attack(engine, ref)
     info = [i for i in attacks_of(engine, ref) if i.id == option.params["weapon"]][0]
-    holds_other = engine.is_hero(ref) and engine.heroes[ref].equipped.main_hand != info.id
+    holds_other = engine.is_hero(ref) and engine.heroes[ref].equipped.main_hand != info.weapon_id
     if holds_other and info.weapon_id is not None:
         # достать оружие -- часть действия Атака
-        equip(engine.heroes[ref], info.id, engine.registry)
+        equip(engine.heroes[ref], info.weapon_id, engine.registry)
     events = attack(
         engine, ref, option.params["target"], info, option.params["nonlethal"],
         ammo=option.params.get("ammo"),
     )
+    if info.grip == "thrown":
+        thrown.drop(engine, ref, info, option.params["target"])
+    features.light_mark(engine, ref, info)
     features.horde_mark(engine, ref, info, option.params["target"])
     return events

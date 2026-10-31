@@ -918,6 +918,8 @@ def goblins_game(cfg, tmp_path, count):
 
 FLAT_IDS_3_GOBLINS = [
     "attack:composite_longbow:g1", "attack:composite_longbow:g2", "attack:composite_longbow:g3",
+    "attack:hunting_dirk_thrown:g1", "attack:hunting_dirk_thrown:g2",
+    "attack:hunting_dirk_thrown:g3",
     "attack:harpoon_dart:g1", "attack:harpoon_dart:g2", "attack:harpoon_dart:g3",
     "attack:improvised_thrown:g1", "attack:improvised_thrown:g2", "attack:improvised_thrown:g3",
     "attack:composite_longbow:g1:ammo:arrow_armor_piercing",
@@ -1229,3 +1231,135 @@ def test_state_view_follows_expanded_and_nonlethal():
     state.expanded = None
     state.nonlethal = True
     assert state.view().rows[0].option_id == "attack:sword:g1:nonlethal"
+
+
+# К2 П2: удар второй рукой, Рассечение, Истребитель орд -- в блоке цели;
+# Всплеск действий -- в свободном блоке
+
+def offhand(ref, weapon="кинжал"):
+    return ActionOption(
+        id=f"offhand_attack:{ref}", kind="offhand_attack",
+        label=f"Удар второй рукой: {weapon} → {NAMES[ref]}",
+        params={"weapon": "dagger", "target": ref}, cost="bonus",
+    )
+
+
+def free_attack(kind, ref, title):
+    return ActionOption(
+        id=f"{kind}:{ref}", kind=kind, label=f"{title}: секира → {NAMES[ref]}",
+        params={"weapon": "greataxe", "target": ref}, cost="free",
+    )
+
+
+def surge():
+    return plain("action_surge", label="Всплеск действий", cost="free")
+
+
+def test_offhand_row_goes_to_the_target_block_right_after_the_attacks():
+    options = [
+        attack("sword", "g1", "melee", "меч"), attack("dagger", "g1", "melee", "кинжал"),
+        offhand("g1"), parley("g1"), *free_block_options(),
+    ]
+    view = build_view(options, roster(2), "g1")
+    assert ids(view.target_rows)[:3] == ["attack:sword:g1", "attack:dagger:g1", "offhand_attack:g1"]
+
+
+def test_offhand_row_of_another_target_is_not_shown():
+    options = [attack("sword", "g1", "melee", "меч"), offhand("g2"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "offhand_attack:g2" not in ids(view.rows)
+
+
+def test_offhand_row_label_is_short_with_the_target_dropped():
+    options = [attack("sword", "g1", "melee", "меч"), offhand("g1"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    row = [r for r in view.target_rows if r.option_id == "offhand_attack:g1"][0]
+    assert row.label.startswith("Удар второй рукой: кинжал")
+    assert "Гоблин" not in row.label
+
+
+def test_cleave_and_horde_rows_are_in_the_target_block_with_the_top_rank():
+    options = [
+        attack("axe", "g1", "melee", "секира"), free_attack("cleave", "g2", "Рассечение"),
+        free_attack("horde_breaker", "g2", "Истребитель орд"), *free_block_options(),
+    ]
+    view = build_view(options, roster(2), "g2")
+    rows = {r.option_id: r for r in view.target_rows}
+    assert {"cleave:g2", "horde_breaker:g2"} <= set(rows)
+    assert (rows["cleave:g2"].rank, rows["horde_breaker:g2"].rank) == (0, 0)
+
+
+def test_action_surge_row_is_in_the_free_block():
+    options = [attack("sword", "g1", "melee", "меч"), surge(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "action_surge" in ids(view.free_rows)
+    assert "action_surge" not in ids(view.target_rows)
+
+
+def test_action_surge_row_keeps_its_label():
+    view = build_view([surge(), *free_block_options()], roster(2), "g1")
+    row = [r for r in view.free_rows if r.option_id == "action_surge"][0]
+    assert row.label == "Всплеск действий"
+
+
+def test_new_kinds_are_not_pushed_into_more_when_the_menu_fits():
+    options = [
+        attack("sword", "g1", "melee", "меч"), offhand("g1"),
+        free_attack("cleave", "g2", "Рассечение"), surge(), *free_block_options(),
+    ]
+    view = build_view(options, roster(2), "g2")
+    assert {"cleave:g2", "action_surge"} <= set(ids(view.rows))
+
+
+# Плут: Хитрый удар ▸ (группа), Хитрое действие и Верный прицел -- в свободном блоке (шаг К2, П3)
+
+def strike(effect, label):
+    return ActionOption(
+        id=f"cunning_strike:{effect}", kind="cunning_strike", label=label,
+        params={"effect": effect}, cost="free",
+    )
+
+
+def strikes():
+    return [strike("trip", "Сбить с ног"), strike("withdraw", "Отступить")]
+
+
+def test_cunning_strike_is_one_expand_row_in_the_free_block():
+    options = [attack("dagger", "g1", "melee", "кинжал"), *strikes(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    expands = [r for r in view.free_rows if r.kind == "expand" and r.group == "cunning_strike"]
+    assert [r.label for r in expands] == ["Хитрый удар ▸"]
+
+
+def test_cunning_strike_effects_are_not_rows_of_the_main_menu():
+    options = [attack("dagger", "g1", "melee", "кинжал"), *strikes(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "cunning_strike:trip" not in ids(view.rows)
+
+
+def test_no_cunning_strike_group_without_its_options():
+    view = build_view(free_block_options(), roster(2), "g1")
+    assert "cunning_strike" not in [r.group for r in view.rows]
+
+
+def test_expanded_cunning_strike_lists_the_effects_with_back():
+    options = [attack("dagger", "g1", "melee", "кинжал"), *strikes(), *free_block_options()]
+    view = build_view(options, roster(2), "g1", expanded="cunning_strike")
+    assert labels(view.rows) == [BACK_LABEL, "Сбить с ног", "Отступить"]
+
+
+def test_expanded_cunning_strike_gives_the_poison_effect_when_offered():
+    options = [*strikes(), strike("poison", "Отравить"), *free_block_options()]
+    view = build_view(options, roster(2), "g1", expanded="cunning_strike")
+    assert "Отравить" in labels(view.rows)
+
+
+def test_steady_aim_and_hide_bonus_rows_are_in_the_free_block():
+    options = [
+        attack("dagger", "g1", "melee", "кинжал"),
+        plain("steady_aim", label="Верный прицел", cost="bonus"),
+        plain("hide_bonus", label="Хитрое действие: Спрятаться", cost="bonus"),
+        *free_block_options(),
+    ]
+    view = build_view(options, roster(2), "g1")
+    assert {"steady_aim", "hide_bonus"} <= set(ids(view.free_rows))

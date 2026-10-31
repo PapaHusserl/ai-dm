@@ -104,13 +104,15 @@ def test_deadly_with_ref_to_failed_roll_is_accepted(registry, cfg):
 
 
 def test_deadly_level_5_with_failed_ref_rolls_10d10(registry, cfg):
-    rng = ScriptedRng(d20=[1], d10=[1] * 10)
+    # воин 5 ур.: провал проверки добирает +1d10 Тактического ума (К2) -- первый d10 в очереди
+    rng = ScriptedRng(d20=[1], d10=[1] * 11)
     ctx = make_ctx(registry, cfg, rng)
     ctx.hero.sheet.primary.level = 5
     ref = failed_ref(ctx)
+    assert rng.calls.count("d10") == 1
     d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert d.status == "accepted"
-    assert rng.calls.count("d10") == 10
+    assert rng.calls.count("d10") == 11
 
 
 def test_clamped_deadly_level_5_becomes_dangerous_4d10(registry, cfg):

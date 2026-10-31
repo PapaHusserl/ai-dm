@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from ai_dm.content.models.common import DAMAGE_TYPE_WORDS
 from ai_dm.core.dice import roll_damage_dice, roll_dice
 from ai_dm.rules.creatures import D20_KINDS, creature_of, is_hero
+from ai_dm.rules.derived import feat_effects
 from ai_dm.rules.modifiers import default_modifier_registry
 from ai_dm.rules.modifiers.species import species_effects
 from ai_dm.rules.names import ABILITY_SHORT, SKILL_NAMES
@@ -23,7 +24,7 @@ REROLL_WORDS = {"luck": "удача", "heroic_inspiration": "вдохновен�
 SOURCE_WORDS = {
     "dodge": "уклонение", "help": "помощь", "divine_favor": "молитва", "divine_curse": "кара",
     "sap": "ослаблен", "vex": "досада", "improvised_advantage": "импровизация",
-    "groomed": "ухожен",
+    "groomed": "ухожен", "steady_aim": "верный прицел",
 }
 
 OUTCOME_WORDS = {
@@ -418,18 +419,23 @@ def d20_log(
     return prefix + text
 
 
+def face_text(rolled, floor=None) -> str:
+    # выпавшие числа; поднятые до пола кости -- «1→3»
+    return ", ".join(f"{n}→{floor}" if floor and n < floor else str(n) for n in rolled.rolls)
+
+
 def damage_log_text(
-    rolled, bonus, crit, other=None, tag=None, parts=None, label="", damage_type=""
+    rolled, bonus, crit, other=None, tag=None, parts=None, label="", damage_type="", floor=None
 ) -> str:
     # Урон (длинный лук): 1d8 (5) + 4 Лов = 9 колющий; Метка охотника: 1d6 (3) силовой;
-    # Savage: Урон: 1d8 (2 | 6 → 6) + 3 = 9 [savage_attacker]
-    faces = ", ".join(str(n) for n in rolled.rolls)
+    # Savage: Урон: 1d8 (2 | 6 → 6) + 3 = 9 [savage_attacker]; пол кости: 2d6 (1→3, 2→3) + 3 = 9
+    faces = face_text(rolled, floor)
     total = rolled.total
     if other is not None:
-        other_faces = ", ".join(str(n) for n in other.rolls)
+        other_faces = face_text(other, floor)
         chosen = rolled if rolled.total >= other.total else other
         total = chosen.total
-        chosen_faces = ", ".join(str(n) for n in chosen.rolls)
+        chosen_faces = face_text(chosen, floor)
         faces = f"{faces} | {other_faces} → {chosen_faces}"
     if not parts and bonus != 0:
         parts = [("", bonus)]
@@ -455,11 +461,30 @@ def damage_log_text(
     return text
 
 
+def weapon_floor(request, registry) -> int | None:
+    # Бой двуручным оружием: меньше этого число на кости оружия не выпадает
+    if not request.tags.get("two_handed") or not is_hero(request.actor):
+        return None
+    for effect in feat_effects(request.actor, registry, "weapon_damage"):
+        if effect.when == "two_handed" and effect.mode == "floor":
+            return effect.value
+    return None
+
+
+def raise_to_floor(rolled, floor):
+    # итог с учётом пола кости; сами выпавшие числа остаются как были (для строки «1→3»)
+    if floor is None:
+        return rolled
+    gain = sum(floor - n for n in rolled.rolls if n < floor)
+    return rolled.model_copy(update={"total": rolled.total + gain})
+
+
 def roll_damage_request(request, rng, registry) -> RollResult:
     if request.dice is None:
         raise ValueError("для броска урона нужен dice")
     crit = bool(request.tags.get("crit", False))
-    rolled = roll_damage_dice(request.dice, request.bonus, rng, crit=crit)
+    floor = weapon_floor(request, registry)
+    rolled = raise_to_floor(roll_damage_dice(request.dice, request.bonus, rng, crit=crit), floor)
     rerolls = []
     other = None
     tag = None
@@ -471,7 +496,7 @@ def roll_damage_request(request, rng, registry) -> RollResult:
         and request.tags.get("weapon")
         and not request.tags.get("savage_attacker_used")
     ):
-        other = roll_damage_dice(request.dice, request.bonus, rng, crit=crit)
+        other = raise_to_floor(roll_damage_dice(request.dice, request.bonus, rng, crit=crit), floor)
         rerolls.append(feat_id)
         tag = feat_id
     total = rolled.total
@@ -483,7 +508,7 @@ def roll_damage_request(request, rng, registry) -> RollResult:
     ]
     text = damage_log_text(
         rolled, request.bonus, crit, other, tag and source_label(registry, tag),
-        request.bonus_parts, request.label, request.damage_type,
+        request.bonus_parts, request.label, request.damage_type, floor,
     )
     return RollResult(
         kind="damage",
