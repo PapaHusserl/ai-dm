@@ -1,0 +1,18 @@
+id: heavy_crossbow
+name: Тяжёлый арбалет
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: ranged
+damage_dice: 1d10
+damage_type: piercing
+cost_cp: 5000
+properties:
+- ammunition
+- heavy
+- loading
+- two_handed
+ammo: bolts
+mastery: push
+range_normal_ft: 100
+range_long_ft: 400

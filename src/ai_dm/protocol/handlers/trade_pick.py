@@ -132,7 +132,8 @@ def not_sold(ctx, request, npc):
     return Invalid(
         code="not_sold",
         message=(
-            f"{npc.name} не продаёт {request.item_id!r}" + allowed(sold_ids(ctx, npc))
+            f"{npc.name} не продаёт {request.item_id!r}"
+            + allowed(sold_ids(ctx, npc), first=[e.item_id for e in npc.trade.stock])
             + "; полный список -- trade list по category"
         ),
     )

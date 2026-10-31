@@ -1,6 +1,12 @@
 id: great_weapon_fighting
 name: Бой двуручным оружием
-description: Когда на кости урона вашей атаки двуручным или универсальным оружием, удерживаемым двумя руками, выпадает 1 или 2, считайте, что выпало 3. Эффект в движке пока не считается.
+description: Когда на кости урона вашей атаки двуручным или универсальным оружием, удерживаемым двумя руками, выпадает 1 или 2, считайте, что выпало 3.
 source: srd-5.2
 license: CC-BY-4.0
 category: fighting_style
+effects:
+- type: modifier
+  target: weapon_damage
+  when: two_handed
+  mode: floor
+  value: 3

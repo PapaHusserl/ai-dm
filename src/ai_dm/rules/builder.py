@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ai_dm.content.models.common import ABILITIES, SKILLS
 from ai_dm.rules.derived import ability_modifier, spell_slots_for, weapon_proficient
 from ai_dm.rules.inventory import InventoryError, add_catalog_item, equip, find_item
-from ai_dm.rules.progression import sync_resources
+from ai_dm.rules.progression import expertise_total, sync_resources
 from ai_dm.rules.triggers_eval import validate_refs
 from ai_dm.rules.uniqueness import name_taken
 from ai_dm.state.creature import CreatureState
@@ -57,6 +57,8 @@ class CharacterChoices(BaseModel):
     background_bonus: dict[str, int]
     class_skills: list[str]
     weapon_masteries: list[str]
+    # навыки с экспертизой на 1 уровне (плут: два из освоенных)
+    expertise: list[str] = Field(default_factory=list)
     fighting_style: str | None = None
     inventory: list[str] = Field(default_factory=list)
     equip: list[str] = Field(default_factory=list)
@@ -231,6 +233,17 @@ def check_background_bonus(bonus: dict[str, int], spec: BackgroundSpec) -> bool:
     return sorted(bonus.values()) in ([1, 2], [1, 1, 1])
 
 
+def expertise_problem(choices, char_class, proficient, registry) -> str | None:
+    # экспертиза 1 уровня: число по умениям класса, навыки из освоенных, без повторов
+    expected = expertise_total(registry, char_class, 1)
+    picks = choices.expertise
+    if len(picks) != expected or len(set(picks)) != len(picks):
+        return f"экспертиза: нужно навыков — {expected}, без повторов"
+    if any(skill not in proficient for skill in picks):
+        return "экспертиза: навык, которым герой не владеет"
+    return None
+
+
 def class_kit_problem(choices, char_class) -> str | None:
     # текст проблемы с class_kit или None
     if choices.class_kit is None or char_class is None:
@@ -260,7 +273,8 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
     Коды ошибок: unknown_class, unknown_species, unknown_background, background_abilities,
     background_skills, background_tool, background_feat, point_buy_invalid,
     standard_array_invalid, abilities_invalid, background_bonus_invalid, class_skills_invalid,
-    mastery_count_invalid, mastery_weapon_invalid, fighting_style_invalid, spells_invalid
+    mastery_count_invalid, mastery_weapon_invalid, expertise_invalid, fighting_style_invalid,
+    spells_invalid
     (в т.ч. подготовленные вне выбранных или сверх лимита), feat_choices_invalid,
     background_budget_invalid (предметы + золото свободной предыстории дороже 50 зм),
     class_kit_unknown (нет набора с таким id у класса),
@@ -454,6 +468,15 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
                     # повтор разрешён только для черт со свойством Repeatable (SRD)
                     error("species_choices_invalid", "универсальность: черта уже у предыстории")
 
+    if char_class is not None:
+        proficient = list(spec.skills) if spec is not None else []
+        proficient += choices.class_skills + feat_skills
+        species_skill = choices.species_choices.get("skill")
+        proficient += [species_skill] if species_skill else []
+        problem = expertise_problem(choices, char_class, proficient, registry)
+        if problem is not None:
+            error("expertise_invalid", problem)
+
     gear = spec.equipment if spec is not None and choices.background_gear == "equipment" else []
     if spec is not None:
         for item_id in spec.equipment:
@@ -496,6 +519,7 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
         background=spec,
         abilities=abilities,
         skill_proficiencies=skill_proficiencies,
+        skill_expertise=list(choices.expertise),
         tool_proficiencies=[spec.tool] + feat_tools,
         feats=feats,
         weapon_masteries=list(choices.weapon_masteries),

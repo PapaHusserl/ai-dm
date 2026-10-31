@@ -923,6 +923,9 @@ class HeroSheetRequest(Request):
     )
     class_skills: list[Skill] = Field(description="Навыки класса из skill_options класса.")
     weapon_masteries: list[str] = Field(description="id оружия для мастерства, mastery_count штук.")
+    expertise: list[Skill] = Field(
+        [], description="Навыки с экспертизой, expertise_count штук из освоенных; пусто = нет."
+    )
     fighting_style: str = Field("", description="id боевого стиля, если он есть у класса.")
     class_kit: str = Field(description="id стартового набора класса из kits класса.")
     spells: list[str] = Field(description="id заговоров и заклинаний 1 круга класса; пусто = нет.")

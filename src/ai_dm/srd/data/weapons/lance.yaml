@@ -1,0 +1,14 @@
+id: lance
+name: Длинное копьё
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d10
+damage_type: piercing
+cost_cp: 1000
+properties:
+- heavy
+- reach
+- two_handed
+mastery: topple

@@ -978,6 +978,52 @@ def test_not_sold_message_puts_the_stock_first_and_has_no_duplicates(registry, c
     assert d.message.count("scimitar") == 1
 
 
+def test_not_sold_message_keeps_a_late_alphabet_stack_first_with_big_assortment(registry, cfg):
+    # у кузнеца 36 оружий (> LIMIT): стек из конца алфавита не выпадает из среза
+    stock = [InventoryEntry(item_id="whip", qty=1, cost_cp=100, quality="junk")]
+    ctx = trade_ctx(registry, cfg, kind="smith", stock=stock)
+    d = buy(ctx, "healers_kit")
+    assert d.message.count("whip") == 1
+    assert "допустимые id: whip, " in d.message
+
+
+def test_not_sold_message_puts_every_stock_stack_before_the_alphabet(registry, cfg):
+    stock = [
+        InventoryEntry(item_id="whip", qty=1, cost_cp=100, quality="junk"),
+        InventoryEntry(item_id="warhammer", qty=1, cost_cp=100, quality="junk"),
+    ]
+    ctx = trade_ctx(registry, cfg, kind="smith", stock=stock)
+    d = buy(ctx, "healers_kit")
+    assert "допустимые id: whip, warhammer, " in d.message
+
+
+def test_allowed_puts_first_ahead_then_alphabet():
+    from ai_dm.protocol.hints import allowed
+
+    assert allowed(["b", "a", "z"], first=["z"]) == "; допустимые id: z, a, b"
+
+
+def test_allowed_without_first_is_alphabetical():
+    from ai_dm.protocol.hints import allowed
+
+    assert allowed(["b", "a"]) == "; допустимые id: a, b"
+
+
+def test_allowed_does_not_repeat_first_ids():
+    from ai_dm.protocol.hints import allowed
+
+    assert allowed(["a", "z", "z"], first=["z", "z"]) == "; допустимые id: z, a"
+
+
+def test_allowed_cuts_at_limit_keeping_first():
+    from ai_dm.protocol.hints import LIMIT, allowed
+
+    ids = [f"i{n:02d}" for n in range(LIMIT + 5)]
+    text = allowed(ids, first=[ids[-1]])
+    assert text.startswith(f"; допустимые id: {ids[-1]}, i00")
+    assert text.endswith("и ещё 5")
+
+
 def test_not_sold_message_includes_the_stock_outside_the_preset(registry, cfg):
     stock = [InventoryEntry(item_id="healers_kit", qty=1, cost_cp=100, quality="junk")]
     ctx = trade_ctx(registry, cfg, kind="smith", stock=stock)

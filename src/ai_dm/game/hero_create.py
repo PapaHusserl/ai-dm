@@ -240,6 +240,7 @@ SHEET_FIELDS = {
     **{a: number_field(("choices", "ability_scores", a)) for a in ABILITIES},
     "bonus": (put_bonus, get_bonus),
     "class_skills": list_field(("choices", "class_skills")),
+    "expertise": list_field(("choices", "expertise")),
     "masteries": list_field(("choices", "weapon_masteries")),
     "style": (put_style, get_style),
     "kit": scalar_field(("choices", "class_kit")),

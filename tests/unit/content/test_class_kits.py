@@ -23,7 +23,7 @@ def rogue_choices(**changes):
         ability_scores={"str": 8, "dex": 15, "con": 14, "int": 10, "wis": 12, "cha": 13},
         background_bonus={"dex": 2, "con": 1},
         class_skills=["acrobatics", "insight", "perception", "stealth"],
-        weapon_masteries=["dagger", "shortsword"],
+        weapon_masteries=["dagger", "shortsword"], expertise=["stealth", "perception"],
         species_choices={"skill": "persuasion", "feat": "skilled"},
         feat_choices={"skilled": ["investigation", "history", "medicine"]},
     ).model_copy(update=changes)
@@ -146,6 +146,32 @@ def test_built_hero_has_kit_equipment_on(registry):
         worn = {hero.equipped.armor, hero.equipped.shield, hero.equipped.main_hand,
                 hero.equipped.off_hand}
         assert set(kit.equip) <= worn, (class_id, kit.id)
+
+
+def fighter_kit(registry, kit_id):
+    kits = registry.get("class", "fighter").starting_kits
+    return next(k for k in kits if k.id == kit_id)
+
+
+def test_fighter_kit_a_has_flail_and_eight_javelins(registry):
+    items = fighter_kit(registry, "a").items
+    assert items.count("flail") == 1
+    assert items.count("javelin") == 8
+
+
+def test_fighter_kit_a_has_no_spear(registry):
+    assert "spear" not in fighter_kit(registry, "a").items
+
+
+def test_fighter_kit_a_keeps_chain_mail_greatsword_and_gold(registry):
+    kit = fighter_kit(registry, "a")
+    assert {"chain_mail", "greatsword", "explorers_pack"} <= set(kit.items)
+    assert kit.gold_cp == 400
+
+
+def test_fighter_kit_a_has_no_firearms(registry):
+    items = fighter_kit(registry, "a").items
+    assert "musket" not in items and "pistol" not in items
 
 
 def test_minimal_rogue_without_kit_is_not_a_validation_error(registry):

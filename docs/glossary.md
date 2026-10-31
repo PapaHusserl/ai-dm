@@ -198,6 +198,26 @@
 | Beast Master | Повелитель зверей | `beast_master` | подкласс следопыта, своя редакция (custom) |
 | Beast companion | Зверь-спутник | `beast_companion`, `HeroState.companions`, `companion_update`, `companion_due` | вне боя; вводит рассказчик запросом; в бою — этап 7 |
 | Pack Sense | Чутьё стаи | `pack_sense` | текст |
+| Action Surge | Всплеск действий | `action_surge` | воин 2 ур., пул из 1 (К2) |
+| Tactical Mind | Тактический ум | `tactical_mind` | воин 2 ур., при провале проверки навыка (К2) |
+| Tactical Shift | Тактический сдвиг | `tactical_shift` | воин 5 ур., ход после Второго дыхания не провоцирует (К2) |
+| Improved Critical | Улучшенный критический удар | `improved_critical` | Чемпион, крит от 19 (К2) |
+| Remarkable Athlete | Выдающийся атлет | `remarkable_athlete` | Чемпион, преимущество на инициативу и Атлетику (К2) |
+| Sneak Attack | Скрытая атака | `sneak_attack`, `tables/sneak_attack.yaml` | плут, кости по уровню (К2) |
+| Thieves' Cant | Воровской жаргон | `thieves_cant` | плут, текст (К2) |
+| Cunning Action | Хитрое действие | `cunning_action` | плут 2 ур.: Рывок, Отход, Спрятаться бонусным действием (К2) |
+| Steady Aim | Верный прицел | `steady_aim` | плут 3 ур. (К2) |
+| Cunning Strike | Хитрый удар | `cunning_strike` | плут 5 ур.: Сбить с ног, Отравить, Отступить (К2) |
+| Uncanny Dodge | Невероятное уклонение | `uncanny_dodge` | плут 5 ур., реакция (К2) |
+| Fast Hands | Быстрые руки | `fast_hands` | Вор, текст (К2) |
+| Second-Story Work | Работа на высоте | `second_story_work` | Вор, текст (К2) |
+| Cleave | Рассечение | `cleave` | мастерство оружия (К2) |
+| Push | Толчок | `push` | мастерство оружия (К2) |
+| Champion | Чемпион | `champion` | подкласс воина (SRD, К2) |
+| Thief | Вор | `thief` | подкласс плута (SRD, К2) |
+| Musket | Мушкет | `musket` | огнестрел SRD 5.2.1, `world_only` (К2) |
+| Pistol | Пистолет | `pistol` | огнестрел SRD 5.2.1, `world_only` (К2) |
+| Poisoner's Kit | Набор отравителя | `poisoners_kit` | инструмент для Отравить в Хитром ударе (К2) |
 | Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания |
 | Knowledge journal | Журнал знаний | `HeroState.knowledge`, `knowledge_note`, `/lore` | что герой узнал о людях, местах, богах, существах (Ж3) |
 | Scene mood | Настроение сцены | `SceneState.scene_mood`, `scene_mood` | `romance` по сюжету; выбирает музыку, не `Tone.mood` (Ж3) |

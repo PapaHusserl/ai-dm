@@ -1,0 +1,18 @@
+id: musket
+name: Мушкет
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: ranged
+damage_dice: 1d12
+damage_type: piercing
+cost_cp: 50000
+properties:
+- ammunition
+- loading
+- two_handed
+ammo: firearm_bullets
+mastery: slow
+range_normal_ft: 40
+range_long_ft: 120
+world_only: true

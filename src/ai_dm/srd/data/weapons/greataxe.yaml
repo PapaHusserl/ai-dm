@@ -1,0 +1,13 @@
+id: greataxe
+name: Секира
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d12
+damage_type: slashing
+cost_cp: 3000
+properties:
+- heavy
+- two_handed
+mastery: cleave

@@ -1,0 +1,16 @@
+id: action_surge
+name: Всплеск действий
+description: В свой ход вы можете совершить одно дополнительное действие, кроме действия «Магия». Одно использование;
+  восстанавливается после короткого или продолжительного отдыха.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: resource
+  pool: action_surge
+  max: 1
+  recover:
+  - "on": short_rest
+    amount: all
+  - "on": long_rest
+    amount: all
+activation: action

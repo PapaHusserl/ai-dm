@@ -398,6 +398,41 @@ def test_smith_has_no_potions(cfg):
     assert "potion_common" not in result
 
 
+# К2 П1 (решение 30): огнестрел -- только world_only, лавки его не продают, но покупают
+
+
+def weapon_ids(registry, cfg, kind):
+    pairs = assortment(registry, preset(cfg, kind), 1, cfg)
+    return [item_id for item_id, _ in pairs if registry.has("weapon", item_id)]
+
+
+def test_real_smith_sells_thirty_six_weapons(registry, cfg):
+    assert len(weapon_ids(registry, cfg, "smith")) == 36
+
+
+@pytest.mark.parametrize("weapon_id", ["musket", "pistol"])
+def test_real_smith_does_not_sell_firearms(registry, cfg, weapon_id):
+    assert weapon_id not in weapon_ids(registry, cfg, "smith")
+
+
+def test_real_smith_sells_a_regular_martial_weapon(registry, cfg):
+    assert "greataxe" in weapon_ids(registry, cfg, "smith")
+
+
+def test_merchant_sells_refuses_world_only_weapon(cfg):
+    weapon = make_weapon("gun").model_copy(update={"world_only": True})
+    assert not merchant_sells("weapon", weapon, preset(cfg, "smith"), 1, cfg)
+
+
+def test_merchant_buys_world_only_weapon(cfg):
+    weapon = make_weapon("gun").model_copy(update={"world_only": True})
+    assert merchant_buys("weapon", weapon, preset(cfg, "smith"))
+
+
+def test_merchant_buys_real_musket(registry, cfg):
+    assert merchant_buys("weapon", registry.get("weapon", "musket"), preset(cfg, "smith"))
+
+
 def test_alchemist_assortment_level_one(cfg):
     result = ids(assortment(make_registry(), preset(cfg, "alchemist"), 1, cfg))
     assert result == ["bread", "potion_common", "potion_uncommon"]

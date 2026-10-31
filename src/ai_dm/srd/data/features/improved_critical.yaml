@@ -1,0 +1,8 @@
+id: improved_critical
+name: Улучшенный критический удар
+description: Ваши атаки оружием попадают критически при выпадении 19 или 20.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: crit_range
+  value: 19

@@ -1,0 +1,15 @@
+id: sling
+name: Праща
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: ranged
+damage_dice: 1d4
+damage_type: bludgeoning
+cost_cp: 10
+properties:
+- ammunition
+ammo: sling_bullets
+mastery: slow
+range_normal_ft: 30
+range_long_ft: 120

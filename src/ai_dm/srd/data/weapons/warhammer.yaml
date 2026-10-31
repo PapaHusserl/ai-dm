@@ -1,0 +1,13 @@
+id: warhammer
+name: Боевой молот
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d8
+damage_type: bludgeoning
+cost_cp: 1500
+properties:
+- versatile
+mastery: push
+versatile_dice: 1d10

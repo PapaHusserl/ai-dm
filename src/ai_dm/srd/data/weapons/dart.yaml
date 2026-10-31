@@ -1,0 +1,15 @@
+id: dart
+name: Дротик
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: ranged
+damage_dice: 1d4
+damage_type: piercing
+cost_cp: 5
+properties:
+- finesse
+- thrown
+mastery: vex
+range_normal_ft: 20
+range_long_ft: 60

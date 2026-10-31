@@ -468,6 +468,8 @@ class PromptBuilder:
         }
         if sheet.languages:
             data["languages"] = list(sheet.languages)
+        if sheet.skill_expertise:
+            data["expertise"] = list(sheet.skill_expertise)
         resources = hero.creature.resources
         slots = {}
         for pool_id, pool in resources.items():

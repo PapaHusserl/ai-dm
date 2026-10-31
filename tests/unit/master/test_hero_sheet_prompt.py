@@ -102,6 +102,28 @@ def test_fighter_masteries_include_longsword_but_wizard_has_none(registry, cfg):
     assert "longsword" not in by_class["wizard"]["mastery_weapon_ids"]
 
 
+def test_fighter_mastery_ids_have_no_firearms(registry, cfg):
+    ids = classes(build(registry, cfg))["fighter"]["mastery_weapon_ids"]
+    assert "musket" not in ids
+    assert "pistol" not in ids
+
+
+def test_fighter_mastery_ids_cover_all_regular_weapons(registry, cfg):
+    ids = classes(build(registry, cfg))["fighter"]["mastery_weapon_ids"]
+    assert len(ids) == 36
+
+
+def test_expertise_count_is_two_for_rogue_and_zero_for_fighter(registry, cfg):
+    by_class = classes(build(registry, cfg))
+    assert by_class["rogue"]["expertise_count"] == 2
+    assert by_class["fighter"]["expertise_count"] == 0
+
+
+def test_expertise_count_at_level_1_ignores_later_expertise(registry, cfg):
+    # у следопыта экспертиза (Ловкий исследователь) со 2 уровня -- на 1 уровне не выбирается
+    assert classes(build(registry, cfg))["ranger"]["expertise_count"] == 0
+
+
 def test_mastery_weapons_all_have_mastery_and_class_trains_them(registry, cfg):
     from ai_dm.rules.derived import weapon_proficient
 

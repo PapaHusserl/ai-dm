@@ -38,6 +38,14 @@ DAMAGE_SHORT = {
     "fire": "огонь", "cold": "холод", "piercing": "колющий", "slashing": "рубящий",
     "bludgeoning": "дробящий", "force": "силовое поле", "poison": "яд",
 }
+WEAPON_DAMAGE_WORDS = {"slashing": "руб.", "piercing": "кол.", "bludgeoning": "дроб."}
+# свойства оружия в порядке показа; дальность добавляется к метательному и боеприпасу
+WEAPON_PROPERTY_WORDS = (
+    ("light", "лёгкое"), ("finesse", "фехтовальное"), ("thrown", "метательное"),
+    ("two_handed", "двуручное"), ("versatile", "универсальное"), ("heavy", "тяжёлое"),
+    ("reach", "досягаемость"), ("loading", "перезарядка"), ("ammunition", "боеприпас"),
+)
+RANGED_PROPERTIES = ("thrown", "ammunition")
 TAG_WORDS = {"undead": "нежити", "mor": "тварей Мора"}
 CASTING_WORDS = {"action": "действие", "bonus_action": "бонусное", "reaction": "реакция"}
 RANGE_WORDS = {"self": "на себя", "touch": "касание"}
@@ -140,6 +148,45 @@ def effect_texts(effects):
     return text
 
 
+def weapon_text(weapon, registry):
+    # «1d8 руб. (двумя руками 1d10), универсальное, мастерство: Ослабление»
+    damage_word = WEAPON_DAMAGE_WORDS.get(weapon.damage_type, weapon.damage_type)
+    damage = f"{weapon.damage_dice} {damage_word}"
+    if weapon.versatile_dice:
+        damage += f" (двумя руками {weapon.versatile_dice})"
+    parts = [damage]
+    for prop, word in WEAPON_PROPERTY_WORDS:
+        if prop not in weapon.properties:
+            continue
+        if prop in RANGED_PROPERTIES and weapon.range_normal_ft:
+            word += f" {weapon.range_normal_ft}/{weapon.range_long_ft}"
+        parts.append(word)
+    if weapon.mastery is not None:
+        parts.append("мастерство: " + registry.get("mastery", weapon.mastery).name)
+    extra = effect_texts(weapon.effects)
+    return ", ".join(parts + ([extra] if extra else []))
+
+
+def armor_text(armor):
+    # «КД 13 + Лов (не больше +2)»; щит — «+2 к КД»
+    if armor.category == "shield":
+        return f"+{armor.ac} к КД"
+    if armor.dex_cap == 0:
+        return f"КД {armor.ac}"
+    text = f"КД {armor.ac} + Лов"
+    if armor.dex_cap is not None:
+        text += f" (не больше +{armor.dex_cap})"
+    return text
+
+
+def gear_text(kind, item, registry):
+    if kind == "weapon":
+        return weapon_text(item, registry)
+    if kind == "armor":
+        return armor_text(item)
+    return effect_texts(item.effects)
+
+
 def weight_text(centilb):
     # 150 -> «1,5 фнт»
     return f"{centilb / 100:g}".replace(".", ",") + " фнт"
@@ -189,8 +236,8 @@ def inv_lines(hero, registry, money_text):
         text = ""
         if item.source == "world":
             text = world_item_text(item, entry.cost_cp)
-        elif kind != "armor":
-            text = effect_texts(item.effects)
+        else:
+            text = gear_text(kind, item, registry)
         if item.source != "world" and entry.cost_cp > 0:
             text = ", ".join(x for x in (text, format_cp(entry.cost_cp)) if x)
         groups[inv_group(kind, item)].append((name, is_worn, entry.qty, text))

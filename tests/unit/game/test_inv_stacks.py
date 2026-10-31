@@ -88,7 +88,7 @@ def test_stack_without_quality_is_the_registry_name(registry):
     hero = make_hero()
     add_item(hero, "scimitar", cost_cp=0)
     line = row(lines_of(hero, registry), "скимитар")[0]
-    assert line.strip() == "Скимитар"
+    assert line.strip().startswith("Скимитар")
 
 
 def test_weapon_stacks_stay_in_the_weapon_group(registry):
@@ -127,7 +127,7 @@ def test_worn_mark_has_the_standard_look(registry):
     hero = make_hero()
     add_item(hero, "scimitar", cost_cp=0)
     equip(hero, "scimitar", registry)
-    assert row(lines_of(hero, registry), "скимитар")[0] == "  ★ Скимитар"
+    assert row(lines_of(hero, registry), "скимитар")[0].startswith("  ★ Скимитар")
 
 
 def test_equal_price_stacks_get_one_worn_mark(registry):
@@ -155,8 +155,8 @@ def test_unknown_id_line_has_no_effect_text(registry):
     assert "—" not in row(lines_of(hero, registry), "ghost_relic")[0]
 
 
-def test_armor_line_has_no_effect_text(registry):
+def test_armor_line_has_armor_text_not_effect_text(registry):
     hero = make_hero()
     add_item(hero, "shield", cost_cp=0)
     line = row(lines_of(hero, registry), "щит")[0]
-    assert "—" not in line
+    assert line.strip() == "Щит — +2 к КД"

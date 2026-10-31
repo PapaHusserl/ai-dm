@@ -1,6 +1,11 @@
 id: two_weapon_fighting
 name: Бой двумя оружиями
-description: Когда вы атакуете вторым оружием в рамках бонусного действия, вы добавляете к урону модификатор характеристики. Эффект в движке пока не считается.
+description: Когда вы атакуете вторым оружием в рамках бонусного действия, вы добавляете к урону модификатор характеристики.
 source: srd-5.2
 license: CC-BY-4.0
 category: fighting_style
+effects:
+- type: modifier
+  target: weapon_damage
+  when: off_hand
+  add: weapon_ability

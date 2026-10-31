@@ -48,6 +48,7 @@ DEAD_MENU = ["load_last_save", "quit"]
 CHOICE_TITLES = {
     "fighting_style": "боевой стиль",
     "expertise": "навык для экспертизы",
+    "weapon_mastery": "мастерство оружия",
     "subclass": "подкласс",
     "asi_or_feat": "повышение характеристик или черту",
     "spells": "заклинание для подготовки",
@@ -316,7 +317,7 @@ class GameApp:
 
     def menu_label(self, key) -> str:
         # подпись пункта меню выбора уровня: название из контента, навыка или характеристики
-        for kind in ("feat", "subclass", "feature", "spell"):
+        for kind in ("feat", "subclass", "feature", "spell", "weapon"):
             if self.registry.has(kind, key):
                 return self.registry.get(kind, key).name
         if key in SKILL_NAMES:
@@ -333,7 +334,9 @@ class GameApp:
         if step == "fighting_style":
             draft.fighting_style = key
         elif step == "expertise":
-            draft.expertise = [key]
+            draft.expertise.append(key)
+        elif step == "weapon_mastery":
+            draft.feature_choices.setdefault(step, []).append(key)
         elif step == "subclass":
             draft.subclass_id = key
         elif step == "spells":

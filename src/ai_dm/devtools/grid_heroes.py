@@ -18,7 +18,7 @@ def rogue_choices() -> CharacterChoices:
         ability_scores={"str": 8, "dex": 15, "con": 14, "int": 10, "wis": 12, "cha": 13},
         background_bonus={"dex": 2, "con": 1},
         class_skills=["acrobatics", "insight", "perception", "stealth"],
-        weapon_masteries=["dagger", "shortsword"],
+        weapon_masteries=["dagger", "shortsword"], expertise=["stealth", "perception"],
         species_choices={"skill": "persuasion", "feat": "skilled"},
         feat_choices={"skilled": ["investigation", "history", "medicine"]},
         class_kit="a", hero_id="hero",
@@ -59,7 +59,9 @@ def pick(choices, key, options) -> None:
     if key == "fighting_style":
         choices.fighting_style = first
     elif key == "expertise":
-        choices.expertise = [first]
+        choices.expertise.append(first)
+    elif key == "weapon_mastery":
+        choices.feature_choices.setdefault(key, []).append(first)
     elif key == "subclass":
         choices.subclass_id = first
     elif key == "spells":

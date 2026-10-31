@@ -4,9 +4,10 @@ from ai_dm.rules.trade import assortment
 LIMIT = 20
 
 
-def allowed(ids):
-    # подсказка для Invalid: допустимые id (до LIMIT штук)
-    ids = sorted(ids)
+def allowed(ids, first=()):
+    # подсказка для Invalid: допустимые id (до LIMIT штук); first -- впереди, остальные по алфавиту
+    head = list(dict.fromkeys(first))
+    ids = head + sorted(i for i in ids if i not in head)
     text = ", ".join(ids[:LIMIT])
     if len(ids) > LIMIT:
         text += f" и ещё {len(ids) - LIMIT}"

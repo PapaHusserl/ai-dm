@@ -1,0 +1,5 @@
+id: push
+name: Толчок
+description: При попадании вы отталкиваете цель, не крупнее Большой (Large), в соседнюю зону.
+source: srd-5.2
+license: CC-BY-4.0

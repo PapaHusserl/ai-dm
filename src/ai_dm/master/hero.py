@@ -21,6 +21,7 @@ from ai_dm.rules.hero_options import (
     has_fighting_style,
     mastery_weapons,
 )
+from ai_dm.rules.progression import expertise_total
 
 
 def kit_data(kit):
@@ -45,6 +46,7 @@ def class_data(registry, char_class):
         "skill_count": char_class.skill_choices.count,
         "mastery_count": char_class.weapon_mastery_count,
         "mastery_weapon_ids": [w.id for w in weapons],
+        "expertise_count": expertise_total(registry, char_class, 1),
         "fighting_style": has_style, "fighting_style_ids": styles if has_style else [],
         "kits": [kit_data(k) for k in char_class.starting_kits],
         "spellcasting": spellcasting_data(char_class),

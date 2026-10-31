@@ -1,0 +1,12 @@
+id: greatclub
+name: Палица
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d8
+damage_type: bludgeoning
+cost_cp: 20
+properties:
+- two_handed
+mastery: push

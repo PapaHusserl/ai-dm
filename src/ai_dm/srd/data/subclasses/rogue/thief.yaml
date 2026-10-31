@@ -1,0 +1,11 @@
+id: thief
+name: Вор
+description: Плут, который полагается на ловкие руки и умение пробираться туда, куда не звали.
+source: srd-5.2
+license: CC-BY-4.0
+class_id: rogue
+features:
+- level: 3
+  feature: fast_hands
+- level: 3
+  feature: second_story_work

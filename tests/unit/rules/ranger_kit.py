@@ -13,10 +13,13 @@ def make_ranger(registry):
 
 
 def ranger_at(registry, level):
-    # поднимает по числам (average), без выборов уровня
+    # поднимает по числам (average), без выборов уровня; экспертиза 2 ур. считается выбранной
+    # с 3 уровня (иначе required_choices добирает её, решение 26 К2)
     hero = make_ranger(registry)
     while hero.sheet.level < level:
         level_up(hero, registry, hp_method="average")
+        if hero.sheet.level == 3:
+            hero.sheet.skill_expertise = ["stealth"]
     return hero
 
 

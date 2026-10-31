@@ -513,6 +513,7 @@ def rogue_choices(**changes):
         background_bonus={"dex": 2, "con": 1},
         class_skills=["acrobatics", "athletics", "deception", "insight"],
         weapon_masteries=["dagger", "shortsword"],
+        expertise=["acrobatics", "athletics"],
     )
     return choices.model_copy(update=changes)
 
@@ -1355,7 +1356,8 @@ def test_class_kit_defaults_to_none():
 def test_class_kit_a_puts_kit_items_into_inventory(registry):
     assert kit_delta(registry, "a", "chain_mail") == 1
     assert kit_delta(registry, "a", "greatsword") == 1
-    assert kit_delta(registry, "a", "spear") == 1
+    assert kit_delta(registry, "a", "flail") == 1
+    assert kit_delta(registry, "a", "javelin") == 8
     assert kit_delta(registry, "a", "explorers_pack") == 1
 
 
@@ -1664,3 +1666,15 @@ def test_prepared_list_of_the_hero_is_a_copy_of_the_choices(registry):
     hero = build_character(choices, registry)
     hero.sheet.prepared_of().append("burning_hands")
     assert choices.prepared == ["magic_missile"]
+
+
+def test_empty_species_skill_is_not_a_proficiency_for_expertise(registry):
+    # пустой навык вида не засчитывается как владение: экспертиза «на пустое» отвергается
+    choices = rogue_choices(
+        species_id="human",
+        species_choices={"skill": "", "feat": "skilled"},
+        expertise=["acrobatics", ""],
+    )
+    result = build_character(choices, registry)
+    assert isinstance(result, ValidationErrors)
+    assert "expertise_invalid" in result.codes

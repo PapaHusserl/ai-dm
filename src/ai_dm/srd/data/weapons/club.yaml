@@ -1,0 +1,12 @@
+id: club
+name: Дубинка
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d4
+damage_type: bludgeoning
+cost_cp: 10
+properties:
+- light
+mastery: slow

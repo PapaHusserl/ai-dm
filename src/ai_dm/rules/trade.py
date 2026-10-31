@@ -23,7 +23,7 @@ def merchant_sells(kind, model, preset, level, cfg) -> bool:
     category = item_category(kind, model)
     if category is None or category not in preset.categories:
         return False
-    if model.cost_cp <= 0:
+    if model.cost_cp <= 0 or (kind == "weapon" and model.world_only):
         return False
     if kind == "item" and model.magic:
         return preset.magic and not rarity_exceeds_cap(model, level, cfg)

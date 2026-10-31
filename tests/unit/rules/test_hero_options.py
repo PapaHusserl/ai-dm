@@ -278,7 +278,7 @@ def test_kit_label_exact_texts(registry):
 
     fighter = registry.get("class", "fighter").starting_kits
     assert kit_label(registry, fighter[0]) == (
-        "Кольчуга, Двуручный меч, Копьё, Набор путешественника; +4 зм"
+        "Кольчуга, Двуручный меч, Цеп, Метательное копьё ×8, Набор путешественника; +4 зм"
     )
     assert kit_label(registry, fighter[2]) == "155 зм золотом"
 

@@ -1,0 +1,16 @@
+id: blowgun
+name: Духовая трубка
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: ranged
+damage_dice: 1d1
+damage_type: piercing
+cost_cp: 1000
+properties:
+- ammunition
+- loading
+ammo: needles
+mastery: vex
+range_normal_ft: 25
+range_long_ft: 100

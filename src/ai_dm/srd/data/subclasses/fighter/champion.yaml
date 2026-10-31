@@ -1,0 +1,11 @@
+id: champion
+name: Чемпион
+description: Воин, который оттачивает чистую физическую мощь и точность удара.
+source: srd-5.2
+license: CC-BY-4.0
+class_id: fighter
+features:
+- level: 3
+  feature: improved_critical
+- level: 3
+  feature: remarkable_athlete

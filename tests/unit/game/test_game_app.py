@@ -115,7 +115,10 @@ def test_level_up_repeats_while_xp_is_enough(registry, tmp_path):
     assert first.pending == "level_up"
     assert app.bundle.heroes[0].sheet.level == 2
     second = app.choose("average")
-    assert second.pending is None
+    # на 3 уровне воин выбирает подкласс (Чемпион, К2)
+    assert second.pending == "level_up"
+    third = app.choose("champion")
+    assert third.pending is None
     assert app.bundle.heroes[0].sheet.level == 3
 
 

@@ -10,10 +10,13 @@
 from game_kit import ReactiveAdapter, make_app
 from protocol_kit import make_bundle
 
-from ai_dm.game.starter import ranger_choices
+from ai_dm.game.starter import fighter_choices, ranger_choices
 from ai_dm.rules.builder import build_character
 from ai_dm.rules.progression import apply_level_choices, level_up, xp_for_level
 from ai_dm.state.hero import LevelChoices
+
+# предел шагов меню выборов: зависший мутант должен падать, а не крутить цикл
+MAX_CHOICE_STEPS = 30
 
 
 def ranger_bundle(registry, xp, level=1):
@@ -33,10 +36,17 @@ def ranger_bundle(registry, xp, level=1):
 
 def finish_spells(app, reply):
     # шаг заклинаний (D1): берём первый вариант меню, пока выборы уровня не кончатся
-    while reply.pending == "level_up" and app.bundle.heroes[0].pending_level is not None:
+    for _ in range(MAX_CHOICE_STEPS):
+        if reply.pending != "level_up" or app.bundle.heroes[0].pending_level is None:
+            break
         if "Выборы начаты заново." in reply.lines:
             break
         reply = app.choose(reply.menu[0])
+    assert (
+        reply.pending != "level_up"
+        or app.bundle.heroes[0].pending_level is None
+        or "Выборы начаты заново." in reply.lines
+    ), "выборы уровня не кончились за предел шагов"
     return reply
 
 
@@ -265,8 +275,11 @@ def test_save_works_after_choices_are_done(registry, tmp_path):
     app.choose("average")
     app.choose("archery")
     app.choose("survival")
-    while app.pending == "level_up":
+    for _ in range(MAX_CHOICE_STEPS):
+        if app.pending != "level_up":
+            break
         app.choose(app.menu_for("level_up")[0])
+    assert app.pending != "level_up", "выборы уровня не кончились за предел шагов"
     reply = app.handle("/save done")
     assert reply.lines == ["Сохранено: manual-done."]
 
@@ -429,6 +442,36 @@ def test_asi_two_abilities_is_applied_at_the_end(registry, tmp_path):
     dex, wis = hero.sheet.abilities["dex"], hero.sheet.abilities["wis"]
     finish_spells(app, app.choose("dex+wis"))
     assert (hero.sheet.abilities["dex"], hero.sheet.abilities["wis"]) == (dex + 1, wis + 1)
+
+
+def fighter_at_level_4_menu(registry, tmp_path):
+    bundle = make_bundle(registry)
+    hero = build_character(fighter_choices("hero"), registry)
+    hero.location_id = bundle.heroes[0].location_id
+    hero.sheet.xp = xp_for_level(4, registry)
+    hero.sheet.primary.level = 3
+    hero.sheet.level_history = ["fighter"] * 3
+    bundle.heroes[0] = hero
+    app = make_app(registry, tmp_path, ReactiveAdapter(), bundle=bundle)
+    app.handle("Осматриваюсь")
+    app.choose("average")
+    return app
+
+
+def test_weapon_mastery_pick_is_written_to_the_draft(registry, tmp_path):
+    app = fighter_at_level_4_menu(registry, tmp_path)
+    assert "battleaxe" in app.menu_for("level_up")
+    app.choose("battleaxe")
+    draft = app.bundle.heroes[0].pending_level.draft
+    assert draft.feature_choices == {"weapon_mastery": ["battleaxe"]}
+
+
+def test_weapon_mastery_picks_are_accumulated_in_the_draft(registry, tmp_path):
+    app = fighter_at_level_4_menu(registry, tmp_path)
+    app.record_choice("weapon_mastery", "battleaxe")
+    app.record_choice("weapon_mastery", "mace")
+    draft = app.bundle.heroes[0].pending_level.draft
+    assert draft.feature_choices["weapon_mastery"] == ["battleaxe", "mace"]
 
 
 def test_save_current_auto_writes_the_auto_slot(registry, tmp_path):

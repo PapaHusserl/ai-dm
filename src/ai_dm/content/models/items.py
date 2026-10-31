@@ -20,6 +20,8 @@ class Weapon(ContentObject):
     effects: list[EffectSpec] = []
     # id предмета-боеприпаса, который тратит выстрел (у оружия со свойством ammunition)
     ammo: str | None = None
+    # огнестрел: не продаётся в лавках и не выбирается при создании героя (только пак или выдача)
+    world_only: bool = False
 
 
 class Armor(ContentObject):

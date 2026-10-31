@@ -1,0 +1,14 @@
+id: javelin
+name: Метательное копьё
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d6
+damage_type: piercing
+cost_cp: 50
+properties:
+- thrown
+mastery: slow
+range_normal_ft: 30
+range_long_ft: 120

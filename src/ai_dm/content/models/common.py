@@ -89,7 +89,7 @@ EffectType = Literal[
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
-EffectAdd = Literal["proficiency_bonus", "spellcasting_modifier", "class_level"]
+EffectAdd = Literal["proficiency_bonus", "spellcasting_modifier", "class_level", "weapon_ability"]
 EffectTarget = Literal[
     "saving_throw",
     "damage",
@@ -105,9 +105,9 @@ EffectTarget = Literal[
 ]
 EffectWhen = Literal[
     "natural_1", "once_per_turn", "wearing_armor", "long_rest", "ranged_weapon", "target_wounded",
-    "on_weapon_hit",
+    "on_weapon_hit", "two_handed", "off_hand",
 ]
-EffectMode = Literal["advantage", "resistance", "half"]
+EffectMode = Literal["advantage", "resistance", "half", "floor", "expertise"]
 EffectShape = Literal["cone"]
 
 

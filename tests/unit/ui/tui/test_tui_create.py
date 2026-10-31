@@ -278,8 +278,9 @@ def test_no_latin_in_create_screen_after_start_and_answer(registry, cfg, tmp_pat
     assert "Принять героя" in after
     # «Esc» в подсказке поля -- название клавиши, как F2 и ^q в белом списке A7
     assert [w for w in tui.latin_words(start) if w != "Esc"] == []
-    # id триггера «o1» из листа -- данные героя, не строка интерфейса
-    assert [w for w in tui.latin_words(after) if w not in ("Esc", "o")] == []
+    # id триггера «o1» из листа -- данные героя, не строка интерфейса; «x8» -- количество в строке
+    # инвентаря (набор воина A: метательные копья ×8, К2)
+    assert [w for w in tui.latin_words(after) if w not in ("Esc", "o", "x")] == []
 
 
 # цифра при непустом поле ввода уходит в поле, а не выбирает пункт меню

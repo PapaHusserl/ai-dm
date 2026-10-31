@@ -1,0 +1,12 @@
+id: rapier
+name: Рапира
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d8
+damage_type: piercing
+cost_cp: 2500
+properties:
+- finesse
+mastery: vex

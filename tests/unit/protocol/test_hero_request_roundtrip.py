@@ -57,6 +57,7 @@ def test_request_from_sheet_is_valid_hero_sheet_request():
 
 
 def test_request_from_sheet_matches_canonical_tool_input():
+    # sheet_input (hero_kit) несёт все поля инструмента, в том числе expertise
     assert request_from_sheet(base_sheet()) == sheet_input()
 
 
@@ -112,6 +113,13 @@ def test_roundtrip_without_opportunity_and_with_three_means():
     again = roundtrip(sheet)
     assert again.opportunity == []
     assert again.means == ["а", "б", "в"]
+
+
+def test_roundtrip_keeps_expertise():
+    choices = base_choices(expertise=["stealth", "perception"])
+    sheet = HeroSheet(choices=choices, motive="м", means=["с"], opportunity=[])
+    assert request_from_sheet(sheet)["expertise"] == ["stealth", "perception"]
+    assert roundtrip(sheet).choices.expertise == ["stealth", "perception"]
 
 
 def test_roundtrip_plus_one_each_bonus():

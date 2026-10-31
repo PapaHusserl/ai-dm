@@ -1,0 +1,12 @@
+id: sickle
+name: Серп
+source: srd-5.2
+license: CC-BY-4.0
+category: simple
+kind: melee
+damage_dice: 1d4
+damage_type: slashing
+cost_cp: 100
+properties:
+- light
+mastery: nick

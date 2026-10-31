@@ -1,0 +1,10 @@
+id: expertise
+name: Экспертиза
+description: Вы получаете экспертизу в двух навыках, которыми уже владеете (бонус мастерства для них удваивается).
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: proficiency
+  target: skill
+  mode: expertise
+  count: 2

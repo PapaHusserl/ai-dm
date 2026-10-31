@@ -665,7 +665,7 @@ TABLES = [
     "xp", "proficiency", "dc", "cr_xp",
     "standard_array", "point_buy", "spell_slots_full", "spell_slots_half",
     "individual_treasure", "lifespan", "encounter_budget", "hoard",
-    "pact_slots", "damage_severity",
+    "pact_slots", "damage_severity", "sneak_attack",
 ]
 
 
@@ -674,8 +674,8 @@ def test_table_exists(registry, table_id):
     assert registry.has("table", table_id)
 
 
-def test_there_are_fourteen_srd_tables(registry):
-    assert len(TABLES) == 14
+def test_there_are_fifteen_srd_tables(registry):
+    assert len(TABLES) == 15
     assert registry.ids("table") == sorted(TABLES)
 
 
@@ -943,3 +943,80 @@ def test_srd_background_tools_are_tools(registry):
     for background_id in registry.ids("background"):
         tool = registry.get("background", background_id).tool
         assert registry.get("item", tool).tool is True
+
+
+# К2 П1: оружие воина и плута, мастерства, подклассы, умения
+
+K2_MASTERIES = ["cleave", "graze", "nick", "push", "sap", "slow", "topple", "vex"]
+K2_AMMO_WEAPONS = {
+    "musket": "firearm_bullets", "pistol": "firearm_bullets", "hand_crossbow": "bolts",
+    "heavy_crossbow": "bolts", "sling": "sling_bullets", "blowgun": "needles",
+}
+
+
+def test_there_are_thirty_eight_weapons(registry):
+    assert len(registry.all("weapon")) == 38
+
+
+@pytest.mark.parametrize("weapon_id, ammo", sorted(K2_AMMO_WEAPONS.items()))
+def test_k2_ranged_weapon_has_its_ammo(registry, weapon_id, ammo):
+    assert registry.get("weapon", weapon_id).ammo == ammo
+
+
+def test_every_srd_weapon_has_one_of_eight_masteries(registry):
+    for weapon in registry.all("weapon"):
+        if weapon.source == "srd-5.2":
+            assert weapon.mastery in K2_MASTERIES, weapon.id
+
+
+@pytest.mark.parametrize("mastery_id", ["cleave", "push"])
+def test_new_masteries_exist(registry, mastery_id):
+    assert registry.has("mastery", mastery_id)
+
+
+def test_musket_is_two_handed_loading_ranged(registry):
+    musket = registry.get("weapon", "musket")
+    assert musket.kind == "ranged"
+    assert {"two_handed", "loading"} <= set(musket.properties)
+
+
+def test_pistol_is_one_handed_ranged(registry):
+    pistol = registry.get("weapon", "pistol")
+    assert pistol.kind == "ranged"
+    assert "two_handed" not in pistol.properties
+
+
+@pytest.mark.parametrize("weapon_id", ["musket", "pistol"])
+def test_firearms_are_world_only(registry, weapon_id):
+    assert registry.get("weapon", weapon_id).world_only is True
+
+
+def test_only_firearms_are_world_only(registry):
+    only = sorted(w.id for w in registry.all("weapon") if w.world_only)
+    assert only == ["musket", "pistol"]
+
+
+def test_poisoners_kit_is_a_tool(registry):
+    assert registry.get("item", "poisoners_kit").tool is True
+
+
+@pytest.mark.parametrize(
+    "class_id, subclass_id, features",
+    [
+        ("fighter", "champion", {"improved_critical", "remarkable_athlete"}),
+        ("rogue", "thief", {"fast_hands", "second_story_work"}),
+    ],
+)
+def test_subclass_gives_its_features_on_level_3(registry, class_id, subclass_id, features):
+    subclass = registry.get("subclass", subclass_id)
+    assert subclass.class_id == class_id
+    assert {r.feature for r in subclass.features if r.level == 3} == features
+
+
+def test_sneak_attack_table_grows_every_odd_level(registry):
+    table = registry.get("table", "sneak_attack")
+    assert [table.rows[str(level)] for level in (1, 3, 5, 19)] == [1, 2, 3, 10]
+
+
+def test_cunning_strike_has_no_options_in_data(registry):
+    assert not registry.get("feature", "cunning_strike").options

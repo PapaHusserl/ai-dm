@@ -2,7 +2,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from ai_dm.content.models.common import ABILITIES
+from ai_dm.content.models.common import ABILITIES, SKILLS
 from ai_dm.game.hero_create import split_list
 from ai_dm.rules.builder import (
     ABILITY_MESSAGES,
@@ -39,6 +39,7 @@ from ai_dm.rules.hero_options import (
 )
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES
+from ai_dm.rules.progression import expertise_total
 from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.hero import BackgroundSpec
 
@@ -63,6 +64,7 @@ class Draft:
     bonus_scheme: str = ""
     bonus: dict = field(default_factory=dict)
     class_skills: list = field(default_factory=list)
+    expertise: list = field(default_factory=list)
     masteries: list = field(default_factory=list)
     style: str | None = None
     cantrips: list = field(default_factory=list)
@@ -257,6 +259,22 @@ def count_class_skills(draft, registry):
 def options_class_skills(draft, registry):
     taken = set(spec_skills(draft, registry)) | set(draft.class_skills)
     return [skill_option(s) for s in class_skill_options(draft_class(draft, registry), taken)]
+
+
+def count_expertise(draft, registry):
+    return expertise_total(registry, draft_class(draft, registry), 1)
+
+
+def needs_expertise(draft, registry):
+    return count_expertise(draft, registry) > 0
+
+
+def options_expertise(draft, registry):
+    # все навыки героя (предыстория, класс, Умелость, выборы черт), в которых экспертизы ещё нет;
+    # инструменты из выборов черт отсеивает фильтр s in SKILLS
+    owned = spec_skills(draft, registry) + draft.class_skills + draft.feat_picks_bg
+    owned += draft.feat_picks_species + ([draft.species_skill] if draft.species_skill else [])
+    return [skill_option(s) for s in SKILLS if s in owned and s not in draft.expertise]
 
 
 def count_masteries(draft, registry):
@@ -487,6 +505,10 @@ STEPS = (
         needs=needs_feat_picks_species, options=options_feat_picks,
         count=count_feat_picks_species,
     ),
+    StepDef(
+        "expertise", "expertise", "multi", "Экспертиза", needs=needs_expertise,
+        options=options_expertise, count=count_expertise,
+    ),
     StepDef("kit", "kit", "pick", "Набор класса", needs=needs_kit, options=options_kit),
     StepDef("gear", "gear", "pick", "Снаряжение предыстории", options=options_gear),
     StepDef("name", "name", "text", "Имя героя", put=put_name),
@@ -510,6 +532,7 @@ KEYS = tuple(step.key for step in STEPS)
 CODE_STEPS = {
     "class_skills_invalid": "class_skills", "spells_invalid": "cantrips",
     "species_choices_invalid": "species_skill", "feat_choices_invalid": "feat_picks_bg",
+    "expertise_invalid": "expertise",
     "background_bonus_invalid": "bonus_scheme", "abilities_invalid": "bonus_scheme",
     "point_buy_invalid": "method", "standard_array_invalid": "method",
     "hero_name_empty": "name", "hero_name_taken": "name",
@@ -590,7 +613,8 @@ def to_sheet(draft, registry) -> HeroSheet:
         background=draft.background, ability_method=draft.ability_method,
         ability_scores=dict(draft.scores), background_bonus=dict(draft.bonus),
         class_skills=list(draft.class_skills), weapon_masteries=list(draft.masteries),
-        fighting_style=draft.style, species_choices=species_choices,
+        expertise=list(draft.expertise), fighting_style=draft.style,
+        species_choices=species_choices,
         spells=draft.cantrips + draft.spells, prepared=list(draft.prepared),
         feat_choices=feat_choices, background_gear=draft.gear or "equipment",
         class_kit=draft.kit,

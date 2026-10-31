@@ -1,0 +1,9 @@
+id: cunning_action
+name: Хитрое действие
+description: Бонусным действием вы можете совершить действие Рывок, Отход или Спрятаться.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: action
+  target: bonus_action
+activation: bonus_action

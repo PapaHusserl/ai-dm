@@ -30,9 +30,23 @@ weapon_training_properties:
 weapon_mastery_count: 2
 features:
 - level: 1
+  feature: expertise
+- level: 1
+  feature: sneak_attack
+- level: 1
+  feature: thieves_cant
+- level: 1
   feature: weapon_mastery
+- level: 2
+  feature: cunning_action
+- level: 3
+  feature: steady_aim
 - level: 4
   feature: ability_score_improvement
+- level: 5
+  feature: cunning_strike
+- level: 5
+  feature: uncanny_dodge
 - level: 8
   feature: ability_score_improvement
 - level: 10

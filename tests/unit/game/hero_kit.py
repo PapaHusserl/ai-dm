@@ -57,7 +57,7 @@ def sheet_input(**changes):
         "ability_method": "standard_array", "ability_scores": dict(SCORES),
         "bonus_plus2": "dex", "bonus_plus1": ["con"],
         "class_skills": ["perception", "survival"],
-        "weapon_masteries": ["longsword", "greatsword", "shortsword"],
+        "weapon_masteries": ["longsword", "greatsword", "shortsword"], "expertise": [],
         "fighting_style": "defense", "class_kit": "a", "spells": [], "prepared": [],
         "species_skill": "stealth", "species_feat": "skilled", "feat_skills": [],
         "species_feat_skills": ["medicine", "religion", "nature"],

@@ -133,10 +133,12 @@ def test_level_1_ranger_preset_needs_no_choices(tmp_path, registry, cfg):
 
 # регрессия: воин и плут без выборов собираются как раньше
 
-def test_fighter_preset_at_level_3_builds_without_choices(tmp_path, registry, cfg):
+def test_fighter_preset_at_level_3_builds_with_subclass_choice(tmp_path, registry, cfg):
+    # К2: на 3 уровне воин выбирает подкласс (Чемпион)
     files = default_files()
     files["heroes/arn.yaml"]["level"] = 3
     files["heroes/arn.yaml"]["xp"] = 900
+    files["heroes/arn.yaml"]["level_choices"] = [{"level": 3, "subclass_id": "champion"}]
     hero = build(tmp_path, registry, cfg, files, hero="arn").heroes[0]
     assert hero.sheet.level == 3
     assert hero.sheet.class_id == "fighter"
@@ -152,18 +154,26 @@ def test_fighter_preset_at_level_5_without_asi_choice_refuses_start(tmp_path, re
         build(tmp_path, registry, cfg, files, hero="arn")
 
 
+FIGHTER_5_CHOICES = [
+    {"level": 3, "subclass_id": "champion"},
+    {"level": 4, "asi": {"str": 2}, "feature_choices": {"weapon_mastery": ["spear"]}},
+]
+
+
 def test_fighter_preset_at_level_5_with_asi_choice_builds(tmp_path, registry, cfg):
     files = default_files()
     files["heroes/arn.yaml"]["level"] = 5
-    files["heroes/arn.yaml"]["level_choices"] = [{"level": 4, "asi": {"str": 2}}]
+    files["heroes/arn.yaml"]["level_choices"] = FIGHTER_5_CHOICES
     hero = build(tmp_path, registry, cfg, files, hero="arn").heroes[0]
     assert hero.sheet.level == 5
+    assert hero.sheet.weapon_masteries[-1] == "spear"
+    assert hero.sheet.subclass_id == "champion"
 
 
 def test_fighter_preset_at_level_5_with_asi_choice_raises_ability(tmp_path, registry, cfg):
     files = default_files()
     files["heroes/arn.yaml"]["level"] = 5
-    files["heroes/arn.yaml"]["level_choices"] = [{"level": 4, "asi": {"str": 2}}]
+    files["heroes/arn.yaml"]["level_choices"] = FIGHTER_5_CHOICES
     plain = build(tmp_path, registry, cfg, default_files(), hero="arn").heroes[0]
     hero = build(tmp_path, registry, cfg, files, hero="arn").heroes[0]
     assert hero.sheet.abilities["str"] == plain.sheet.abilities["str"] + 2

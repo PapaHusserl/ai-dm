@@ -1,0 +1,14 @@
+id: halberd
+name: Алебарда
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: melee
+damage_dice: 1d10
+damage_type: slashing
+cost_cp: 2000
+properties:
+- heavy
+- reach
+- two_handed
+mastery: cleave

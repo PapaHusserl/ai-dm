@@ -365,6 +365,14 @@ def by_level(table: dict[int, int], level: int) -> int:
     return table[max(keys)]
 
 
+def mastery_limit(hero, registry) -> int:
+    # сколько видов оружия с мастерством у героя на его уровне
+    char_class = registry.get("class", hero.sheet.class_id)
+    if char_class.weapon_mastery_by_level is not None:
+        return by_level(char_class.weapon_mastery_by_level, hero.sheet.level)
+    return char_class.weapon_mastery_count
+
+
 def prepared_limit(hero, registry) -> int | None:
     # сколько заклинаний можно подготовить на уровне героя; None = без ограничения
     spellcasting = registry.get("class", hero.sheet.class_id).spellcasting

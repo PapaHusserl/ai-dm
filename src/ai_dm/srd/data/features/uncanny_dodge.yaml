@@ -1,0 +1,6 @@
+id: uncanny_dodge
+name: Невероятное уклонение
+description: Реакцией вы вдвое уменьшаете урон от атаки, которая по вам попала.
+source: srd-5.2
+license: CC-BY-4.0
+activation: reaction

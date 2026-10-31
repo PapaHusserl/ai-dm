@@ -1,0 +1,14 @@
+id: remarkable_athlete
+name: Выдающийся атлет
+description: Вы совершаете броски инициативы и проверки Силы (Атлетика) с преимуществом. После критического попадания вы
+  можете переместиться на половину скорости без провоцирования атак по возможности.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: modifier
+  target: initiative
+  mode: advantage
+- type: modifier
+  target: skill
+  skill: athletics
+  mode: advantage

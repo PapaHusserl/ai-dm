@@ -33,19 +33,22 @@ def test_fighter_and_rogue_level_up_keeps_second_wind_and_adds_no_ranger_pools(r
     assert pool(hero, {"fighter": "hit_dice:d10", "rogue": "hit_dice:d8"}[class_id]).max == 5
 
 
-def test_fighter_second_wind_is_still_two_at_level_5(registry):
+def test_fighter_second_wind_is_three_at_level_5(registry):
+    # К2, решение 27: Второе дыхание — 3 заряда с 4 ур.
     hero = make_class_hero("fighter", SCORES)
     sync_resources(hero, registry)
     for _ in range(4):
         level_up(hero, registry, hp_method="average")
-    assert pool(hero, "second_wind").max == 2
+    assert pool(hero, "second_wind").max == 3
 
 
 @pytest.mark.parametrize("class_id", ["fighter", "rogue"])
-@pytest.mark.parametrize("level", [2, 3, 5])
-def test_fighter_and_rogue_require_no_choices(registry, class_id, level):
+@pytest.mark.parametrize("level, expected", [(2, set()), (3, {"subclass"}), (5, set())])
+def test_fighter_and_rogue_required_choices_on_levels_2_3_5(registry, class_id, level, expected):
+    # подкласс на 3 ур. (Чемпион, Вор — К2); экспертиза плута уже выбрана на 1 ур.
     from ai_dm.rules.progression import required_choices
 
     hero = make_class_hero(class_id, SCORES)
+    hero.sheet.skill_expertise = ["athletics", "stealth"] if class_id == "rogue" else []
     hero.sheet.primary.level = level
-    assert required_choices(hero, registry, level) == set()
+    assert required_choices(hero, registry, level) == expected

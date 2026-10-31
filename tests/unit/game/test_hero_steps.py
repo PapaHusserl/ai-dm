@@ -28,9 +28,9 @@ from ai_dm.state.hero import BackgroundSpec  # noqa: E402
 
 KEYS = [
     "species", "class", "background", "method", "scores", "bonus_scheme", "bonus", "class_skills",
-    "masteries", "style", "cantrips", "spells", "prepared", "species_skill", "species_feat",
-    "feat_picks_bg", "feat_picks_species", "kit", "gear", "name", "gender", "pronouns", "motive",
-    "means",
+    "masteries", "style", "cantrips", "spells", "prepared", "species_skill",
+    "species_feat", "feat_picks_bg", "feat_picks_species", "expertise", "kit", "gear", "name",
+    "gender", "pronouns", "motive", "means",
 ]
 
 
@@ -275,6 +275,92 @@ def test_mastery_weapons_are_class_weapons_and_count_is_three_for_fighter(regist
     current = draft(species_id="human", class_id="fighter", background="soldier")
     assert "longsword" in values("masteries", current, registry)
     assert step("masteries").count(current, registry) == 3
+
+
+def test_masteries_of_fighter_have_no_firearms(registry):
+    current = draft(species_id="human", class_id="fighter", background="soldier")
+    options = values("masteries", current, registry)
+    assert "musket" not in options
+    assert "pistol" not in options
+    assert len(options) == 36
+
+
+def test_expertise_step_is_needed_for_rogue(registry):
+    keys = keys_for(registry, species_id="human", class_id="rogue", background="soldier")
+    assert "expertise" in keys
+
+
+@pytest.mark.parametrize("class_id", ["fighter", "wizard", "ranger"])
+def test_expertise_step_is_not_needed_for_other_classes(registry, class_id):
+    assert "expertise" not in keys_for(
+        registry, species_id="human", class_id=class_id, background="soldier"
+    )
+
+
+def rogue_draft(**kw):
+    return draft(
+        species_id="human", class_id="rogue", background="soldier",
+        class_skills=["acrobatics", "insight", "perception", "stealth"], **kw,
+    )
+
+
+def test_rogue_expertise_count_is_two(registry):
+    assert step("expertise").count(rogue_draft(), registry) == 2
+
+
+def test_rogue_expertise_options_are_class_and_background_skills(registry):
+    options = values("expertise", rogue_draft(), registry)
+    assert sorted(options) == sorted(
+        ["acrobatics", "insight", "perception", "stealth", "athletics", "intimidation"]
+    )
+
+
+def test_human_rogue_expertise_options_include_species_and_feat_skills(registry):
+    # Р31: шаг стоит после выбора черты вида; в вариантах все навыки героя
+    options = values(
+        "expertise",
+        rogue_draft(species_skill="persuasion", feat_picks_species=["arcana", "thieves_tools"]),
+        registry,
+    )
+    assert "persuasion" in options
+    assert "arcana" in options
+    assert "thieves_tools" not in options
+
+
+def test_rogue_expertise_options_include_background_feat_skills(registry):
+    options = values(
+        "expertise", rogue_draft(feat_picks_bg=["medicine", "poisoners_kit"]), registry
+    )
+    assert "medicine" in options
+    assert "poisoners_kit" not in options
+
+
+def test_changing_species_skill_clears_expertise():
+    from ai_dm.game.hero_steps import clear_from
+
+    current = rogue_draft(species_skill="persuasion", expertise=["persuasion", "stealth"])
+    clear_from(current, "species_skill")
+    assert current.expertise == []
+
+
+def test_expertise_invalid_code_returns_to_the_expertise_step():
+    from ai_dm.game.hero_steps import step_for_code
+
+    assert step_for_code("expertise_invalid") == "expertise"
+
+
+def test_rogue_expertise_options_skip_already_picked(registry):
+    options = values("expertise", rogue_draft(expertise=["stealth"]), registry)
+    assert "stealth" not in options
+    assert "perception" in options
+
+
+def test_to_sheet_carries_expertise(registry):
+    from ai_dm.game.hero_steps import to_sheet
+
+    current = rogue_draft(expertise=["stealth", "perception"], ability_method="standard_array")
+    sheet = to_sheet(current, registry)
+    assert sheet.choices.expertise == ["stealth", "perception"]
 
 
 def test_style_options_are_the_four_fighting_styles(registry):

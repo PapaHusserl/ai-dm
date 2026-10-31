@@ -1,0 +1,10 @@
+id: steady_aim
+name: Верный прицел
+description: Бонусным действием вы получаете преимущество на следующую атаку в этом ходу. Применить можно, только если вы
+  ещё не перемещались в этот ход; после этого ваша скорость до конца хода равна 0.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: action
+  target: bonus_action
+activation: bonus_action

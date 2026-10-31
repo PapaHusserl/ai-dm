@@ -1,0 +1,17 @@
+id: hand_crossbow
+name: Ручной арбалет
+source: srd-5.2
+license: CC-BY-4.0
+category: martial
+kind: ranged
+damage_dice: 1d6
+damage_type: piercing
+cost_cp: 7500
+properties:
+- ammunition
+- light
+- loading
+ammo: bolts
+mastery: vex
+range_normal_ft: 30
+range_long_ft: 120

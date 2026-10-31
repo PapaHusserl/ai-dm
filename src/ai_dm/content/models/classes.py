@@ -38,6 +38,8 @@ class CharacterClass(ContentObject):
     # воинское оружие с любым из этих свойств (плут)
     weapon_training_properties: list[Literal["finesse", "light"]] = []
     weapon_mastery_count: int = 0
+    # видов оружия с мастерством на уровне героя (ключ -- уровень); None = weapon_mastery_count
+    weapon_mastery_by_level: dict[int, int] | None = None
     spellcasting: Spellcasting | None = None
     features: list[FeatureRef] = []
     # стартовые наборы класса (SRD 5.2: варианты A/B/C); пусто = нет

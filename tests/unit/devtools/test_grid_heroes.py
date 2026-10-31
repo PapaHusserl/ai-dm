@@ -150,8 +150,13 @@ def test_ranger_gets_expertise_and_fighting_style(registry):
 
 
 def test_other_classes_have_no_subclass(registry):
-    for class_id in ("fighter", "rogue", "cleric", "wizard"):
+    for class_id in ("cleric", "wizard"):
         assert build_hero(class_id, 5, registry).sheet.subclass_id is None
+
+
+def test_fighter_and_rogue_take_their_first_subclass(registry):
+    assert build_hero("fighter", 5, registry).sheet.subclass_id == "champion"
+    assert build_hero("rogue", 5, registry).sheet.subclass_id == "thief"
 
 
 def test_wizard_and_cleric_prepare_all_available_spells(registry):
@@ -202,3 +207,22 @@ def test_auto_level_reports_apply_errors(registry, monkeypatch):
 def test_fighter_gets_the_first_fighting_style_option_at_level_1(registry):
     hero = build_hero("fighter", 1, registry)
     assert "defense" in hero.sheet.feats
+
+
+@pytest.mark.parametrize("class_id", ["fighter", "rogue"])
+def test_k2_heroes_build_at_level_5(registry, class_id):
+    hero = build_hero(class_id, 5, registry)
+    assert hero.sheet.level == 5
+
+
+def test_fighter_level_5_has_four_masteries(registry):
+    hero = build_hero("fighter", 5, registry)
+    assert len(hero.sheet.weapon_masteries) == 4
+
+
+def test_rogue_level_1_has_two_expertise_skills(registry):
+    assert len(build_hero("rogue", 1, registry).sheet.skill_expertise) == 2
+
+
+def test_rogue_level_5_keeps_two_expertise_skills(registry):
+    assert len(build_hero("rogue", 5, registry).sheet.skill_expertise) == 2

@@ -24,10 +24,11 @@ def class_skill_options(char_class, taken) -> list[str]:
 
 
 def mastery_weapons(registry, char_class):
-    # оружие с мастерством, которым класс владеет
+    # оружие с мастерством, которым класс владеет; огнестрел (world_only) при создании не выбирается
     return [
         w for w in registry.all("weapon")
-        if w.source != "world" and w.mastery is not None and weapon_proficient(char_class, w)
+        if w.source != "world" and not w.world_only and w.mastery is not None
+        and weapon_proficient(char_class, w)
     ]
 
 
