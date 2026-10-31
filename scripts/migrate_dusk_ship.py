@@ -30,10 +30,9 @@ NPC_IDS = ["killian", "zimmer", "kurt", "leo", "henry", "orlando"]
 KNOX_ID = "knox"
 RUMOR_TEXT = "В гавани видели паруса «Бродячей Луны»: вольное судно идёт к Паромному пирсу."
 KNOX_JEALOUSY = (
-    "Ревность к старым приятелям: когда друзья с «Бродячей Луны» подкатывают к героине, "
-    "Нокс ревнует. Иногда держит лицо и отшучивается, иногда срывается — резкое слово, "
-    "вызов на спор, уводит героиню прочь. Друзей любит: ссорится с ними, но не до разрыва, "
-    "быстро остывает и мирится."
+    "Ревность к приятелям и брату он чувствует, но говорит о ней спокойно и открыто, без срывов"
+    " и ссор: признаётся, обнимает, отшучивается; героиню не удерживает и не ограничивает."
+    " Многолюбие принимает без осуждения."
 )
 
 
@@ -91,7 +90,8 @@ def main():
     )
     knox = world["npcs"][KNOX_ID]
     notes = knox.get("notes", "")
-    knox["notes"] = f"{notes}\n\n{KNOX_JEALOUSY}" if notes else KNOX_JEALOUSY
+    if KNOX_JEALOUSY not in notes:
+        knox["notes"] = f"{notes}\n\n{KNOX_JEALOUSY}" if notes else KNOX_JEALOUSY
     tmp = world_path.with_name("world.json.tmp")
     tmp.write_text(json.dumps(world, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(world_path)

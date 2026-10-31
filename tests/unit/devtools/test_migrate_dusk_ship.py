@@ -162,9 +162,9 @@ def test_apply_appends_jealousy_to_knox_notes(tmp_path):
     slot = make_slot(tmp_path)
     run(slot)
     notes = world_of(slot)["npcs"]["knox"]["notes"]
-    assert notes.startswith(OLD_KNOX_NOTES + "\n\nРевность к старым приятелям")
-    assert "ревнует" in notes
-    assert "не до разрыва" in notes
+    assert notes.startswith(OLD_KNOX_NOTES + "\n\nРевность к приятелям")
+    assert "спокойно" in notes
+    assert "без срывов и ссор" in notes
 
 
 def test_apply_keeps_knox_other_fields(tmp_path):
@@ -322,7 +322,7 @@ def test_second_run_does_not_duplicate_jealousy(tmp_path):
     slot = make_slot(tmp_path)
     run(slot)
     run(slot)
-    assert world_of(slot)["npcs"]["knox"]["notes"].count("Ревность к старым приятелям") == 1
+    assert world_of(slot)["npcs"]["knox"]["notes"].count("Ревность к приятелям") == 1
 
 
 @pytest.mark.parametrize("state", ["fired", "active"])
@@ -403,7 +403,7 @@ def test_pack_orlando_is_gnome_cook_who_only_lightly_flirts_with_mira(registry):
     assert "коком" in npc.notes
     assert "совсем чуть-чуть" in npc.notes
     assert "помогает ей по хозяйству" in npc.notes
-    assert "побаивается" in npc.notes
+    assert "по-приятельски" in npc.notes
 
 
 # сквозное: пак -> догрузка -> скрипт -> границы сцены
@@ -475,7 +475,7 @@ def test_script_output_loads_into_engine(registry, tmp_path):
     trigger = loaded.world.factions["wandering_moon_crew"].opportunity[0]
     assert trigger.state == "active"
     assert trigger.if_.seconds == NOW_S + DAY
-    assert "ревнует" in loaded.world.npcs["knox"].notes
+    assert "Ревность к приятелям" in loaded.world.npcs["knox"].notes
 
 
 def test_ship_does_not_fire_before_term(registry, cfg, tmp_path):
