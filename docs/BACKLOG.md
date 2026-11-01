@@ -1417,3 +1417,15 @@ updated: 2026-11-01
 `daylight`, `detect_magic`, `detect_poison_and_disease`, `dispel_magic`, `enhance_ability`, `find_traps`, `gust_of_wind`, `jump`,
 `locate_object`, `magic_weapon`, `meld_into_stone`, `nondetection`, `protection_from_energy`, `protection_from_poison`, `revivify`,
 `silence`, `water_breathing`, `water_walk`. Видимо в мастере: список заклинаний следопыта растёт.
+
+## 251. Хозяин заведения без услуг и торговли
+status: idea
+priority: high
+updated: 2026-11-01
+
+Живой прогон drunk_dragon-00000001, ходы 1609–1610 (journal/calls-060.jsonl): рассказчик (gemini-3.8-flash) создал
+таверну «Пещера Бродяг» (`location_create`), затем трактирщика Тормонда (`npc_create`, `means` — «трактирная стойка»)
+с `services: []` и `trade_kind: "none"`; движок принял. В тексте Тормонд предлагает еду и ночлег, а `shop` пишет
+«Здесь никто не торгует». Правило «трактирщик — еда и комнаты» в narrator_rules.md (абзац «Услуги») модель
+пропустила; значения по умолчанию в схеме `npc_create` (requests.py) — пустые. Нет проверки, что у хозяина заведения
+есть услуги или торговля. Как чинить (промпт, схема, проверка движка) — решает архитектор.
