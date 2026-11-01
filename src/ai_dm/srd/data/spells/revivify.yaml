@@ -1,0 +1,10 @@
+id: revivify
+name: Оживление
+description: "Вы касаетесь существа, умершего не более минуты назад: оно возвращается к жизни с 1 хит-пойнтом. Заклинание не вернёт погибшего от старости и не восстановит утраченные части тела."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: necromancy
+range_kind: touch
+classes:
+- cleric

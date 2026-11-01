@@ -1,0 +1,17 @@
+id: phantom_steed
+name: Призрачный скакун
+description: "За минуту вы создаёте квазиреальную лошадь на 1 час: она несёт всадника и грузы, скорость 100 фт., вдвое быстрее обычной лошади в дальнем пути. Урон разрушает скакуна. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: illusion
+range_kind: ranged
+range_ft: 30
+casting_time: 1m
+duration: 1h
+ritual: true
+classes:
+- wizard
+effect_text: Призрачная лошадь целый час везёт героя вдвое быстрее обычного.
+effects:
+- type: utility

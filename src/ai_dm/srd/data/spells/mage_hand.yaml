@@ -1,0 +1,15 @@
+id: mage_hand
+name: Волшебная рука
+description: "В пределах 30 фт. возникает призрачная рука на 1 минуту. Действием вы можете её двигать и ею брать, класть, открывать предмет весом до 10 фунтов. Рука не атакует."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: conjuration
+range_kind: ranged
+range_ft: 30
+duration: 1m
+classes:
+- wizard
+effect_text: Призрачная рука на минуту носит предметы до 10 фунтов, открывает двери и сундуки.
+effects:
+- type: utility

@@ -1,0 +1,20 @@
+id: mass_healing_word
+name: Множественное лечащее слово
+description: "Бонусным действием вы произносите слово исцеления: до шести видимых существ в пределах 60 фт. восстанавливают по 2d4 + модификатор заклинательной характеристики хит-пойнтов. На каждый уровень ячейки выше 3-го — +1d4."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: ranged
+range_ft: 60
+casting_time: bonus_action
+classes:
+- cleric
+effects:
+- type: heal
+  dice: 2d4
+  add: spellcasting_modifier
+  targets: 6
+upcast:
+  per_slot_level:
+    dice: 1d4

@@ -1,0 +1,13 @@
+id: phantasmal_force
+name: Призрачная сила
+description: "Вы вкладываете в разум существа в пределах 60 фт. иллюзию: оно совершает спасбросок Интеллекта и при провале верит ей, пока держится концентрация (до 1 минуты). В начале каждого его хода иллюзия наносит 1d6 психического урона."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: ranged
+range_ft: 60
+duration: 1m
+concentration: true
+classes:
+- wizard

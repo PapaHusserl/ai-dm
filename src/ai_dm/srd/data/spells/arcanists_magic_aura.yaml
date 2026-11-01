@@ -1,0 +1,14 @@
+id: arcanists_magic_aura
+name: Магическая аура Арканиста
+description: "Вы касаетесь существа или предмета и на 24 часа скрываете или подменяете его магическую ауру: не-магическое выглядит магическим, магическое — обычным, а школа магии может быть показана другой."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: touch
+duration: 1d
+classes:
+- wizard
+effect_text: Магическая аура цели скрыта или подменена на сутки; обнаружение магии видит ложь.
+effects:
+- type: utility

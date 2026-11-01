@@ -1,0 +1,22 @@
+id: web
+name: Паутина
+description: "Вы заплетаете липкой паутиной куб со стороной 20 фт. в пределах 60 фт.; пока держится концентрация (до 1 часа), она труднопроходима. Существо, начинающее ход в паутине или входящее в неё, при провале спасброска Ловкости опутано, повторяя спасбросок в конце хода. Паутина горит."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: conjuration
+range_kind: ranged
+range_ft: 60
+duration: 1h
+concentration: true
+classes:
+- wizard
+effects:
+- type: area
+  shape: cube
+  size_ft: 20
+- type: save_effect
+  ability: dex
+  repeat: true
+- type: apply_condition
+  condition: restrained

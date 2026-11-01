@@ -1,0 +1,16 @@
+id: speak_with_dead
+name: Разговор с мёртвыми
+description: "Вы вынуждаете труп в пределах 10 фт. на 10 минут ответить на пять вопросов. Он знает лишь то, что знал при жизни, и может отвечать уклончиво или лживо. Заклинание не работает на нежить."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: necromancy
+range_kind: ranged
+range_ft: 10
+duration: 10m
+classes:
+- cleric
+- wizard
+effect_text: Труп отвечает на пять вопросов в пределах того, что знал при жизни, и может лукавить.
+effects:
+- type: utility

@@ -1,0 +1,16 @@
+id: locate_object
+name: Поиск предмета
+description: "Пока держится концентрация (до 10 минут), вы чувствуете направление к ближайшему предмету, который вы хорошо знаете или назвали точно, если он в пределах 1000 фт. Проточная вода шире 10 фт., свинец и другие преграды заслоняют чутьё."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: divination
+range_kind: self
+duration: 10m
+concentration: true
+classes:
+- cleric
+- wizard
+effect_text: Маг чует направление к названному предмету, если тот в пределах 1000 фт.
+effects:
+- type: utility

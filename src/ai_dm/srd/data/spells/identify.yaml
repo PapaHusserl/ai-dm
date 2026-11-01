@@ -1,0 +1,15 @@
+id: identify
+name: Опознание
+description: "За минуту вы касаетесь предмета и узнаёте его магические свойства, способ активации, число зарядов и действующие заклинания. Если на существо наложено заклинание, вы узнаете и его. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: divination
+range_kind: touch
+casting_time: 1m
+ritual: true
+classes:
+- wizard
+effect_text: "Маг узнаёт магические свойства предмета в руках: что он делает, как включается, сколько зарядов."
+effects:
+- type: utility

@@ -1,0 +1,12 @@
+id: gaseous_form
+name: Газообразная форма
+description: "Согласное существо, которого вы коснулись, превращается в облако тумана на время концентрации (до 1 часа): сопротивление урону дробящим, колющим и рубящим, преимущество на спасброски Силы, Ловкости и Телосложения. Оно не атакует и не колдует."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: touch
+duration: 1h
+concentration: true
+classes:
+- wizard

@@ -1,0 +1,20 @@
+id: spirit_guardians
+name: Духовные стражи
+description: "Вокруг вас до 10 минут (концентрация) кружатся духи в радиусе 15 фт. Пока враг начинает ход в этой области, он совершает спасбросок Мудрости и при провале получает 3d8 урона излучением, при успехе — половину. Область труднопроходима для врагов. На каждый уровень ячейки выше 3-го — +1d8."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: conjuration
+range_kind: self
+duration: 10m
+concentration: true
+classes:
+- cleric
+effects:
+- type: aura
+  dice: 3d8
+  ability: wis
+  damage_type: radiant
+upcast:
+  per_slot_level:
+    dice: 1d8

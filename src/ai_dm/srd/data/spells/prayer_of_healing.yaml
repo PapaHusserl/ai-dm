@@ -1,0 +1,20 @@
+id: prayer_of_healing
+name: Молитва исцеления
+description: "За 10 минут молитвы до шести существ в пределах 30 фт. восстанавливают по 2d8 + модификатор заклинательной характеристики хит-пойнтов. На каждый уровень ячейки выше 2-го — +1d8. Нежить и конструкты не лечатся."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: abjuration
+range_kind: ranged
+range_ft: 30
+casting_time: 10m
+classes:
+- cleric
+effects:
+- type: heal
+  dice: 2d8
+  add: spellcasting_modifier
+  targets: 6
+upcast:
+  per_slot_level:
+    dice: 1d8

@@ -1,0 +1,24 @@
+id: enhance_ability
+name: Усиление способности
+description: "Пока держится концентрация (до 1 часа), существо, которого вы коснулись, получает преимущество на проверки одной выбранной характеристики. Вы выбираете характеристику при сотворении."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+duration: 1h
+concentration: true
+classes:
+- cleric
+- wizard
+effects:
+- type: modifier
+  target: ability_check
+  mode: advantage
+  variants:
+  - str
+  - dex
+  - con
+  - int
+  - wis
+  - cha

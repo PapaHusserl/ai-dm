@@ -1,0 +1,24 @@
+id: chromatic_orb
+name: Цветной шар
+description: "Дальнобойная атака заклинанием по существу в пределах 90 фт.: при попадании 3d8 урона на выбор — кислота, холод, огонь, электричество, яд или звук. На каждый уровень ячейки выше 1-го — +1d8."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: evocation
+range_kind: ranged
+range_ft: 90
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 3d8
+  variants:
+  - acid
+  - cold
+  - fire
+  - lightning
+  - poison
+  - thunder
+upcast:
+  per_slot_level:
+    dice: 1d8

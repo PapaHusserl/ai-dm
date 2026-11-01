@@ -13,6 +13,8 @@ class UpcastStep(ContentModel):
     count: int | None = None
     # прибавка к числу целей (Благословение)
     targets: int | None = None
+    # прибавка к value эффекта (Помощь)
+    value: int | None = None
 
 
 class Upcast(ContentModel):
@@ -29,6 +31,9 @@ class Spell(Behavior):
     duration: str = "instant"
     duration_s: int | None = None
     concentration: bool = False
+    ritual: bool = False
+    # строка эффекта для лога и рассказчика у заклинаний вида utility
+    effect_text: str = ""
     classes: list[str] = []
     upcast: Upcast | None = None
     # уровень героя -> кости заговора

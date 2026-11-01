@@ -1,0 +1,14 @@
+id: rope_trick
+name: Трюк с верёвкой
+description: "Вы касаетесь верёвки: один её конец поднимается вверх и открывает невидимый вход в карманное пространство, где на 1 час укроются до восьми существ. Втянутая верёвка закрывает вход."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+duration: 1h
+classes:
+- wizard
+effect_text: Верёвка уходит в небо; наверху на час открывается укрытие для восьмерых.
+effects:
+- type: utility

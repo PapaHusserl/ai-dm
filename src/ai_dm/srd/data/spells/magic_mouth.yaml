@@ -1,0 +1,16 @@
+id: magic_mouth
+name: Волшебные уста
+description: "За минуту вы вкладываете в предмет сообщение до 25 слов: при заданном вами условии на нём появится рот и произнесёт сказанное. Срабатывает один раз. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: ranged
+range_ft: 30
+casting_time: 1m
+ritual: true
+classes:
+- wizard
+effect_text: В предмет вложено сообщение до 25 слов; оно прозвучит один раз при заданном условии.
+effects:
+- type: utility

@@ -1,0 +1,15 @@
+id: remove_curse
+name: Снятие проклятия
+description: "Вы касаетесь существа или предмета: все проклятия на нём снимаются. Если предмет проклят магически, он остаётся проклятым, но его хозяина больше ничто не держит и он может от него избавиться."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: touch
+classes:
+- cleric
+- wizard
+effects:
+- type: remove_condition
+  conditions:
+  - cursed

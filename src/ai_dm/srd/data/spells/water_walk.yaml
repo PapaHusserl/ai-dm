@@ -1,0 +1,16 @@
+id: water_walk
+name: Хождение по воде
+description: "До десяти согласных существ в пределах 30 фт. на 1 час могут идти по воде и другим жидкостям как по твёрдой земле, не проваливаясь. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: ranged
+range_ft: 30
+duration: 1h
+ritual: true
+classes:
+- cleric
+effect_text: До десяти спутников идут по воде как по суше целый час.
+effects:
+- type: utility

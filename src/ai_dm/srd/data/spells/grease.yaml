@@ -1,0 +1,20 @@
+id: grease
+name: Смазка
+description: "Вы покрываете скользким жиром квадрат земли со стороной 10 фт. в пределах 60 фт. на 1 минуту: существа в нём при провале спасброска Ловкости падают ничком. Участок труднопроходим."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: ranged
+range_ft: 60
+duration: 1m
+classes:
+- wizard
+effects:
+- type: area
+  shape: cube
+  size_ft: 10
+- type: save_effect
+  ability: dex
+- type: apply_condition
+  condition: prone

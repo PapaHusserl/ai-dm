@@ -110,6 +110,147 @@
 | Burning Hands | Огненные руки | `burning_hands` | |
 | Cure Wounds | Лечение ран | `cure_wounds` | |
 | Bless | Благословение | `bless` | |
+| Acid Arrow | Кислотная стрела | `acid_arrow` | К3 |
+| Acid Splash | Брызги кислоты | `acid_splash` | заговор, К3 |
+| Aid | Помощь | `aid` | +5 к максимуму HP, К3 |
+| Alarm | Тревога | `alarm` | ритуал |
+| Alter Self | Смена обличья | `alter_self` | К3 |
+| Animate Dead | Оживление мёртвых | `animate_dead` | К3 |
+| Arcane Lock | Магический замок | `arcane_lock` | К3 |
+| Arcanist's Magic Aura | Магическая аура Арканиста | `arcanists_magic_aura` | К3 |
+| Augury | Гадание | `augury` | ритуал, К3 |
+| Bane | Порча | `bane` | К3 |
+| Beacon of Hope | Маяк надежды | `beacon_of_hope` | К3 |
+| Bestow Curse | Наложение проклятия | `bestow_curse` | К3 |
+| Blindness/Deafness | Слепота/глухота | `blindness_deafness` | К3 |
+| Blink | Мерцание | `blink` | К3 |
+| Blur | Размытие | `blur` | К3 |
+| Calm Emotions | Усмирение чувств | `calm_emotions` | К3 |
+| Charm Person | Очарование личности | `charm_person` | К3 |
+| Chill Touch | Леденящее прикосновение | `chill_touch` | заговор, К3 |
+| Chromatic Orb | Цветной шар | `chromatic_orb` | К3 |
+| Clairvoyance | Ясновидение | `clairvoyance` | К3 |
+| Color Spray | Цветная пыль | `color_spray` | К3 |
+| Command | Приказ | `command` | К3 |
+| Comprehend Languages | Понимание языков | `comprehend_languages` | ритуал, К3 |
+| Continual Flame | Вечный огонь | `continual_flame` | К3 |
+| Counterspell | Контрзаклинание | `counterspell` | К3 |
+| Create Food and Water | Сотворение пищи и воды | `create_food_and_water` | К3 |
+| Create or Destroy Water | Сотворение или уничтожение воды | `create_or_destroy_water` | К3 |
+| Dancing Lights | Пляшущие огоньки | `dancing_lights` | заговор, К3 |
+| Darkness | Тьма | `darkness` | К3 |
+| Darkvision | Тёмное зрение | `darkvision` | К3 |
+| Daylight | Дневной свет | `daylight` | К3 |
+| Detect Evil and Good | Обнаружение добра и зла | `detect_evil_and_good` | К3 |
+| Detect Magic | Обнаружение магии | `detect_magic` | ритуал, К3 |
+| Detect Poison and Disease | Обнаружение яда и болезней | `detect_poison_and_disease` | ритуал, К3 |
+| Detect Thoughts | Обнаружение мыслей | `detect_thoughts` | К3 |
+| Disguise Self | Маскировка | `disguise_self` | К3 |
+| Dispel Magic | Рассеивание магии | `dispel_magic` | К3 |
+| Dragon's Breath | Дыхание дракона | `dragons_breath` | К3 |
+| Elementalism | Стихийные фокусы | `elementalism` | заговор, К3 |
+| Enhance Ability | Усиление способности | `enhance_ability` | К3 |
+| Enlarge/Reduce | Увеличение/уменьшение | `enlarge_reduce` | К3 |
+| Expeditious Retreat | Стремительное отступление | `expeditious_retreat` | К3 |
+| False Life | Ложная жизнь | `false_life` | К3 |
+| Fear | Страх | `fear` | К3 |
+| Feather Fall | Падение пером | `feather_fall` | К3 |
+| Find Familiar | Поиск фамильяра | `find_familiar` | ритуал, К3 |
+| Find Traps | Поиск ловушек | `find_traps` | К3 |
+| Fireball | Огненный шар | `fireball` | К3 |
+| Flaming Sphere | Пылающий шар | `flaming_sphere` | К3 |
+| Floating Disk | Парящий диск | `floating_disk` | ритуал, К3 |
+| Fly | Полёт | `fly` | К3 |
+| Fog Cloud | Туманное облако | `fog_cloud` | |
+| Gaseous Form | Газообразная форма | `gaseous_form` | К3 |
+| Gentle Repose | Покой | `gentle_repose` | ритуал, К3 |
+| Glyph of Warding | Охранный символ | `glyph_of_warding` | К3 |
+| Grease | Смазка | `grease` | К3 |
+| Guidance | Указание | `guidance` | заговор, К3 |
+| Guiding Bolt | Направленный снаряд | `guiding_bolt` | К3 |
+| Gust of Wind | Порыв ветра | `gust_of_wind` | К3 |
+| Haste | Ускорение | `haste` | К3 |
+| Healing Word | Лечащее слово | `healing_word` | К3 |
+| Hideous Laughter | Ужасный смех | `hideous_laughter` | К3 |
+| Hold Person | Удержание личности | `hold_person` | К3 |
+| Hypnotic Pattern | Гипнотический узор | `hypnotic_pattern` | К3 |
+| Ice Knife | Ледяной кинжал | `ice_knife` | К3 |
+| Identify | Опознание | `identify` | ритуал, К3 |
+| Illusory Script | Иллюзорный текст | `illusory_script` | ритуал, К3 |
+| Inflict Wounds | Нанесение ран | `inflict_wounds` | К3 |
+| Invisibility | Невидимость | `invisibility` | К3 |
+| Jump | Прыжок | `jump` | К3 |
+| Knock | Открывание | `knock` | К3 |
+| Lesser Restoration | Малое восстановление | `lesser_restoration` | |
+| Levitate | Левитация | `levitate` | К3 |
+| Light | Свет | `light` | заговор, К3 |
+| Lightning Bolt | Молния | `lightning_bolt` | К3 |
+| Locate Object | Поиск предмета | `locate_object` | К3 |
+| Longstrider | Скороход | `longstrider` | |
+| Mage Armor | Доспехи мага | `mage_armor` | К3 |
+| Mage Hand | Волшебная рука | `mage_hand` | заговор, К3 |
+| Magic Circle | Магический круг | `magic_circle` | К3 |
+| Magic Mouth | Волшебные уста | `magic_mouth` | ритуал, К3 |
+| Magic Weapon | Волшебное оружие | `magic_weapon` | К3 |
+| Major Image | Большой образ | `major_image` | К3 |
+| Mass Healing Word | Множественное лечащее слово | `mass_healing_word` | К3 |
+| Meld into Stone | Слияние с камнем | `meld_into_stone` | ритуал, К3 |
+| Mending | Починка | `mending` | заговор, К3 |
+| Message | Сообщение | `message` | заговор, К3 |
+| Mind Spike | Шип разума | `mind_spike` | К3 |
+| Minor Illusion | Малая иллюзия | `minor_illusion` | заговор, К3 |
+| Mirror Image | Отражения | `mirror_image` | К3 |
+| Misty Step | Туманный шаг | `misty_step` | К3 |
+| Nondetection | Необнаружимость | `nondetection` | К3 |
+| Phantasmal Force | Призрачная сила | `phantasmal_force` | К3 |
+| Phantom Steed | Призрачный скакун | `phantom_steed` | ритуал, К3 |
+| Poison Spray | Ядовитые брызги | `poison_spray` | заговор, К3 |
+| Prayer of Healing | Молитва исцеления | `prayer_of_healing` | К3 |
+| Prestidigitation | Фокусы | `prestidigitation` | заговор, К3 |
+| Protection from Energy | Защита от энергии | `protection_from_energy` | К3 |
+| Protection from Evil and Good | Защита от добра и зла | `protection_from_evil_and_good` | К3 |
+| Protection from Poison | Защита от яда | `protection_from_poison` | К3 |
+| Purify Food and Drink | Очищение пищи и питья | `purify_food_and_drink` | ритуал, К3 |
+| Ray of Enfeeblement | Луч ослабления | `ray_of_enfeeblement` | К3 |
+| Ray of Frost | Луч холода | `ray_of_frost` | заговор, К3 |
+| Ray of Sickness | Луч болезни | `ray_of_sickness` | К3 |
+| Remove Curse | Снятие проклятия | `remove_curse` | К3 |
+| Resistance | Сопротивление | `resistance` | заговор, К3 |
+| Revivify | Оживление | `revivify` | К3 |
+| Rope Trick | Трюк с верёвкой | `rope_trick` | К3 |
+| Sacred Flame | Священное пламя | `sacred_flame` | заговор, К3 |
+| Sanctuary | Святилище | `sanctuary` | К3 |
+| Scorching Ray | Палящий луч | `scorching_ray` | К3 |
+| See Invisibility | Видение невидимого | `see_invisibility` | К3 |
+| Sending | Послание | `sending` | К3 |
+| Shatter | Дребезги | `shatter` | К3 |
+| Shield | Щит | `shield` | К3 |
+| Shield of Faith | Щит веры | `shield_of_faith` | К3 |
+| Shocking Grasp | Электрическое касание | `shocking_grasp` | заговор, К3 |
+| Silence | Тишина | `silence` | ритуал, К3 |
+| Silent Image | Безмолвный образ | `silent_image` | К3 |
+| Sleep | Усыпление | `sleep` | К3 |
+| Sleet Storm | Ледяной шторм | `sleet_storm` | К3 |
+| Slow | Замедление | `slow` | К3 |
+| Spare the Dying | Пощада умирающих | `spare_the_dying` | заговор, К3 |
+| Speak with Dead | Разговор с мёртвыми | `speak_with_dead` | К3 |
+| Spider Climb | Паучье лазание | `spider_climb` | К3 |
+| Spirit Guardians | Духовные стражи | `spirit_guardians` | К3 |
+| Spiritual Weapon | Духовное оружие | `spiritual_weapon` | К3 |
+| Stinking Cloud | Зловонное облако | `stinking_cloud` | К3 |
+| Suggestion | Внушение | `suggestion` | К3 |
+| Thaumaturgy | Чудотворство | `thaumaturgy` | заговор, К3 |
+| Thunderwave | Громовая волна | `thunderwave` | К3 |
+| Tiny Hut | Хижина Леомунда | `tiny_hut` | ритуал, К3 |
+| Tongues | Языки | `tongues` | К3 |
+| True Strike | Верный удар | `true_strike` | заговор, К3 |
+| Unseen Servant | Незримый слуга | `unseen_servant` | ритуал, К3 |
+| Vampiric Touch | Вампирское касание | `vampiric_touch` | К3 |
+| Warding Bond | Защитные узы | `warding_bond` | К3 |
+| Water Breathing | Водное дыхание | `water_breathing` | ритуал, К3 |
+| Water Walk | Хождение по воде | `water_walk` | ритуал, К3 |
+| Web | Паутина | `web` | К3 |
+| Zone of Truth | Зона правды | `zone_of_truth` | К3 |
 
 ## Оружие, доспехи, предметы
 

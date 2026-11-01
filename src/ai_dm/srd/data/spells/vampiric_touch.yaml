@@ -1,0 +1,20 @@
+id: vampiric_touch
+name: Вампирское касание
+description: "Ближняя атака заклинанием: при попадании 3d6 некротического урона, и вы восстанавливаете половину нанесённого урона. Пока держится концентрация (до 1 минуты), атаку можно повторять действием. На каждый уровень ячейки выше 3-го — +1d6."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: necromancy
+range_kind: touch
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 3d6
+  damage_type: necrotic
+- type: heal_half
+upcast:
+  per_slot_level:
+    dice: 1d6

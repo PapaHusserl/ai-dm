@@ -1,0 +1,16 @@
+id: guidance
+name: Указание
+description: "Касание согласного существа: пока держится концентрация (до 1 минуты), оно один раз может прибавить 1d4 к одной проверке характеристики."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: divination
+range_kind: touch
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: modifier
+  target: ability_check
+  dice: 1d4

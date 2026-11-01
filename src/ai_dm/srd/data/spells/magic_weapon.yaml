@@ -1,0 +1,19 @@
+id: magic_weapon
+name: Волшебное оружие
+description: "Бонусным действием вы касаетесь немагического оружия: на 1 час оно становится магическим и получает +1 к броскам атаки и урона."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+casting_time: bonus_action
+duration: 1h
+classes:
+- wizard
+effects:
+- type: modifier
+  target: attack_roll
+  value: 1
+- type: modifier
+  target: weapon_damage
+  value: 1

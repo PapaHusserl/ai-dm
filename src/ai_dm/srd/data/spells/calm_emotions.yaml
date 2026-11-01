@@ -1,0 +1,13 @@
+id: calm_emotions
+name: Усмирение чувств
+description: "Пока держится концентрация (до 1 минуты), в 20-футовой сфере с центром в точке в пределах 60 фт. вы подавляете сильные чувства: либо снимаете очарование и страх с союзников, либо заставляете существ, проваливших спасбросок Харизмы, перестать враждовать с вами."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: enchantment
+range_kind: ranged
+range_ft: 60
+duration: 1m
+concentration: true
+classes:
+- cleric

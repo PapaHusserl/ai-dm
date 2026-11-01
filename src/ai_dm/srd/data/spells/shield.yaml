@@ -1,0 +1,14 @@
+id: shield
+name: Щит
+description: "Реакцией, когда по вам попадает атака или вы становитесь целью Волшебной стрелы, вы получаете +5 к КД до начала вашего следующего хода, включая провоцирующую атаку; от Волшебной стрелы вы неуязвимы."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: abjuration
+range_kind: self
+casting_time: reaction
+classes:
+- wizard
+effects:
+- type: ac_bonus
+  value: 5

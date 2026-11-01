@@ -1,0 +1,16 @@
+id: illusory_script
+name: Иллюзорный текст
+description: "За минуту вы пишете на пергаменте, бумаге или ином материале текст, который читать могут только названные вами существа; остальным он кажется нечитаемым или иным. Действует 10 дней. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: illusion
+range_kind: touch
+casting_time: 1m
+duration: 10d
+ritual: true
+classes:
+- wizard
+effect_text: Запись читают только названные магом читатели; остальным она кажется иной или нечитаемой.
+effects:
+- type: utility

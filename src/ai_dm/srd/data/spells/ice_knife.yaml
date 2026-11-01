@@ -1,0 +1,26 @@
+id: ice_knife
+name: Ледяной кинжал
+description: "Дальнобойная атака заклинанием по цели в пределах 60 фт.: при попадании 1d10 колющего урона. Затем кинжал взрывается: цель и существа в 5-футовой сфере вокруг неё совершают спасбросок Ловкости и при провале получают 2d6 урона холодом. На каждый уровень ячейки выше 1-го — +1d6 холодом."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: ranged
+range_ft: 60
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 1d10
+  damage_type: piercing
+- type: area
+  shape: sphere
+  size_ft: 5
+- type: save_effect
+  ability: dex
+- type: damage
+  dice: 2d6
+  damage_type: cold
+upcast:
+  per_slot_level:
+    dice: 1d6

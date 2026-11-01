@@ -1,0 +1,21 @@
+id: poison_spray
+name: Ядовитые брызги
+description: "Струя ядовитого газа в существо в пределах 30 фт.: спасбросок Телосложения, при провале 1d12 урона ядом (растёт на 5, 11 и 17 уровнях)."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: necromancy
+range_kind: ranged
+range_ft: 30
+classes:
+- wizard
+effects:
+- type: save_effect
+  ability: con
+- type: damage
+  dice: 1d12
+  damage_type: poison
+cantrip_scaling:
+  5: 2d12
+  11: 3d12
+  17: 4d12

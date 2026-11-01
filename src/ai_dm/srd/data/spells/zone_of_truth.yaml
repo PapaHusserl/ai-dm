@@ -1,0 +1,15 @@
+id: zone_of_truth
+name: Зона правды
+description: "На 10 минут в 15-футовой сфере с центром в точке в пределах 60 фт. существа, провалившие спасбросок Харизмы, не могут сказать явную ложь. Вы знаете, кто из них спасся. Молчать и уклоняться от ответа им можно."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: enchantment
+range_kind: ranged
+range_ft: 60
+duration: 10m
+classes:
+- cleric
+effect_text: В сфере 15 фт. никто, провалив спасбросок, не может сказать явную ложь; маг знает, кто устоял.
+effects:
+- type: utility

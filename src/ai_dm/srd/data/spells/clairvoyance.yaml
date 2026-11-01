@@ -1,0 +1,18 @@
+id: clairvoyance
+name: Ясновидение
+description: "За 10 минут вы создаёте невидимый сенсор в знакомом месте в пределах 1 мили: пока держится концентрация (до 10 минут), вы по выбору видите или слышите через него, переключаясь действием."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: divination
+range_kind: ranged
+range_ft: 5280
+casting_time: 10m
+duration: 10m
+concentration: true
+classes:
+- cleric
+- wizard
+effect_text: Невидимый сенсор в знакомом месте в миле от мага показывает увиденное и услышанное.
+effects:
+- type: utility

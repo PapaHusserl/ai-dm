@@ -1,0 +1,13 @@
+id: sleet_storm
+name: Ледяной шторм
+description: "Пока держится концентрация (до 1 минуты), ледяной дождь заливает цилиндр радиусом 20 фт. в пределах 150 фт.: земля становится скользкой и труднопроходимой, видимость падает; существа в начале хода при провале спасброска Ловкости падают."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: conjuration
+range_kind: ranged
+range_ft: 150
+duration: 1m
+concentration: true
+classes:
+- wizard

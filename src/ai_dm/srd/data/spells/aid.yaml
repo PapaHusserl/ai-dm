@@ -1,0 +1,19 @@
+id: aid
+name: Помощь
+description: "До трёх существ в пределах 30 фт. получают +5 к максимуму хит-пойнтов и столько же текущих хит-пойнтов на 8 часов. На каждый уровень ячейки выше 2-го прибавка растёт на 5."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: abjuration
+range_kind: ranged
+range_ft: 30
+duration: 8h
+classes:
+- cleric
+effects:
+- type: max_hp
+  value: 5
+  targets: 3
+upcast:
+  per_slot_level:
+    value: 5

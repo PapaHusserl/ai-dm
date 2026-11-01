@@ -1,0 +1,15 @@
+id: mending
+name: Починка
+description: "За минуту вы чините одну поломку или разрыв в предмете, которого касаетесь: трещину, порванную цепь, дыру в одежде. Размер повреждения не больше 1 фт. Магические предметы это чинит, но не оживляет."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: transmutation
+range_kind: touch
+casting_time: 1m
+classes:
+- cleric
+- wizard
+effect_text: Предмет в руках мага цел, пока трещина или дыра не больше фута.
+effects:
+- type: utility

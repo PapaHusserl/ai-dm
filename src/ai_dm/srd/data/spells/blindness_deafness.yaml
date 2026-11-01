@@ -1,0 +1,22 @@
+id: blindness_deafness
+name: Слепота/глухота
+description: "Существо в пределах 120 фт. совершает спасбросок Телосложения; при провале оно ослеплено на 1 минуту и повторяет спасбросок в конце каждого своего хода. На каждый уровень ячейки выше 2-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: ranged
+range_ft: 120
+duration: 1m
+classes:
+- cleric
+- wizard
+effects:
+- type: save_effect
+  ability: con
+  repeat: true
+- type: apply_condition
+  condition: blinded
+upcast:
+  per_slot_level:
+    targets: 1

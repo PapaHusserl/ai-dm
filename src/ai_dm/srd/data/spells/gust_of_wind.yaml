@@ -1,0 +1,20 @@
+id: gust_of_wind
+name: Порыв ветра
+description: "Пока держится концентрация (до 1 минуты), от вас идёт линия сильного ветра длиной 60 фт. и шириной 10 фт.: существа в ней при провале спасброска Силы отброшены на 15 фт., а движение против ветра стоит вдвое дороже. Ветер гасит свечи и пламя."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: evocation
+range_kind: self
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: area
+  shape: line
+  size_ft: 60
+- type: save_effect
+  ability: str
+- type: push
+  value: 15

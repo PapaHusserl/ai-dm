@@ -1,0 +1,16 @@
+id: floating_disk
+name: Парящий диск
+description: "На 1 час в пределах 30 фт. возникает невидимый диск диаметром 3 фт. Он парит на высоте 3 фт. над землёй, держит до 500 фунтов груза и следует за вами. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: ranged
+range_ft: 30
+duration: 1h
+ritual: true
+classes:
+- wizard
+effect_text: Невидимый диск несёт до 500 фунтов груза и следует за магом целый час.
+effects:
+- type: utility

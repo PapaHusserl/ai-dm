@@ -8,5 +8,6 @@ school: divination
 range_kind: self
 casting_time: action
 duration: 10m
+ritual: true
 classes:
 - ranger

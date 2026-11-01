@@ -1,0 +1,14 @@
+id: mage_armor
+name: Доспехи мага
+description: "Вы касаетесь согласного существа без доспехов: на 8 часов его базовый КД становится 13 + модификатор Ловкости, то есть растёт на 3 против обычных 10 + Лов. Заклинание заканчивается, если цель наденет доспех."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: abjuration
+range_kind: touch
+duration: 8h
+classes:
+- wizard
+effects:
+- type: ac_bonus
+  value: 3

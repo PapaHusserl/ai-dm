@@ -1,0 +1,29 @@
+id: bane
+name: Порча
+description: "До трёх существ в пределах 30 фт. совершают спасбросок Харизмы; при провале пока держится концентрация (до 1 минуты) они вычитают 1d4 из бросков атаки и спасбросков. На каждый уровень ячейки выше 1-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: enchantment
+range_kind: ranged
+range_ft: 30
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: save_effect
+  ability: cha
+- type: modifier
+  target: attack_roll
+  dice: 1d4
+  targets: 3
+  mode: penalty
+- type: modifier
+  target: saving_throw
+  dice: 1d4
+  targets: 3
+  mode: penalty
+upcast:
+  per_slot_level:
+    targets: 1

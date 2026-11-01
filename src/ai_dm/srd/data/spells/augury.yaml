@@ -1,0 +1,16 @@
+id: augury
+name: Гадание
+description: "За минуту вы гадаете на костях, картах или рунах и узнаёте, что принесёт задуманное действие в ближайшие полчаса: добро, зло, и то и другое или ни то ни другое. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: divination
+range_kind: self
+casting_time: 1m
+ritual: true
+classes:
+- cleric
+- wizard
+effect_text: "Гадание отвечает, чем обернётся задуманное на ближайшие полчаса: добром, злом, обоим или ничем."
+effects:
+- type: utility

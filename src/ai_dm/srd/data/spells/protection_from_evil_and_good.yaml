@@ -1,0 +1,22 @@
+id: protection_from_evil_and_good
+name: Защита от добра и зла
+description: "Пока держится концентрация (до 10 минут), согласное существо, которого вы коснулись, защищено от аберраций, исчадий, фей, небожителей, элементалей и нежити: их атаки по нему совершаются с помехой, а очаровать или напугать его они не могут."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: abjuration
+range_kind: touch
+duration: 10m
+concentration: true
+classes:
+- cleric
+- wizard
+effects:
+- type: ward
+  vs:
+  - aberration
+  - celestial
+  - elemental
+  - fey
+  - fiend
+  - undead

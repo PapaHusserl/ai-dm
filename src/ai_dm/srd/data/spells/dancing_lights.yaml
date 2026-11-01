@@ -1,0 +1,13 @@
+id: dancing_lights
+name: Пляшущие огоньки
+description: "Вы создаёте до четырёх факельных огоньков в пределах 120 фт. (концентрация, до 1 минуты). Бонусным действием можно переместить их на 60 фт.; каждый светит как факел."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: illusion
+range_kind: ranged
+range_ft: 120
+duration: 1m
+concentration: true
+classes:
+- wizard

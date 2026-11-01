@@ -77,7 +77,12 @@ WEAPONS = [
     "spear",
 ]
 ARMOR = ["leather_armor", "chain_mail", "shield"]
-SPELLS = ["fire_bolt", "magic_missile", "burning_hands", "cure_wounds", "bless"]
+SPELLS = [
+    "fire_bolt", "magic_missile", "burning_hands", "cure_wounds", "bless",
+    # К3 П1: выборка новых
+    "sacred_flame", "guidance", "healing_word", "spiritual_weapon", "spirit_guardians",
+    "fireball", "shield", "misty_step", "hold_person", "aid",
+]
 CONDITIONS = [
     "blinded", "charmed", "deafened", "exhaustion", "frightened", "grappled", "incapacitated",
     "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned",

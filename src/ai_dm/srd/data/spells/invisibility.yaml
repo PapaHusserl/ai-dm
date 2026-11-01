@@ -1,0 +1,17 @@
+id: invisibility
+name: Невидимость
+description: "Существо, которого вы коснулись, становится невидимым, пока держится концентрация (до 1 часа). Невидимость кончается, когда оно атакует или сотворяет заклинание. На каждый уровень ячейки выше 2-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: touch
+duration: 1h
+concentration: true
+classes:
+- wizard
+effects:
+- type: invisible
+upcast:
+  per_slot_level:
+    targets: 1

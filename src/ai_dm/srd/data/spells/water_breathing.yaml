@@ -1,0 +1,16 @@
+id: water_breathing
+name: Водное дыхание
+description: "До десяти согласных существ в пределах 30 фт. на 24 часа получают способность дышать под водой, не теряя воздушного дыхания. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: ranged
+range_ft: 30
+duration: 1d
+ritual: true
+classes:
+- wizard
+effect_text: До десяти спутников сутки дышат под водой.
+effects:
+- type: utility

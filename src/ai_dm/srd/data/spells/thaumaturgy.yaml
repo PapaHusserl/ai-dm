@@ -1,0 +1,15 @@
+id: thaumaturgy
+name: Чудотворство
+description: "Вы являете знак божественной силы: голос звучит громовым раскатом, пламя свечи вспыхивает, дрожит земля, двери распахиваются. Эффект длится до минуты и безвреден."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: transmutation
+range_kind: ranged
+range_ft: 30
+duration: 1m
+classes:
+- cleric
+effect_text: "Жрец являет знак силы своего бога: гром голоса, вспышка пламени, дрожь земли."
+effects:
+- type: utility

@@ -175,12 +175,11 @@ def test_rogue_has_masteries_but_no_style_and_no_spells(registry):
 
 
 def test_cleric_has_spell_steps_and_no_masteries(registry):
-    # в контенте у жреца нет заговоров (лимит 3, список пуст): шага заговоров нет
+    # К3 П1: в контенте у жреца 7 заговоров (лимит 3): шаг заговоров есть
     keys = keys_for(
         registry, species_id="dwarf", class_id="cleric", background="acolyte", spells=["bless"],
     )
-    assert "cantrips" not in keys
-    for key in ("spells", "prepared"):
+    for key in ("cantrips", "spells", "prepared"):
         assert key in keys
     assert "masteries" not in keys
 
@@ -371,10 +370,10 @@ def test_style_options_are_the_four_fighting_styles(registry):
 
 
 def test_spell_steps_of_wizard_are_in_class_limits_and_content(registry):
-    # лимиты класса 3/6/4, но в контенте у волшебника 1 заговор и 5 заклинаний 1 круга
+    # лимиты класса 3/6/4; К3 П1: в контенте 15 заговоров и 30 заклинаний 1 круга — лимит по классу
     current = draft(species_id="elf", class_id="wizard", background="sage")
-    assert step("cantrips").count(current, registry) == 1
-    assert step("spells").count(current, registry) == 5
+    assert step("cantrips").count(current, registry) == 3
+    assert step("spells").count(current, registry) == 6
     cantrips = values("cantrips", current, registry)
     spells = values("spells", current, registry)
     assert "fire_bolt" in cantrips
@@ -1097,7 +1096,9 @@ def test_bonus_labels_are_exact(registry):
 
 def test_spell_menus_show_russian_names(registry):
     current = draft(species_id="elf", class_id="wizard", background="sage")
-    assert labels("cantrips", current, registry) == [registry.get("spell", "fire_bolt").name]
+    cantrip_labels = labels("cantrips", current, registry)
+    assert len(cantrip_labels) == 15
+    assert registry.get("spell", "fire_bolt").name in cantrip_labels
     assert registry.get("spell", "alarm").name in labels("spells", current, registry)
     current.spells = ["alarm", "magic_missile"]
     assert labels("prepared", current, registry) == [

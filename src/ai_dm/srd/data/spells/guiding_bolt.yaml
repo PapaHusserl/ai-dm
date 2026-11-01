@@ -1,0 +1,19 @@
+id: guiding_bolt
+name: Направленный снаряд
+description: "Дальнобойная атака заклинанием по существу в пределах 120 фт.: при попадании 4d6 урона излучением, и следующая атака по этой цели до конца вашего следующего хода совершается с преимуществом. На каждый уровень ячейки выше 1-го — +1d6."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: evocation
+range_kind: ranged
+range_ft: 120
+classes:
+- cleric
+effects:
+- type: damage
+  dice: 4d6
+  damage_type: radiant
+- type: guided
+upcast:
+  per_slot_level:
+    dice: 1d6

@@ -1,0 +1,24 @@
+id: ray_of_enfeeblement
+name: Луч ослабления
+description: "Луч иссушающей энергии бьёт в существо в пределах 60 фт.: оно совершает спасбросок Телосложения и при провале, пока держится концентрация (до 1 минуты), вычитает 1d8 из бросков урона и совершает атаки с помехой. В конце каждого своего хода цель повторяет спасбросок."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: necromancy
+range_kind: ranged
+range_ft: 60
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: save_effect
+  ability: con
+  repeat: true
+- type: modifier
+  target: weapon_damage
+  dice: 1d8
+  mode: penalty
+- type: modifier
+  target: attack_roll
+  mode: disadvantage

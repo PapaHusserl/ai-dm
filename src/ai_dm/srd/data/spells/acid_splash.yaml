@@ -1,0 +1,24 @@
+id: acid_splash
+name: Брызги кислоты
+description: "Вы бросаете пузырь кислоты в точку в пределах 60 фт.: существа в 5-футовой сфере совершают спасбросок Ловкости и при провале получают 1d6 урона кислотой (растёт на 5, 11 и 17 уровнях)."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: evocation
+range_kind: ranged
+range_ft: 60
+classes:
+- wizard
+effects:
+- type: area
+  shape: sphere
+  size_ft: 5
+- type: save_effect
+  ability: dex
+- type: damage
+  dice: 1d6
+  damage_type: acid
+cantrip_scaling:
+  5: 2d6
+  11: 3d6
+  17: 4d6

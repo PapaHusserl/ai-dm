@@ -1,0 +1,15 @@
+id: create_food_and_water
+name: Сотворение пищи и воды
+description: "Вы создаёте 45 фунтов пищи и 30 галлонов воды — этого хватает, чтобы целый день прокормить до пятнадцати существ. Пища через сутки портится."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: conjuration
+range_kind: ranged
+range_ft: 30
+classes:
+- cleric
+effects:
+- type: create_item
+  item: rations
+  count: 15

@@ -10,3 +10,10 @@ casting_time: bonus_action
 classes:
 - cleric
 - ranger
+effects:
+- type: remove_condition
+  conditions:
+  - blinded
+  - deafened
+  - paralyzed
+  - poisoned

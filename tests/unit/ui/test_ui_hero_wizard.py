@@ -898,22 +898,22 @@ def caster(registry, cfg, class_id, method=1):
     return wizard, step
 
 
-def test_wizard_chooses_all_content_cantrips_and_spells_and_4_prepared(registry, cfg):
-    # лимиты волшебника 3/6/4, в контенте 1 заговор и 5 заклинаний 1 круга
+def test_wizard_chooses_cantrips_and_spells_up_to_the_limits(registry, cfg):
+    # лимиты волшебника 3/6/4; К3 П1: в контенте 15 заговоров и 30 заклинаний — берутся по лимиту
     wizard, _ = caster(registry, cfg, "wizard")
-    assert wizard.draft.cantrips == ["fire_bolt"]
-    assert len(wizard.draft.spells) == 5
+    assert len(wizard.draft.cantrips) == 3
+    assert len(wizard.draft.spells) == 6
     assert len(wizard.draft.prepared) == 4
     assert set(wizard.draft.prepared) <= set(wizard.draft.spells)
 
 
-def test_cleric_has_no_cantrips_in_content_and_chooses_both_spells(registry, cfg):
-    # закрепляет дыру контента (у жреца нет заговоров и всего 2 заклинания): BACKLOG 16,
-    # пополнение заклинаний -- отдельная партия; после неё ожидания перевернуть
+def test_cleric_chooses_cantrips_and_spells_up_to_the_limits(registry, cfg):
+    # К3 П1: у жреца 7 заговоров и 15 заклинаний 1 круга в контенте; лимиты 3/4/4
     wizard, _ = caster(registry, cfg, "cleric")
-    assert wizard.draft.cantrips == []
-    assert sorted(wizard.draft.spells) == ["bless", "cure_wounds"]
-    assert sorted(wizard.draft.prepared) == ["bless", "cure_wounds"]
+    assert len(wizard.draft.cantrips) == 3
+    assert len(wizard.draft.spells) == 4
+    assert len(wizard.draft.prepared) == 4
+    assert set(wizard.draft.prepared) <= set(wizard.draft.spells)
 
 
 def test_ranger_has_no_cantrip_step(registry, cfg):
@@ -932,7 +932,8 @@ def test_wizard_accepted_sheet_has_spells_within_limits(registry, cfg):
     wizard, _ = caster(registry, cfg, "wizard")
     wizard.submit("1")
     choices = wizard.sheet.choices
-    assert len(choices.spells) == 6
+    # К3 П1: 3 заговора + 6 заклинаний 1 круга
+    assert len(choices.spells) == 9
     assert len(choices.prepared) == 4
     assert set(choices.prepared) <= set(choices.spells)
 

@@ -9,6 +9,10 @@ range_kind: ranged
 range_ft: 30
 casting_time: 1m
 duration: 8h
+ritual: true
 classes:
 - ranger
 - wizard
+effect_text: Участок под охраной восемь часов; незваный гость вызовет мысленный сигнал и разбудит мага.
+effects:
+- type: utility

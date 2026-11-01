@@ -244,5 +244,7 @@ def test_unknown_spell_hint_for_the_wizard_excludes_cantrips(registry):
     hero = make_wizard(registry)
     problem = swap_problem(hero, registry, [], ["no_such_spell"])
     hint = problem[1].split("допустимые id: ")[1].split(", ")
+    # К3 П1: подсказка — срез первых 20 id; magic_missile вытеснен 30 заклинаниями 1 круга
     assert "fire_bolt" not in hint
-    assert "magic_missile" in hint
+    assert "alarm" in hint
+    assert len(hint) == 20

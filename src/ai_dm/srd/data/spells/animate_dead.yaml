@@ -1,0 +1,14 @@
+id: animate_dead
+name: Оживление мёртвых
+description: "За минуту вы поднимаете из груды костей или тела мёртвого гуманоида скелета или зомби, который подчиняется вашим приказам 24 часа. На каждый уровень ячейки выше 3-го можно оживить ещё по одному существу."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: necromancy
+range_kind: ranged
+range_ft: 10
+casting_time: 1m
+duration: 1d
+classes:
+- cleric
+- wizard

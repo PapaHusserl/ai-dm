@@ -1,0 +1,12 @@
+id: fly
+name: Полёт
+description: "Существо, которого вы коснулись, получает скорость полёта 60 фт., пока держится концентрация (до 10 минут). Когда заклинание кончается, оно падает, если ещё в воздухе. На каждый уровень ячейки выше 3-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: touch
+duration: 10m
+concentration: true
+classes:
+- wizard

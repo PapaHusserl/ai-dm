@@ -1,0 +1,21 @@
+id: flaming_sphere
+name: Пылающий шар
+description: "В пределах 60 фт. возникает огненный шар диаметром 5 фт. (концентрация, до 1 минуты). Бонусным действием вы катите его на 30 фт. и врезаете в существо: спасбросок Ловкости, при провале 2d6 урона огнём, при успехе — половина. На каждый уровень ячейки выше 2-го — +1d6."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: conjuration
+range_kind: ranged
+range_ft: 60
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: summon
+  dice: 2d6
+  ability: dex
+  damage_type: fire
+upcast:
+  per_slot_level:
+    dice: 1d6

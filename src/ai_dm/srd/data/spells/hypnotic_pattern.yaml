@@ -1,0 +1,23 @@
+id: hypnotic_pattern
+name: Гипнотический узор
+description: "Вы плетёте в воздухе узор в кубе со стороной 30 фт. в пределах 120 фт.: существа в нём при провале спасброска Мудрости очарованы и недееспособны, пока держится концентрация (до 1 минуты). Урон или встряска будят."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: illusion
+range_kind: ranged
+range_ft: 120
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: area
+  shape: cube
+  size_ft: 30
+- type: save_effect
+  ability: wis
+- type: apply_condition
+  condition: charmed
+- type: apply_condition
+  condition: incapacitated

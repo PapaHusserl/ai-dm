@@ -1,0 +1,14 @@
+id: blur
+name: Размытие
+description: "Пока держится концентрация (до 1 минуты), ваши очертания расплываются: дальняя и ближняя атаки по вам совершаются с помехой, если атакующий не обладает истинным зрением и подобным."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: self
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: blur

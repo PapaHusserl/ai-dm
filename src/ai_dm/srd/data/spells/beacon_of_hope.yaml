@@ -1,0 +1,19 @@
+id: beacon_of_hope
+name: Маяк надежды
+description: "Пока держится концентрация (до 1 минуты), любые согласные существа в пределах 30 фт. получают преимущество на спасброски Мудрости и спасброски от смерти, а любое лечение возвращает им максимум хит-пойнтов."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: ranged
+range_ft: 30
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: modifier
+  target: saving_throw
+  ability: wis
+  mode: advantage
+- type: heal_max

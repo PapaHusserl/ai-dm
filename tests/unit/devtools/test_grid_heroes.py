@@ -167,9 +167,14 @@ def test_wizard_and_cleric_prepare_all_available_spells(registry):
         )
 
 
-def test_cleric_prepares_every_cleric_spell_of_the_data(registry):
+def test_cleric_prepares_up_to_the_limit_from_cleric_spells(registry):
+    # К3 П1: заклинаний жреца 1–3 круга больше лимита — готовится ровно лимит, все из списка класса
+    from ai_dm.rules.derived import prepared_limit
+
     hero = build_hero("cleric", 5, registry)
-    assert {"bless", "cure_wounds", "lesser_restoration"} <= set(hero.sheet.prepared_of())
+    prepared = hero.sheet.prepared_of()
+    assert len(prepared) == prepared_limit(hero, registry)
+    assert all("cleric" in registry.get("spell", sid).classes for sid in prepared)
 
 
 def test_auto_level_keeps_the_hero_when_the_level_is_reached(registry):

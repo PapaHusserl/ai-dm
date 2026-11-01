@@ -1,0 +1,14 @@
+id: nondetection
+name: Необнаружимость
+description: "На 8 часов вы или согласное существо, которого вы коснулись, скрыты от магии прорицания: его не видят датчики-сенсоры и заклинания, ищущие по имени или внешности."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: touch
+duration: 8h
+classes:
+- wizard
+effect_text: Цель восемь часов скрыта от прорицаний и магических сенсоров.
+effects:
+- type: utility

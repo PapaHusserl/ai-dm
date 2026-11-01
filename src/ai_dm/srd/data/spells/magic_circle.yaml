@@ -1,0 +1,14 @@
+id: magic_circle
+name: Магический круг
+description: "За минуту вы чертите на земле круг радиусом 10 фт. и высотой 20 фт. на 1 час: существа выбранного типа (аберрации, небожители, элементали, феи, исчадия, нежить) не могут войти в него и бьют по тем, кто внутри, с помехой."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: ranged
+range_ft: 10
+casting_time: 1m
+duration: 1h
+classes:
+- cleric
+- wizard

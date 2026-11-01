@@ -1,0 +1,14 @@
+id: silence
+name: Тишина
+description: "Пока держится концентрация (до 10 минут), в 20-футовой сфере с центром в точке в пределах 120 фт. не слышно звуков, существа внутри получают иммунитет к звуковому урону и оглохли, а заклинания со словесной составляющей там не сотворить. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: illusion
+range_kind: ranged
+range_ft: 120
+duration: 10m
+concentration: true
+ritual: true
+classes:
+- cleric

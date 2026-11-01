@@ -1,0 +1,14 @@
+id: misty_step
+name: Туманный шаг
+description: "Бонусным действием, окутавшись серебристым туманом, вы телепортируетесь на 30 фт. в видимое свободное место."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: conjuration
+range_kind: self
+casting_time: bonus_action
+classes:
+- wizard
+effects:
+- type: teleport
+  size_ft: 30

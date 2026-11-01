@@ -1,0 +1,15 @@
+id: purify_food_and_drink
+name: Очищение пищи и питья
+description: "Вы очищаете от яда и порчи всю обычную еду и питьё в пределах 5-футовой сферы с центром в точке в пределах 10 фт. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: transmutation
+range_kind: ranged
+range_ft: 10
+ritual: true
+classes:
+- cleric
+effect_text: Еда и питьё вокруг очищены от яда и порчи.
+effects:
+- type: utility

@@ -1,0 +1,13 @@
+id: spare_the_dying
+name: Пощада умирающих
+description: "Существо в пределах 15 фт., у которого 0 хит-пойнтов, оно становится стабильным. Нежити и конструктам заклинание не помогает."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: necromancy
+range_kind: ranged
+range_ft: 15
+classes:
+- cleric
+effects:
+- type: stabilize

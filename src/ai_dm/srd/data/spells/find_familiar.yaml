@@ -1,0 +1,13 @@
+id: find_familiar
+name: Поиск фамильяра
+description: "За час вы призываете духа в облике мелкого зверя (ястреб, сова, кот и т. п.) в пределах 10 фт. Фамильяр действует независимо, но подчиняется вам; он может доставлять касательные заклинания и общаться телепатически в пределах 100 фт. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: conjuration
+range_kind: ranged
+range_ft: 10
+casting_time: 1h
+ritual: true
+classes:
+- wizard

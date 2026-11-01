@@ -1,0 +1,23 @@
+id: hold_person
+name: Удержание личности
+description: "Гуманоид в пределах 60 фт. совершает спасбросок Мудрости; при провале он парализован, пока держится концентрация (до 1 минуты), и повторяет спасбросок в конце каждого своего хода. На каждый уровень ячейки выше 2-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: enchantment
+range_kind: ranged
+range_ft: 60
+duration: 1m
+concentration: true
+classes:
+- cleric
+- wizard
+effects:
+- type: save_effect
+  ability: wis
+  repeat: true
+- type: apply_condition
+  condition: paralyzed
+upcast:
+  per_slot_level:
+    targets: 1

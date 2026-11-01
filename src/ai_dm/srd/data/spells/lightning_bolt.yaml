@@ -1,0 +1,23 @@
+id: lightning_bolt
+name: Молния
+description: "От вас идёт линия молнии длиной 100 фт. и шириной 5 фт.: существа в ней совершают спасбросок Ловкости и получают 8d6 урона электричеством, при успехе — половину. На каждый уровень ячейки выше 3-го — +1d6."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: evocation
+range_kind: self
+classes:
+- wizard
+effects:
+- type: area
+  shape: line
+  size_ft: 100
+- type: save_effect
+  ability: dex
+  mode: half
+- type: damage
+  dice: 8d6
+  damage_type: lightning
+upcast:
+  per_slot_level:
+    dice: 1d6

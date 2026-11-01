@@ -1,0 +1,15 @@
+id: meld_into_stone
+name: Слияние с камнем
+description: "Вы входите в каменный объект или поверхность, достаточные по размеру для вашего тела, и сливаетесь с ним на 8 часов. Вы видите и слышите окружающее. Если камень разрушат, вы выйдете наружу и получите урон. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: touch
+duration: 8h
+ritual: true
+classes:
+- cleric
+effect_text: Жрец слился с камнем и укрыт в нём до восьми часов, но слышит и видит снаружи.
+effects:
+- type: utility

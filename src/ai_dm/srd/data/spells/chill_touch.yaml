@@ -1,0 +1,18 @@
+id: chill_touch
+name: Леденящее прикосновение
+description: "Призрачная рука тянется к существу в пределах досягаемости: ближняя атака заклинанием, при попадании 1d10 некротического урона (растёт на 5, 11 и 17 уровнях), и цель до начала вашего следующего хода не может восстанавливать хит-пойнты."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: necromancy
+range_kind: touch
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 1d10
+  damage_type: necrotic
+cantrip_scaling:
+  5: 2d10
+  11: 3d10
+  17: 4d10

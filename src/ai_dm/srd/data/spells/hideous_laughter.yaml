@@ -1,0 +1,21 @@
+id: hideous_laughter
+name: Ужасный смех
+description: "Существо в пределах 30 фт. совершает спасбросок Мудрости; при провале оно падает, корчится от смеха и недееспособно, пока держится концентрация (до 1 минуты). В конце каждого своего хода и при получении урона оно повторяет спасбросок."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: enchantment
+range_kind: ranged
+range_ft: 30
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: save_effect
+  ability: wis
+  repeat: true
+- type: apply_condition
+  condition: prone
+- type: apply_condition
+  condition: incapacitated

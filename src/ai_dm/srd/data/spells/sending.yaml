@@ -1,0 +1,14 @@
+id: sending
+name: Послание
+description: "Вы посылаете короткое сообщение (25 слов или меньше) знакомому существу на любом расстоянии, и оно слышит его у себя в голове. Получатель может сразу ответить столь же коротко."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: divination
+range_kind: self
+classes:
+- cleric
+- wizard
+effect_text: Адресат слышит короткое послание у себя в голове и может столь же кратко ответить.
+effects:
+- type: utility

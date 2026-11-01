@@ -1,0 +1,21 @@
+id: protection_from_energy
+name: Защита от энергии
+description: "Пока держится концентрация (до 1 часа), согласное существо, которого вы коснулись, получает сопротивление одному типу урона на выбор: кислота, холод, огонь, электричество или звук."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: abjuration
+range_kind: touch
+duration: 1h
+concentration: true
+classes:
+- cleric
+- wizard
+effects:
+- type: resist
+  variants:
+  - acid
+  - cold
+  - fire
+  - lightning
+  - thunder

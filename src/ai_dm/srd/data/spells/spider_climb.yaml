@@ -1,0 +1,15 @@
+id: spider_climb
+name: Паучье лазание
+description: "Пока держится концентрация (до 1 часа), согласное существо, которого вы коснулись, может лазать по стенам и потолкам с пустыми руками, а скорость лазания равна скорости ходьбы."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+duration: 1h
+concentration: true
+classes:
+- wizard
+effect_text: Цель лазает по стенам и потолкам руками вниз со своей скоростью, пока длится концентрация.
+effects:
+- type: utility

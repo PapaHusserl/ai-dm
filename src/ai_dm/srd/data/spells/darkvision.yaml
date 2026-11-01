@@ -1,0 +1,14 @@
+id: darkvision
+name: Тёмное зрение
+description: "Согласное существо, которого вы коснулись, на 8 часов получает тёмное зрение на 60 фт."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+duration: 8h
+classes:
+- wizard
+effect_text: Цель видит в темноте на 60 фт. восемь часов.
+effects:
+- type: utility

@@ -1,0 +1,16 @@
+id: silent_image
+name: Безмолвный образ
+description: "Пока держится концентрация (до 10 минут), вы создаёте образ предмета или существа в кубе со стороной 15 фт. в пределах 60 фт. Образ беззвучен и неосязаем, но его можно двигать действием; проверка Расследования раскрывает иллюзию."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: illusion
+range_kind: ranged
+range_ft: 60
+duration: 10m
+concentration: true
+classes:
+- wizard
+effect_text: Маг держит иллюзорный образ до 15 фт., беззвучный и неосязаемый, пока длится концентрация.
+effects:
+- type: utility

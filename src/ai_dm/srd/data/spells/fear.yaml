@@ -1,0 +1,20 @@
+id: fear
+name: Страх
+description: "Вы показываете существам в конусе 30 фт. их худший кошмар: спасбросок Мудрости, при провале они становятся испуганными, пока держится концентрация (до 1 минуты), и бросают всё, что держат. Испуганное существо должно бежать; оно повторяет спасбросок в конце хода."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: illusion
+range_kind: self
+duration: 1m
+concentration: true
+classes:
+- wizard
+effects:
+- type: area
+  shape: cone
+  size_ft: 30
+- type: save_effect
+  ability: wis
+- type: apply_condition
+  condition: frightened

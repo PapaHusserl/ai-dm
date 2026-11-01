@@ -12,3 +12,7 @@ concentration: true
 classes:
 - ranger
 - wizard
+effects:
+- type: fog
+  shape: sphere
+  size_ft: 20

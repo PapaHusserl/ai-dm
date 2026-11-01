@@ -86,6 +86,26 @@ EffectType = Literal[
     "resist",
     # заряд на следующее попадание оружием (Опутывающий удар)
     "rider",
+    # заклинания жреца и волшебника (К3)
+    "remove_condition",
+    "temp_hp",
+    "max_hp",
+    "push",
+    "invisible",
+    "blur",
+    "summon",
+    "aura",
+    "hazard",
+    "create_item",
+    "heal_half",
+    "guided",
+    "utility",
+    "ward",
+    "heal_max",
+    "languages",
+    "teleport",
+    "stabilize",
+    "fog",
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
@@ -102,13 +122,20 @@ EffectTarget = Literal[
     "ac",
     "attack_roll",
     "origin_feat",
+    "martial_weapons",
+    "heavy_armor",
+    "cantrips",
+    "ability_check",
 ]
 EffectWhen = Literal[
     "natural_1", "once_per_turn", "wearing_armor", "long_rest", "ranged_weapon", "target_wounded",
     "on_weapon_hit", "two_handed", "off_hand",
 ]
-EffectMode = Literal["advantage", "resistance", "half", "floor", "expertise"]
-EffectShape = Literal["cone"]
+EffectMode = Literal[
+    "advantage", "resistance", "half", "floor", "expertise", "attack_roll", "penalty",
+    "disadvantage",
+]
+EffectShape = Literal["cone", "sphere", "cube", "line", "emanation"]
 
 
 class ContentModel(BaseModel):
@@ -180,6 +207,22 @@ class EffectSpec(ContentModel):
     duration_s: int | None = None
     # СЛ спасброска (sleep)
     dc: int | None = None
+    # навыки на выбор (Учёный)
+    skills: list[Skill] = []
+    # состояния на снятие по порядку (Малое восстановление)
+    conditions: list[str] = []
+    # повтор спасброска в конце хода цели
+    repeat: bool = False
+    # значения damage_type или ability на выбор игрока (Хроматический шар)
+    variants: list[str] = []
+    # id предмета (create_item)
+    item: str | None = None
+
+    @model_validator(mode="after")
+    def check_variants(self):
+        if self.variants and self.type not in ("damage", "resist", "modifier"):
+            raise ValueError("variants: только для damage, resist, modifier")
+        return self
 
     @model_validator(mode="after")
     def check_class_id(self):

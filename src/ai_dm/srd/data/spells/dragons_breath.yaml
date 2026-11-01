@@ -1,0 +1,13 @@
+id: dragons_breath
+name: Дыхание дракона
+description: "Касание согласного существа: пока держится концентрация (до 1 минуты), оно может бонусным действием выдохнуть 15-футовый конус выбранной стихии (кислота, холод, огонь, электричество): спасбросок Ловкости, 3d6 урона, при успехе — половина."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: touch
+casting_time: bonus_action
+duration: 1m
+concentration: true
+classes:
+- wizard

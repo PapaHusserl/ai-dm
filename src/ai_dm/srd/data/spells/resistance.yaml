@@ -1,0 +1,16 @@
+id: resistance
+name: Сопротивление
+description: "Касание согласного существа: пока держится концентрация (до 1 минуты), оно один раз может прибавить 1d4 к одному спасброску."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: abjuration
+range_kind: touch
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: modifier
+  target: saving_throw
+  dice: 1d4

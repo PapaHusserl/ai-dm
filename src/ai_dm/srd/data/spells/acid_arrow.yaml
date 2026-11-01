@@ -1,0 +1,21 @@
+id: acid_arrow
+name: Кислотная стрела
+description: "Дальнобойная атака заклинанием по существу в пределах 90 фт.: при попадании 4d4 урона кислотой, а в начале вашего следующего хода цель получает ещё 2d4 кислотой. При промахе — половина первого урона. На каждый уровень ячейки выше 2-го — +1d4 к обоим."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: evocation
+range_kind: ranged
+range_ft: 90
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 4d4
+  damage_type: acid
+- type: burn
+  dice: 2d4
+  damage_type: acid
+upcast:
+  per_slot_level:
+    dice: 1d4

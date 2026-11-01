@@ -1,0 +1,15 @@
+id: prestidigitation
+name: Фокусы
+description: "Мелкая магия в пределах 10 фт.: зажечь или потушить свечу, очистить или испачкать предмет, согреть, охладить или придать вкус, оставить знак или цветной узор. Эффект держится час, одновременно до трёх."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: transmutation
+range_kind: ranged
+range_ft: 10
+duration: 1h
+classes:
+- wizard
+effect_text: "Маг творит мелкие чудеса: чистит, красит, зажигает свечу или оставляет знак на час."
+effects:
+- type: utility

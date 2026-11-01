@@ -1,0 +1,17 @@
+id: detect_magic
+name: Обнаружение магии
+description: "Пока держится концентрация (до 10 минут), вы чувствуете магию в пределах 30 фт. Действием можно увидеть слабую ауру вокруг видимого носителя магии и узнать школу заклинания. Тонкий слой камня, земли, металл и другие преграды скрывают источник. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: divination
+range_kind: self
+duration: 10m
+concentration: true
+ritual: true
+classes:
+- cleric
+- wizard
+effect_text: Маг чувствует магию в 30 фт.; видимую ауру он может разглядеть и узнать её школу.
+effects:
+- type: utility

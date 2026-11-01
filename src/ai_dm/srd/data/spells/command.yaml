@@ -1,0 +1,19 @@
+id: command
+name: Приказ
+description: "Вы произносите одно слово приказа существу в пределах 60 фт.: при провале спасброска Мудрости оно исполняет его в свой следующий ход. В игре — приказ «Ниц»: цель падает и остаётся лежать. На каждый уровень ячейки выше 1-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: enchantment
+range_kind: ranged
+range_ft: 60
+classes:
+- cleric
+effects:
+- type: save_effect
+  ability: wis
+- type: apply_condition
+  condition: prone
+upcast:
+  per_slot_level:
+    targets: 1

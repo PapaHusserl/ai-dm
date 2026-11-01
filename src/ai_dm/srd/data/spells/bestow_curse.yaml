@@ -1,0 +1,19 @@
+id: bestow_curse
+name: Наложение проклятия
+description: "Вы касаетесь существа: при провале спасброска Мудрости оно проклято на время концентрации (до 1 минуты). Выберите одно: помеха на проверки и спасброски одной характеристики, помеха на атаки по вам, потеря действия или +1d8 некротического урона от каждой вашей атаки по цели. В игре — последнее."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: necromancy
+range_kind: touch
+duration: 1m
+concentration: true
+classes:
+- cleric
+- wizard
+effects:
+- type: save_effect
+  ability: wis
+- type: extra_damage
+  dice: 1d8
+  damage_type: necrotic

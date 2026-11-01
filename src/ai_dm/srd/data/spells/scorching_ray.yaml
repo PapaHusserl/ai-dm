@@ -1,0 +1,20 @@
+id: scorching_ray
+name: Палящий луч
+description: "Три огненных луча: для каждого дальнобойная атака заклинанием по цели в пределах 120 фт., при попадании 2d6 урона огнём. Лучи можно направить в разные цели или в одну. На каждый уровень ячейки выше 2-го — ещё один луч."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: evocation
+range_kind: ranged
+range_ft: 120
+classes:
+- wizard
+effects:
+- type: damage
+  dice: 2d6
+  damage_type: fire
+  count: 3
+  mode: attack_roll
+upcast:
+  per_slot_level:
+    count: 1

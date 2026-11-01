@@ -1,0 +1,12 @@
+id: light
+name: Свет
+description: "Вы касаетесь предмета не больше 10 фт. в любую сторону: он на час начинает ярко светиться в радиусе 20 фт. и тускло ещё на 20 фт. Цвет света выбираете вы. Враждебное существо может сорвать заклинание спасброском Ловкости."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: evocation
+range_kind: touch
+duration: 1h
+classes:
+- cleric
+- wizard

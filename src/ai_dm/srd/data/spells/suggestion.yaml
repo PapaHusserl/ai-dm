@@ -1,0 +1,13 @@
+id: suggestion
+name: Внушение
+description: "Вы внушаете существу в пределах 30 фт. разумный приказ в одну-две фразы; оно совершает спасбросок Мудрости и при провале выполняет его до 8 часов, пока держится концентрация. Приказ, наносящий вред, снимает действие."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: enchantment
+range_kind: ranged
+range_ft: 30
+duration: 8h
+concentration: true
+classes:
+- wizard

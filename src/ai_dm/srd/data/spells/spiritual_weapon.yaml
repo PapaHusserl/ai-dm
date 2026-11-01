@@ -1,0 +1,22 @@
+id: spiritual_weapon
+name: Духовное оружие
+description: "Бонусным действием вы создаёте парящее оружие из силы в пределах 60 фт. (концентрация, до 1 минуты). В тот же ход и затем бонусным действием вы можете переместить его на 20 фт. и совершить им ближнюю атаку заклинанием: при попадании 1d8 + модификатор заклинательной характеристики урона силовым полем."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: evocation
+range_kind: ranged
+range_ft: 60
+casting_time: bonus_action
+duration: 1m
+concentration: true
+classes:
+- cleric
+effects:
+- type: summon
+  dice: 1d8
+  add: spellcasting_modifier
+  damage_type: force
+upcast:
+  per_slot_level:
+    dice: 1d8

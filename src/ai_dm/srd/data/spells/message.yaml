@@ -1,0 +1,14 @@
+id: message
+name: Сообщение
+description: "Вы шепчете слово существу в пределах 120 фт., и только оно слышит вас. Оно может прошептать ответ, который слышите только вы. Преграды вроде толстой стены или свинца заклинание останавливают."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: transmutation
+range_kind: ranged
+range_ft: 120
+classes:
+- wizard
+effect_text: Маг шепчет слово в сторону цели в 120 фт., и она может так же шёпотом ответить.
+effects:
+- type: utility

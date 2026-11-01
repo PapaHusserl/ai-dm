@@ -1,0 +1,16 @@
+id: tiny_hut
+name: Хижина Леомунда
+description: "За минуту вы создаёте вокруг себя неподвижный купол силового поля радиусом 10 фт. на 8 часов: внутри уютно, снаружи заклинания и обычное оружие не проходят. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: evocation
+range_kind: self
+casting_time: 1m
+duration: 8h
+ritual: true
+classes:
+- wizard
+effect_text: Вокруг мага купол на 10 фт. и 8 часов, защищающий от непогоды и непрошеных гостей.
+effects:
+- type: utility

@@ -1,0 +1,11 @@
+id: see_invisibility
+name: Видение невидимого
+description: "На 1 час вы видите невидимые существа и предметы, будто они видимы, а также Эфирный план. Теневые и призрачные образы кажутся полупрозрачными."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: divination
+range_kind: self
+duration: 1h
+classes:
+- wizard

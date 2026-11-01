@@ -1,0 +1,17 @@
+id: protection_from_poison
+name: Защита от яда
+description: "Вы касаетесь существа: с него снимается отравление, а на 1 час оно получает преимущество на спасброски от отравления и сопротивление урону ядом."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: abjuration
+range_kind: touch
+duration: 1h
+classes:
+- cleric
+effects:
+- type: remove_condition
+  conditions:
+  - poisoned
+- type: resist
+  damage_type: poison

@@ -1,0 +1,21 @@
+id: sacred_flame
+name: Священное пламя
+description: "Сияющий свет нисходит на существо в пределах 60 фт.: оно совершает спасбросок Ловкости и при провале получает 1d8 урона излучением (растёт на 5, 11 и 17 уровнях). Укрытие на этот спасбросок не помогает."
+source: srd-5.2
+license: CC-BY-4.0
+level: 0
+school: evocation
+range_kind: ranged
+range_ft: 60
+classes:
+- cleric
+effects:
+- type: save_effect
+  ability: dex
+- type: damage
+  dice: 1d8
+  damage_type: radiant
+cantrip_scaling:
+  5: 2d8
+  11: 3d8
+  17: 4d8

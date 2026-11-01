@@ -108,6 +108,35 @@ def soften_knox(knox):
         knox["notes"] = f"{notes}\n\n{KNOX_NEW}" if notes else KNOX_NEW
 
 
+def apply_tone(tone):
+    if MARKER not in tone.get("notes", ""):
+        lines = "\n".join(f"- {line}" for line in TONE_LINES)
+        tone["notes"] = f"{tone['notes']}\n{lines}" if tone.get("notes") else lines
+    if MOOD_ADD not in tone.get("mood", ""):
+        tone["mood"] = f"{tone['mood']}; {MOOD_ADD}" if tone.get("mood") else MOOD_ADD
+
+
+def apply_world(world):
+    apply_tone(world["tone"])
+    lore = world["lore"]
+    if WORLD_OLD in lore["world_text"] and WORLD_NEW not in lore["world_text"]:
+        lore["world_text"] = lore["world_text"].replace(WORLD_OLD, WORLD_NEW)
+    if KNOX_ID in world["npcs"]:
+        soften_knox(world["npcs"][KNOX_ID])
+    apply_npcs(world["npcs"])
+
+
+def apply_npcs(npcs):
+    for npc_id, fields in NPC_REPLACEMENTS.items():
+        npc = npcs.get(npc_id)
+        if npc is None:
+            continue
+        for field, pairs in fields.items():
+            for old, new in pairs:
+                if field in npc:
+                    npc[field] = npc[field].replace(old, new)
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -121,25 +150,7 @@ def main():
     world_path = slot / "world" / "world.json"
     world = json.loads(world_path.read_text(encoding="utf-8"))
     original = json.dumps(world, ensure_ascii=False, indent=2)
-    tone = world["tone"]
-    if MARKER not in tone.get("notes", ""):
-        lines = "\n".join(f"- {line}" for line in TONE_LINES)
-        tone["notes"] = f"{tone['notes']}\n{lines}" if tone.get("notes") else lines
-    if MOOD_ADD not in tone.get("mood", ""):
-        tone["mood"] = f"{tone['mood']}; {MOOD_ADD}" if tone.get("mood") else MOOD_ADD
-    lore = world["lore"]
-    if WORLD_OLD in lore["world_text"] and WORLD_NEW not in lore["world_text"]:
-        lore["world_text"] = lore["world_text"].replace(WORLD_OLD, WORLD_NEW)
-    if KNOX_ID in world["npcs"]:
-        soften_knox(world["npcs"][KNOX_ID])
-    for npc_id, fields in NPC_REPLACEMENTS.items():
-        npc = world["npcs"].get(npc_id)
-        if npc is None:
-            continue
-        for field, pairs in fields.items():
-            for old, new in pairs:
-                if field in npc:
-                    npc[field] = npc[field].replace(old, new)
+    apply_world(world)
     result = json.dumps(world, ensure_ascii=False, indent=2)
     if result == original:
         print("Уже применено: изменений нет.")

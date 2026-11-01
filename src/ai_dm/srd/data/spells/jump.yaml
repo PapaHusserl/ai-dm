@@ -1,0 +1,15 @@
+id: jump
+name: Прыжок
+description: "Существо, которого вы коснулись, на 1 минуту утраивает длину прыжка: за каждый фут скорости оно прыгает втрое дальше обычного."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: transmutation
+range_kind: touch
+casting_time: bonus_action
+duration: 1m
+classes:
+- wizard
+effect_text: Цель прыгает втрое дальше обычного целую минуту.
+effects:
+- type: utility

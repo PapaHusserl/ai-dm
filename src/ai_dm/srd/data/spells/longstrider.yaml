@@ -10,3 +10,6 @@ duration: 1h
 classes:
 - ranger
 - wizard
+effect_text: Цель час быстрее на 10 фт. к скорости.
+effects:
+- type: utility

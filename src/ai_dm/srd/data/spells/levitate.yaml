@@ -1,0 +1,13 @@
+id: levitate
+name: Левитация
+description: "Существо или предмет в пределах 60 фт. весом до 500 фунтов поднимается на 20 фт. и висит в воздухе, пока держится концентрация (до 10 минут). Неохотная цель совершает спасбросок Телосложения. Цель может толкаться от опор и перемещаться на 20 фт. за ход."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: ranged
+range_ft: 60
+duration: 10m
+concentration: true
+classes:
+- wizard

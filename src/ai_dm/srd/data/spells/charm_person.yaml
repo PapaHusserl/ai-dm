@@ -1,0 +1,20 @@
+id: charm_person
+name: Очарование личности
+description: "Гуманоид в пределах 30 фт. совершает спасбросок Мудрости (с преимуществом, если вы или ваши спутники ему угрожаете); при провале он очарован вами на 1 час или до первого вреда. На каждый уровень ячейки выше 1-го — ещё одна цель."
+source: srd-5.2
+license: CC-BY-4.0
+level: 1
+school: enchantment
+range_kind: ranged
+range_ft: 30
+duration: 1h
+classes:
+- wizard
+effects:
+- type: save_effect
+  ability: wis
+- type: apply_condition
+  condition: charmed
+upcast:
+  per_slot_level:
+    targets: 1

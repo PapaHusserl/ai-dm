@@ -1,0 +1,12 @@
+id: daylight
+name: Дневной свет
+description: "Из точки в пределах 60 фт. расходится сфера яркого света радиусом 60 фт. и тусклого на следующие 60 фт.; она держится час. Свет рассеивает магическую тьму не выше 3-го круга."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: evocation
+range_kind: ranged
+range_ft: 60
+duration: 1h
+classes:
+- cleric

@@ -1,0 +1,15 @@
+id: alter_self
+name: Смена обличья
+description: "Пока держится концентрация (до 1 часа), вы меняете тело: дышите под водой и плаваете, либо меняете внешность, либо отращиваете природное оружие (когти, клыки) и бьёте им как оружием 1d6 урона."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: transmutation
+range_kind: self
+duration: 1h
+concentration: true
+classes:
+- wizard
+effect_text: "Маг меняет тело на час: жабры, другое лицо или природное оружие."
+effects:
+- type: utility

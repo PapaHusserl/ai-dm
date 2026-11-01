@@ -1,0 +1,12 @@
+id: continual_flame
+name: Вечный огонь
+description: "Предмет, которого вы коснулись, начинает светить ярким немагическим пламенем в радиусе 20 фт. и тусклым на 20 фт. дальше. Пламя не греет и не горит, но его можно накрыть. Здесь оно длится 8 часов."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: evocation
+range_kind: touch
+duration: 8h
+classes:
+- cleric
+- wizard

@@ -1,0 +1,11 @@
+id: blink
+name: Мерцание
+description: "На 1 минуту в конце каждого своего хода вы бросаете d20: на 11 и выше вы исчезаете в Эфирном плане и возвращаетесь в начале следующего хода. Пока вы там, вас не достать атаками и заклинаниями с обычного плана."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: self
+duration: 1m
+classes:
+- wizard

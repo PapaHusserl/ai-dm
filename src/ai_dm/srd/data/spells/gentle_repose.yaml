@@ -1,0 +1,16 @@
+id: gentle_repose
+name: Покой
+description: "Вы касаетесь трупа или его части: 10 дней он не разлагается, не становится нежитью, а срок, за который его можно вернуть к жизни, не идёт. Ритуал."
+source: srd-5.2
+license: CC-BY-4.0
+level: 2
+school: necromancy
+range_kind: touch
+duration: 10d
+ritual: true
+classes:
+- cleric
+- wizard
+effect_text: Тело не гниёт и не встаёт нежитью 10 дней; срок возвращения к жизни удлиняется на то же время.
+effects:
+- type: utility
