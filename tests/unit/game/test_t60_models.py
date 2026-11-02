@@ -11,6 +11,7 @@ import json
 import pytest
 from game_kit import settings
 
+from ai_dm.config.app import load_settings
 from ai_dm.game.models import (
     check_model,
     model_options,
@@ -20,6 +21,7 @@ from ai_dm.game.models import (
     write_models,
 )
 from ai_dm.llm.errors import MissingKey
+from ai_dm.llm.factory import make_adapter
 
 FLASH = "gemini:gemini-3.8-flash"
 SOL = "openai:gpt-6.1-sol"
@@ -254,3 +256,18 @@ def test_write_models_keeps_non_ascii_as_is(tmp_path):
     text = models_path(tmp_path, "w1").read_text(encoding="utf-8")
     assert "модель-ё" in text
     assert "\\u" not in text
+
+
+def test_check_model_deepinfra_flash_passes_on_builtin_defaults():
+    # встроенные настройки без config.toml игрока: цена, окно и провайдер deepinfra есть
+    app = load_settings().app
+    model = "deepseek-ai/DeepSeek-V4-Flash"
+
+    def factory(provider, name):
+        return make_adapter(provider, name, app, env={"DEEPINFRA_API_KEY": "fake"})
+
+    adapter, error = check_model(app, factory, "deepinfra", model)
+    assert error is None
+    assert adapter.info().provider == "deepinfra"
+    assert app.prices[model].input == 90000
+    assert app.context_windows[model] == 1048576

@@ -884,6 +884,7 @@ def test_unknown_key_in_audio_section_is_rejected():
 def test_cpt_by_provider_default_is_anthropic_only():
     assert app().master.chars_per_token_by_provider == {
         "anthropic": 2.2, "gemini": 3.0, "openai": 3.5, "openrouter": 3.5,
+        "deepinfra": 3.5,
     }
 
 
@@ -917,7 +918,7 @@ def test_common_cpt_override_beats_default_provider_value():
     assert master.cpt_for("gemini") == 3.0
     assert master.cpt_for("anthropic") == 3.0
     # хостер получает свою запись от providers.<имя>.chars_per_token, а не от общего значения
-    assert master.chars_per_token_by_provider == {"openrouter": 3.5}
+    assert master.chars_per_token_by_provider == {"openrouter": 3.5, "deepinfra": 3.5}
 
 
 def test_common_cpt_in_later_layer_beats_provider_value_of_earlier_layer(tmp_path):
