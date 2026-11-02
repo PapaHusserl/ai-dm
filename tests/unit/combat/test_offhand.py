@@ -5,6 +5,7 @@
 #   * Проворство (Nick в мастерствах героя): цена free, подпись «Удар второй рукой (Проворство):
 #     ...»,
 #     бонусное действие остаётся; раз за ход (флаг offhand_used);
+#   * флаг переживает не лёгкую Доп. атаку и смену CombatEngine между фразами игрока;
 #   * урон без модификатора характеристики, если он неотрицательный; отрицательный вычитается; со
 #     стилем «Бой двумя оружиями» модификатор прибавляется.
 from combat_kit import (
@@ -19,7 +20,10 @@ from combat_kit import (
     set_hp,
     turn,
 )
+from test_ranger_combat import make_ranger
 
+from ai_dm.combat.engine import CombatEngine
+from ai_dm.game.controllers import PlayerController
 from ai_dm.rules.inventory import add_item, equip
 
 OFF = "offhand_attack:goblin_1"
@@ -234,3 +238,53 @@ def test_the_mark_goes_away_in_the_next_turn(registry, cfg):
     engine.expire("end_of_turn", "hero")
     flags = [e.id for e in creature(engine, "hero").active_effects]
     assert "light_attack" not in flags
+
+
+# --- Доп. атака героя с оружием не лёгким (репорт Грея: после неё удара второй рукой не было) ---
+
+def test_offhand_option_survives_a_heavier_second_attack(registry, cfg):
+    hero = make_ranger(registry, level=5)
+    give_weapon(hero, registry, "longsword")
+    give_weapon(hero, registry, "shortsword")
+    add_item(hero, "shortsword", 1, cost_cp=0)
+    equip(hero, "shortsword", registry, "off_hand")
+    engine = make_engine(
+        registry, cfg, heroes=[hero], rng=ScriptedRng(d20=[15, 15], d6=[3], d8=[3]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+    )
+    creature(engine, "goblin_1").hp_max = 40
+    set_hp(engine, "goblin_1", 40)
+    engine.perform("hero", "attack:shortsword:goblin_1")
+    engine.perform("hero", "attack:longsword:goblin_1")
+    assert len(offhand(engine)) == 1
+
+
+def test_offhand_option_survives_between_player_phrases(registry, cfg):
+    # каждая фраза игрока -- новый CombatEngine на том же состоянии; вторая фраза бьёт не лёгким
+    # оружием, поэтому флаг не пересоздаётся и должен дожить с первой фразы
+    hero = make_ranger(registry, level=5)
+    give_weapon(hero, registry, "longsword")
+    give_weapon(hero, registry, "shortsword")
+    add_item(hero, "shortsword", 1, cost_cp=0)
+    equip(hero, "shortsword", registry, "off_hand")
+    base = make_engine(
+        registry, cfg, heroes=[hero], rng=ScriptedRng(d20=[15, 15], d6=[6], d8=[6]),
+        monsters=[
+            mon("goblin_1", "goblin_warrior", "hall"), mon("goblin_2", "goblin_warrior", "hall"),
+        ],
+        hero_controller="external",
+    )
+    set_hp(base, "goblin_1", 1)
+
+    def phrase(step):
+        player = PlayerController([step], hold=True)
+        engine = CombatEngine(
+            base.state, base.world, base.heroes, registry, cfg, base.rng, {"hero": player}
+        )
+        player.attach(engine)
+        engine.step()
+
+    phrase("attack:shortsword:goblin_1")
+    assert len(offhand(base)) == 1
+    phrase("attack:longsword:goblin_2")
+    assert len(offhand(base)) == 1
