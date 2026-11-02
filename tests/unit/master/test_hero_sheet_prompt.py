@@ -318,6 +318,47 @@ def test_class_data_has_name_from_registry(registry, cfg):
     assert by_class["wizard"]["name"] == registry.get("class", "wizard").name
 
 
+# К3 П2: справочник листа -- заговоры 1 ур., Божественный порядок, книга волшебника
+
+def test_cleric_data_has_cantrip_count_and_divine_orders(registry, cfg):
+    cleric = classes(build(registry, cfg))["cleric"]
+    assert cleric["cantrip_count"] == 3
+    assert cleric["divine_order_ids"] == ["protector", "thaumaturge"]
+    assert cleric["spellbook"] is False
+
+
+def test_wizard_data_has_the_spellbook_and_no_divine_order(registry, cfg):
+    wizard = classes(build(registry, cfg))["wizard"]
+    assert wizard["cantrip_count"] == 3
+    assert wizard["divine_order_ids"] == []
+    assert wizard["spellbook"] is True
+
+
+def test_cantrip_count_is_taken_at_level_1_not_later(registry):
+    from ai_dm.master.hero import class_data
+
+    wizard = registry.get("class", "wizard")
+    spellcasting = wizard.spellcasting.model_copy(update={"cantrips_by_level": {1: 2, 2: 5}})
+    char_class = wizard.model_copy(update={"spellcasting": spellcasting})
+    assert class_data(registry, char_class)["cantrip_count"] == 2
+
+
+def test_other_classes_have_no_cantrips_orders_or_book(registry, cfg):
+    by_class = classes(build(registry, cfg))
+    for class_id in ("fighter", "rogue", "ranger"):
+        assert by_class[class_id]["cantrip_count"] == 0, class_id
+        assert by_class[class_id]["divine_order_ids"] == [], class_id
+        assert by_class[class_id]["spellbook"] is False, class_id
+
+
+def test_cleric_and_wizard_kits_list_the_new_packs(registry, cfg):
+    by_class = classes(build(registry, cfg))
+    cleric_a = next(k for k in by_class["cleric"]["kits"] if k["id"] == "a")
+    wizard_a = next(k for k in by_class["wizard"]["kits"] if k["id"] == "a")
+    assert "priests_pack" in cleric_a["items"]
+    assert {"spellbook", "scholars_pack"} <= set(wizard_a["items"])
+
+
 def test_ranger_fighting_style_comes_later_than_level_one(registry, cfg):
     ranger = classes(build(registry, cfg))["ranger"]
     assert ranger["fighting_style"] is False
@@ -362,7 +403,8 @@ def test_every_builder_limit_constant_is_in_limits(registry, cfg):
 
 # Б2а (A2): class_data переведён на rules.hero_options -- справочник листа байт-в-байт прежний
 # (снимок снят с кода Б1 до правок Б2 на пак vale; К7к: в таблицу цен добавлен доспех chain_shirt;
-# К3 П1: списки заклинаний и заговоров жреца и волшебника)
+# К3 П1: списки заклинаний и заговоров жреца и волшебника; К3 П2: cantrip_count, divine_order_ids,
+# spellbook у классов, наборы воина/плута/жреца/волшебника, цены наборов и книги)
 
 def test_sheet_reference_block_is_byte_identical_to_the_b1_snapshot(registry, cfg):
     from hero_kit import sheet_task, vale_pack

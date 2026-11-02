@@ -1,6 +1,6 @@
 from ai_dm.core.dice import roll_dice
 from ai_dm.rules.creatures import live_effects
-from ai_dm.rules.derived import clock_text, effect_amount
+from ai_dm.rules.derived import armor_allowed, clock_text, effect_amount
 from ai_dm.rules.healing import heal
 from ai_dm.state.creature import ActiveEffect, Expiry
 from ai_dm.state.hero import InventoryEntry
@@ -142,8 +142,7 @@ def equip(hero, item_id: str, registry, slot: str = "main_hand") -> None:
             raise InventoryError(f"щит нельзя с оружием в левой руке: {hero.equipped.off_hand}")
         hero.equipped.shield = item_id
     elif kind == "armor":
-        char_class = registry.get("class", hero.sheet.class_id)
-        if item.category not in char_class.armor_training:
+        if not armor_allowed(hero, registry, item):
             raise InventoryError(f"нет владения доспехом: {item_id}")
         hero.equipped.armor = item_id
     else:

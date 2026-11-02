@@ -11,6 +11,7 @@ from ai_dm.rules.derived import (
     free_cast_pool,
     hero_effects,
     passive_perception,
+    prepared_limit,
     proficiency,
     resource_maxes,
     saving_throw_bonus,
@@ -441,19 +442,54 @@ def spell_ids(hero, registry):
     return ids
 
 
+def listed_spell_ids(hero, registry, book):
+    # что /spells показывает по кругам: у волшебника с книгой — заговоры и подготовленные
+    ids = spell_ids(hero, registry)
+    if not book:
+        return ids
+    prepared = set(always_prepared(hero, registry)) | set(hero.sheet.prepared_of())
+    return [
+        s for s in ids
+        if s in prepared or not registry.has("spell", s) or registry.get("spell", s).level == 0
+    ]
+
+
+def prepared_header(hero, registry):
+    return f"Подготовлено ({len(hero.sheet.prepared_of())}/{prepared_limit(hero, registry)}):"
+
+
+def book_lines(hero, registry, width):
+    # книга волшебника: заклинания 1+ круга по кругам
+    by_circle = {}
+    for spell_id in hero.sheet.known_of():
+        if registry.has("spell", spell_id) and registry.get("spell", spell_id).level >= 1:
+            spell = registry.get("spell", spell_id)
+            by_circle.setdefault(spell.level, []).append(spell.name)
+    total = sum(len(names) for names in by_circle.values())
+    lines = [f"Книга заклинаний ({total}):"]
+    for circle in sorted(by_circle):
+        lines += rows(f"  {circle} круг:", sorted(by_circle[circle]), width)
+    return lines
+
+
 def spells_lines(hero, registry, width, with_description=True):
-    if registry.get("class", hero.sheet.class_id).spellcasting is None:
+    spellcasting = registry.get("class", hero.sheet.class_id).spellcasting
+    if spellcasting is None:
         return ["Заклинаний нет."]
     lines = ["Ячейки:"]
     lines += ["  " + text for text in slots_lines(hero, registry)]
     by_level = {}
-    for spell_id in spell_ids(hero, registry):
+    for spell_id in listed_spell_ids(hero, registry, spellcasting.spellbook):
         if not registry.has("spell", spell_id):
             by_level.setdefault(0, []).append((spell_id, None))
             continue
         spell = registry.get("spell", spell_id)
         by_level.setdefault(spell.level, []).append((spell.name, spell))
+    shown = not spellcasting.spellbook
     for level in sorted(by_level):
+        if level > 0 and not shown:
+            lines.append(prepared_header(hero, registry))
+            shown = True
         lines.append("Заговоры:" if level == 0 else f"Заклинания, {level} круг:")
         for name, spell in sorted(by_level[level], key=lambda pair: pair[0]):
             if spell is None:
@@ -462,6 +498,10 @@ def spells_lines(hero, registry, width, with_description=True):
             lines.append(f"  {name} ({casting_text(spell)})")
             if with_description and spell.description:
                 lines += description_lines(spell.description, width)
+    if spellcasting.spellbook:
+        if not shown:
+            lines.append(prepared_header(hero, registry))
+        lines += book_lines(hero, registry, width)
     free = []
     effects = hero_effects(hero, registry)
     for spell_id in always_prepared(hero, registry):

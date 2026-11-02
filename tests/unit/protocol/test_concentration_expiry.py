@@ -57,6 +57,19 @@ def go(registry, cfg, bundle, type_name, **fields):
     return apply(ctx, req(type_name, **fields))
 
 
+def test_free_mark_spends_the_favored_enemy_pool_and_not_a_slot(dragon, cfg):
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    resources = hero.creature.resources
+    resources["spell_slot:1"].current = 0
+    before = resources["favored_enemy"].current
+    _, d = cast_mark(registry, cfg, bundle)
+    assert d.status == "accepted"
+    assert resources["favored_enemy"].current == before - 1
+    assert resources["spell_slot:1"].current == 0
+    assert d.log[0].endswith("(1 круг, бесплатное применение)")
+
+
 # Метка вне боя: срок 1 ч
 
 def test_mark_outside_combat_sets_until_one_hour_ahead(dragon, cfg):

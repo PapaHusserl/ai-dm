@@ -25,6 +25,10 @@ spellcasting:
   ability: wis
   progression: full
   cantrips: 3
+  cantrips_by_level:
+    1: 3
+    4: 4
+    10: 5
   spells: 4
   prepared: 4
   prepared_swap: all
@@ -52,8 +56,14 @@ spellcasting:
 features:
 - level: 1
   feature: spellcasting
+- level: 1
+  feature: divine_order
+- level: 2
+  feature: channel_divinity
 - level: 4
   feature: ability_score_improvement
+- level: 5
+  feature: sear_undead
 - level: 8
   feature: ability_score_improvement
 - level: 12
@@ -65,15 +75,15 @@ features:
 starting_kits:
 - id: a
   items:
-  - studded_leather
+  - chain_shirt
   - shield
-  - quarterstaff
+  - mace
   - holy_symbol
-  - explorers_pack
+  - priests_pack
   equip:
-  - studded_leather
+  - chain_shirt
   - shield
-  - quarterstaff
+  - mace
   gold_cp: 700
 - id: b
   items: []

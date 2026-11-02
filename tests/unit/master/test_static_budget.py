@@ -56,7 +56,8 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # ФС П3: поле location_id в npc_update, фразы о absent_npcs, переносе и уходе gone без причины
 # (замер 24212; 24030 -> 24240).
 # БП: фраза правил о поштучных боеприпасах в give_item (замер 24281; 24240 -> 24300).
-STATIC_MAX = 24300
+# К3 П2: CastSpell.ritual, фраза о книге волшебника (замер 24357; 24300 -> 24380).
+STATIC_MAX = 24380
 
 MODES = sorted(MODE_TOOLS)
 

@@ -218,6 +218,110 @@ def test_spells_width_within_80(dragon_app):
         assert len(line) <= 80
 
 
+# К3 П2: /spells волшебника -- «Подготовлено (N/L)» и «Книга заклинаний (M)»; у жреца книги нет
+
+BOOK_SPELLS = ["alarm", "burning_hands", "magic_missile", "shield", "sleep", "detect_magic"]
+PREPARED_SPELLS = ["magic_missile", "shield", "sleep", "detect_magic"]
+
+
+def wizard_spells_text(registry, width=80):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "rules"))
+    from test_builder import wizard_choices
+
+    from ai_dm.game.sheet_text import spells_lines
+    from ai_dm.rules.builder import build_character
+
+    choices = wizard_choices(
+        spells=["fire_bolt", "light", "mage_hand", *BOOK_SPELLS], prepared=PREPARED_SPELLS,
+    )
+    hero = build_character(choices, registry)
+    return hero, "\n".join(spells_lines(hero, registry, width, with_description=False))
+
+
+def test_wizard_spells_show_the_book_with_its_size(registry):
+    _, text = wizard_spells_text(registry)
+    assert "Книга заклинаний (6):" in text
+
+
+def test_wizard_spells_show_prepared_with_limit(registry):
+    _, text = wizard_spells_text(registry)
+    assert "Подготовлено (4/4):" in text
+
+
+def test_wizard_book_lists_unprepared_spells_but_prepared_part_does_not(registry):
+    _, text = wizard_spells_text(registry)
+    prepared_part, book_part = text.split("Книга заклинаний")
+    assert "Тревога" in book_part
+    assert "Тревога" not in prepared_part
+    assert "Щит" in prepared_part
+
+
+def test_wizard_prepared_header_comes_before_the_first_circle_and_book_last(registry):
+    _, text = wizard_spells_text(registry)
+    assert text.index("Заговоры:") < text.index("Подготовлено (") < text.index(
+        "Заклинания, 1 круг:") < text.index("Книга заклинаний")
+
+
+def test_wizard_spells_lines_fit_the_width(registry):
+    _, text = wizard_spells_text(registry, 60)
+    assert all(len(line) <= 60 for line in text.split("\n"))
+
+
+def test_wizard_book_counts_only_first_and_higher_circle_spells(registry):
+    hero, text = wizard_spells_text(registry)
+    assert "Книга заклинаний (6)" in text
+    hero.sheet.known_of().append("grease")
+    from ai_dm.game.sheet_text import book_lines
+
+    assert book_lines(hero, registry, 80)[0] == "Книга заклинаний (7):"
+
+
+def test_wizard_book_lists_spells_under_their_circle_headers(registry):
+    from ai_dm.game.sheet_text import book_lines
+
+    hero, _ = wizard_spells_text(registry)
+    hero.sheet.known_of().append("scorching_ray")
+    lines = book_lines(hero, registry, 80)
+    first = next(line for line in lines if line.startswith("  1 круг:"))
+    assert "Тревога" in first
+    second = next(line for line in lines if line.startswith("  2 круг:"))
+    assert "Палящий луч" in second
+
+
+def test_wizard_prepared_header_is_shown_once(registry):
+    _, text = wizard_spells_text(registry)
+    assert text.count("Подготовлено (") == 1
+
+
+def test_wizard_with_no_prepared_spells_still_shows_the_header(registry):
+    from ai_dm.game.sheet_text import spells_lines
+
+    hero, _ = wizard_spells_text(registry)
+    hero.sheet.prepared_of().clear()
+    text = "\n".join(spells_lines(hero, registry, 80, with_description=False))
+    assert "Подготовлено (0/4):" in text
+
+
+def test_cleric_spells_have_no_book_and_no_prepared_header(registry):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "content"))
+    from test_class_kits import minimal_choices
+
+    from ai_dm.game.sheet_text import spells_lines
+    from ai_dm.rules.builder import build_character
+
+    hero = build_character(minimal_choices("cleric", "a"), registry)
+    hero.sheet.known_of()[:] = ["guidance", "bless", "cure_wounds"]
+    hero.sheet.prepared_of()[:] = ["bless", "cure_wounds"]
+    text = "\n".join(spells_lines(hero, registry, 80, with_description=False))
+    assert "Книга заклинаний" not in text
+    assert "Подготовлено (" not in text
+    assert "Благословение" in text
+
+
 # /abilities
 
 def test_abilities_class_features_levels_1_to_3(dragon_app):

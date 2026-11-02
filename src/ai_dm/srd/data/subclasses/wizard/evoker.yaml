@@ -1,0 +1,11 @@
+id: evoker
+name: Воплотитель
+description: Волшебник, изучающий магию, что направляет стихии и разрушительную силу.
+source: srd-5.2
+license: CC-BY-4.0
+class_id: wizard
+features:
+- level: 3
+  feature: evocation_savant
+- level: 3
+  feature: potent_cantrip

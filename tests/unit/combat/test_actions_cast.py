@@ -375,3 +375,24 @@ def test_miss_on_the_caster_needs_no_concentration_check(registry, cfg):
     engine.perform("goblin_1", "attack:скимитар:wiz")
     assert engine.heroes["wiz"].creature.concentration.spell_id == "bless"
     assert rng.left("d20") == 0
+
+
+# К3 П2: ритуал и 10-минутные заклинания в бою не предлагаются
+
+def test_unprepared_book_ritual_is_not_offered_in_combat(registry, cfg):
+    from ai_dm.combat.actions.cast import castable_spells
+
+    hero = make_wizard(registry)
+    hero.sheet.known_of().append("alarm")
+    engine = caster_engine(registry, cfg, ScriptedRng(), hero=hero)
+    assert "alarm" not in [s.id for s in castable_spells(engine, "wiz")]
+
+
+def test_ten_minute_spell_is_not_offered_in_combat(registry, cfg):
+    from ai_dm.combat.actions.cast import castable_spells
+
+    hero = make_wizard(registry)
+    hero.sheet.known_of().append("clairvoyance")
+    hero.sheet.prepared_of().append("clairvoyance")
+    engine = caster_engine(registry, cfg, ScriptedRng(), hero=hero)
+    assert "clairvoyance" not in [s.id for s in castable_spells(engine, "wiz")]

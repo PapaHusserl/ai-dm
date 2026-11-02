@@ -6,6 +6,7 @@ from ai_dm.rules.progression import (
     level_up,
     next_choice,
 )
+from ai_dm.rules.spellbook import PICK_KEYS
 from ai_dm.state.hero import LevelChoices
 
 CLASSES = ("fighter", "rogue", "cleric", "wizard", "ranger")
@@ -34,8 +35,9 @@ def cleric_choices() -> CharacterChoices:
         weapon_masteries=[],
         species_choices={"skill": "stealth", "feat": "skilled"},
         feat_choices={"skilled": ["medicine", "religion", "nature"]},
-        spells=["bless", "cure_wounds"], prepared=["bless", "cure_wounds"],
-        class_kit="a", hero_id="hero",
+        spells=["sacred_flame", "guidance", "resistance", "bless", "cure_wounds"],
+        prepared=["bless", "cure_wounds"], class_kit="a", hero_id="hero",
+        feature_choices={"divine_order": ["thaumaturge"]},
     )
 
 
@@ -60,7 +62,7 @@ def pick(choices, key, options) -> None:
         choices.fighting_style = first
     elif key == "expertise":
         choices.expertise.append(first)
-    elif key == "weapon_mastery":
+    elif key in ("weapon_mastery", *PICK_KEYS):
         choices.feature_choices.setdefault(key, []).append(first)
     elif key == "subclass":
         choices.subclass_id = first

@@ -28,7 +28,7 @@ from ai_dm.state.hero import BackgroundSpec  # noqa: E402
 
 KEYS = [
     "species", "class", "background", "method", "scores", "bonus_scheme", "bonus", "class_skills",
-    "masteries", "style", "cantrips", "spells", "prepared", "species_skill",
+    "masteries", "style", "divine_order", "cantrips", "spells", "prepared", "species_skill",
     "species_feat", "feat_picks_bg", "feat_picks_species", "expertise", "kit", "gear", "name",
     "gender", "pronouns", "motive", "means",
 ]
@@ -182,6 +182,72 @@ def test_cleric_has_spell_steps_and_no_masteries(registry):
     for key in ("cantrips", "spells", "prepared"):
         assert key in keys
     assert "masteries" not in keys
+
+
+def test_divine_order_step_is_only_for_the_cleric(registry):
+    assert "divine_order" in keys_for(
+        registry, species_id="dwarf", class_id="cleric", background="acolyte",
+    )
+    for class_id in ("wizard", "fighter", "rogue", "ranger"):
+        assert "divine_order" not in keys_for(
+            registry, species_id="dwarf", class_id=class_id, background="acolyte",
+        )
+
+
+def test_divine_order_options_are_protector_and_thaumaturge(registry):
+    current = draft(species_id="dwarf", class_id="cleric", background="acolyte")
+    assert values("divine_order", current, registry) == ["protector", "thaumaturge"]
+    assert labels("divine_order", current, registry) == ["Защитник", "Чудотворец"]
+    assert step("divine_order").kind == "pick"
+
+
+def test_divine_order_comes_before_cantrips_and_after_style():
+    keys = [s.key for s in steps()]
+    assert keys.index("style") < keys.index("divine_order") < keys.index("cantrips")
+
+
+def test_thaumaturge_adds_one_cantrip_to_the_cleric_step(registry):
+    current = draft(species_id="dwarf", class_id="cleric", background="acolyte")
+    assert step("cantrips").count(current, registry) == 3
+    current.divine_order = "protector"
+    assert step("cantrips").count(current, registry) == 3
+    current.divine_order = "thaumaturge"
+    assert step("cantrips").count(current, registry) == 4
+
+
+def test_cleric_spell_steps_counts_and_pools(registry):
+    # К3 П1: жрец — 3 заговора из 7, 4 заклинания 1 круга из 15, подготовлено 4
+    current = draft(species_id="dwarf", class_id="cleric", background="acolyte")
+    assert step("cantrips").count(current, registry) == 3
+    assert len(values("cantrips", current, registry)) == 7
+    assert step("spells").count(current, registry) == 4
+    assert len(values("spells", current, registry)) == 15
+    current.spells = values("spells", current, registry)[:4]
+    assert step("prepared").count(current, registry) == 4
+
+
+def test_to_sheet_puts_divine_order_into_feature_choices(registry):
+    from ai_dm.game.hero_steps import to_sheet
+
+    current = draft(species_id="dwarf", class_id="cleric", background="acolyte",
+                    ability_method="standard_array", divine_order="thaumaturge")
+    assert to_sheet(current, registry).choices.feature_choices == {
+        "divine_order": ["thaumaturge"],
+    }
+
+
+def test_to_sheet_without_divine_order_has_no_feature_choices(registry):
+    from ai_dm.game.hero_steps import to_sheet
+
+    current = draft(species_id="elf", class_id="wizard", background="sage",
+                    ability_method="standard_array")
+    assert to_sheet(current, registry).choices.feature_choices == {}
+
+
+def test_divine_order_error_code_returns_to_its_step():
+    from ai_dm.game.hero_steps import step_for_code
+
+    assert step_for_code("feature_choice_invalid") == "divine_order"
 
 
 # меню шагов
@@ -1060,6 +1126,34 @@ def test_first_option_walk_is_valid_for_every_background_and_method(
                 sheet, registry, known=task.known, taken_names=task.taken_names
             )
             assert found == ([], []), (species, cls, background, method)
+
+
+def class_number(registry, class_id):
+    return values("class", draft(), registry).index(class_id) + 1
+
+
+def test_wizard_walk_for_cleric_picks_a_divine_order_in_the_sheet(registry, cfg):
+    sheet, _ = accepted_sheet(registry, cfg, cls=class_number(registry, "cleric"))
+    assert sheet.choices.class_id == "cleric"
+    assert sheet.choices.feature_choices["divine_order"] in (["protector"], ["thaumaturge"])
+
+
+def test_wizard_walk_for_wizard_has_no_feature_choices_and_a_full_start_book(registry, cfg):
+    sheet, _ = accepted_sheet(registry, cfg, cls=class_number(registry, "wizard"))
+    assert sheet.choices.class_id == "wizard"
+    assert sheet.choices.feature_choices == {}
+    spells = [s for s in sheet.choices.spells if registry.get("spell", s).level >= 1]
+    cantrips = [s for s in sheet.choices.spells if registry.get("spell", s).level == 0]
+    assert (len(cantrips), len(spells), len(sheet.choices.prepared)) == (3, 6, 4)
+
+
+def test_wizard_walk_for_cleric_takes_three_cantrips_and_four_spells(registry, cfg):
+    sheet, _ = accepted_sheet(registry, cfg, cls=class_number(registry, "cleric"))
+    spells = [s for s in sheet.choices.spells if registry.get("spell", s).level >= 1]
+    cantrips = [s for s in sheet.choices.spells if registry.get("spell", s).level == 0]
+    order = sheet.choices.feature_choices["divine_order"][0]
+    assert len(cantrips) == (4 if order == "thaumaturge" else 3)
+    assert (len(spells), len(sheet.choices.prepared)) == (4, 4)
 
 
 # добивка по выжившим мутантам mutmut (Б2а)

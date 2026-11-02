@@ -39,6 +39,7 @@ from ai_dm.rules.level_up import (
 )
 from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES  # noqa: F401
 from ai_dm.rules.progression import can_level_up
+from ai_dm.rules.spellbook import PICK_KEYS
 
 LOADED_PREFIX = "Загружено: "
 SIMPLE_REASON = "звук только в TUI"
@@ -52,6 +53,9 @@ CHOICE_TITLES = {
     "subclass": "подкласс",
     "asi_or_feat": "повышение характеристик или черту",
     "spells": "заклинание для подготовки",
+    "cantrip": "заговор",
+    "spellbook": "заклинание в книгу",
+    "savant_spell": "заклинание Воплощения",
 }
 
 
@@ -335,7 +339,7 @@ class GameApp:
             draft.fighting_style = key
         elif step == "expertise":
             draft.expertise.append(key)
-        elif step == "weapon_mastery":
+        elif step in ("weapon_mastery", *PICK_KEYS):
             draft.feature_choices.setdefault(step, []).append(key)
         elif step == "subclass":
             draft.subclass_id = key

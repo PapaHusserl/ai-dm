@@ -1,0 +1,17 @@
+id: thaumaturge
+name: Чудотворец
+description: Вы знаете на один заговор жреца больше. К проверкам Интеллекта (Магия и Религия) вы прибавляете модификатор Мудрости (не меньше +1).
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: modifier
+  target: cantrips
+  value: 1
+- type: modifier
+  target: skill
+  skill: arcana
+  add: spellcasting_modifier
+- type: modifier
+  target: skill
+  skill: religion
+  add: spellcasting_modifier

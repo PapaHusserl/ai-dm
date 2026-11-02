@@ -278,7 +278,7 @@ def test_kit_label_exact_texts(registry):
 
     fighter = registry.get("class", "fighter").starting_kits
     assert kit_label(registry, fighter[0]) == (
-        "Кольчуга, Двуручный меч, Цеп, Метательное копьё ×8, Набор путешественника; +4 зм"
+        "Кольчуга, Двуручный меч, Цеп, Метательное копьё ×8, Набор исследователя подземелий; +4 зм"
     )
     assert kit_label(registry, fighter[2]) == "155 зм золотом"
 
@@ -288,7 +288,7 @@ def test_kit_label_counts_repeated_items(registry):
 
     kit = registry.get("class", "wizard").starting_kits[0]
     assert kit_label(registry, kit) == (
-        "Кинжал ×2, Боевой посох, Ряса, Набор путешественника; +5 зм"
+        "Кинжал ×2, Боевой посох, Ряса, Книга заклинаний, Набор учёного; +5 зм"
     )
 
 
@@ -311,13 +311,48 @@ def test_kit_label_shows_id_of_unknown_item(registry):
     assert kit_label(registry, kit) == "no_such_item ×2"
 
 
+def test_spell_counts_cantrips_are_the_level_1_value_of_the_table():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.hero_options import spell_counts
+
+    casting = SimpleNamespace(
+        cantrips=None, cantrips_by_level={1: 2, 2: 3}, spells=4, prepared=4,
+    )
+    assert spell_counts(SimpleNamespace(spellcasting=casting)) == (2, 4, 4)
+
+
 def test_spell_counts_without_numbers_are_zeros():
     from types import SimpleNamespace
 
     from ai_dm.rules.hero_options import spell_counts
 
-    casting = SimpleNamespace(cantrips=None, spells=None, prepared=None)
+    casting = SimpleNamespace(
+        cantrips=None, cantrips_by_level=None, spells=None, prepared=None,
+    )
     assert spell_counts(SimpleNamespace(spellcasting=casting)) == (0, 0, 0)
+
+
+def test_level1_option_feature_of_the_cleric_is_divine_order(registry):
+    from ai_dm.rules.hero_options import level1_option_feature
+
+    feature = level1_option_feature(registry, registry.get("class", "cleric"))
+    assert feature.id == "divine_order"
+    assert list(feature.options) == ["protector", "thaumaturge"]
+
+
+def test_level1_option_feature_is_none_for_other_classes(registry):
+    from ai_dm.rules.hero_options import level1_option_feature
+
+    for class_id in ("fighter", "rogue", "wizard", "ranger"):
+        assert level1_option_feature(registry, registry.get("class", class_id)) is None, class_id
+
+
+def test_spell_counts_use_the_level_one_cantrips_of_the_table(registry):
+    from ai_dm.rules.hero_options import spell_counts
+
+    assert spell_counts(registry.get("class", "cleric")) == (3, 4, 4)
+    assert spell_counts(registry.get("class", "wizard")) == (3, 6, 4)
 
 
 def test_mastery_weapons_skip_world_source_weapons(registry):

@@ -1,0 +1,15 @@
+id: life_domain
+name: Домен жизни
+description: Жрец, чья вера направлена на исцеление и защиту живых.
+source: srd-5.2
+license: CC-BY-4.0
+class_id: cleric
+features:
+- level: 3
+  feature: disciple_of_life
+- level: 3
+  feature: life_domain_spells
+- level: 3
+  feature: preserve_life
+- level: 5
+  feature: life_domain_spells_5

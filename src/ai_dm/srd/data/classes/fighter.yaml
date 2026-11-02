@@ -76,7 +76,7 @@ starting_kits:
   - javelin
   - javelin
   - javelin
-  - explorers_pack
+  - dungeoneers_pack
   equip:
   - chain_mail
   - greatsword
@@ -108,7 +108,7 @@ starting_kits:
   - arrows
   - arrows
   - quiver
-  - explorers_pack
+  - dungeoneers_pack
   equip:
   - studded_leather
   - longbow

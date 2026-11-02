@@ -86,9 +86,25 @@ def test_cleric_swaps_three_at_once(registry):
 
 def test_wizard_swaps_two_at_once(registry):
     hero = make_wizard(registry)
+    hero.sheet.known_of().extend(["alarm", "fog_cloud"])
     hero.sheet.prepared_of()[:] = ["magic_missile", "burning_hands"]
     assert swap_problem(hero, registry, ["magic_missile", "burning_hands"],
                         ["alarm", "fog_cloud"]) is None
+
+
+def test_wizard_takes_only_from_the_spellbook(registry):
+    # К3 П2: подготовить можно только заклинание из книги
+    hero = make_wizard(registry)
+    hero.sheet.prepared_of()[:] = ["magic_missile"]
+    problem = swap_problem(hero, registry, ["magic_missile"], ["alarm"])
+    assert code_of(problem) == "not_in_book"
+
+
+def test_wizard_takes_a_book_spell(registry):
+    hero = make_wizard(registry)
+    book = [s for s in hero.sheet.known_of() if registry.get("spell", s).level == 1]
+    hero.sheet.prepared_of()[:] = book[:1]
+    assert swap_problem(hero, registry, book[:1], book[1:2]) is None
 
 
 # swap_problem: отказы
@@ -103,6 +119,29 @@ def test_ranger_cannot_take_two(registry):
     hero = ranger(registry)
     problem = swap_problem(hero, registry, ["fog_cloud"], ["longstrider", "alarm"])
     assert code_of(problem) == "swap_limit"
+
+
+def test_short_rest_cap_limits_a_class_with_any_number_of_swaps(registry):
+    # Запоминание заклинания: cap заменяет prepared_swap класса
+    hero = cleric(registry)
+    take = ["bless", "cure_wounds"]
+    problem = swap_problem(hero, registry, [], take, cap=1)
+    assert problem is not None
+    assert problem[0] == "swap_limit"
+    assert "за короткий отдых" in problem[1]
+    assert problem[1].endswith("не больше 1")
+
+
+def test_short_rest_cap_can_exceed_the_class_swap_limit(registry):
+    hero = ranger(registry)
+    problem = swap_problem(hero, registry, ["fog_cloud"], ["longstrider", "goodberry"], cap=2)
+    assert problem is None
+
+
+def test_long_rest_swap_limit_message_names_the_long_rest(registry):
+    problem = swap_problem(ranger(registry), registry, ["fog_cloud", "cure_wounds"], [])
+    assert problem[0] == "swap_limit"
+    assert "за длинный отдых" in problem[1]
 
 
 def test_unknown_spell_lists_allowed_ids(registry):
@@ -244,7 +283,7 @@ def test_unknown_spell_hint_for_the_wizard_excludes_cantrips(registry):
     hero = make_wizard(registry)
     problem = swap_problem(hero, registry, [], ["no_such_spell"])
     hint = problem[1].split("допустимые id: ")[1].split(", ")
-    # К3 П1: подсказка — срез первых 20 id; magic_missile вытеснен 30 заклинаниями 1 круга
+    # К3 П2: подсказка волшебника — только заклинания из его книги, без заговоров
     assert "fire_bolt" not in hint
-    assert "alarm" in hint
-    assert len(hint) == 20
+    assert "alarm" not in hint
+    assert hint == ["burning_hands", "magic_missile"]

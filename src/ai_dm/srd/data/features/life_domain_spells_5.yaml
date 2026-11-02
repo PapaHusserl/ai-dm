@@ -1,0 +1,10 @@
+id: life_domain_spells_5
+name: Заклинания Домена жизни (5 уровень)
+description: Множественное лечащее слово и Оживление у вас всегда подготовлены и не считаются в лимите.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: spell_access
+  spell: mass_healing_word
+- type: spell_access
+  spell: revivify

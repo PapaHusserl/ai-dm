@@ -1,0 +1,18 @@
+id: scholar
+name: Учёный
+description: Вы получаете экспертизу в одном из навыков, которыми владеете — Магия, История, Расследование, Медицина,
+  Природа или Религия.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: proficiency
+  target: skill
+  mode: expertise
+  count: 1
+  skills:
+  - arcana
+  - history
+  - investigation
+  - medicine
+  - nature
+  - religion

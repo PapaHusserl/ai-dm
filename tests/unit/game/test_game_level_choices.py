@@ -474,6 +474,60 @@ def test_weapon_mastery_picks_are_accumulated_in_the_draft(registry, tmp_path):
     assert draft.feature_choices["weapon_mastery"] == ["battleaxe", "mace"]
 
 
+# К3 П2: волшебник 2 ур. -- экспертиза Учёного, два заклинания в книгу, подготовка из книги
+
+def wizard_level_2_menu(registry, tmp_path):
+    from ai_dm.game.starter import wizard_choices
+
+    bundle = make_bundle(registry)
+    hero = build_character(wizard_choices("hero"), registry)
+    hero.location_id = bundle.heroes[0].location_id
+    hero.sheet.xp = xp_for_level(2, registry)
+    bundle.heroes[0] = hero
+    app = make_app(registry, tmp_path, ReactiveAdapter(), bundle=bundle)
+    app.handle("Осматриваюсь")
+    return app, app.choose("average")
+
+
+def test_wizard_level_2_asks_expertise_first_from_scholar_skills(registry, tmp_path):
+    _, reply = wizard_level_2_menu(registry, tmp_path)
+    assert "экспертизы" in " ".join(reply.lines)
+    assert reply.menu
+    assert set(reply.menu) <= {"arcana", "history", "investigation", "medicine", "nature",
+                               "religion"}
+
+
+def test_wizard_level_2_then_asks_two_book_spells(registry, tmp_path):
+    app, reply = wizard_level_2_menu(registry, tmp_path)
+    reply = app.choose(reply.menu[0])
+    assert "заклинание в книгу" in " ".join(reply.lines)
+    reply = app.choose("alarm")
+    assert "заклинание в книгу" in " ".join(reply.lines)
+    draft = app.bundle.heroes[0].pending_level.draft
+    assert draft.feature_choices == {"spellbook": ["alarm"]}
+
+
+def test_wizard_new_book_spell_is_offered_for_preparation_at_once(registry, tmp_path):
+    app, reply = wizard_level_2_menu(registry, tmp_path)
+    reply = app.choose(reply.menu[0])
+    app.choose("alarm")
+    reply = app.choose("charm_person")
+    assert "для подготовки" in " ".join(reply.lines)
+    assert "alarm" in reply.menu
+    assert "charm_person" in reply.menu
+
+
+def test_wizard_level_2_choices_are_applied_to_the_sheet(registry, tmp_path):
+    app, reply = wizard_level_2_menu(registry, tmp_path)
+    hero = app.bundle.heroes[0]
+    known_before = len(hero.sheet.known_of())
+    finish_spells(app, reply)
+    assert hero.pending_level is None
+    assert hero.sheet.level == 2
+    assert len(hero.sheet.skill_expertise) == 1
+    assert len(hero.sheet.known_of()) >= known_before + 2
+
+
 def test_save_current_auto_writes_the_auto_slot(registry, tmp_path):
     app = offered(registry, tmp_path, xp_for_level(2, registry))
     app.save_current("auto")

@@ -1,0 +1,7 @@
+id: scholars_pack
+name: Набор учёного
+description: Рюкзак, книга знаний, чернила, перо, лампа, масло, листы пергамента, трутница.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 4000
+category: gear

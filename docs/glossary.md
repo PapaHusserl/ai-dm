@@ -359,7 +359,30 @@
 | Musket | Мушкет | `musket` | огнестрел SRD 5.2.1, `world_only` (К2) |
 | Pistol | Пистолет | `pistol` | огнестрел SRD 5.2.1, `world_only` (К2) |
 | Poisoner's Kit | Набор отравителя | `poisoners_kit` | инструмент для Отравить в Хитром ударе (К2) |
-| Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания |
+| Level choices | Выборы уровня | `LevelChoices` | стиль, экспертиза, подкласс, ASI, заклинания, заговоры, книга (К3) |
+| Divine Order | Божественный порядок | `divine_order`, `feature_choices` | жрец 1 ур.: Защитник или Чудотворец (К3) |
+| Protector | Защитник | `protector` | воинское оружие и тяжёлые доспехи (К3) |
+| Thaumaturge | Чудотворец | `thaumaturge` | +1 заговор, Мудрость к Магии и Религии (К3) |
+| Channel Divinity | Божественный канал | `channel_divinity` | жрец 2 ур., пул 2/3/4, короткий отдых +1, длинный — все (К3) |
+| Divine Spark | Божественная искра | `divine_spark` | вариант Канала: лечение или урон (К3 П4) |
+| Turn Undead | Изгнание нежити | `turn_undead` | вариант Канала (К3 П4) |
+| Sear Undead | Выжигание нежити | `sear_undead` | жрец 5 ур., урон излучением при Изгнании (К3) |
+| Life Domain | Домен жизни | `life_domain` | подкласс жреца (SRD, К3) |
+| Disciple of Life | Ученик жизни | `disciple_of_life` | +2 + круг к лечению заклинанием (К3) |
+| Preserve Life | Сохранение жизни | `preserve_life` | вариант Канала (К3 П4) |
+| Ritual Adept | Адепт ритуалов | `ritual_adept` | волшебник 1 ур.: ритуалы из книги (К3) |
+| Arcane Recovery | Магическое восстановление | `arcane_recovery`, `rules/arcane_recovery.py` | волшебник 1 ур., пул 1, короткий отдых (К3) |
+| Scholar | Учёный | `scholar` | волшебник 2 ур., экспертиза из 6 навыков (К3) |
+| Memorize Spell | Запоминание заклинания | `memorize_spell` | волшебник 5 ур., замена одного подготовленного после короткого отдыха (К3) |
+| Evoker | Воплотитель | `evoker` | подкласс волшебника (SRD, К3) |
+| Evocation Savant | Знаток воплощения | `evocation_savant` | заклинания воплощения в книгу бесплатно (К3) |
+| Potent Cantrip | Мощный заговор | `potent_cantrip` | половина урона заговора при успешном спасброске (К3 П3) |
+| Spellbook | Книга заклинаний | `spellbook`, `CharacterSheet.spells_known` | предмет и список; подготовка только из книги (К3) |
+| Ritual | Ритуал | `Spell.ritual`, `CastSpell.ritual` | без ячейки, +10 минут (К3) |
+| Priest's Pack | Набор жреца | `priests_pack` | один предмет, 33 зм (К3) |
+| Scholar's Pack | Набор учёного | `scholars_pack` | один предмет, 40 зм (К3) |
+| Dungeoneer's Pack | Набор исследователя подземелий | `dungeoneers_pack` | один предмет, 12 зм (К3) |
+| Burglar's Pack | Набор взломщика | `burglars_pack` | один предмет, 16 зм (К3) |
 | Knowledge journal | Журнал знаний | `HeroState.knowledge`, `knowledge_note`, `/lore` | что герой узнал о людях, местах, богах, существах (Ж3) |
 | Scene mood | Настроение сцены | `SceneState.scene_mood`, `scene_mood` | `romance` по сюжету; выбирает музыку, не `Tone.mood` (Ж3) |
 | Combat survivor | Выживший боя | `NPC.origin = "engine"`, `NPC.combat`, `rules/survivors.py` | перебежчик, сдавшийся, пощажённый или бежавший враг, оставшийся в `world.npcs` (Ж1) |

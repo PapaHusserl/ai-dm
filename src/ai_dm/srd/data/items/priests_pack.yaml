@@ -1,0 +1,7 @@
+id: priests_pack
+name: Набор жреца
+description: Рюкзак, одеяло, склянка святой воды, лампа, рационы на неделю, ряса, трутница.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 3300
+category: gear

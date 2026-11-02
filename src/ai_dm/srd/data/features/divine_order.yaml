@@ -1,0 +1,8 @@
+id: divine_order
+name: Божественный порядок
+description: На 1 уровне вы выбираете свою роль в служении божеству — Защитник или Чудотворец. Выбор делается один раз.
+source: srd-5.2
+license: CC-BY-4.0
+options:
+- protector
+- thaumaturge

@@ -3,9 +3,15 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ai_dm.content.models.common import ABILITIES, SKILLS
-from ai_dm.rules.derived import ability_modifier, spell_slots_for, weapon_proficient
+from ai_dm.rules.derived import (
+    ability_modifier,
+    cantrip_bonus,
+    class_cantrips,
+    spell_slots_for,
+    weapon_proficient,
+)
 from ai_dm.rules.inventory import InventoryError, add_catalog_item, equip, find_item
-from ai_dm.rules.progression import expertise_total, sync_resources
+from ai_dm.rules.progression import expertise_total, option_features_at, sync_resources
 from ai_dm.rules.triggers_eval import validate_refs
 from ai_dm.rules.uniqueness import name_taken
 from ai_dm.state.creature import CreatureState
@@ -70,6 +76,8 @@ class CharacterChoices(BaseModel):
     # Ключ — id черты; у второй черты с тем же id (предыстория и Универсальность) — "<id>#2".
     # Порядок черт: сначала предыстория, затем Универсальность.
     feat_choices: dict[str, list[str]] = Field(default_factory=dict)
+    # варианты умений 1 уровня: id умения -> id варианта (divine_order -> [protector])
+    feature_choices: dict[str, list[str]] = Field(default_factory=dict)
     # вариант предыстории: "equipment" (A: предметы и золото) или "gold" (B: 50 зм)
     background_gear: Literal["equipment", "gold"] = "equipment"
     # id стартового набора класса (starting_kits класса); None -- без набора
@@ -244,6 +252,27 @@ def expertise_problem(choices, char_class, proficient, registry) -> str | None:
     return None
 
 
+def chosen_options(choices, registry) -> list[str]:
+    # id выбранных вариантов умений 1 уровня (Божественный порядок), существующие в контенте
+    return [
+        option for picks in choices.feature_choices.values() for option in picks
+        if registry.has("feature", option)
+    ]
+
+
+def feature_choice_problem(choices, char_class, registry) -> str | None:
+    # умения 1 уровня с вариантами (Божественный порядок): ровно один допустимый вариант на умение
+    wanted = option_features_at(registry, char_class.features, 1)
+    given = choices.feature_choices
+    if set(given) != wanted:
+        return f"выбор умений 1 уровня: нужны {', '.join(sorted(wanted)) or 'никакие'}"
+    for feature_id in wanted:
+        picks = given[feature_id]
+        if len(picks) != 1 or picks[0] not in registry.get("feature", feature_id).options:
+            return f"выбор умения {feature_id}: один вариант из списка умения"
+    return None
+
+
 def class_kit_problem(choices, char_class) -> str | None:
     # текст проблемы с class_kit или None
     if choices.class_kit is None or char_class is None:
@@ -278,6 +307,7 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
     (в т.ч. подготовленные вне выбранных или сверх лимита), feat_choices_invalid,
     background_budget_invalid (предметы + золото свободной предыстории дороже 50 зм),
     class_kit_unknown (нет набора с таким id у класса),
+    feature_choice_invalid (вариант умения 1 уровня: Божественный порядок жреца),
     species_choices_invalid, item_unknown (предмета нет в контенте), equip_invalid (надеваемого
     нет в инвентаре, предмет нельзя надеть, двуручное со щитом, доспех без владения).
     """
@@ -365,6 +395,11 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
         elif feat is None or feat.category != "fighting_style":
             error("fighting_style_invalid", f"не боевой стиль: {style}")
 
+    if char_class is not None:
+        problem = feature_choice_problem(choices, char_class, registry)
+        if problem is not None:
+            error("feature_choice_invalid", problem)
+
     cantrips = []
     level1_spells = []
     if choices.spells and char_class is not None:
@@ -388,8 +423,11 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
                     cantrips.append(spell_id)
                 else:
                     level1_spells.append(spell_id)
-            if spellcasting.cantrips is not None and len(cantrips) > spellcasting.cantrips:
-                error("spells_invalid", f"заговоров больше {spellcasting.cantrips}")
+            cantrip_max = class_cantrips(spellcasting, 1) + cantrip_bonus(
+                registry, chosen_options(choices, registry)
+            )
+            if spellcasting.cantrips is not None and len(cantrips) > cantrip_max:
+                error("spells_invalid", f"заговоров больше {cantrip_max}")
             if spellcasting.spells is not None and len(level1_spells) > spellcasting.spells:
                 error("spells_invalid", f"заклинаний 1 круга больше {spellcasting.spells}")
 
@@ -525,6 +563,7 @@ def build_character(choices: CharacterChoices, registry) -> HeroState | Validati
         weapon_masteries=list(choices.weapon_masteries),
         spells_known={choices.class_id: cantrips + level1_spells},
         spells_prepared={choices.class_id: list(choices.prepared)},
+        feature_choices={k: list(v) for k, v in choices.feature_choices.items()},
     )
     hp = max(1, char_class.hit_die + ability_modifier(abilities["con"]))
     hero = HeroState(

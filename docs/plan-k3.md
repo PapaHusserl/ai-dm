@@ -90,6 +90,11 @@
 49. Р32 — (а) «Луч ослабления»: −1d8 к урону + помеха на атаки цели (2026-11-01).
 50. `make dead` П1 — (а) 3 поля (`repeat`, `ritual`, `effect_text`) в vulture_allowlist с пометкой «снять в П3» (2026-11-01).
 51. Коммиты П1 — (а) два: план К3 + ROADMAP + BACKLOG 240–250; затем К3 П1 (2026-11-01).
+52. Р33 — (а2) STATIC_MAX 24380 + **мандат на К3**: порог поднимается по замеру каждой партии К3 с причиной в шапке теста, без окна;
+    цифры — в «Итог» (2026-11-01).
+53. Р34 — (а) внесённое в книгу на этом уровне подготовить можно сразу, по SRD (2026-11-01).
+54. Лог Магического восстановления, несколько ячеек — форма папы: одной строкой через «, », одинаковые — «ячейки N круга ×k»
+    (аудит свекрови П2, 2026-11-01).
 
 ## Суть
 
@@ -655,7 +660,7 @@ test_tui_spells.py` (окно `/spells`).
   {spellbook, expertise} — `spellbook` ×2 из списка класса минус книга, круг ≤ max ячейки; `expertise` — только из 6 навыков Учёного и
   владений героя (`choice_options`); `spells` (подготовка) — только из `known_of()` минус подготовленные, лимит `prepared_by_level`;
   заклинание не из книги → `spells_invalid`; 3 ур. → {subclass, spellbook}; Воплощение → + `savant_spell` ×2 (школа evocation, круг ≤ 2);
-  5 ур. → `savant_spell` ×1; книга на 5 ур. = 6 + 8 + 3 = 17; `swap_problem(take=не из книги)` → `bad_spell`, из книги → None;
+  5 ур. → `savant_spell` ×1; книга на 5 ур. = 6 + 8 + 3 = 17; `swap_problem(take=не из книги)` → `not_in_book`, из книги → None;
   `swap_invalid` при `kind == "short"` без `memorize_spell` → `swap_long_only`, с ним и одной заменой → None, две → `swap_limit`.
 - ритуал: `cast_problem(alarm, circle=1, ritual=True)` у волшебника с Тревогой в книге, не подготовленной → None, ячейка не
   тратится, `clock` +600 с; у жреца неподготовленный ритуал → `not_prepared`; подготовленный `detect_magic` ритуалом — да; в бою
@@ -1204,6 +1209,135 @@ tests/unit/combat tests/unit/game tests/unit/rules tests/unit/master tests/unit/
 tests/unit/content -q`, повтор `check_srd.py` (ожидание: строки `chill_touch`, `ray_of_enfeeblement` уходят) → мама ‖ свекровь → `make cov`,
 `make smells`, `make dead`; коммит П1, `git push`. Поправки плана по п. 2, 3, 5 («Файлы»:268, 283, 302; П1:518; пакет адаптаций) — при П3,
 как и прежние.
+
+### П2 — разбор хэнд-бэка кабана (папа-кабан, 2026-11-01)
+
+Хэнд-бэк: scratchpad `k3-p2-kaban-handback.md` (13:01). Дифф: `git diff 21434d2` — 24 файла (+453/−64) + неотслеживаемые `rules/spellbook.py`,
+`rules/arcane_recovery.py`, 16 YAML умений, 5 YAML предметов, `subclasses/cleric/`, `subclasses/wizard/`. `git status tests/` — пусто: тестов
+кабан не писал (kaban.md п. 5 — юнит-тесты зона доебы; в П1 тесты данных писал кабан — исключение, не правило). Факты «проверено» — Read
+диффа, grep, `make prompt-budget` (explore 24357: rules 12458, tools 11899).
+
+**Принять (код не трогать; план поправить при П3, где не сказано иначе):**
+1. `arcane_recovery.recover` вызывается из `rest_apply` (`resources.py:944`), `rests.short_rest` не тронут — ровно «Умолчания» (план:950–953,
+   «минимально `recover` вызывает `rest` протокола»). mutmut П2: `ai_dm.rules.rests:short_rest` — убрать; `ai_dm.protocol.handlers.resources:rest_apply`
+   — в протокольный запуск (функция `rest:913` — обёртка, `rest_apply:923` — тело; в плане было `rest`).
+2. `sheet_data` рассказчика не менялся — по плану («Файлы»:432 «книга не нужна»); Божественный порядок рассказчик видит через умения:
+   `hero_feature_ids` (`derived.py:373–376`) добавляет варианты из `sheet.feature_choices` → `protector`/`thaumaturge` в списке умений с описанием.
+   «Поведение» (6) «лист рассказчика: `divine_order`, `spellbook`» выполнено справочником создания (`master/hero.py:class_data` — `cantrip_count`,
+   `divine_order_ids`, `spellbook`; `HeroSheetRequest.divine_order`) — формулировку (6) уточнить при П3.
+3. Ритуал только базовым кругом — `ritual_problem` (`spellcasting.py:93`) даёт `bad_circle` при `circle != spell.level`. «Умолчания»:956 «`circle` =
+   `spell.level`» читалось как присвоение; отказ с текстом «только базовым кругом N» — контракт инструмента (видит рассказчик, не игрок), в стиле
+   остальных отказов `cast_spell`. Принять; `narrator_rules.md` не дополнять (STATIC_MAX).
+4. Описание `Rest.prepared_swap` (`requests.py:486`) не менялось («Умолчания»:954–955 ждали текст «после короткого — одно у волшебника 5 ур.»);
+   правило есть во фразе `narrator_rules.md:112` («волшебник — любые из своей книги, после короткого отдыха с 5 ур. — одно»). Принять ради STATIC_MAX.
+5. Наборы воина и плута — не отступление: решение 11 (Влад, 2026-10-31: «всем классам (и воину/плуту)»), решение 32, «Файлы»:334 (`fighter` `a`/`b`
+   → `dungeoneers_pack`, `rogue` `a` → `burglars_pack`). Проверено по SRD 5.2.1 (Fighter A/B — Dungeoneer's Pack; Rogue — Burglar's Pack; Cleric —
+   Chain Shirt, Mace, Priest's Pack; Wizard — Spellbook, Scholar's Pack) — YAML классов и таблица `rules-adaptation.md:333–347` совпадают. Окно
+   Владу не нужно.
+6. Расширение mutmut-списка П2 (все найдены grep `def` 2026-11-01): `ai_dm.rules.hero_options:level1_option_feature`, `ai_dm.rules.builder:feature_choice_problem`,
+   `:chosen_options`, `ai_dm.rules.progression:apply_spell_choices`, `:expertise_skills`, `ai_dm.rules.spellbook:pick_errors`, `:picks_due`, `:picks_missing`,
+   `:picked`, `:savant_candidates`, `:known_cantrips`, `:max_circle`, `ai_dm.rules.spellcasting:ritual_problem`, `ai_dm.rules.derived:proficiency_extras`,
+   `:cantrip_bonus`, `:class_cantrips`, `:feature_skill_parts`, `ai_dm.game.sheet_text:listed_spell_ids`, `:prepared_header` — в запуск
+   `TESTS="tests/unit/rules tests/unit/game"`; `ai_dm.master.hero:class_data` — из него убрать, отдельный запуск `TESTS="tests/unit/master"` (иначе
+   ложные выжившие — AGENTS.md); в протокольный запуск + `ai_dm.protocol.handlers.hero:sheet_from_request`. Данные (`grid_heroes`) — без mutmut.
+7. Красные тесты (кабан: 44 failed + 74 errors + 1 ui + 2 scenarios) — доебе, не кабану: рост контракта (`feature_choices` жреца в фикстурах,
+   `PICK_KEYS` в `pick_choices`, наборы, подклассы, снимок `sheet_reference_vale.json`) — это правка ожиданий тестов под план, зона доебы
+   (kaban-doeba.md). Разбивка — ниже, «Красные П2».
+
+**Красные П2 (доебе; причины — прогон `--tb=line` 2026-11-01, итоги — ниже «Прогон»):** все — рост контракта по плану, не ошибки кода:
+- `tests/unit/rules/test_classes_1_20.py` (все параметры): фикстура жреца без `feature_choices["divine_order"]` → `ValidationErrors` («выбор умений
+  1 уровня: нужны divine_order»); `pick_choices:54` + новые ключи `PICK_KEYS` (план «Файлы»:448); один стаб `SimpleNamespace` без `features`;
+- `tests/unit/content/test_class_kits.py` (5): `minimal_choices:44` жреца — `feature_choices` (план «Файлы»:447); `:168` воин `a` — `dungeoneers_pack`
+  вместо `explorers_pack` («Тесты» П2:666);
+- `tests/unit/rules/test_builder.py` (4): жрец без `divine_order` (:699, :752, :1253); `:1361` `kit_delta(…, "explorers_pack") == 1` → `dungeoneers_pack`;
+- `tests/unit/rules/test_hero_options.py` (3): подписи наборов «набор путешественника» → «набор исследователя подземелий»/«набор учёного» (:280, :290);
+  стаб `SimpleNamespace` без `cantrips_by_level` (`class_cantrips` читает поле) — стаб дополнить;
+- `tests/unit/rules/test_prepared_swap.py` (2): `:90` волшебник берёт `alarm` не из книги → `not_in_book` — по «Правилу» `swap_problem`; `:249` подсказка
+  неизвестного заклинания у волшебника — теперь из книги (`['burning_hands', 'magic_missile']`), П1 правка 4 это предвидела;
+- `tests/unit/game/test_hero_steps.py` (2): `:70` ключи шагов + `divine_order` перед `cantrips` («Поведение» (1)); `:746` сдвиг индексов шагов;
+- `tests/unit/devtools/test_grid_heroes.py` (2): КД жреца 1 ур. с кольчужной рубахой (`assert 14 == 13` → по новому киту), подкласс жреца на 3 ур.
+  теперь `life_domain` (`grid_heroes.pick:67` берёт первый) — ожидание обновить;
+- `tests/unit/protocol/test_hero_sheet.py`, `test_hero_request_roundtrip.py`, `tests/unit/game/test_hero_create.py` (по 1): поле `divine_order`
+  (`HeroSheetRequest`, `NEUTRAL`, `put_/get_divine_order`);
+- `tests/unit/master/test_hero_sheet_prompt.py` (1): снимок `sheet_reference_vale.json` — перегенерировать; мама сверяет дифф: только
+  `cantrip_count`, `divine_order_ids`, `spellbook` у классов и списки заклинаний;
+- `tests/unit/master/test_static_budget.py` (1): Р33;
+- `tests/scenarios` (2, проверено: 2 failed, 342 passed, 2 мин 26 с): `test_b2_done.py:139`, `test_stage6b_done.py:128` — набор воина `a` ⊇
+  {`explorers_pack`} → `dungeoneers_pack`; `tests/unit/ui` (1) — по хэнд-бэку кабана, не проверено (Pilot — долго), доебе.
+Прогон (проверено, 2026-11-01, 6 каталогов `rules game content protocol master devtools`): 44 failed, 74 errors, 12873 passed, 4 мин 07 с —
+совпадает с хэнд-бэком; 74 errors и 21 failed — один `test_classes_1_20.py` (фикстура жреца), остальные 23 — по списку выше.
+
+**Вернуть кабану (тот же id) — только по решениям Влада Р33/Р34 (см. ниже); без них кабану делать нечего.**
+
+**Р33 — порог `STATIC_MAX` (решает Влад; прецеденты окон: plan-164 Р6, plan-212 решение 6 «короткая фраза в порог, без поднятия»).**
+Факт (проверено, `make prompt-budget` 2026-11-01): explore.total 24357 при `STATIC_MAX = 24300` (`test_static_budget.py:59`); до П2 запас был
+19 токенов (БП: 24281). Прирост +76: поле `CastSpell.ritual` (`requests.py:335`, описание 7 слов) и фраза о книге/коротком отдыхе в
+`narrator_rules.md:112` (+24). Кабан уже сократил описания; резать дальше нечего без потери правила. Впереди П3 — `CastSpell.variant` (Р26) и
+фраза об `utility` («эффект описан строкой, отыгрывай его») — порог поднимется ещё раз. Варианты:
+- (а) поднять до 24380 (замер + 23, как 182/ДН/ФС/БП — «замер + десятки токенов»), строка причины в шапке теста «К3 П2: CastSpell.ritual,
+  фраза о книге волшебника (замер 24357; 24300 → 24380)»; в П3 — снова по замеру, окном;
+- (а2) то же + мандат на К3: порог поднимается по замеру каждой партии К3 (П3 — `variant`, `utility`) с причиной в шапке, без окна; цифры — в
+  «Итог»;
+- (б) не поднимать: убрать из `narrator_rules.md:112` фразу о книге (−24) и описание `ritual` сократить до «ритуал» (−≈ 10) — не хватает
+  (нужно −57), пришлось бы резать чужие правила; нет.
+Рекомендую (а2): ritual/variant — новые поля инструмента, их не сжать; сторож `STATIC_MAX + context_cap ≤ window80` имеет запас 153475
+(plan-212:75). Разблокирует: зелёный `test_static_total_is_within_threshold` (9 режимов), коммит П2. Кабан (тот же id): `STATIC_MAX` и строка причины.
+
+**Р34 — подготовка заклинания, внесённого в книгу на этом же уровне (видимое: меню уровня волшебника; решает Влад).**
+Факт (Read `progression.py:292–300`, `spell_errors:490`): `spell_candidates` у класса с книгой — `sheet.known_of()` минус подготовленные; выборы
+`spellbook`/`savant_spell` текущего уровня лежат в `choices.feature_choices` и в `known_of()` попадают только в `apply_spell_choices` — то есть
+в меню «заклинание для подготовки» новых заклинаний нет. По данным `wizard.yaml` (книга 6 + 2/уровень, `prepared_by_level` 4/5/6/7/9): на 3 ур.
+волшебник получает ячейки 2 круга, вносит в книгу два заклинания 2 круга — и подготовить может только 1 круг (кандидаты — 3 заклинания 1 круга
+из 8 в книге); 2 круг — лишь после длинного отдыха через `prepared_swap`; то же на 5 ур. с 3 кругом. Утверждение кабана «на 2 ур. не добрать до
+лимита» по данным не подтверждается (6 − 4 = 2 кандидата при росте лимита на 1; прогоном не проверено). SRD 5.2.1 (Wizard, Spellcasting):
+подготовленные выбираются «from your spellbook» после внесения новых — новые доступны сразу. Варианты:
+- (а) по SRD: `spell_candidates` и `spell_errors` у класса с книгой — `known_of()` + `picked(choices, "spellbook", "savant_spell")` (альтернатива
+  кабана; `picked` есть, `spellbook.py:49`); `next_choice` уже ставит `spellbook`/`savant_spell` раньше `spells` (`progression.py:270–273`), порядок
+  меню не меняется; строка `rules-adaptation.md:94–95` «подготовить можно со следующего выбора или при смене» → «внесённое на этом уровне
+  подготовить можно сразу»; тест доебы: волшебник 3 ур. вносит `scorching_ray` → он в `choice_options(…, "spells")`, `spells_add=[scorching_ray]`
+  без `spells_invalid`;
+- (б) как у кабана: новое — со следующего уровня или после длинного отдыха; строка в `rules-adaptation.md` уже есть; на 3 и 5 ур. новый круг в
+  меню уровня недоступен.
+Рекомендую (а) — минимальная правка в двух функциях, по SRD и по ожиданию игрока. Разблокирует: доебе сценарий «волшебник 1→5» («Тесты» П2:654–658).
+Решение (а) — кабан (тот же id): `spell_candidates`, `spell_errors`, строка `rules-adaptation.md`.
+
+**Порядок после решений Р33/Р34:** кабан (тот же id) — `STATIC_MAX` + причина (Р33), при Р34 = (а) — `spell_candidates`/`spell_errors`/
+`rules-adaptation.md` → доеба — тесты П2 по «Тесты» П2 (:647–671) + ритуал `bad_circle` + Р34 + «Красные П2» (ниже), прогон
+`uv run pytest tests/unit/rules tests/unit/game tests/unit/content tests/unit/protocol tests/unit/master tests/unit/devtools tests/unit/ui
+tests/scenarios -q` → мама ‖ свекровь → `make cov`, `make smells` (200/200 — кабан), `make dead` (чисто — кабан), mutmut П2 по списку п. 6
+фоном → коммит П2, `git push`.
+
+**Вопросы доебы (папа-кабан, 2026-11-01; факты — Read `arcane_recovery.py`, `grid_heroes.py:29–74`, `spellcasting.py:283–285`, grep плана):**
+1. **Лог Магического восстановления — расхождение кода с решением Влада 29 (Р14): код → план.** Решение 29 (2026-10-31, «Развилки» Р14:800)
+   принято списком: строка лога «Магическое восстановление: ячейка N круга». Код `arcane_recovery.recover:25–26` даёт «Магическое восстановление:
+   возвращены ячейки 2 круга» — текст видимый игроку (лог `rest_apply`), принятый Владом, значит правится код, не план. Кабан (тот же id):
+   одна ячейка → «Магическое восстановление: ячейка N круга»; несколько — по кругам через «, », повтор круга — «×k» (при 5 ур.: [2, 1] →
+   «ячейка 2 круга, ячейка 1 круга»; [1, 1, 1] → «ячейки 1 круга ×3»). Форма для нескольких ячеек дописана после решения 29 — на сверку Владу,
+   как «Помощь: …» в Р14. Тесты доебы (`test_arcane_recovery.py:51`, `test_wizard_rest_cast.py:166` — префикс и «2 круга») не ломаются;
+   доебе — добавить точную строку в `test_level_3_recovers_one_second_circle_slot` и `test_level_5_mixes_two_and_one_when_third_circle_is_full`.
+2. **`swap_problem` не из книги — `not_in_book`, план поправлен.** «Тесты» П2:661 писалось до П1 правки 4; код `spellcasting.py:285` и «Правило»
+   (:146, разбор П2 «Красные» `test_prepared_swap.py:90`) — `not_in_book`; `bad_spell` остаётся за «не из списка класса / заговор / круг
+   недоступен» (:283). Строка :661 исправлена в этом разборе (`bad_spell` → `not_in_book`). Техническое, окна не нужно.
+3. **`grid_heroes` — Чудотворец у жреца сетки: по плану, не важно.** `cleric_choices:40` ставит `thaumaturge` явно — так и в «Файлы»:446;
+   `pick:58–74` (первый вариант) к `divine_order` не доходит: выбор только на 1 ур. (`build_character`), а `pick` работает в `auto_level` с 2 ур.
+   Чудотворец у жреца сетки осмысленнее Защитника: сетка `sim_combat` бьёт заговорами (`sacred_flame`), а тяжёлые доспехи Защитника при наборе `a`
+   (кольчужная рубаха) не используются. Внутреннее (devtools, базовая линия П4), игроку не видно, окна не нужно; тест
+   `test_grid_heroes.py:55` (`len == 1`) — остаётся.
+
+### П2 — ревью мамы и аудит свекрови (2026-11-01)
+
+- Свекровь: форма лога нескольких ячеек восстановления → окно Владу, решение 54 (форма папы, код без изменений).
+- Мама 1: проваленный ритуал — в логе «ритуал не удался, десять минут потрачены впустую», ячейка не тратится
+  (`resources.py:cast_spell`); тесты доебы в `test_wizard_rest_cast.py`.
+- Мама 2: «Ученик жизни» при `free` — без правки: у жреца 1–5 бесплатных лечащих применений нет (проверка кабана).
+- Мама 3: `spellbook.known_cantrips` считает только заговоры класса; тесты доебы в `test_spellbook.py`.
+- Мама 4: `assert d.code == "not_in_book"` в тесте замены вне книги.
+- Мутанты П2 (доеба, тесты без правок src): запуск A 91 в диффе, P 21, M 1 → добиты тестами в tests/unit/rules, game, protocol,
+  master; эквивалентны 8 (recover_8, book_errors_27/29, needed_choices_29/37/38/41, rest_apply_52). Повтор по именам: timeout — от
+  нагрузки (проверено прогоном против мутанта), book_errors_34 и feature_choice_problem_14 добиты, повтор 2 — убиты. Старые строки
+  (A 199, P 226) — до П5 (решение 15). cov 98,27 %.
+- Мама, повтор 2: тест `test_missing_feature_choices_message_lists_features_comma_separated` подменяет внутренний импорт
+  `builder.option_features_at` — Влад: оставить как есть (2026-11-02).
 
 ## Приложение — набросок К3б (не партии К3; вход для `docs/plan-k3b.md`)
 

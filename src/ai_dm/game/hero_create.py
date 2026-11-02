@@ -172,6 +172,17 @@ def get_style(data):
     return data["choices"]["fighting_style"] or ""
 
 
+def put_divine_order(data, value):
+    if value:
+        data["choices"]["feature_choices"]["divine_order"] = [value]
+    else:
+        data["choices"]["feature_choices"].pop("divine_order", None)
+
+
+def get_divine_order(data):
+    return ", ".join(data["choices"]["feature_choices"].get("divine_order", []))
+
+
 def species_field(key):
     def put(data, value):
         choices = data["choices"]["species_choices"]
@@ -243,6 +254,7 @@ SHEET_FIELDS = {
     "expertise": list_field(("choices", "expertise")),
     "masteries": list_field(("choices", "weapon_masteries")),
     "style": (put_style, get_style),
+    "divine_order": (put_divine_order, get_divine_order),
     "kit": scalar_field(("choices", "class_kit")),
     "spells": list_field(("choices", "spells")),
     "prepared": list_field(("choices", "prepared")),

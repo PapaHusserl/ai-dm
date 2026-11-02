@@ -1,0 +1,14 @@
+id: life_domain_spells
+name: Заклинания Домена жизни
+description: Помощь, Благословение, Лечение ран и Малое восстановление у вас всегда подготовлены и не считаются в лимите.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: spell_access
+  spell: aid
+- type: spell_access
+  spell: bless
+- type: spell_access
+  spell: cure_wounds
+- type: spell_access
+  spell: lesser_restoration

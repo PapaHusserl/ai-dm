@@ -529,6 +529,7 @@ def cleric_choices(**changes):
         background_bonus={"wis": 2, "cha": 1},
         class_skills=["medicine", "persuasion"],
         weapon_masteries=[],
+        feature_choices={"divine_order": ["protector"]},
     )
     return choices.model_copy(update=changes)
 
@@ -1358,7 +1359,8 @@ def test_class_kit_a_puts_kit_items_into_inventory(registry):
     assert kit_delta(registry, "a", "greatsword") == 1
     assert kit_delta(registry, "a", "flail") == 1
     assert kit_delta(registry, "a", "javelin") == 8
-    assert kit_delta(registry, "a", "explorers_pack") == 1
+    assert kit_delta(registry, "a", "dungeoneers_pack") == 1
+    assert kit_delta(registry, "a", "explorers_pack") == 0
 
 
 def test_class_kit_repeat_means_quantity(registry):
@@ -1678,3 +1680,118 @@ def test_empty_species_skill_is_not_a_proficiency_for_expertise(registry):
     result = build_character(choices, registry)
     assert isinstance(result, ValidationErrors)
     assert "expertise_invalid" in result.codes
+
+
+# К3 П2: Божественный порядок -- варианты умений 1 уровня (feature_choices)
+
+CLERIC_CANTRIPS = ["guidance", "light", "mending", "resistance", "sacred_flame"]
+
+
+def test_cleric_with_divine_order_is_built_and_remembers_it(registry):
+    hero = build_character(cleric_choices(), registry)
+    assert hero.sheet.feature_choices == {"divine_order": ["protector"]}
+
+
+def test_cleric_without_divine_order_is_feature_choice_invalid(registry):
+    result = build_character(cleric_choices(feature_choices={}), registry)
+    assert "feature_choice_invalid" in result.codes
+
+
+def test_cleric_with_two_divine_orders_is_feature_choice_invalid(registry):
+    choices = cleric_choices(feature_choices={"divine_order": ["protector", "thaumaturge"]})
+    assert "feature_choice_invalid" in build_character(choices, registry).codes
+
+
+def test_cleric_with_unknown_divine_order_is_feature_choice_invalid(registry):
+    choices = cleric_choices(feature_choices={"divine_order": ["nonsense"]})
+    assert "feature_choice_invalid" in build_character(choices, registry).codes
+
+
+def test_cleric_with_empty_divine_order_list_is_feature_choice_invalid(registry):
+    choices = cleric_choices(feature_choices={"divine_order": []})
+    assert "feature_choice_invalid" in build_character(choices, registry).codes
+
+
+def test_cleric_with_an_extra_feature_choice_is_feature_choice_invalid(registry):
+    choices = cleric_choices(feature_choices={"divine_order": ["protector"], "hunters_prey": []})
+    assert "feature_choice_invalid" in build_character(choices, registry).codes
+
+
+def test_wizard_with_a_divine_order_is_feature_choice_invalid(registry):
+    choices = wizard_choices(feature_choices={"divine_order": ["protector"]})
+    assert "feature_choice_invalid" in build_character(choices, registry).codes
+
+
+def test_fighter_without_feature_choices_is_not_a_feature_choice_error(registry):
+    result = build_character(fighter_choices(), registry)
+    assert not isinstance(result, ValidationErrors)
+    assert result.sheet.feature_choices == {}
+
+
+def test_thaumaturge_cleric_may_know_four_cantrips(registry):
+    choices = cleric_choices(
+        spells=CLERIC_CANTRIPS[:4], feature_choices={"divine_order": ["thaumaturge"]},
+    )
+    result = build_character(choices, registry)
+    assert not isinstance(result, ValidationErrors)
+
+
+def test_missing_divine_order_message_names_the_needed_feature(registry):
+    result = build_character(cleric_choices(feature_choices={}), registry)
+    assert "выбор умений 1 уровня: нужны divine_order" in result.messages
+
+
+def test_class_without_option_features_message_says_none_are_needed(registry):
+    choices = wizard_choices(feature_choices={"divine_order": ["protector"]})
+    result = build_character(choices, registry)
+    assert "выбор умений 1 уровня: нужны никакие" in result.messages
+
+
+def test_missing_feature_choices_message_lists_features_comma_separated(registry, monkeypatch):
+    monkeypatch.setattr(
+        "ai_dm.rules.builder.option_features_at", lambda *args: {"order_b", "order_a"},
+    )
+    result = build_character(wizard_choices(feature_choices={}), registry)
+    assert "выбор умений 1 уровня: нужны order_a, order_b" in result.messages
+
+
+def test_too_many_cantrips_message_names_the_limit(registry):
+    choices = cleric_choices(spells=CLERIC_CANTRIPS[:4])
+    assert "заговоров больше 3" in build_character(choices, registry).messages
+
+
+def test_cantrip_limit_of_a_new_hero_is_the_level_1_value(registry, monkeypatch):
+    # лимит заговоров при создании -- по таблице на 1 уровне, а не на 2-м
+    wizard = registry.get("class", "wizard").spellcasting
+    monkeypatch.setitem(wizard.cantrips_by_level, 2, 4)
+    choices = wizard_choices(spells=["fire_bolt", "light", "mage_hand", "acid_splash"])
+    assert "заговоров больше 3" in build_character(choices, registry).messages
+
+
+def test_thaumaturge_cleric_with_five_cantrips_is_spells_invalid(registry):
+    choices = cleric_choices(
+        spells=CLERIC_CANTRIPS, feature_choices={"divine_order": ["thaumaturge"]},
+    )
+    assert "spells_invalid" in build_character(choices, registry).codes
+
+
+def test_protector_cleric_may_know_three_cantrips_but_not_four(registry):
+    three = cleric_choices(spells=CLERIC_CANTRIPS[:3])
+    four = cleric_choices(spells=CLERIC_CANTRIPS[:4])
+    assert not isinstance(build_character(three, registry), ValidationErrors)
+    assert "spells_invalid" in build_character(four, registry).codes
+
+
+def test_protector_cleric_in_chain_mail_is_built_without_error(registry):
+    choices = cleric_choices(inventory=["chain_mail"], equip=["chain_mail"])
+    hero = build_character(choices, registry)
+    assert not isinstance(hero, ValidationErrors)
+    assert hero.equipped.armor == "chain_mail"
+
+
+def test_thaumaturge_cleric_in_chain_mail_is_equip_invalid(registry):
+    choices = cleric_choices(
+        inventory=["chain_mail"], equip=["chain_mail"],
+        feature_choices={"divine_order": ["thaumaturge"]},
+    )
+    assert "equip_invalid" in build_character(choices, registry).codes

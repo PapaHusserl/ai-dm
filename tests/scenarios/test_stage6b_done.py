@@ -125,7 +125,7 @@ def test_full_path_creation_world_turn_save_load(registry, cfg, tmp_path):
     assert hero.name == "Ило"
     assert hero.sheet.class_id == "fighter"
     assert hero.location_id == "lame_goose"
-    assert {e.item_id for e in hero.inventory} >= {"chain_mail", "greatsword", "explorers_pack"}
+    assert {e.item_id for e in hero.inventory} >= {"chain_mail", "greatsword", "dungeoneers_pack"}
     assert hero.equipped.armor == "chain_mail"
     # золото предыстории (1000) и набора «a» воина (400): так считает движок
     assert hero.money_cp == sheet.choices.background.gold_cp + 400

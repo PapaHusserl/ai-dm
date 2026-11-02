@@ -290,7 +290,7 @@ def test_preview_has_kit_items(registry):
     text = "\n".join(preview(registry))
     assert registry.get("armor", "chain_mail").name in text
     assert registry.get("weapon", "greatsword").name in text
-    assert registry.get("item", "explorers_pack").name in text
+    assert registry.get("item", "dungeoneers_pack").name in text
 
 
 def test_preview_has_hooks_and_background_description(registry):
@@ -433,6 +433,21 @@ def test_edit_motive(registry):
 
 def test_edit_empty_motive_gives_empty_motive(registry):
     assert edited("motive =").motive == ""
+
+
+def test_edit_divine_order_sets_and_clears_the_feature_choice(registry):
+    assert edited("divine_order = thaumaturge").choices.feature_choices == {
+        "divine_order": ["thaumaturge"],
+    }
+    assert edited("divine_order =").choices.feature_choices == {}
+
+
+def test_divine_order_field_is_read_for_hints(registry):
+    sheet = base_sheet()
+    assert "divine_order = " in sheet_fields_lines(sheet)
+    choices = sheet.choices.model_copy(update={"feature_choices": {"divine_order": ["protector"]}})
+    lines = sheet_fields_lines(sheet.model_copy(update={"choices": choices}))
+    assert "divine_order = protector" in lines
 
 
 def test_edit_style_and_kit(registry):

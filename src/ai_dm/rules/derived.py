@@ -69,6 +69,21 @@ def skill_parts(hero, registry, skill: str) -> list[tuple[str, int]]:
         parts.append(("мастерство", proficiency(hero, registry)))
         if skill in hero.sheet.skill_expertise:
             parts.append(("компетентность", proficiency(hero, registry)))
+    parts += feature_skill_parts(hero, registry, skill)
+    return parts
+
+
+def feature_skill_parts(hero, registry, skill: str) -> list[tuple[str, int]]:
+    # прибавки умений к проверкам навыка (Чудотворец: модификатор Мудрости, не меньше +1)
+    parts = []
+    for feature_id in hero_feature_ids(hero, registry):
+        feature = registry.get("feature", feature_id)
+        for effect in feature.effects:
+            if (
+                effect.type == "modifier" and effect.target == "skill"
+                and effect.skill == skill and effect.add is not None
+            ):
+                parts.append((feature.name, max(1, effect_amount(effect, hero, registry))))
     return parts
 
 
@@ -226,8 +241,11 @@ def weapon_ability_mod(hero, weapon) -> int:
     return str_mod
 
 
-def weapon_proficient(char_class, weapon) -> bool:
+def weapon_proficient(char_class, weapon, extra=()) -> bool:
+    # extra: владения от умений героя (proficiency_extras): martial_weapons у Защитника
     if weapon.category in char_class.weapon_training:
+        return True
+    if weapon.category == "martial" and "martial_weapons" in extra:
         return True
     # воинское оружие с любым из свойств (плут)
     return weapon.category == "martial" and any(
@@ -249,7 +267,8 @@ def weapon_ability(hero, weapon) -> str:
 def attack_parts(hero, registry, weapon_id: str) -> list[tuple[str, int]]:
     weapon = registry.get("weapon", weapon_id)
     parts = [ability_part(hero, weapon_ability(hero, weapon))]
-    if weapon_proficient(registry.get("class", hero.sheet.class_id), weapon):
+    char_class = registry.get("class", hero.sheet.class_id)
+    if weapon_proficient(char_class, weapon, proficiency_extras(hero, registry)):
         parts.append(("мастерство", proficiency(hero, registry)))
     for feat_id in hero.sheet.feats:
         if not registry.has("feat", feat_id):
@@ -358,6 +377,23 @@ def hero_feature_ids(hero, registry) -> list[str]:
     return feature_ids
 
 
+def proficiency_extras(hero, registry) -> set[str]:
+    # владения оружием и доспехами от умений героя (Защитник): martial_weapons, heavy_armor
+    targets = ("martial_weapons", "heavy_armor")
+    return {
+        e.target for e in hero_effects(hero, registry)
+        if e.type == "proficiency" and e.target in targets
+    }
+
+
+def armor_allowed(hero, registry, armor) -> bool:
+    # доспех (не щит) по владению класса и умений героя
+    char_class = registry.get("class", hero.sheet.class_id)
+    if armor.category in char_class.armor_training:
+        return True
+    return armor.category == "heavy" and "heavy_armor" in proficiency_extras(hero, registry)
+
+
 def hero_effects(hero, registry) -> list:
     # эффекты умений класса/подкласса/вида и черт героя
     feature_ids = hero_feature_ids(hero, registry)
@@ -394,6 +430,32 @@ def prepared_limit(hero, registry) -> int | None:
     if spellcasting.prepared_by_level is not None:
         return by_level(spellcasting.prepared_by_level, hero.sheet.level)
     return spellcasting.prepared
+
+
+def class_cantrips(spellcasting, level: int) -> int:
+    # заговоры класса на уровне героя: по таблице cantrips_by_level, иначе cantrips (None = 0)
+    if spellcasting is None:
+        return 0
+    if spellcasting.cantrips_by_level is not None:
+        return by_level(spellcasting.cantrips_by_level, level)
+    return spellcasting.cantrips or 0
+
+
+def cantrip_bonus(registry, feature_ids) -> int:
+    # дополнительные заговоры от умений (Чудотворец: +1)
+    total = 0
+    for feature_id in feature_ids:
+        for effect in registry.get("feature", feature_id).effects:
+            if effect.type == "modifier" and effect.target == "cantrips":
+                total += effect.value or 0
+    return total
+
+
+def cantrip_limit(hero, registry) -> int:
+    # сколько заговоров знает герой на своём уровне
+    spellcasting = registry.get("class", hero.sheet.class_id).spellcasting
+    base = class_cantrips(spellcasting, hero.sheet.level)
+    return base + cantrip_bonus(registry, hero_feature_ids(hero, registry))
 
 
 def spell_access_effects(hero, registry) -> list:

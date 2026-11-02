@@ -73,6 +73,7 @@ def sheet_from_request(request) -> HeroSheet:
         spells=list(request.spells),
         prepared=list(request.prepared), feat_choices=feat_choices,
         background_gear=request.background_gear, class_kit=request.class_kit,
+        feature_choices={"divine_order": [request.divine_order]} if request.divine_order else {},
     )
     opportunity = [
         Trigger.model_validate(
@@ -114,6 +115,7 @@ def request_from_sheet(sheet) -> dict:
         "bonus_plus1": [a for a, n in c.background_bonus.items() if n == 1],
         "class_skills": list(c.class_skills), "weapon_masteries": list(c.weapon_masteries),
         "expertise": list(c.expertise), "fighting_style": c.fighting_style or "",
+        "divine_order": c.feature_choices.get("divine_order", [""])[0],
         "class_kit": c.class_kit or "",
         "spells": list(c.spells), "prepared": list(c.prepared),
         "species_skill": c.species_choices.get("skill", "none"),

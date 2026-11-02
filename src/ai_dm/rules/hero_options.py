@@ -1,8 +1,9 @@
 from ai_dm.content.models.common import SKILLS
-from ai_dm.rules.derived import weapon_proficient
+from ai_dm.rules.derived import class_cantrips, weapon_proficient
 from ai_dm.rules.inventory import find_item
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.names import SKILL_NAMES
+from ai_dm.rules.progression import option_features_at
 
 # допустимые множества создания героя: один источник для справочника модели и шагов мастера
 
@@ -40,6 +41,12 @@ def fighting_styles(registry):
     return [f for f in registry.all("feat") if f.category == "fighting_style"]
 
 
+def level1_option_feature(registry, char_class):
+    # умение 1 уровня с вариантами (Божественный порядок жреца) или None
+    found = sorted(option_features_at(registry, char_class.features, 1))
+    return registry.get("feature", found[0]) if found else None
+
+
 def class_spells(registry, class_id, level):
     return [s for s in registry.all("spell") if class_id in s.classes and s.level == level]
 
@@ -49,7 +56,7 @@ def spell_counts(char_class) -> tuple[int, int, int]:
     casting = char_class.spellcasting
     if casting is None:
         return 0, 0, 0
-    return casting.cantrips or 0, casting.spells or 0, casting.prepared or 0
+    return class_cantrips(casting, 1), casting.spells or 0, casting.prepared or 0
 
 
 def origin_feats(registry, exclude_feat):

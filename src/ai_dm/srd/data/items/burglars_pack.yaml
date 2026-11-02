@@ -1,0 +1,7 @@
+id: burglars_pack
+name: Набор взломщика
+description: Рюкзак, шарики-подшипники, колокольчик, свечи, лом, закрытый фонарь, масло, рационы, верёвка, трутница, бурдюк.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 1600
+category: gear

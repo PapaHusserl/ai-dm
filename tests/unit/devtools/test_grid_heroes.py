@@ -20,7 +20,7 @@ from ai_dm.rules.derived import armor_class
 LEVEL1 = {
     "fighter": (19, 12, "chain_mail", "shield"),
     "rogue": (14, 10, "leather_armor", None),
-    "cleric": (13, 10, "studded_leather", "shield"),
+    "cleric": (14, 10, "chain_shirt", "shield"),
     "wizard": (11, 8, None, None),
     "ranger": (15, 11, "studded_leather", None),
 }
@@ -49,9 +49,10 @@ def test_level1_hero_has_expected_ac_hp_and_gear(registry, class_id):
     assert (hero.equipped.armor, hero.equipped.shield) == (armor, shield)
 
 
-def test_cleric_wears_studded_leather_and_a_shield():
+def test_cleric_wears_chain_shirt_and_a_shield():
     choices = level1_choices("cleric")
     assert choices.class_kit == "a"
+    assert len(choices.feature_choices["divine_order"]) == 1
     assert choices.species_id == "human"
     assert choices.ability_method == "standard_array"
 
@@ -149,9 +150,36 @@ def test_ranger_gets_expertise_and_fighting_style(registry):
     assert "archery" in sheet.feats
 
 
-def test_other_classes_have_no_subclass(registry):
+def test_cleric_and_wizard_take_their_first_srd_subclass(registry):
+    assert build_hero("cleric", 5, registry).sheet.subclass_id == "life_domain"
+    assert build_hero("wizard", 5, registry).sheet.subclass_id == "evoker"
+
+
+def test_wizard_grows_to_level_5_with_book_savant_and_cantrip_picks(registry):
+    start = build_hero("wizard", 1, registry)
+    hero = build_hero("wizard", 5, registry)
+    spells = [s for s in hero.sheet.known_of() if registry.get("spell", s).level >= 1]
+    first = [s for s in start.sheet.known_of() if registry.get("spell", s).level >= 1]
+    # 2 за каждый уровень со 2 по 5 и 2 + 1 Знатока воплощения
+    assert len(spells) == len(first) + 8 + 3
+    cantrips = [s for s in hero.sheet.known_of() if registry.get("spell", s).level == 0]
+    assert len(cantrips) == len(
+        [s for s in start.sheet.known_of() if registry.get("spell", s).level == 0]
+    ) + 1
+    assert len(hero.sheet.skill_expertise) == 1
+
+
+def test_cleric_grows_to_level_5_with_domain_spells_and_a_cantrip(registry):
+    from ai_dm.rules.derived import always_prepared
+
+    hero = build_hero("cleric", 5, registry)
+    assert "revivify" in always_prepared(hero, registry)
+    assert hero.sheet.feature_choices["divine_order"]
+
+
+def test_cleric_and_wizard_have_no_subclass_before_level_3(registry):
     for class_id in ("cleric", "wizard"):
-        assert build_hero(class_id, 5, registry).sheet.subclass_id is None
+        assert build_hero(class_id, 2, registry).sheet.subclass_id is None
 
 
 def test_fighter_and_rogue_take_their_first_subclass(registry):

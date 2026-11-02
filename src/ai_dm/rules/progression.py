@@ -8,10 +8,21 @@ from ai_dm.rules.derived import (
     hero_feature_ids,
     mastery_limit,
     prepared_limit,
+    proficiency_extras,
     resource_maxes,
     spell_slots_for,
     table_value,
     weapon_proficient,
+)
+from ai_dm.rules.spellbook import (
+    PICK_KEYS,
+    book_candidates,
+    book_errors,
+    cantrip_candidates,
+    picked,
+    picks_due,
+    picks_missing,
+    savant_candidates,
 )
 from ai_dm.state.creature import ResourcePool
 from ai_dm.state.hero import LevelChoices
@@ -133,6 +144,18 @@ def expertise_due(hero, registry, level: int) -> int:
     return max(new, now - len(hero.sheet.skill_expertise))
 
 
+def expertise_skills(hero, registry, level: int) -> list[str] | None:
+    # навыки, из которых экспертиза выбирается на этом уровне (Учёный); None = любые освоенные
+    char_class = registry.get("class", hero.sheet.class_id)
+    for ref in char_class.features:
+        if ref.level != level:
+            continue
+        for effect in registry.get("feature", ref.feature).effects:
+            if effect.type == "proficiency" and effect.mode == "expertise" and effect.skills:
+                return list(effect.skills)
+    return None
+
+
 def mastery_growth(char_class, level: int) -> int:
     # на сколько на этом уровне растёт число видов оружия с мастерством (воин)
     table = char_class.weapon_mastery_by_level
@@ -143,7 +166,8 @@ def mastery_growth(char_class, level: int) -> int:
 
 def required_choices(hero, registry, level: int) -> set[str]:
     # что игрок обязан выбрать при получении уровня level (после level_up):
-    # fighting_style, expertise, weapon_mastery, subclass, asi_or_feat и id умений с вариантами
+    # fighting_style, expertise, weapon_mastery, cantrip, spellbook, savant_spell, subclass,
+    # asi_or_feat и id умений с вариантами
     char_class = registry.get("class", hero.sheet.class_id)
     result = set()
     for ref in char_class.features:
@@ -157,6 +181,9 @@ def required_choices(hero, registry, level: int) -> set[str]:
         result.add("expertise")
     if mastery_growth(char_class, level) > 0:
         result.add("weapon_mastery")
+    for key in PICK_KEYS:
+        if picks_due(hero, registry, key, level) > 0:
+            result.add(key)
     result |= option_features_at(registry, char_class.features, level)
     if hero.sheet.subclass_id is not None:
         subclass = registry.get("subclass", hero.sheet.subclass_id)
@@ -167,7 +194,9 @@ def required_choices(hero, registry, level: int) -> set[str]:
 
 
 # ключи required_choices, которые не являются умениями с вариантами
-FIXED_CHOICES = {"fighting_style", "expertise", "weapon_mastery", "asi_or_feat", "subclass"}
+FIXED_CHOICES = {
+    "fighting_style", "expertise", "weapon_mastery", "asi_or_feat", "subclass", *PICK_KEYS,
+}
 
 
 def needed_choices(hero, registry, choices) -> set[str]:
@@ -177,6 +206,8 @@ def needed_choices(hero, registry, choices) -> set[str]:
     if "subclass" in needed and found:
         needed.discard("subclass")
         needed |= option_features_at(registry, found[0].features, hero.sheet.level)
+        if picks_due(hero, registry, "savant_spell", hero.sheet.level, found[0].id) > 0:
+            needed.add("savant_spell")
     return needed
 
 
@@ -187,6 +218,12 @@ def expertise_missing(hero, registry, choices) -> bool:
 def mastery_missing(hero, registry, choices) -> bool:
     growth = mastery_growth(registry.get("class", hero.sheet.class_id), hero.sheet.level)
     return len(choices.feature_choices.get("weapon_mastery", [])) < growth
+
+
+PICK_WORDS = {
+    "cantrip": "заговор", "spellbook": "заклинание в книгу",
+    "savant_spell": "заклинание Воплощения",
+}
 
 
 def missing_choices(hero, registry, choices) -> list[str]:
@@ -201,6 +238,9 @@ def missing_choices(hero, registry, choices) -> list[str]:
         result.append("не выбрана экспертиза")
     if "weapon_mastery" in needed and mastery_missing(hero, registry, choices):
         result.append("не выбрано мастерство оружия")
+    for key in PICK_KEYS:
+        if key in needed and picks_missing(hero, registry, choices, key):
+            result.append(f"не выбрано: {PICK_WORDS[key]}")
     if "asi_or_feat" in needed and choices.asi is None and choices.feat is None:
         result.append("нужно выбрать повышение характеристик или черту")
     for feature_id in sorted(needed - FIXED_CHOICES):
@@ -219,11 +259,16 @@ def next_choice(hero, registry, choices) -> str | None:
         return "expertise"
     if "weapon_mastery" in needed and mastery_missing(hero, registry, choices):
         return "weapon_mastery"
+    if "cantrip" in needed and picks_missing(hero, registry, choices, "cantrip"):
+        return "cantrip"
     if "subclass" in needed:
         return "subclass"
     for feature_id in sorted(needed - FIXED_CHOICES):
         if feature_id not in choices.feature_choices:
             return feature_id
+    for key in ("savant_spell", "spellbook"):
+        if key in needed and picks_missing(hero, registry, choices, key):
+            return key
     if "asi_or_feat" in needed and choices.asi is None and choices.feat is None:
         return "asi_or_feat"
     if spell_candidates(hero, registry, choices) and spells_left(hero, registry, choices) > 0:
@@ -247,6 +292,14 @@ def spell_candidates(hero, registry, choices) -> list[str]:
         return []
     max_circle = max(spell_slots_for(registry, spellcasting.progression, sheet.level), default=0)
     taken = sheet.prepared_of() + choices.spells_add + always_prepared(hero, registry)
+    if spellcasting.spellbook:
+        # книга волшебника: подготовить можно только заклинание из книги, в том числе внесённое
+        # на этом уровне
+        book = sheet.known_of() + picked(choices, "spellbook", "savant_spell")
+        return [
+            spell_id for spell_id in book
+            if registry.get("spell", spell_id).level >= 1 and spell_id not in taken
+        ]
     return [
         spell.id for spell in registry.all("spell")
         if sheet.class_id in spell.classes and 1 <= spell.level <= max_circle
@@ -267,7 +320,7 @@ def mastery_candidates(hero, registry, choices) -> list[str]:
             continue
         if weapon.world_only and weapon.id not in owned:
             continue
-        if weapon_proficient(char_class, weapon):
+        if weapon_proficient(char_class, weapon, proficiency_extras(hero, registry)):
             result.append(weapon.id)
     return result
 
@@ -282,9 +335,19 @@ def choice_options(hero, registry, key, choices=None) -> list[str]:
         ]
     if key == "expertise":
         taken = sheet.skill_expertise + (choices.expertise if choices else [])
-        return [s for s in SKILLS if s in sheet.skill_proficiencies and s not in taken]
+        allowed = expertise_skills(hero, registry, sheet.level)
+        return [
+            s for s in SKILLS if s in sheet.skill_proficiencies and s not in taken
+            and (allowed is None or s in allowed)
+        ]
     if key == "weapon_mastery":
         return mastery_candidates(hero, registry, choices)
+    if key == "cantrip":
+        return cantrip_candidates(hero, registry, choices)
+    if key == "spellbook":
+        return book_candidates(hero, registry, choices)
+    if key == "savant_spell":
+        return savant_candidates(hero, registry, choices)
     if key == "subclass":
         return [s.id for s in registry.subclasses_of(sheet.class_id)]
     if key == "asi_or_feat":
@@ -358,15 +421,19 @@ def choice_errors(hero, registry, choices) -> list[tuple[str, str]]:
         if len(picks) > due or len(set(picks)) != len(picks):
             text = f"экспертиза: не больше {due} навыков, без повторов"
             errors.append(("expertise_invalid", text))
+        allowed = expertise_skills(hero, registry, sheet.level)
         for skill in picks:
             if skill not in SKILLS or skill not in sheet.skill_proficiencies:
                 errors.append(("expertise_invalid", f"экспертиза: нет владения навыком {skill}"))
+            elif allowed is not None and skill not in allowed:
+                errors.append(("expertise_invalid", f"экспертиза: навык не из списка: {skill}"))
             elif skill in sheet.skill_expertise:
                 errors.append(("expertise_invalid", f"экспертиза уже есть: {skill}"))
     # варианты умений
     errors += mastery_errors(hero, registry, choices, needed)
+    errors += book_errors(hero, registry, choices, needed)
     for feature_id, picks in choices.feature_choices.items():
-        if feature_id == "weapon_mastery":
+        if feature_id == "weapon_mastery" or feature_id in PICK_KEYS:
             continue
         if feature_id not in needed - FIXED_CHOICES:
             errors.append(("option_invalid", f"умение {feature_id} на этом уровне не выбирается"))
@@ -422,7 +489,10 @@ def spell_errors(hero, registry, choices) -> list[tuple[str, str]]:
             errors.append(("spells_invalid", f"неизвестное заклинание: {spell_id}"))
             continue
         spell = registry.get("spell", spell_id)
-        if sheet.class_id not in spell.classes:
+        book = sheet.known_of() + picked(choices, "spellbook", "savant_spell")
+        if spellcasting.spellbook and spell_id not in book:
+            errors.append(("spells_invalid", f"заклинания нет в книге: {spell_id}"))
+        elif sheet.class_id not in spell.classes:
             errors.append(("spells_invalid", f"заклинание не из списка класса: {spell_id}"))
         elif spell.level < 1:
             errors.append(("spells_invalid", f"заговоры здесь не выбираются: {spell_id}"))
@@ -434,6 +504,19 @@ def spell_errors(hero, registry, choices) -> list[tuple[str, str]]:
     if limit is not None and len(sheet.prepared_of()) + len(adds) > limit:
         errors.append(("spells_invalid", f"подготовленных заклинаний больше {limit}"))
     return errors
+
+
+def apply_spell_choices(hero, registry, choices) -> None:
+    # заговоры, книга, Знаток воплощения -- в известные; выбранные на подготовку -- в подготовленные
+    sheet = hero.sheet
+    if picked(choices, *PICK_KEYS):
+        sheet.known_of().extend(picked(choices, *PICK_KEYS))
+    for spell_id in choices.spells_add:
+        if spell_id in always_prepared(hero, registry):
+            continue
+        if spell_id not in sheet.known_of():
+            sheet.known_of().append(spell_id)
+        sheet.prepared_of().append(spell_id)
 
 
 def apply_level_choices(hero, registry, choices):
@@ -452,7 +535,10 @@ def apply_level_choices(hero, registry, choices):
         sheet.feats.append(choices.fighting_style)
     sheet.skill_expertise += choices.expertise
     sheet.weapon_masteries += choices.feature_choices.get("weapon_mastery", [])
-    options = {k: v for k, v in choices.feature_choices.items() if k != "weapon_mastery"}
+    options = {
+        k: v for k, v in choices.feature_choices.items()
+        if k != "weapon_mastery" and k not in PICK_KEYS
+    }
     sheet.feature_choices.update(copy.deepcopy(options))
     if choices.asi is not None:
         for ability, value in choices.asi.items():
@@ -460,11 +546,7 @@ def apply_level_choices(hero, registry, choices):
         sheet.feats.append(ASI_FEAT)
     if choices.feat is not None:
         sheet.feats.append(choices.feat)
-    for spell_id in choices.spells_add:
-        if spell_id in always_prepared(hero, registry):
-            continue
-        sheet.known_of().append(spell_id)
-        sheet.prepared_of().append(spell_id)
+    apply_spell_choices(hero, registry, choices)
     for language in choices.languages:
         if language not in sheet.languages:
             sheet.languages.append(language)

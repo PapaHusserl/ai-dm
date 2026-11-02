@@ -12,21 +12,26 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "content"))
 
-from test_class_kits import minimal_choices, rogue_choices  # noqa: E402
+from test_class_kits import cleric_choices, minimal_choices, rogue_choices  # noqa: E402
 
 from ai_dm.content.models.common import ABILITIES  # noqa: E402
-from ai_dm.rules.builder import build_character  # noqa: E402
+from ai_dm.core.clock import GameClock  # noqa: E402
+from ai_dm.core.rng import Rng  # noqa: E402
+from ai_dm.rules.builder import ValidationErrors, build_character  # noqa: E402
 from ai_dm.rules.derived import (  # noqa: E402
     ability_mod,
+    always_prepared,
+    cantrip_limit,
     hero_feature_ids,
     prepared_limit,
     proficiency,
+    proficiency_extras,
     resource_maxes,
     skill_bonus,
     spell_slots,
     weapon_proficient,
 )
-from ai_dm.rules.inventory import add_item  # noqa: E402
+from ai_dm.rules.inventory import InventoryError, add_item, equip  # noqa: E402
 from ai_dm.rules.progression import (  # noqa: E402
     FIXED_CHOICES,
     apply_level_choices,
@@ -40,7 +45,10 @@ from ai_dm.rules.progression import (  # noqa: E402
     needed_choices,
     next_choice,
     required_choices,
+    spells_left,
 )
+from ai_dm.rules.rests import long_rest, short_rest  # noqa: E402
+from ai_dm.rules.spellcasting import roll_heal  # noqa: E402
 from ai_dm.state.hero import LevelChoices  # noqa: E402
 
 CLASSES = ["fighter", "rogue", "cleric", "wizard", "ranger"]
@@ -281,12 +289,18 @@ def weapon(weapon_id, source="srd-5.2", mastery="cleave"):
 
 
 def test_mastery_candidates_skip_world_weapons_even_with_mastery():
-    char_class = SimpleNamespace(weapon_training=["martial"], weapon_training_properties=[])
+    char_class = SimpleNamespace(
+        weapon_training=["martial"], weapon_training_properties=[], features=[],
+    )
     stub = StubRegistry(
         char_class=char_class, weapons=[weapon("axe"), weapon("blaster", source="world")],
     )
     hero = SimpleNamespace(
-        sheet=SimpleNamespace(class_id="fighter", weapon_masteries=[]), inventory=[],
+        sheet=SimpleNamespace(
+            class_id="fighter", weapon_masteries=[], level=1, feature_choices={},
+            subclass_id=None, species_id="human", feats=[],
+        ),
+        inventory=[],
     )
     assert mastery_candidates(hero, stub, None) == ["axe"]
 
@@ -544,6 +558,9 @@ class StubRegistry:
     def all(self, kind):
         return self.weapon_list
 
+    def has(self, kind, key):
+        return False
+
 
 def feature_with(*effects):
     return SimpleNamespace(effects=list(effects))
@@ -602,6 +619,160 @@ def test_expertise_total_counts_effect_without_count_as_zero():
 def test_expertise_may_use_a_background_skill(registry):
     result = build_character(rogue_choices(expertise=["athletics", "stealth"]), registry)
     assert result.sheet.skill_expertise == ["athletics", "stealth"]
+
+
+# К3 П2: жрец 1-5 (Божественный порядок, Божественный канал, Домен жизни, Выжигание нежити)
+
+def cleric_with(registry, order):
+    choices = cleric_choices(class_kit="a", feature_choices={"divine_order": [order]})
+    return build_character(choices, registry)
+
+
+def test_cleric_requires_divine_order_at_level_1(registry):
+    result = build_character(cleric_choices(class_kit="a", feature_choices={}), registry)
+    assert isinstance(result, ValidationErrors)
+    assert "feature_choice_invalid" in result.codes
+
+
+def test_cleric_with_unknown_divine_order_is_error(registry):
+    choices = cleric_choices(class_kit="a", feature_choices={"divine_order": ["sage"]})
+    result = build_character(choices, registry)
+    assert isinstance(result, ValidationErrors)
+    assert "feature_choice_invalid" in result.codes
+
+
+def test_thaumaturge_knows_one_more_cantrip_at_levels_1_and_4(registry):
+    hero = cleric_with(registry, "thaumaturge")
+    assert cantrip_limit(hero, registry) == 4
+    for _ in range(3):
+        level_up(hero, registry, hp_method="average")
+    assert cantrip_limit(hero, registry) == 5
+
+
+def test_protector_has_the_class_cantrip_limit(registry):
+    hero = cleric_with(registry, "protector")
+    assert cantrip_limit(hero, registry) == 3
+    for _ in range(3):
+        level_up(hero, registry, hp_method="average")
+    assert cantrip_limit(hero, registry) == 4
+
+
+def test_thaumaturge_adds_wisdom_modifier_to_arcana_and_religion(registry):
+    protector = cleric_with(registry, "protector")
+    thaumaturge = cleric_with(registry, "thaumaturge")
+    for skill in ("arcana", "religion"):
+        gain = skill_bonus(thaumaturge, registry, skill) - skill_bonus(protector, registry, skill)
+        assert gain == max(1, ability_mod(thaumaturge, "wis"))
+
+
+def test_protector_is_proficient_with_martial_weapons(registry):
+    char_class = registry.get("class", "cleric")
+    sword = registry.get("weapon", "longsword")
+    protector = cleric_with(registry, "protector")
+    thaumaturge = cleric_with(registry, "thaumaturge")
+    assert not weapon_proficient(char_class, sword)
+    assert weapon_proficient(char_class, sword, proficiency_extras(protector, registry))
+    assert not weapon_proficient(char_class, sword, proficiency_extras(thaumaturge, registry))
+
+
+def test_protector_wears_chain_mail_without_error(registry):
+    hero = cleric_with(registry, "protector")
+    add_item(hero, "chain_mail", cost_cp=0)
+    equip(hero, "chain_mail", registry)
+    assert hero.equipped.armor == "chain_mail"
+
+
+def test_thaumaturge_cannot_wear_chain_mail(registry):
+    hero = cleric_with(registry, "thaumaturge")
+    add_item(hero, "chain_mail", cost_cp=0)
+    with pytest.raises(InventoryError):
+        equip(hero, "chain_mail", registry)
+
+
+def test_cleric_channel_divinity_is_two_at_level_2(registry):
+    hero = hero_at(registry, "cleric", 2)
+    assert resource_maxes(hero, registry)["channel_divinity"] == 2
+    assert hero.creature.resources["channel_divinity"].current == 2
+
+
+def test_cleric_has_no_channel_divinity_at_level_1(registry):
+    assert "channel_divinity" not in make_hero(registry, "cleric").creature.resources
+
+
+def test_channel_divinity_short_rest_gives_one_long_rest_gives_all(registry, cfg):
+    hero = hero_at(registry, "cleric", 2)
+    pool = hero.creature.resources["channel_divinity"]
+    pool.current = 0
+    short_rest(hero, registry, Rng(1), GameClock(), cfg=cfg)
+    assert pool.current == 1
+    short_rest(hero, registry, Rng(1), GameClock(), cfg=cfg)
+    short_rest(hero, registry, Rng(1), GameClock(), cfg=cfg)
+    assert pool.current == 2
+    pool.current = 0
+    long_rest(hero, registry, GameClock(), cfg)
+    assert pool.current == 2
+
+
+def test_cleric_level_3_requires_only_the_subclass(registry):
+    hero = hero_at(registry, "cleric", 3, apply_last=False)
+    assert required_choices(hero, registry, 3) == {"subclass"}
+
+
+def test_cleric_level_4_requires_asi_and_a_cantrip(registry):
+    hero = hero_at(registry, "cleric", 4, apply_last=False)
+    assert required_choices(hero, registry, 4) == {"asi_or_feat", "cantrip"}
+
+
+def test_life_domain_always_prepares_four_spells_at_level_3(registry):
+    hero = hero_at(registry, "cleric", 3)
+    assert hero.sheet.subclass_id == "life_domain"
+    assert set(always_prepared(hero, registry)) >= {
+        "aid", "bless", "cure_wounds", "lesser_restoration",
+    }
+
+
+def test_life_domain_adds_two_spells_at_level_5(registry):
+    hero = hero_at(registry, "cleric", 5)
+    assert set(always_prepared(hero, registry)) >= {
+        "aid", "bless", "cure_wounds", "lesser_restoration", "mass_healing_word", "revivify",
+    }
+
+
+def test_domain_spells_do_not_count_against_the_prepared_limit(registry):
+    hero = hero_at(registry, "cleric", 5)
+    assert hero.sheet.prepared_of() == []
+    assert spells_left(hero, registry, LevelChoices(level=5)) == prepared_limit(hero, registry)
+
+
+def test_cleric_gets_sear_undead_at_level_5_only(registry):
+    assert "sear_undead" not in hero_feature_ids(hero_at(registry, "cleric", 4), registry)
+    assert "sear_undead" in hero_feature_ids(hero_at(registry, "cleric", 5), registry)
+
+
+def test_disciple_of_life_adds_two_plus_circle_to_healing(registry):
+    hero = hero_at(registry, "cleric", 3)
+    spell = registry.get("spell", "cure_wounds")
+    base = roll_heal(spell, hero_at(registry, "cleric", 2), registry, Rng(5))
+    first = roll_heal(spell, hero, registry, Rng(5))
+    second = roll_heal(spell, hero, registry, Rng(5), circle=2)
+    assert "+ 3 Ученик жизни" in first[1]
+    assert "+ 4 Ученик жизни" in second[1]
+    assert "Ученик жизни" not in base[1]
+
+
+def test_disciple_of_life_is_added_to_the_total_after_the_dice_text(registry):
+    spell = registry.get("spell", "cure_wounds")
+    base = roll_heal(spell, hero_at(registry, "cleric", 2), registry, Rng(5))
+    with_feature = roll_heal(spell, hero_at(registry, "cleric", 3), registry, Rng(5))
+    assert with_feature[0] == base[0] + 3
+    assert with_feature[1].startswith("2d8 (")
+    assert with_feature[1].endswith(f" + 3 Ученик жизни = {with_feature[0]}")
+
+
+def test_disciple_of_life_does_not_apply_to_other_classes(registry):
+    wizard = hero_at(registry, "wizard", 3)
+    text = roll_heal(registry.get("spell", "cure_wounds"), wizard, registry, Rng(5))[1]
+    assert "Ученик жизни" not in text
 
 
 @pytest.mark.parametrize("weapon_id", ["musket", "pistol"])

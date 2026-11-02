@@ -122,6 +122,18 @@ def test_roundtrip_keeps_expertise():
     assert roundtrip(sheet).choices.expertise == ["stealth", "perception"]
 
 
+def test_roundtrip_keeps_divine_order():
+    choices = base_choices(feature_choices={"divine_order": ["thaumaturge"]})
+    sheet = HeroSheet(choices=choices, motive="м", means=["с"], opportunity=[])
+    assert request_from_sheet(sheet)["divine_order"] == "thaumaturge"
+    assert roundtrip(sheet).choices.feature_choices == {"divine_order": ["thaumaturge"]}
+
+
+def test_request_without_divine_order_has_empty_feature_choices():
+    assert roundtrip(base_sheet()).choices.feature_choices == {}
+    assert request_from_sheet(base_sheet())["divine_order"] == ""
+
+
 def test_roundtrip_plus_one_each_bonus():
     choices = base_choices(background_bonus={"dex": 1, "con": 1, "cha": 1})
     sheet = HeroSheet(choices=choices, motive="м", means=["с"], opportunity=[])

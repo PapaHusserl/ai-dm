@@ -44,19 +44,25 @@ from ai_dm.core.clock import DAY
 from ai_dm.rules.derived import (
     ability_mod,
     ability_modifier,
+    armor_allowed,
     armor_class,
     armor_class_parts,
     armor_dex,
     attack_bonus,
+    cantrip_bonus,
+    class_cantrips,
     clock_text,
     damage_bonus,
     effect_amount,
+    feature_skill_parts,
     gear_ac,
     initiative_bonus,
     passive_perception,
     proficiency,
+    proficiency_extras,
     saving_throw_bonus,
     skill_bonus,
+    skill_parts,
     spell_attack_bonus,
     spell_save_dc,
     spell_slots,
@@ -607,3 +613,137 @@ def test_hero_ac_parts_have_no_note_for_free_dexterity(registry):
 )
 def test_clock_text_is_hh_mm_of_the_day(now_s, text):
     assert clock_text(now_s) == text
+
+
+# К3 П2: заговоры по уровню, прибавки умений жреца (Защитник, Чудотворец)
+
+def casting(**fields):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(**({"cantrips": None, "cantrips_by_level": None} | fields))
+
+
+def test_class_cantrips_of_a_non_caster_is_zero():
+    assert class_cantrips(None, 5) == 0
+
+
+def test_class_cantrips_without_a_table_is_the_flat_number():
+    assert class_cantrips(casting(cantrips=2), 1) == 2
+    assert class_cantrips(casting(cantrips=2), 9) == 2
+
+
+def test_class_cantrips_without_any_number_is_zero():
+    assert class_cantrips(casting(), 3) == 0
+
+
+@pytest.mark.parametrize("level, count", [(1, 3), (3, 3), (4, 4), (9, 4), (10, 5), (20, 5)])
+def test_class_cantrips_follow_the_table_by_level(level, count):
+    table = {1: 3, 4: 4, 10: 5}
+    assert class_cantrips(casting(cantrips=3, cantrips_by_level=table), level) == count
+
+
+def test_class_cantrips_table_wins_over_the_flat_number():
+    assert class_cantrips(casting(cantrips=9, cantrips_by_level={1: 2}), 1) == 2
+
+
+def test_cantrip_bonus_of_thaumaturge_is_one(registry):
+    assert cantrip_bonus(registry, ["thaumaturge"]) == 1
+
+
+def test_cantrip_bonus_of_protector_or_nothing_is_zero(registry):
+    assert cantrip_bonus(registry, ["protector"]) == 0
+    assert cantrip_bonus(registry, []) == 0
+
+
+def test_cantrip_bonus_adds_up_over_features(registry):
+    assert cantrip_bonus(registry, ["thaumaturge", "thaumaturge"]) == 2
+
+
+def feature_registry(*effects):
+    from types import SimpleNamespace
+
+    feature = SimpleNamespace(effects=list(effects))
+    return SimpleNamespace(get=lambda kind, feature_id: feature)
+
+
+def effect(type_, target, value):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(type=type_, target=target, value=value)
+
+
+def test_cantrip_bonus_counts_only_modifiers_of_the_cantrips_target():
+    registry = feature_registry(effect("modifier", "speed", 5), effect("bonus", "cantrips", 2))
+    assert cantrip_bonus(registry, ["any"]) == 0
+
+
+def test_cantrip_bonus_of_an_effect_without_value_is_zero():
+    registry = feature_registry(effect("modifier", "cantrips", None))
+    assert cantrip_bonus(registry, ["any"]) == 0
+
+
+def cleric_with_order(registry, order):
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "content"))
+    from test_class_kits import cleric_choices
+
+    from ai_dm.rules.builder import build_character
+
+    return build_character(
+        cleric_choices(class_kit="a", feature_choices={"divine_order": [order]}), registry
+    )
+
+
+def test_protector_gets_martial_weapons_and_heavy_armor(registry):
+    hero = cleric_with_order(registry, "protector")
+    assert proficiency_extras(hero, registry) == {"martial_weapons", "heavy_armor"}
+
+
+def test_thaumaturge_gets_no_proficiency_extras(registry):
+    assert proficiency_extras(cleric_with_order(registry, "thaumaturge"), registry) == set()
+
+
+def test_armor_allowed_protector_wears_heavy_armor(registry):
+    hero = cleric_with_order(registry, "protector")
+    assert armor_allowed(hero, registry, registry.get("armor", "chain_mail"))
+
+
+def test_armor_allowed_thaumaturge_does_not_wear_heavy_armor(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    assert not armor_allowed(hero, registry, registry.get("armor", "chain_mail"))
+
+
+def test_armor_allowed_cleric_wears_medium_armor_either_way(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    assert armor_allowed(hero, registry, registry.get("armor", "chain_shirt"))
+
+
+def test_thaumaturge_adds_wisdom_to_arcana_and_religion_checks(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    wis = ability_mod(hero, "wis")
+    for skill in ("arcana", "religion"):
+        parts = feature_skill_parts(hero, registry, skill)
+        assert parts == [("Чудотворец", max(1, wis))]
+
+
+def test_thaumaturge_gives_nothing_to_other_skills(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    assert feature_skill_parts(hero, registry, "stealth") == []
+
+
+def test_protector_gives_no_skill_parts(registry):
+    hero = cleric_with_order(registry, "protector")
+    assert feature_skill_parts(hero, registry, "arcana") == []
+
+
+def test_thaumaturge_bonus_is_at_least_plus_one(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    hero.sheet.abilities["wis"] = 8
+    assert feature_skill_parts(hero, registry, "religion") == [("Чудотворец", 1)]
+
+
+def test_skill_parts_include_the_thaumaturge_part(registry):
+    hero = cleric_with_order(registry, "thaumaturge")
+    assert ("Чудотворец", max(1, ability_mod(hero, "wis"))) in skill_parts(hero, registry, "arcana")

@@ -136,7 +136,7 @@ def test_standard_array_hero_with_taken_name_error(registry, cfg, tmp_path):
     assert hero.motive == "Найти сестру."
     assert hero.means == ["острый ум"]
     assert hero.opportunity == []
-    assert {e.item_id for e in hero.inventory} >= {"chain_mail", "greatsword", "explorers_pack"}
+    assert {e.item_id for e in hero.inventory} >= {"chain_mail", "greatsword", "dungeoneers_pack"}
     assert hero.equipped.armor == "chain_mail"
 
 

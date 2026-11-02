@@ -332,6 +332,7 @@ class CastSpell(Request):
     free: bool = Field(
         False, description="true: бесплатное применение умения (например, Избранный враг)."
     )
+    ritual: bool = Field(False, description="true: ритуал, без ячейки, +10 минут.")
     NEUTRAL: ClassVar[dict] = {"target": ""}
 
 
@@ -927,6 +928,9 @@ class HeroSheetRequest(Request):
         [], description="Навыки с экспертизой, expertise_count штук из освоенных; пусто = нет."
     )
     fighting_style: str = Field("", description="id боевого стиля, если он есть у класса.")
+    divine_order: str = Field(
+        "", description="id Божественного порядка жреца (protector или thaumaturge); иначе пусто."
+    )
     class_kit: str = Field(description="id стартового набора класса из kits класса.")
     spells: list[str] = Field(description="id заговоров и заклинаний 1 круга класса; пусто = нет.")
     prepared: list[str] = Field(description="id подготовленных заклинаний из spells; пусто = нет.")
@@ -948,7 +952,8 @@ class HeroSheetRequest(Request):
         description="Возможности героя, от нуля до двух; пусто = нет."
     )
     NEUTRAL: ClassVar[dict] = {"fighting_style": "", "species_feat": "", "species_skill": "none",
-                               "bonus_plus2": "none", "gender": "none", "pronouns": ""}
+                               "bonus_plus2": "none", "gender": "none", "pronouns": "",
+                               "divine_order": ""}
 
 
 class SecretSpec(Request):

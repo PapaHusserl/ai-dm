@@ -5,14 +5,14 @@ from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.loot_gear import gold_loot
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed, item_ids, reachable_ids
-from ai_dm.rules import custom_items, divine, loot, money, rests, time_ops, xp
+from ai_dm.rules import arcane_recovery, custom_items, divine, loot, money, rests, time_ops, xp
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.cast_checks import default_cast_check_registry
 from ai_dm.rules.damage import roll_hazard
 from ai_dm.rules.death_saves import after_damage, is_stable, resolve_out_of_combat
-from ai_dm.rules.derived import clock_text
+from ai_dm.rules.derived import clock_text, hero_feature_ids
 from ai_dm.rules.healing import heal
 from ai_dm.rules.inventory import (
     add_catalog_item,
@@ -44,6 +44,8 @@ from ai_dm.state.memory import add_entry
 from ai_dm.state.world import CustomItem
 
 PREY_FEATURE = "hunters_prey"
+# ритуал занимает на 10 минут больше обычного
+RITUAL_SECONDS = 600
 CURSED = "cursed"
 USE_EFFECTS = ("heal", "ac_bonus", "resist")
 # строки лога, по которым защиты от повтора находят прошлые начисления в outcomes
@@ -470,7 +472,8 @@ def cast_spell(ctx, request):
         )
     spell = ctx.registry.get("spell", request.spell_id)
     problem = cast_problem(
-        hero, spell, request.circle, request.free, ctx.registry, default_cast_check_registry()
+        hero, spell, request.circle, request.free, ctx.registry, default_cast_check_registry(),
+        ritual=request.ritual,
     )
     if problem is not None:
         return Invalid(code=problem[0], message=problem[1])
@@ -486,9 +489,14 @@ def cast_spell(ctx, request):
     if invalid is not None:
         return invalid
     world = ctx.bundle.world
+    if request.ritual:
+        world.clock.advance(RITUAL_SECONDS)
     now_s = world.clock.now_s
-    spend_cast(hero, ctx.registry, spell, request.free, request.circle)
-    if spell.level == 0:
+    if not request.ritual:
+        spend_cast(hero, ctx.registry, spell, request.free, request.circle)
+    if request.ritual:
+        head = f"{hero.name} читает {spell.name} (ритуал, 10 минут, ячейка не тратится)"
+    elif spell.level == 0:
         head = f"{hero.name} читает {spell.name} (заговор)"
     elif request.free:
         head = f"{hero.name} читает {spell.name} ({spell.level} круг, бесплатное применение)"
@@ -500,13 +508,18 @@ def cast_spell(ctx, request):
         )
     log = [head]
     result = {"spell_id": spell.id, "circle": request.circle}
+    if request.ritual:
+        concentration_note(ctx, log, result)
     wasted, lines = roll_cast_checks(
         hero, spell, default_cast_check_registry(), ctx.registry, ctx.rng,
         default_modifier_registry(), now_s,
     )
     log += lines
     if wasted:
-        log.append("  заклинание не удалось, ячейка потрачена впустую")
+        if request.ritual:
+            log.append("  ритуал не удался, десять минут потрачены впустую")
+        else:
+            log.append("  заклинание не удалось, ячейка потрачена впустую")
         result["wasted"] = True
         return Decision(status="accepted", result=result, log=log)
     if kind == "heal":
@@ -783,9 +796,15 @@ def swap_invalid(ctx, request):
     spec = request.prepared_swap
     if spec is None:
         return None
+    cap = None
     if request.kind != "long":
-        return Invalid(code="swap_long_only", message="подготовленные меняют после длинного отдыха")
-    problem = swap_problem(ctx.hero, ctx.registry, spec.drop, spec.take)
+        if "memorize_spell" not in hero_feature_ids(ctx.hero, ctx.registry):
+            return Invalid(
+                code="swap_long_only", message="подготовленные меняют после длинного отдыха"
+            )
+        # Запоминание заклинания: после короткого отдыха одна замена
+        cap = 1
+    problem = swap_problem(ctx.hero, ctx.registry, spec.drop, spec.take, cap)
     if problem is None:
         return None
     return Invalid(code=problem[0], message=problem[1])
@@ -925,6 +944,7 @@ def rest_apply(ctx, request):
                 hero, ctx.registry, ctx.rng, world.clock, ctx.cfg, hit_dice=hit_dice
             )
             log = [f"Короткий отдых: восстановлено {healed} HP"]
+            log += arcane_recovery.recover(hero, ctx.registry)
         else:
             rests.long_rest(hero, ctx.registry, world.clock, ctx.cfg)
             world.flags.pop(f"{service_rules.LODGING_FLAG}:{hero.id}", None)

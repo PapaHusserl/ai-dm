@@ -1,0 +1,7 @@
+id: dungeoneers_pack
+name: Набор исследователя подземелий
+description: Рюкзак, шипы-ловушки, лом, масло, рационы на десять дней, верёвка, трутница, факелы, бурдюк.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 1200
+category: gear

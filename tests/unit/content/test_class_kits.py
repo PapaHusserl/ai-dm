@@ -35,7 +35,7 @@ def cleric_choices(**changes):
         ability_method="standard_array",
         ability_scores={"str": 10, "dex": 8, "con": 14, "int": 12, "wis": 15, "cha": 13},
         background_bonus={"str": 2, "con": 1}, class_skills=["history", "insight"],
-        weapon_masteries=[],
+        weapon_masteries=[], feature_choices={"divine_order": ["protector"]},
         species_choices={"skill": "stealth", "feat": "skilled"},
         feat_choices={"skilled": ["medicine", "religion", "nature"]},
     ).model_copy(update=changes)
@@ -165,7 +165,7 @@ def test_fighter_kit_a_has_no_spear(registry):
 
 def test_fighter_kit_a_keeps_chain_mail_greatsword_and_gold(registry):
     kit = fighter_kit(registry, "a")
-    assert {"chain_mail", "greatsword", "explorers_pack"} <= set(kit.items)
+    assert {"chain_mail", "greatsword", "dungeoneers_pack"} <= set(kit.items)
     assert kit.gold_cp == 400
 
 
@@ -176,3 +176,79 @@ def test_fighter_kit_a_has_no_firearms(registry):
 
 def test_minimal_rogue_without_kit_is_not_a_validation_error(registry):
     assert not isinstance(build_character(rogue_choices(), registry), ValidationErrors)
+
+
+# К3 П2 (решение 11, 32): наборы-пакеты у всех классов, цены SRD
+
+def kit_of(registry, class_id, kit_id):
+    kits = registry.get("class", class_id).starting_kits
+    return next(k for k in kits if k.id == kit_id)
+
+
+@pytest.mark.parametrize("kit_id", ["a", "b"])
+def test_fighter_kits_carry_the_dungeoneers_pack(registry, kit_id):
+    assert "dungeoneers_pack" in fighter_kit(registry, kit_id).items
+    assert "explorers_pack" not in fighter_kit(registry, kit_id).items
+
+
+def test_rogue_kit_a_carries_the_burglars_pack(registry):
+    items = kit_of(registry, "rogue", "a").items
+    assert "burglars_pack" in items
+    assert "explorers_pack" not in items
+
+
+def test_cleric_kit_a_is_chain_shirt_shield_mace_holy_symbol_and_priests_pack(registry):
+    kit = kit_of(registry, "cleric", "a")
+    assert sorted(kit.items) == sorted(
+        ["chain_shirt", "shield", "mace", "holy_symbol", "priests_pack"]
+    )
+    assert sorted(kit.equip) == ["chain_shirt", "mace", "shield"]
+
+
+def test_wizard_kit_a_has_the_spellbook_and_scholars_pack(registry):
+    items = kit_of(registry, "wizard", "a").items
+    assert "spellbook" in items
+    assert "scholars_pack" in items
+    assert "explorers_pack" not in items
+
+
+def test_explorers_pack_is_only_in_the_ranger_kit(registry):
+    owners = {c for c, kit in all_kits(registry) if "explorers_pack" in kit.items}
+    assert owners == {"ranger"}
+
+
+@pytest.mark.parametrize("pack_id, cost_cp", [
+    ("dungeoneers_pack", 1200), ("burglars_pack", 1600), ("priests_pack", 3300),
+    ("scholars_pack", 4000), ("spellbook", 5000),
+])
+def test_new_kit_items_are_in_the_catalog_with_srd_prices(registry, pack_id, cost_cp):
+    kind, item = find_item(registry, pack_id)
+    assert kind == "item"
+    assert item.cost_cp == cost_cp
+
+
+def test_built_cleric_wears_chain_shirt_shield_and_holds_mace(registry):
+    hero = build_character(cleric_choices(class_kit="a", feature_choices={
+        "divine_order": ["protector"]}), registry)
+    assert hero.equipped.armor == "chain_shirt"
+    assert hero.equipped.shield == "shield"
+    assert hero.equipped.main_hand == "mace"
+
+
+def test_built_wizard_gets_the_spellbook_in_the_inventory(registry):
+    hero = build_character(minimal_choices("wizard", "a"), registry)
+    assert "spellbook" in {e.item_id for e in hero.inventory}
+    assert "scholars_pack" in {e.item_id for e in hero.inventory}
+
+
+def test_built_rogue_and_fighter_carry_their_packs(registry):
+    rogue = build_character(minimal_choices("rogue", "a"), registry)
+    fighter = build_character(minimal_choices("fighter", "b"), registry)
+    assert "burglars_pack" in {e.item_id for e in rogue.inventory}
+    assert "dungeoneers_pack" in {e.item_id for e in fighter.inventory}
+
+
+def test_divine_order_is_required_for_the_cleric_in_every_kit(registry):
+    for kit in registry.get("class", "cleric").starting_kits:
+        result = build_character(cleric_choices(class_kit=kit.id, feature_choices={}), registry)
+        assert isinstance(result, ValidationErrors), kit.id

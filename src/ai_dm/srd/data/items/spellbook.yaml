@@ -1,0 +1,7 @@
+id: spellbook
+name: Книга заклинаний
+description: Книга волшебника, в которую записаны его заклинания. Подготовить можно только заклинание из книги.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 5000
+category: gear

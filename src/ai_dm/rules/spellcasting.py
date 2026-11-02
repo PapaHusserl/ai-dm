@@ -6,6 +6,7 @@ from ai_dm.rules.derived import (
     always_prepared,
     effect_amount,
     free_cast_pool,
+    hero_feature_ids,
     prepared_limit,
     spell_slots_for,
     spellcasting_ability,
@@ -89,8 +90,26 @@ def usable_circles(hero, spell) -> list[int]:
     return result
 
 
-def cast_problem(hero, spell, circle, free, registry, cast_checks):
+def ritual_problem(hero, spell, circle, registry, cast_checks):
+    # ритуал без ячейки: с пометкой «ритуал», подготовленное либо (Адепт ритуалов) из книги
+    if not spell.ritual:
+        return ("not_ritual", f"{spell.name} нельзя сотворить как ритуал")
+    prepared = list(hero.sheet.prepared_of()) + always_prepared(hero, registry)
+    adept = "ritual_adept" in hero_feature_ids(hero, registry)
+    if spell.id not in prepared and not (adept and spell.id in hero.sheet.known_of()):
+        return ("not_prepared", f"заклинание {spell.name} не подготовлено и не в книге")
+    if circle != spell.level:
+        return ("bad_circle", f"ритуал {spell.name} — только базовым кругом {spell.level}")
+    for check in cast_checks.check(hero, spell.id, registry):
+        if check.kind == "forbidden":
+            return ("forbidden", f"{spell.name} недоступно: {check.reason}")
+    return None
+
+
+def cast_problem(hero, spell, circle, free, registry, cast_checks, ritual=False):
     # почему герой не может сотворить заклинание: (код, сообщение) или None
+    if ritual:
+        return ritual_problem(hero, spell, circle, registry, cast_checks)
     if spell.level == 0:
         if spell.id not in hero.sheet.known_of():
             return ("not_known", f"заговор {spell.name} герой не знает")
@@ -163,6 +182,10 @@ def roll_heal(spell, hero, registry, rng, circle=None) -> tuple[int, str]:
         text += f" {'+' if bonus >= 0 else '-'} {abs(bonus)} {label}"
     elif bonus:
         text += f" {'+' if bonus > 0 else '-'} {abs(bonus)}"
+    if spell.level >= 1 and "disciple_of_life" in hero_feature_ids(hero, registry):
+        disciple = 2 + (circle or spell.level)
+        total += disciple
+        text += f" + {disciple} Ученик жизни"
     return total, f"{text} = {total}"
 
 
@@ -222,14 +245,17 @@ def add_spell_duration(hero, spell, now_s) -> None:
     )
 
 
-def swap_problem(hero, registry, drop, take):
-    # почему нельзя сменить подготовленные после длинного отдыха: (код, сообщение) или None
+def swap_problem(hero, registry, drop, take, cap=None):
+    # почему нельзя сменить подготовленные после отдыха: (код, сообщение) или None;
+    # cap -- предел замен короткого отдыха (Запоминание заклинания), иначе prepared_swap класса
     sheet = hero.sheet
     spellcasting = registry.get("class", sheet.class_id).spellcasting
     if spellcasting is None or spellcasting.prepared_swap is None:
         return ("no_spellcasting", "у класса героя нет смены подготовленных заклинаний")
-    swap = spellcasting.prepared_swap
+    swap = spellcasting.prepared_swap if cap is None else cap
     if swap != "all" and (len(drop) > swap or len(take) > swap):
+        if cap is not None:
+            return ("swap_limit", f"за короткий отдых можно сменить не больше {swap}")
         return ("swap_limit", f"за длинный отдых можно сменить не больше {swap} (следопыт — одно)")
     if len(set(drop)) != len(drop) or len(set(take)) != len(take):
         return ("bad_swap", "в списках drop и take есть повторы")
@@ -238,6 +264,9 @@ def swap_problem(hero, registry, drop, take):
         s.id for s in registry.all("spell")
         if sheet.class_id in s.classes and 1 <= s.level <= max_circle
     ]
+    if spellcasting.spellbook:
+        # книга волшебника: брать можно только заклинания из книги
+        class_ids = [s for s in class_ids if s in sheet.known_of()]
     for spell_id in take:
         if not registry.has("spell", spell_id):
             ids = ", ".join(sorted(class_ids)[:20])
@@ -252,6 +281,8 @@ def swap_problem(hero, registry, drop, take):
             return ("already_prepared", f"заклинание {spell.name} уже подготовлено")
         if sheet.class_id not in spell.classes or spell.level < 1 or spell.level > max_circle:
             return ("bad_spell", f"{spell.name}: не из списка класса, заговор или круг недоступен")
+        if spellcasting.spellbook and spell_id not in sheet.known_of():
+            return ("not_in_book", f"{spell.name}: нет в книге заклинаний")
     limit = prepared_limit(hero, registry)
     if limit is not None and len(sheet.prepared_of()) - len(drop) + len(take) > limit:
         return ("prepared_limit", f"подготовленных заклинаний больше {limit}")

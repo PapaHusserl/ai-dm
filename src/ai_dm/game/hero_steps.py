@@ -18,6 +18,7 @@ from ai_dm.rules.builder import (
     point_buy_cost,
     species_choice_keys,
 )
+from ai_dm.rules.derived import cantrip_bonus
 from ai_dm.rules.hero_options import (
     background_options,
     class_options,
@@ -29,6 +30,7 @@ from ai_dm.rules.hero_options import (
     item_name,
     kit_label,
     kit_options,
+    level1_option_feature,
     mastery_weapons,
     origin_feats,
     point_buy_table,
@@ -67,6 +69,7 @@ class Draft:
     expertise: list = field(default_factory=list)
     masteries: list = field(default_factory=list)
     style: str | None = None
+    divine_order: str = ""
     cantrips: list = field(default_factory=list)
     spells: list = field(default_factory=list)
     prepared: list = field(default_factory=list)
@@ -298,9 +301,20 @@ def options_style(draft, registry):
     return [Option(f.id, f.name) for f in fighting_styles(registry)]
 
 
+def needs_divine_order(draft, registry):
+    return level1_option_feature(registry, draft_class(draft, registry)) is not None
+
+
+def options_divine_order(draft, registry):
+    feature = level1_option_feature(registry, draft_class(draft, registry))
+    return [Option(o, registry.get("feature", o).name) for o in feature.options]
+
+
 def count_cantrips(draft, registry):
-    # лимит класса, но не больше заговоров в контенте
+    # лимит класса (с Чудотворцем на один больше), но не больше заговоров в контенте
     limit = spell_counts(draft_class(draft, registry))[0]
+    if draft.divine_order:
+        limit += cantrip_bonus(registry, [draft.divine_order])
     return min(limit, len(class_spells(registry, draft.class_id, 0)))
 
 
@@ -477,6 +491,10 @@ STEPS = (
         "style", "style", "pick", "Боевой стиль", needs=needs_style, options=options_style,
     ),
     StepDef(
+        "divine_order", "divine_order", "pick", "Божественный порядок",
+        needs=needs_divine_order, options=options_divine_order,
+    ),
+    StepDef(
         "cantrips", "cantrips", "multi", "Заговоры", needs=needs_cantrips,
         options=options_cantrips, count=count_cantrips,
     ),
@@ -532,7 +550,7 @@ KEYS = tuple(step.key for step in STEPS)
 CODE_STEPS = {
     "class_skills_invalid": "class_skills", "spells_invalid": "cantrips",
     "species_choices_invalid": "species_skill", "feat_choices_invalid": "feat_picks_bg",
-    "expertise_invalid": "expertise",
+    "expertise_invalid": "expertise", "feature_choice_invalid": "divine_order",
     "background_bonus_invalid": "bonus_scheme", "abilities_invalid": "bonus_scheme",
     "point_buy_invalid": "method", "standard_array_invalid": "method",
     "hero_name_empty": "name", "hero_name_taken": "name",
@@ -618,6 +636,7 @@ def to_sheet(draft, registry) -> HeroSheet:
         spells=draft.cantrips + draft.spells, prepared=list(draft.prepared),
         feat_choices=feat_choices, background_gear=draft.gear or "equipment",
         class_kit=draft.kit,
+        feature_choices={"divine_order": [draft.divine_order]} if draft.divine_order else {},
     )
     return HeroSheet(choices=choices, motive=draft.motive, means=list(draft.means), opportunity=[])
 

@@ -87,7 +87,7 @@ starting_kits:
   - arrows
   - quiver
   - thieves_tools
-  - explorers_pack
+  - burglars_pack
   equip:
   - leather_armor
   - shortsword

@@ -15,10 +15,12 @@ from ai_dm.rules.builder import (
     feat_choice_count,
     species_choice_keys,
 )
+from ai_dm.rules.derived import class_cantrips
 from ai_dm.rules.hero_options import (
     class_spells,
     fighting_styles,
     has_fighting_style,
+    level1_option_feature,
     mastery_weapons,
 )
 from ai_dm.rules.progression import expertise_total
@@ -40,6 +42,7 @@ def class_data(registry, char_class):
     weapons = mastery_weapons(registry, char_class)
     styles = [f.id for f in fighting_styles(registry)]
     has_style = has_fighting_style(char_class)
+    order = level1_option_feature(registry, char_class)
     return {
         "id": char_class.id, "name": char_class.name,
         "skill_options": char_class.skill_choices.options,
@@ -50,6 +53,9 @@ def class_data(registry, char_class):
         "fighting_style": has_style, "fighting_style_ids": styles if has_style else [],
         "kits": [kit_data(k) for k in char_class.starting_kits],
         "spellcasting": spellcasting_data(char_class),
+        "cantrip_count": class_cantrips(char_class.spellcasting, 1),
+        "divine_order_ids": list(order.options) if order is not None else [],
+        "spellbook": char_class.spellcasting is not None and char_class.spellcasting.spellbook,
         "cantrip_ids": [s.id for s in class_spells(registry, char_class.id, 0)],
         "spell_ids": [s.id for s in class_spells(registry, char_class.id, 1)],
     }

@@ -1,0 +1,10 @@
+id: protector
+name: Защитник
+description: Вы владеете воинским оружием и тяжёлыми доспехами.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: proficiency
+  target: martial_weapons
+- type: proficiency
+  target: heavy_armor
