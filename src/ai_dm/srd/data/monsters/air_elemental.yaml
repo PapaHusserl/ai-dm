@@ -1,0 +1,49 @@
+id: air_elemental
+name: Воздушный элементаль
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: elemental
+speed_ft: 10
+fly_ft: 90
+ac: 15
+hp: 90
+hp_dice: 12d10+24
+cr: '5'
+abilities:
+  str: 14
+  dex: 20
+  con: 14
+  int: 6
+  wis: 10
+  cha: 6
+damage_immunities:
+- poison
+- thunder
+damage_resistances:
+- bludgeoning
+- lightning
+- piercing
+- slashing
+condition_immunities:
+- exhaustion
+- grappled
+- paralyzed
+- petrified
+- poisoned
+- prone
+- restrained
+- unconscious
+traits:
+- air_form
+- whirlwind
+actions:
+- name: Громовой удар
+  kind: melee
+  attack_bonus: 8
+  reach_ft: 10
+  damage_dice: 2d8+5
+  damage_type: thunder
+multiattack:
+- action: Громовой удар
+  count: 2

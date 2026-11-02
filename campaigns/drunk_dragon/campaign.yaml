@@ -138,6 +138,8 @@ monsters:
 - magmin
 - fire_elemental
 - earth_elemental
+- water_elemental
+- air_elemental
 - dust_mephit
 - steam_mephit
 - homunculus

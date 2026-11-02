@@ -1,0 +1,46 @@
+id: water_elemental
+name: Водный элементаль
+source: srd-5.2
+license: CC-BY-4.0
+size: large
+creature_type: elemental
+speed_ft: 30
+ac: 14
+hp: 114
+hp_dice: 12d10+48
+cr: '5'
+abilities:
+  str: 18
+  dex: 14
+  con: 18
+  int: 5
+  wis: 10
+  cha: 8
+damage_immunities:
+- poison
+damage_resistances:
+- acid
+- fire
+condition_immunities:
+- exhaustion
+- grappled
+- paralyzed
+- petrified
+- poisoned
+- prone
+- restrained
+- unconscious
+traits:
+- freeze
+- water_form
+- whelm
+actions:
+- name: Удар
+  kind: melee
+  attack_bonus: 7
+  reach_ft: 5
+  damage_dice: 2d8+4
+  damage_type: bludgeoning
+multiattack:
+- action: Удар
+  count: 2

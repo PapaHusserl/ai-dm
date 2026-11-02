@@ -390,7 +390,7 @@ DRAGON_MONSTERS = [
     "guard", "goblin_warrior", "goblin_boss", "wolf", "dire_wolf", "giant_rat", "swarm_of_rats",
     "giant_spider", "black_bear", "boar", "ghoul", "ghast", "zombie", "ogre_zombie", "skeleton",
     "wight", "shadow", "specter", "gargoyle", "magmin", "fire_elemental", "earth_elemental",
-    "dust_mephit", "steam_mephit", "homunculus",
+    "water_elemental", "air_elemental", "dust_mephit", "steam_mephit", "homunculus",
 ]
 
 

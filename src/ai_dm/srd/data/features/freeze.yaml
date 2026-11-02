@@ -1,0 +1,5 @@
+id: freeze
+name: Заморозка
+description: От холода −20 фт. скорости до конца своего след. хода.
+source: srd-5.2
+license: CC-BY-4.0

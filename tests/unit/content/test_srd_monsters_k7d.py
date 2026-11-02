@@ -16,25 +16,26 @@ from ai_dm.rules.roll_pipeline import DAMAGE_TYPE_WORDS
 IDS = [
     "skeleton", "zombie", "shadow", "ghoul", "specter", "ghast", "ogre_zombie", "wight",
     "steam_mephit", "dust_mephit", "magmin", "gargoyle", "fire_elemental", "earth_elemental",
-    "homunculus", "animated_flying_sword", "animated_armor",
+    "water_elemental", "air_elemental", "homunculus", "animated_flying_sword", "animated_armor",
     "hawk", "giant_rat", "mastiff", "wolf", "swarm_of_rats", "boar", "panther", "black_bear",
     "dire_wolf", "giant_spider",
 ]
 TYPES = {
     "undead": ["skeleton", "zombie", "shadow", "ghoul", "specter", "ghast", "ogre_zombie", "wight"],
     "elemental": ["steam_mephit", "dust_mephit", "magmin", "gargoyle", "fire_elemental",
-                  "earth_elemental"],
+                  "earth_elemental", "water_elemental", "air_elemental"],
     "construct": ["homunculus", "animated_flying_sword", "animated_armor"],
     "beast": ["hawk", "giant_rat", "mastiff", "wolf", "swarm_of_rats", "boar", "panther",
               "black_bear", "dire_wolf", "giant_spider"],
 }
 FLYERS = ["steam_mephit", "dust_mephit", "gargoyle", "homunculus", "animated_flying_sword",
-          "hawk", "specter"]
+          "hawk", "specter", "air_elemental"]
 CHECKED = {
     # id: (ac, hp, cr) -- сверено с официальным SRD 5.2
     "skeleton": (14, 13, "1/4"), "zombie": (8, 15, "1/4"), "ghoul": (12, 22, "1"),
     "wight": (14, 82, "3"), "wolf": (12, 11, "1/4"), "giant_spider": (14, 26, "1"),
     "fire_elemental": (13, 93, "5"), "animated_armor": (18, 33, "1"),
+    "water_elemental": (14, 114, "5"), "air_elemental": (15, 90, "5"),
 }
 
 
@@ -42,8 +43,8 @@ def get(registry, monster_id):
     return registry.get("monster", monster_id)
 
 
-def test_the_list_has_27_ids():
-    assert len(IDS) == len(set(IDS)) == 27
+def test_the_list_has_29_ids():
+    assert len(IDS) == len(set(IDS)) == 29
 
 
 def test_every_group_is_covered():
@@ -170,6 +171,23 @@ def test_fire_elemental_defenses(registry):
     assert {"grappled", "paralyzed", "petrified", "prone", "restrained"} <= set(
         monster.condition_immunities
     )
+
+
+@pytest.mark.parametrize("monster_id", ["water_elemental", "air_elemental"])
+def test_water_and_air_elemental_defenses(registry, monster_id):
+    monster = get(registry, monster_id)
+    assert "poison" in monster.damage_immunities
+    assert {"grappled", "restrained", "prone", "unconscious"} <= set(monster.condition_immunities)
+
+
+def test_water_elemental_resists_acid_and_fire(registry):
+    assert {"acid", "fire"} == set(get(registry, "water_elemental").damage_resistances)
+
+
+def test_air_elemental_is_immune_to_thunder(registry):
+    monster = get(registry, "air_elemental")
+    assert "thunder" in monster.damage_immunities
+    assert "thunder" not in monster.damage_resistances
 
 
 def test_animated_armor_defenses(registry):
