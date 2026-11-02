@@ -38,6 +38,8 @@
 | Gargoyle | Горгулья | `gargoyle` | К7д |
 | Fire Elemental | Огненный элементаль | `fire_elemental` | К7д |
 | Earth Elemental | Земляной элементаль | `earth_elemental` | К7д |
+| Water Elemental | Водный элементаль | `water_elemental` | мини 2026-11-01 |
+| Air Elemental | Воздушный элементаль | `air_elemental` | мини 2026-11-01 |
 | Homunculus | Гомункул | `homunculus` | К7д |
 | Animated Flying Sword | Летающий меч | `animated_flying_sword` | К7д |
 | Animated Armor | Оживлённые доспехи | `animated_armor` | К7д |
@@ -52,6 +54,11 @@
 | Dire Wolf | Лютый волк | `dire_wolf` | К7д |
 | Giant Spider | Гигантский паук | `giant_spider` | К7д |
 | Pack Tactics | Тактика стаи | `pack_tactics` | умение монстров, движок |
+| Water Form | Водная форма | `water_form` | умение монстров, только текст |
+| Air Form | Воздушная форма | `air_form` | умение монстров, только текст |
+| Freeze | Заморозка | `freeze` | умение монстров, только текст |
+| Whelm | Захлёст | `whelm` | умение монстров, только текст |
+| Whirlwind | Вихрь | `whirlwind` | умение монстров, только текст |
 | Undead Fortitude | Стойкость нежити | `undead_fortitude` | умение монстров, движок |
 | Death Burst | Предсмертный взрыв | `death_burst` | умение монстров, движок |
 | Resourceful | Находчивость | `resourceful` | умение вида человека, рабочий |
