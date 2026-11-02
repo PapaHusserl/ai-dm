@@ -16,6 +16,8 @@ INTENT_WORDS = {
     "spare": "пощадить",
 }
 INTENT_OPTIONS = ["keep"] + [f"intent:{name}" for name in INTENTS]
+# заклинания, чьи состояния снимает урон по цели
+UNTIL_DAMAGE = ("sleep", "hypnotic_pattern", "turn_undead")
 
 
 def hero_died_event(hero) -> DomainEvent:
@@ -51,11 +53,30 @@ def wake_sleeping(engine, target_ref, dealt) -> None:
     engine.impose(target_ref, AppliedCondition(id="prone", source=asleep[0].source))
 
 
+def release_until_damage(engine, target_ref, dealt) -> None:
+    # заклинания «до урона» (Усыпление, Гипнотический узор) кончаются, когда цель получила урон
+    if dealt.final <= 0:
+        return
+    creature = engine.creature(target_ref)
+    spells = [c.source for c in creature.conditions if c.source in UNTIL_DAMAGE]
+    if not spells:
+        return
+    # свежий «лежит» от пробуждения остаётся
+    creature.conditions = [
+        c for c in creature.conditions if c.source not in UNTIL_DAMAGE or c.id == "prone"
+    ]
+    creature.active_effects = [
+        e for e in creature.active_effects if not (e.kind == "held" and e.id in UNTIL_DAMAGE)
+    ]
+    engine.log(f"  {engine.name(target_ref)}: боль прерывает заклинание")
+
+
 def after_damage(
     engine, target_ref, dealt, attacker_ref, *, crit=False, nonlethal=False
 ) -> list[DomainEvent]:
     # вызывается после apply_damage: сон, 0 HP, смерть, концентрация
     wake_sleeping(engine, target_ref, dealt)
+    release_until_damage(engine, target_ref, dealt)
     if target_ref in engine.heroes:
         return hero_damaged(engine, target_ref, dealt, attacker_ref, crit)
     if monster_traits.endures(engine, target_ref, dealt, crit):

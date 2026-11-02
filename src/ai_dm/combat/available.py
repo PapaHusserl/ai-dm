@@ -15,7 +15,13 @@ from ai_dm.rules.inventory import (
     item_totals,
 )
 from ai_dm.rules.modifiers.conditions import with_implied
-from ai_dm.rules.names import SKILL_NAMES
+from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES
+
+# значения variants по-русски: тип урона (Цветной шар, Защита от энергии) и характеристика
+VARIANT_WORDS = {
+    "acid": "кислота", "cold": "холод", "fire": "огонь", "lightning": "молния", "poison": "яд",
+    "thunder": "гром", **{key: name.lower() for key, name in ABILITY_NAMES.items()},
+}
 
 
 class ActionOption(BaseModel):
@@ -140,6 +146,9 @@ def cast_options(engine, ref) -> list[ActionOption]:
     result = []
     turn = engine.part(ref).turn
     for spell in cast.castable_spells(engine, ref):
+        # реакция и долгое сотворение (минуты, часы) в бою не предлагаются
+        if spell.casting_time not in ("action", "bonus_action"):
+            continue
         # бонусное действие -- бонусные заклинания, действие -- остальные
         cost = "action"
         if cast.uses_bonus_action(spell):
@@ -150,6 +159,12 @@ def cast_options(engine, ref) -> list[ActionOption]:
             continue
         result += spell_entries(engine, ref, spell, cost)
     return result
+
+
+def lying(engine, target) -> bool:
+    # среди целей (через запятую) есть лежачий участник; зона в цели -- нет
+    refs = {p.ref: p for p in engine.state.participants}
+    return any(refs[one].status == "down" for one in target.split(",") if one in refs)
 
 
 def spell_entries(engine, ref, spell, cost) -> list[ActionOption]:
@@ -163,46 +178,61 @@ def spell_entries(engine, ref, spell, cost) -> list[ActionOption]:
         if spell.level not in usable:
             circles = [spell.level] + usable
     result = []
-    # атакующие заклинания лежащих не берут (как атаки): их добивает рассказчик
-    hits = cast.spell_kind(spell) in ("attack", "darts", "mark")
+    # вредящие заклинания лежащих не берут (как атаки): их добивает рассказчик
+    hits = cast.spell_kind(spell) in cast.HOSTILE_KINDS
     for circle in circles:
         for target in cast.cast_targets(engine, ref, spell, circle):
-            if hits and engine.part(target).status == "down":
+            if hits and lying(engine, target):
                 continue
             result += circle_options(engine, spell, (circle, target), (usable, free_pool), cost)
     return result
 
 
+def variants_of(spell) -> list[str]:
+    # значения на выбор (тип урона, характеристика): первый эффект с variants
+    return next((e.variants for e in spell.effects if e.variants), [])
+
+
 def circle_options(engine, spell, circle_target, slots, cost) -> list[ActionOption]:
-    # пункты заклинания на один круг и цель; slots = (usable, free_pool)
+    # пункты заклинания на один круг и цель; slots = (usable, free_pool); с variants -- по
+    # пункту на значение (решение 19)
     circle, target = circle_target
     usable, free_pool = slots
     result = []
-    params = {"spell": spell.id, "circle": circle, "target": target}
     # заряд ложится на самого заклинателя: цель в подписи не нужна
-    where = f"→ {target_text(engine, target)}"
+    where = ""
     if cast.spell_kind(spell) == "rider":
         where = "(заряд)"
+    elif target != "":
+        where = f"→ {target_text(engine, target)}"
     name = spell.name
     if circle > spell.level:
         name = f"{spell.name} ({circle} круг)"
-    if circle in usable:
-        result.append(
-            ActionOption(
-                id=f"cast:{spell.id}:{circle}:{target}", kind="cast",
-                label=f"{name} {where}", params=params,
-                cost=cost,
+    for variant in variants_of(spell) or [None]:
+        params = {"spell": spell.id, "circle": circle, "target": target}
+        suffix = ""
+        title = name
+        if variant is not None:
+            params["variant"] = variant
+            params["title"] = name
+            title = f"{name} ({VARIANT_WORDS.get(variant, variant)})"
+            suffix = f":v:{variant}"
+        label = f"{title} {where}".strip()
+        if circle in usable:
+            result.append(
+                ActionOption(
+                    id=f"cast:{spell.id}:{circle}:{target}{suffix}", kind="cast",
+                    label=label, params=params, cost=cost,
+                )
             )
-        )
-    if circle == spell.level and free_pool is not None:
-        label = f"{name} {where} "
-        label += f"(без ячейки, {free_pool.current}/{free_pool.max})"
-        result.append(
-            ActionOption(
-                id=f"cast:{spell.id}:{circle}:{target}:free", kind="cast",
-                label=label, params={**params, "free": True}, cost=cost,
+        if circle == spell.level and free_pool is not None:
+            note = f"(без ячейки, {free_pool.current}/{free_pool.max})"
+            result.append(
+                ActionOption(
+                    id=f"cast:{spell.id}:{circle}:{target}:free{suffix}", kind="cast",
+                    label=f"{label} {note}", params={**params, "free": True}, cost=cost,
+                )
             )
-        )
     return result
 
 
@@ -598,6 +628,20 @@ def cunning_action_options(engine, ref) -> list[ActionOption]:
     return result
 
 
+def retreat_options(engine, ref, options) -> list[ActionOption]:
+    # Стремительное отступление: Рывок бонусным действием, пока держится концентрация
+    if not any(e.kind == "dash_bonus" for e in engine.creature(ref).active_effects):
+        return []
+    if any(o.id == "dash_bonus" for o in options):
+        return []
+    return [
+        ActionOption(
+            id="dash_bonus", kind="dash", label="Стремительное отступление: Рывок",
+            params={"bonus": True}, cost="bonus",
+        )
+    ]
+
+
 def steady_aim_options(engine, ref) -> list[ActionOption]:
     if not rogue.can_aim(engine, ref):
         return []
@@ -657,6 +701,7 @@ def bonus_actions(engine, ref) -> list[ActionOption]:
         )
     options += offhand_options(engine, ref)
     options += cunning_action_options(engine, ref) + steady_aim_options(engine, ref)
+    options += retreat_options(engine, ref, options)
     options += item_options(engine, ref)
     options += transfer_mark_options(engine, ref)
     if has_nimble_escape(engine, ref):

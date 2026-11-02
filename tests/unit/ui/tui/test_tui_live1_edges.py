@@ -343,13 +343,16 @@ def test_in_combat_castable_spell_without_slot_is_busy_not_inert(cfg, tmp_path, 
     async def steps(app, pilot):
         await start_fight(tui, app, pilot)
         hero_of(game.bundle).creature.resources["spell_slot:1"].current = 0
+        hero_of(game.bundle).sheet.known_of().append("speak_with_animals")
         return spell_rows(game)
 
     rows = run(app, steps)
     cure = next(r for r in rows if r[0].startswith("Лечение ран"))
     fog = next(r for r in rows if r[0].startswith("Туманное облако"))
+    talk = next(r for r in rows if r[0].startswith("Разговор с животными"))
     assert strings.SPELL_BUSY in cure[0] and INERT_NOTE not in cure[0]
-    assert INERT_NOTE in fog[0]
+    assert strings.SPELL_BUSY in fog[0] and INERT_NOTE not in fog[0]
+    assert INERT_NOTE in talk[0]
 
 
 def test_spell_chosen_in_combat_submits_menu_number_not_echo(cfg, tmp_path, tui):

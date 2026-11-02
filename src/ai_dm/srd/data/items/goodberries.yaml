@@ -1,0 +1,11 @@
+id: goodberries
+name: Чудо-ягоды
+description: Магические ягоды заклинания Чудо-ягоды; съеденная ягода восстанавливает 1 хит-пойнт. Через 24 часа теряют силу.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 0
+category: consumable
+magic: true
+effects:
+- type: heal
+  value: 1

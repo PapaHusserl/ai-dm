@@ -1,6 +1,7 @@
 from ai_dm.combat import downed, opportunity
 from ai_dm.combat.actions import rogue
 from ai_dm.combat.actions.attack import roll_damage, split_dice
+from ai_dm.combat.zone_effects import zone_effects
 from ai_dm.combat.zones import hazards, is_difficult
 from ai_dm.core.events import DomainEvent
 
@@ -28,12 +29,34 @@ def hazard_check(engine, ref) -> list[DomainEvent]:
     return events
 
 
+def thorns(engine, ref, zone_id) -> list[DomainEvent]:
+    # Шипастая поросль: колющий урон за вход в зону и за выход из неё
+    events = []
+    for effect in zone_effects(engine, zone_id, "hazard"):
+        if not engine.is_capable(ref):
+            break
+        dice, bonus = split_dice(effect.params["dice"])
+        damage_type = effect.params["damage_type"]
+        rolled = roll_damage(
+            engine, effect.source, dice, bonus, False, label=engine.registry.get(
+                "spell", effect.id).name, damage_type=damage_type,
+        )
+        dealt = engine.damage(ref, rolled.total, damage_type)
+        engine.log_notes(dealt)
+        engine.log(f"  {engine.name(ref)}: {engine.hp_text(ref)}")
+        events += downed.after_damage(engine, ref, dealt, effect.source)
+    return events
+
+
 def perform(engine, ref, option) -> list[DomainEvent]:
     p = engine.part(ref)
     new_zone = option.params["zone"]
     events = opportunity.provoke(engine, ref, p.zone_id)
     if not engine.is_capable(ref):
         # атака уронила уходящего: он остаётся на месте
+        return events
+    events += thorns(engine, ref, p.zone_id)
+    if not engine.is_capable(ref):
         return events
     p.turn.move -= 1
     rogue.mark_moved(engine, ref)
@@ -42,4 +65,4 @@ def perform(engine, ref, option) -> list[DomainEvent]:
     engine.log(f"{engine.name(ref)} идёт: {zone_of(engine, new_zone).name}")
     if is_difficult(zone_of(engine, new_zone)):
         p.turn.move = 0
-    return events + hazard_check(engine, ref)
+    return events + hazard_check(engine, ref) + thorns(engine, ref, new_zone)

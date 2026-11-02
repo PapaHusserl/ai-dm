@@ -53,6 +53,27 @@ def test_line_works_like_cone():
         affected_zones(make_zones(), "door", "line", 30, "balcony")
 
 
+# К3 П3а: линия по дальности (Порыв ветра 60 фт), эмманация (Духовные стражи) -- своя зона
+
+def test_long_line_reaches_two_zones_away():
+    assert affected_zones(make_zones(), "door", "line", 60, "balcony") == ["balcony"]
+
+
+def test_long_line_still_covers_own_and_neighbour_zones():
+    assert affected_zones(make_zones(), "door", "line", 60, "door") == ["door"]
+    assert affected_zones(make_zones(), "door", "line", 60, "hall") == ["hall"]
+
+
+def test_line_does_not_reach_beyond_its_length():
+    with pytest.raises(ValueError):
+        affected_zones(make_zones(), "door", "line", 10, "hall")
+
+
+def test_emanation_covers_only_the_origin_zone():
+    assert affected_zones(make_zones(), "hall", "emanation", 15, "hall") == ["hall"]
+    assert affected_zones(make_zones(), "hall", "emanation", 15, "balcony") == ["hall"]
+
+
 def test_unknown_shape_raises():
     with pytest.raises(ValueError):
         affected_zones(make_zones(), "hall", "cross", 10, "hall")

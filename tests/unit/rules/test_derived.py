@@ -604,6 +604,106 @@ def test_hero_ac_parts_have_no_note_for_free_dexterity(registry):
     assert parts[1] == ("Лов", 1, "")
 
 
+# К3 П3а: Дубовая кора -- КД не ниже 17 (ActiveEffect kind="ac_floor")
+
+def barkskin(hero, **extra):
+    from ai_dm.state.creature import ActiveEffect
+
+    params = {"label": "Дубовая кора", "amount": 17, "magic": True} | extra
+    hero.creature.active_effects.append(ActiveEffect(id="barkskin", source="x", kind="ac_floor",
+                                                     params=params))
+    return hero
+
+
+def test_ac_floor_raises_a_low_armor_class_to_the_floor(registry):
+    hero = make_fighter(armor="leather_armor")
+    assert armor_class(hero, registry) < 17
+    assert armor_class(barkskin(hero), registry) == 17
+
+
+def test_ac_floor_shows_the_difference_as_a_labeled_part(registry):
+    hero = barkskin(make_fighter(armor="leather_armor"))
+    parts = armor_class_parts(hero, registry)
+    assert parts[-1][0] == "Дубовая кора"
+    assert parts[-1][2] == "не ниже 17"
+    assert sum(value for _, value, _ in parts) == 17
+
+
+def test_ac_floor_does_not_lower_a_better_armor_class(registry):
+    hero = make_fighter(armor="chain_mail", shield="shield")
+    before = armor_class(hero, registry)
+    assert before > 17
+    assert armor_class(barkskin(hero), registry) == before
+
+
+def test_ac_floor_adds_nothing_when_armor_class_equals_the_floor(registry):
+    hero = make_fighter(armor="leather_armor")
+    plain = armor_class(hero, registry)
+    plain_parts = len(armor_class_parts(hero, registry))
+    floored = barkskin(hero, amount=plain)
+    assert armor_class(floored, registry) == plain
+    assert len(armor_class_parts(floored, registry)) == plain_parts
+
+
+def test_ac_floors_stack_in_order_each_lifting_to_its_own_value(registry):
+    hero = make_fighter(armor="leather_armor")
+    plain = armor_class(hero, registry)
+    barkskin(hero, amount=plain + 2)
+    barkskin(hero, amount=plain + 5)
+    parts = armor_class_parts(hero, registry)
+    assert [value for _, value, _ in parts[-2:]] == [2, 3]
+    assert armor_class(hero, registry) == plain + 5
+
+
+def test_ac_floor_after_another_effect_still_applies(registry):
+    from ai_dm.state.creature import ActiveEffect
+
+    hero = make_fighter(armor="leather_armor")
+    hero.creature.active_effects.append(
+        ActiveEffect(id="protection", source="x", kind="resist", params={"damage_type": "fire"})
+    )
+    assert armor_class(barkskin(hero), registry) == 17
+
+
+def test_expired_ac_floor_does_not_count_at_the_world_clock(registry):
+    from ai_dm.state.creature import Expiry
+
+    hero = make_fighter(armor="leather_armor")
+    plain = armor_class(hero, registry)
+    barkskin(hero)
+    hero.creature.active_effects[0].expires = Expiry(kind="seconds", value=100)
+    assert armor_class(hero, registry, now_s=50) == 17
+    assert armor_class(hero, registry, now_s=200) == plain
+    assert len(armor_class_parts(hero, registry, now_s=200)) == len(
+        armor_class_parts(make_fighter(armor="leather_armor"), registry)
+    )
+
+
+def test_magic_ac_floor_is_ignored_when_magic_is_ignored(registry):
+    hero = make_fighter(armor="leather_armor")
+    plain = armor_class(hero, registry)
+    barkskin(hero)
+    assert armor_class(hero, registry, ignore_magic=True) == plain
+    assert armor_class(hero, registry) == 17
+
+
+def test_non_magic_ac_floor_counts_when_magic_is_ignored(registry):
+    hero = barkskin(make_fighter(armor="leather_armor"), magic=False)
+    assert armor_class(hero, registry, ignore_magic=True) == 17
+
+
+def test_ac_floor_stacks_on_top_of_other_effects(registry):
+    from ai_dm.state.creature import ActiveEffect
+
+    hero = barkskin(make_fighter(armor="leather_armor"))
+    hero.creature.active_effects.append(
+        ActiveEffect(id="shield_of_faith", source="x", kind="ac",
+                     params={"label": "Щит веры", "amount": 2, "magic": True})
+    )
+    # 11 + 2 = 13 < 17 -- кора подтягивает до 17
+    assert armor_class(hero, registry) == 17
+
+
 @pytest.mark.parametrize(
     ("now_s", "text"),
     [

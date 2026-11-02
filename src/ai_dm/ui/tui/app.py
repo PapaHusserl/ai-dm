@@ -19,6 +19,7 @@ from ai_dm.game.shop_text import shop_head, shop_npcs
 from ai_dm.rules.trade import refuses
 from ai_dm.ui.combat_menu import MenuState
 from ai_dm.ui.format import head_lines, inert_lines
+from ai_dm.ui.menu_variants import parent_of
 from ai_dm.ui.screen import limit_percent, picture_state, scene_mark, sound_state
 from ai_dm.ui.session import offer_is_stale
 from ai_dm.ui.tui import strings
@@ -219,7 +220,8 @@ class AiDmApp(App):
         self.push_screen(MoreModal(strings.MORE_TITLE, shown), self.more_chosen)
 
     def action_menu_back(self):
-        self.menu.expanded = None
+        # из подгруппы вариантов -- в группу, откуда она раскрыта, иначе в корень
+        self.menu.expanded = parent_of(self.menu.expanded)
         self.show_menu()
 
     def more_chosen(self, option_id):

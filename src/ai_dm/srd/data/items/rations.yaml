@@ -1,0 +1,7 @@
+id: rations
+name: Рационы
+description: Дневной паёк дорожной еды; создаётся заклинанием Сотворение пищи и воды.
+source: srd-5.2
+license: CC-BY-4.0
+cost_cp: 50
+category: gear

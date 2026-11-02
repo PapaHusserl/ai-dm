@@ -189,7 +189,10 @@ def use_item(hero, item_id: str, registry, rng) -> int:
     effect = found[1].effects[0]
     if effect.type != "heal":
         raise InventoryError(f"предмет нельзя использовать: {item_id}")
-    amount = roll_dice(effect.dice, rng).total + effect_amount(effect, hero, registry)
+    rolled = 0
+    if effect.dice is not None:
+        rolled = roll_dice(effect.dice, rng).total
+    amount = rolled + effect_amount(effect, hero, registry)
     healed = heal(hero, amount)
     remove_item(hero, item_id)
     return healed

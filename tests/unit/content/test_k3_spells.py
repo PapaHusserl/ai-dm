@@ -79,6 +79,87 @@ def test_ready_spells_keep_a_combat_kind(registry):
     assert {i: spell_kind(registry.get("spell", i)) for i in ready} == ready
 
 
+# К3 П3а: вид заклинания по эффектам (spell_kind) -- что понимает бой
+P3A_KINDS = {
+    "sacred_flame": "save", "scorching_ray": "rays", "magic_missile": "darts",
+    "hold_person": "condition", "sleep": "condition", "entangle": "condition",
+    "grease": "condition", "fear": "condition", "color_spray": "condition",
+    "ray_of_enfeeblement": "condition", "bestow_curse": "mark",
+    "inflict_wounds": "save", "shocking_grasp": "attack", "vampiric_touch": "attack",
+    "guiding_bolt": "attack", "ray_of_frost": "attack", "acid_arrow": "attack",
+    "ray_of_sickness": "attack", "ice_knife": "attack", "fire_bolt": "attack",
+    "thunderwave": "area", "gust_of_wind": "area", "acid_splash": "area",
+    "burning_hands": "area", "fog_cloud": "fog", "spike_growth": "hazard",
+    "goodberry": "create_item", "create_food_and_water": "create_item", "false_life": "temp_hp",
+    "mage_armor": "defense", "shield_of_faith": "defense", "barkskin": "defense",
+    "blur": "defense", "invisibility": "defense", "protection_from_energy": "defense",
+    "protection_from_evil_and_good": "ward", "lesser_restoration": "cure",
+    "remove_curse": "cure", "healing_word": "heal", "mass_healing_word": "heal",
+    "cure_wounds": "heal", "misty_step": "teleport", "expeditious_retreat": "retreat",
+    "prestidigitation": "utility", "longstrider": "utility", "magic_weapon": "buff",
+    "enhance_ability": "buff", "beacon_of_hope": "buff", "bless": "buff",
+    "pass_without_trace": "buff", "spare_the_dying": "stabilize",
+}
+
+
+@pytest.mark.parametrize("spell_id, kind", sorted(P3A_KINDS.items()))
+def test_spell_kind_of_p3a_spells(registry, spell_id, kind):
+    from ai_dm.rules.spellcasting import spell_kind
+
+    assert spell_kind(registry.get("spell", spell_id)) == kind
+
+
+def test_spell_without_effects_has_no_kind(registry):
+    from ai_dm.rules.spellcasting import spell_kind
+
+    assert spell_kind(registry.get("spell", "speak_with_animals")) is None
+
+
+def test_has_effect_matches_any_of_the_given_types(registry):
+    from ai_dm.rules.spellcasting import has_effect
+
+    spell = registry.get("spell", "hold_person")
+    assert has_effect(spell, "save_effect") is True
+    assert has_effect(spell, "damage", "apply_condition") is True
+    assert has_effect(spell, "damage", "heal") is False
+
+
+@pytest.mark.parametrize("spell_id, feet", [
+    ("sacred_flame", 60), ("fog_cloud", 120), ("vampiric_touch", 10), ("mage_armor", 10),
+])
+def test_reach_ft_uses_range_or_touch_default(registry, spell_id, feet):
+    from ai_dm.rules.spellcasting import reach_ft
+
+    assert reach_ft(registry.get("spell", spell_id)) == feet
+
+
+def test_modifier_params_skip_empty_fields(registry):
+    from ai_dm.rules.spellcasting import modifier_params
+
+    trace = registry.get("spell", "pass_without_trace").effects[0]
+    assert modifier_params(trace) == {"target": "skill", "skill": "stealth", "amount": 10}
+    bless = registry.get("spell", "bless").effects[0]
+    assert modifier_params(bless) == {"target": "attack_roll", "dice": "1d4"}
+
+
+def test_modifier_params_carry_mode_and_ability(registry):
+    from ai_dm.rules.spellcasting import modifier_params
+
+    beacon = registry.get("spell", "beacon_of_hope").effects[0]
+    assert modifier_params(beacon) == {
+        "target": "saving_throw", "mode": "advantage", "ability": "wis",
+    }
+
+
+def test_modifier_params_never_hold_none(registry):
+    from ai_dm.rules.spellcasting import modifier_params
+
+    for spell in spells(registry):
+        for effect in spell.effects:
+            if effect.type == "modifier":
+                assert None not in modifier_params(effect).values(), spell.id
+
+
 def test_ray_of_enfeeblement_cuts_weapon_damage_and_gives_disadvantage(registry):
     effects = registry.get("spell", "ray_of_enfeeblement").effects
     assert not [e for e in effects if e.type == "damage"]

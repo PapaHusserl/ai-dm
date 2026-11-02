@@ -2,13 +2,14 @@ import re
 from dataclasses import dataclass, field, replace
 
 from ai_dm.combat.available import HIDDEN_KINDS
+from ai_dm.ui.menu_rows import BACK_LABEL, SUFFIX, MenuRow, option_row, short_label, target_of
+from ai_dm.ui.menu_variants import VARIANTS_GROUP, spell_rows, variant_rows
 
 # Меню хода героя: цель + действия против неё, короткий блок бесцелевых, остальное в «Ещё…».
 # Слой отображения поверх плоского списка вариантов: движок и нумерация протокола не меняются.
 # Особые стрелы лука (≥ 2 вида) сворачиваются в «Стрелы ▸» под строкой лука.
 MAX_ROWS = 10
 SPELLS_INLINE = 2
-BACK_LABEL = "← Назад"
 MORE_LABEL = "Ещё…"
 MOVE_LABEL = "Идти ▸"
 SPELLS_TARGET_LABEL = "Заклинания на цель ▸"
@@ -30,24 +31,7 @@ CATEGORY_BY_KIND = {
     **dict.fromkeys(("action_surge", "steady_aim"), "free"),
     **dict.fromkeys(("multiattack", "end_turn", "escape"), "free"),
 }
-# чем меньше, тем позже строку вытесняют в «Ещё…» при нехватке места; оружие вытесняется последним
-RANK_BY_KIND = {
-    "escape": -2,
-    "end_turn": -1,
-    **dict.fromkeys(("attack", "stabilize", "multiattack"), 0),
-    **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), 0),
-    "move": 1,
-    **dict.fromkeys(("dodge", "second_wind", "action_surge", "steady_aim"), 2),
-    **dict.fromkeys(("dash", "disengage", "hide_bonus", "cast", "transfer_mark"), 3),
-    **dict.fromkeys(("parley", "disarm"), 5),
-}
 SPECIAL_FREE = ("end_turn", "escape")
-TARGET_PARAM_KINDS = (
-    "attack", "cast", "transfer_mark", "parley", "disarm", "offhand_attack", "horde_breaker",
-    "cleave",
-)
-SUFFIX = re.compile(r" \(ещё (\d+) из 2\)$")
-NAME = re.compile(r" → [^()]*?(?= \(|$)")
 AMMO_PREFIX = re.compile(r"^Атака: .*? — ")
 
 
@@ -58,18 +42,6 @@ class TargetChip:
     name: str
     hp_text: str
     rank: int = 0
-
-
-@dataclass
-class MenuRow:
-    # kind: option (option_id), expand (group), back, more
-    label: str
-    option_id: str | None = None
-    kind: str = "option"
-    group: str | None = None
-    rank: int = 0
-    block: str = "target"
-    key: str = ""
 
 
 @dataclass
@@ -86,15 +58,6 @@ class MenuView:
         return self.target_rows + self.free_rows
 
 
-def target_of(option):
-    # ref цели варианта или None; для cast это может быть и зона/союзник -- решает build_view
-    if option.kind == "help":
-        return option.params.get("enemy")
-    if option.kind in TARGET_PARAM_KINDS:
-        return option.params.get("target")
-    return None
-
-
 def targets(options, roster):
     refs = {target_of(option) for option in options}
     return sorted([chip for chip in roster if chip.ref in refs], key=lambda chip: chip.rank)
@@ -105,13 +68,6 @@ def default_target(chips, last_target):
     if last_target in refs:
         return last_target
     return refs[0] if refs else None
-
-
-def short_label(option, target=None):
-    label = SUFFIX.sub("", option.label)
-    if target is not None and target_of(option) == target:
-        label = NAME.sub("", label)
-    return label
 
 
 def header_of(options):
@@ -136,12 +92,6 @@ def fit(rows, limit):
         last = max(i for i, row in enumerate(rows) if row.rank == worst)
         del rows[last]
     return rows
-
-
-def option_row(option, block, target=None, label=None):
-    label = label or short_label(option, target)
-    rank = RANK_BY_KIND.get(option.kind, 6)
-    return MenuRow(label, option.id, rank=rank, block=block)
 
 
 def attack_row(option, options, target, nonlethal):
@@ -200,8 +150,9 @@ def target_block(options, target, nonlethal):
                 rows += ammo_after(option.params["weapon"], options, target, nonlethal)
             else:
                 rows.append(option_row(option, "target", target))
-    if len(spells) <= SPELLS_INLINE:
-        return rows + [option_row(option, "target", target) for option in spells]
+    shown = spell_rows(spells, target)
+    if len(shown) <= SPELLS_INLINE:
+        return rows + shown
     return rows + [MenuRow(SPELLS_TARGET_LABEL, kind="expand", group="spells_target", rank=3)]
 
 
@@ -236,6 +187,8 @@ def group_rows(options, target, enemies, group, nonlethal=False):
         # «Атака: лук — стрела (осталось 9)» -> «Стрела (осталось 9)»: в группе лук известен
         rows = [replace(row, label=AMMO_PREFIX.sub("", row.label).capitalize()) for row in rows]
         return [MenuRow(BACK_LABEL, kind="back")] + rows
+    if group.startswith(VARIANTS_GROUP):
+        return variant_rows(options, target, group)
     if group in ("move", STRIKE_GROUP):
         # имя группы совпадает с видом её пунктов
         chosen = [option for option in options if option.kind == group]
@@ -243,7 +196,7 @@ def group_rows(options, target, enemies, group, nonlethal=False):
         chosen = [option for option in options if is_target_spell(option, target)]
     else:
         chosen = [option for option in options if is_free_spell(option, enemies)]
-    return [MenuRow(BACK_LABEL, kind="back")] + [option_row(o, "target", target) for o in chosen]
+    return [MenuRow(BACK_LABEL, kind="back")] + spell_rows(chosen, target, group)
 
 
 def number(rows):

@@ -10,3 +10,7 @@ casting_time: bonus_action
 duration: 1h
 classes:
 - ranger
+effects:
+- type: ac_bonus
+  value: 17
+  mode: floor

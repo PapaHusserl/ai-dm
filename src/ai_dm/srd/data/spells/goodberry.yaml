@@ -9,3 +9,7 @@ range_kind: self
 duration: 1d
 classes:
 - ranger
+effects:
+- type: create_item
+  item: goodberries
+  count: 10

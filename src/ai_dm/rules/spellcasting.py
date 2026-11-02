@@ -23,24 +23,79 @@ def effect_of(spell, effect_type):
     return None
 
 
+def modifier_params(effect) -> dict:
+    # параметры ActiveEffect(kind="modifier") по эффекту заклинания; пустые не пишутся
+    params = {"target": effect.target}
+    if effect.dice:
+        params["dice"] = effect.dice
+    if effect.mode:
+        params["mode"] = effect.mode
+    if effect.value is not None:
+        params["amount"] = effect.value
+    if effect.ability:
+        params["ability"] = effect.ability
+    if effect.skill:
+        params["skill"] = effect.skill
+    return params
+
+
+def has_effect(spell, *types) -> bool:
+    return any(effect.type in types for effect in spell.effects)
+
+
+# первый подходящий эффект даёт вид (после rider, mark и area)
+KIND_BY_EFFECT = (
+    ("heal", "heal"), ("remove_condition", "cure"), ("temp_hp", "temp_hp"),
+    ("ac_bonus", "defense"), ("resist", "defense"), ("invisible", "defense"),
+    ("blur", "defense"), ("ward", "ward"), ("teleport", "teleport"), ("hazard", "hazard"),
+    ("create_item", "create_item"), ("stabilize", "stabilize"), ("fog", "fog"),
+    ("action", "retreat"),
+)
+
+
 def spell_kind(spell) -> str | None:
     # вид заклинания по его данным; неизвестный вид в бою не используется
-    if effect_of(spell, "rider") is not None:
+    if has_effect(spell, "rider"):
         return "rider"
-    if effect_of(spell, "extra_damage") is not None:
+    if has_effect(spell, "extra_damage"):
         return "mark"
-    if effect_of(spell, "area") is not None:
-        return "area"
-    if effect_of(spell, "heal") is not None:
-        return "heal"
-    if effect_of(spell, "modifier") is not None:
-        return "buff"
+    damages = [e for e in spell.effects if e.type == "damage"]
     damage = effect_of(spell, "damage")
+    if has_effect(spell, "area") and len(damages) <= 1 and (damages or has_effect(spell, "push")):
+        return "area"
+    for effect_type, kind in KIND_BY_EFFECT:
+        if has_effect(spell, effect_type):
+            return kind
+    save = has_effect(spell, "save_effect")
+    if save and damage is None and has_effect(spell, "apply_condition", "modifier"):
+        return "condition"
+    if save and damage is not None and not has_effect(spell, "apply_condition", "area"):
+        return "save"
+    if has_effect(spell, "modifier"):
+        return "buff"
+    if damage is not None and damage.count and damage.mode == "attack_roll":
+        return "rays"
     if damage is not None and damage.count:
         return "darts"
     if damage is not None:
         return "attack"
+    if has_effect(spell, "utility"):
+        return "utility"
     return None
+
+
+def reach_ft(spell) -> int:
+    # дальность в футах; касание и «на себя» -- в пределах своей зоны
+    if spell.range_ft is None:
+        return 10
+    return spell.range_ft
+
+
+def effect_line(spell) -> str:
+    # строка эффекта для лога: effect_text, иначе первая фраза описания
+    if spell.effect_text:
+        return spell.effect_text
+    return spell.description.split(". ")[0]
 
 
 def free_cast_left(hero, registry, spell) -> bool:
@@ -164,6 +219,12 @@ def roll_cast_checks(hero, spell, cast_checks, registry, rng, modifiers, now_s):
         if result.outcome == "fail":
             return True, lines
     return False, lines
+
+
+class MaxRng:
+    # «кубики» на максимум: лечение цели под Маяком надежды (roll_heal с этим rng)
+    def d(self, sides):
+        return sides
 
 
 def roll_heal(spell, hero, registry, rng, circle=None) -> tuple[int, str]:

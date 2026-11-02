@@ -95,6 +95,17 @@
 53. Р34 — (а) внесённое в книгу на этом уровне подготовить можно сразу, по SRD (2026-11-01).
 54. Лог Магического восстановления, несколько ячеек — форма папы: одной строкой через «, », одинаковые — «ячейки N круга ×k»
     (аудит свекрови П2, 2026-11-01).
+55. Лежачие враги в меню заклинаний — (а) убрать все виды с враждебной одиночной целью (`attack`, `darts`, `mark`, `save`, `rays`,
+    `condition`) для цели `status == "down"`; лечение/Пощада/`cure` союзников остаются (рекомендация папы, 2026-11-02).
+56. Р35 — (б) рассказчику в меню боя — только базовый круг заклинаний (рекомендация папы была (а); 2026-11-02).
+57. Р36 — (а) Волшебное оружие: +1 и к атаке заклинанием, упрощение в rules-adaptation (2026-11-02).
+58. Р37 — (а) «больше не скрыт» — до строк эффекта, как сделано (2026-11-02).
+59. Р38 — (а) Бесследное передвижение — до 3 целей, строка в rules-adaptation (2026-11-02).
+60. Р39 — (а) Порыв ветра держит концентрацию (`cast_area` → `hold_concentration` при `concentration: true`), строка в rules-adaptation
+    (2026-11-02).
+61. Р40 — (а) Защита от яда в меню всегда, на любого союзника; здоровому — сопротивление яду на 1 ч (2026-11-02).
+62. Р41 — (б) Невидимость, снятая атакой или заклинанием, кончается вместе с концентрацией (как SRD); строка упрощения
+    из rules-adaptation убрать (2026-11-02).
 
 ## Суть
 
@@ -166,13 +177,14 @@
 - `channel_divinity_blocked` (`rules/divine.py:224`) впервые читается: `cleric.channel_options` при `True` пунктов не даёт
   (сцена ≤ −6 — С3, не К3).
 
-**Поведение:** меняется — (1) мастер создания: у жреца появляется шаг «Заговоры» (3 из 7) и шаг «Божественный порядок»
+**Поведение:** меняется — (1) мастер создания: у жреца появляется шаг «Заговоры» (3 из 7; с Чудотворцем — 4: `count_cantrips`,
+сделано П2, `test_hero_steps.py:1155`; папа, 2026-11-02) и шаг «Божественный порядок»
 (Защитник / Чудотворец); у волшебника — предмет «Книга заклинаний» в наборе; все классы — наборы SRD вместо `explorers_pack`
 (решение 11), кит жреца — булава, кольчужная рубаха, Священный символ, набор жреца; (2) меню уровня: «заговор» (4 ур.), «заклинание в
 книгу» ×2 (волшебник, каждый уровень), «заклинание для подготовки» — только из книги, «заклинание Воплощения» (3, 5 ур.),
 «навык для экспертизы» (Учёный, 2 ур., шесть навыков), подкласс на 3 ур.; (3) меню боя: новые заклинания с механикой (117 в К3),
 группа «Божественный канал ▸» у жреца 2+ ур., «Туманный шаг», «Духовное оружие: … → цель» бонусным действием, авто-Щит у волшебника;
-подгруппы «Хроматический шар ▸» / «Защита от энергии ▸» / «Усиление способности ▸» с пунктами по типу урона или характеристике
+подгруппы «Цветной шар ▸» / «Защита от энергии ▸» / «Усиление способности ▸» с пунктами по типу урона или характеристике
 (решение 19, Р26); `utility`-заклинания — в существующей группе «Заклинания без цели ▸» (`SPELLS_FREE_LABEL`, `ui/combat_menu.py:15`),
 строка «пока недоступно в бою» — только у 29 заклинаний К3б (решение 17); (3а) лист `/sheet` и рассказчик: строка «Действующие
 заклинания: Языки (до 14:30)…» из `kind="spell"` (сейчас рассказчик их не видит — `boons_data`, `master/prompt.py:172`, читает только
@@ -180,7 +192,9 @@
 ближайшем ходе часов мира (строка лога — Р25);
 (4) `/spells`: «Книга заклинаний (N)» и «Подготовлено (M/L)» у волшебника (развилка Р7); (5) отдых: короткий — Магическое
 восстановление (строка лога), Запоминание заклинания (замена одного подготовленного); `cast_spell` с `ritual: true`;
-(6) лист рассказчика: `divine_order`, `spellbook`; (7) сетка `sim_combat` — новая базовая линия жреца и волшебника; (8) смена
+(6) рассказчику — справочник создания (`master/hero.py:class_data`: `cantrip_count`, `divine_order_ids`, `spellbook`;
+`HeroSheetRequest.divine_order`), а в листе героя Божественный порядок виден через умения (`hero_feature_ids` ⊇ `protector`/`thaumaturge`;
+`sheet_data` не менялся — уточнено по П2, папа 2026-11-02); (7) сетка `sim_combat` — новая базовая линия жреца и волшебника; (8) смена
 подготовленных после длинного отдыха у волшебника — только из книги. Тексты пунктов — развилка Р14.
 **Вне ai-dm:** нет.
 **Зависимость:** К2 закрыт (e3ebd9c, в дереве чисто). Сейв v14 (БП).
@@ -200,7 +214,7 @@ v15 с пустой миграцией (решает архитектор); пл
 **Адаптации к зонам и упрощения (решение 9, пакет — развилка Р2; в `rules-adaptation.md`, раздел «Жрец и волшебник 1–5»):**
 30 фт = своя зона и соседние (Изгнание нежити — решение 7, Божественная искра, Щит веры, Благословение как сейчас); 60 фт =
 две зоны (Лечащее слово, Множественное лечащее слово — по `range_band_ft`); касание = своя зона (Нанесение ран, Удар
-электричеством, Вампирское касание, Малое восстановление, Снятие проклятия); сфера/куб ≤ 20 фт радиуса = одна зона (Огненный шар
+электричеством, Вампирское касание, Леденящее прикосновение — SRD 5.2.1 касание, сверка П1; Малое восстановление, Снятие проклятия); сфера/куб ≤ 20 фт радиуса = одна зона (Огненный шар
 20, Дребезги 10, Кислотный плевок 5, Усыпление 5, Смазка 10, Паутина 20, Гипнотический узор 30 → одна зона: как `affected_zones`
 сейчас), линия (Молния 100, Порыв ветра 60) = одна зона цели в дальности, конус (Страх 30) = как Огненные руки; эманация и куб «от
 себя» (Духовные стражи 15, Громовая волна 15) = своя зона без заклинателя; толчок (Громовая волна, Порыв ветра) — в соседнюю
@@ -210,13 +224,13 @@ v15 с пустой миграцией (решает архитектор); пл
 (развилка Р10), «до урона» — снимается в `downed.after_damage` (как сон стрелы); Усыпление 2024 (сфера 5 фт) — одна цель;
 Приказ — только «Ниц» (Р9); Помощь — +5 к максимуму и текущим HP до 3 целей на 8 ч, повтор не складывается (срок заново), +5 за
 круг выше 2-го, откат по часам мира (решение 26, Р25); Доспехи мага = +3 к КД без доспеха (13 + Лов против 10 + Лов), Дубовая
-кора — КД не ниже 17; Палящий луч — все лучи в одну цель (как Волшебная стрела); Хроматический шар, Защита от энергии, Усиление
+кора — КД не ниже 17; Палящий луч — все лучи в одну цель (как Волшебная стрела); Цветной шар (решение 46), Защита от энергии, Усиление
 способности — тип урона/характеристика выбирается в подгруппе «▸» (решение 19);
 Проклятие — вариант «+1d8 некротического от заклинателя» (механика Метки); Малое восстановление — первое из состояний по порядку
 SRD (Р16); Духовное оружие/Пылающий шар — в зоне заклинателя или соседней, бонусным действием бьёт цель в своей или соседней зоне;
 Духовные стражи — урон в начале хода врага в зоне заклинателя, при входе не считается, скорость не режется (BACKLOG 237);
 Туманное облако — атаки в зону и из зоны с помехой (Р18); Шипастая поросль — 2d4 колющего при входе и выходе из зоны
-(`move.hazard_check`); Чудо-ягоды — предмет ×10, съесть — бонусное действие, 1 HP (Р15); Воскрешение — только данные (Р3);
+(`move.thorns` в `move.perform`, П3а); Чудо-ягоды — предмет ×10, съесть — бонусное действие, 1 HP (Р15); Воскрешение — только данные (Р3);
 Контрзаклятие — монстры не колдуют, вне боя нарратив; Мощный заговор (Воплощение 3) — половина урона при успешном спасброске или
 промахе заговора; Выжигание нежити (5 ур.) — провалившая спасбросок нежить получает (Мдр, минимум 1) × d8 излучением; Ученик
 жизни — +2 + круг к лечению заклинаний 1+ круга; Магическое восстановление — движок выбирает ячейки сам (Р6); ритуал — +10 минут по
@@ -275,7 +289,8 @@ SA `sanctuary`, WB `bond`, C′ `condition` с новой адаптацией, 
 - Жрец, 1 круг (15): `bane` C (Хар, −1d4 к атакам и спасброскам, 3 цели, концентрация), `bless` ✓E, `command` C (Мдр → «Лежит»),
   `create_or_destroy_water` N, `cure_wounds` ✓E, `detect_evil_and_good` N, `detect_magic` N, `detect_poison_and_disease` N,
   `guiding_bolt` A+ (4d6 излучением, следующая атака по цели с преимуществом — `guided`), `healing_word` H+ (бонусное, 60 фт, 2d4),
-  `inflict_wounds` A+ (касание, 2d10 некротического), `protection_from_evil_and_good` KW (атаки существ с тегами aberration, celestial,
+  `inflict_wounds` S (касание = своя зона, Тел, 2d10 некротического, половина при успехе — SRD 5.2.1, сверка П1; было A+ — папа, 2026-11-02),
+  `protection_from_evil_and_good` KW (атаки существ с тегами aberration, celestial,
   elemental, fey, fiend, undead по цели с помехой; их очарование/страх на цель не ложатся — `engine.impose`), `purify_food_and_drink` N,
   `sanctuary` SA-б, `shield_of_faith` K (+2 КД, концентрация).
 - Жрец, 2 круг (17): `aid` MX (+5 к максимуму и текущим HP до 3 целей в своей и соседних зонах, 8 ч, +5 за круг — решение 26), `augury` N, `blindness_deafness` C (Тел, ослеплён), `calm_emotions` C′-б, `continual_flame` ZE-б (свет
@@ -290,12 +305,12 @@ SA `sanctuary`, WB `bond`, C′ `condition` с новой адаптацией, 
   `magic_circle` ZE-б, `mass_healing_word` H+ (бонусное, 60 фт, до 6 целей, 2d4), `meld_into_stone` N, `protection_from_energy` K
   (сопротивление типу — `variants`: acid, cold, fire, lightning, thunder; подгруппа «▸», решение 19), `remove_curse` R (`cursed`), `revivify` RV-б (Р3), `sending` N,
   `speak_with_dead` N, `spirit_guardians` U (3d8 излучением, Мдр, концентрация 10 мин), `tongues` N+ (языки: все на 1 ч), `water_walk` N.
-- Волшебник, заговоры (15): `acid_splash` S (зона, Лов, 1d6 кислотой), `chill_touch` E-attack (1d10 некротического; «без лечения» —
-  текст), `dancing_lights` ZE-б (как `light`, концентрация), `elementalism` N, `fire_bolt` ✓E, `light` (общий), `mage_hand` N, `mending`
+- Волшебник, заговоры (15): `acid_splash` S (зона, Лов, 1d6 кислотой), `chill_touch` E-attack касание (SRD 5.2.1 — ближняя атака заклинанием, своя зона; 1d10 некротического;
+  «без лечения» — текст; до П3а меню с ним падает — решение 44; папа, 2026-11-02), `dancing_lights` ZE-б (как `light`, концентрация), `elementalism` N, `fire_bolt` ✓E, `light` (общий), `mage_hand` N, `mending`
   (общий), `message` N, `minor_illusion` N, `poison_spray` S (Тел, 1d12 ядом), `prestidigitation` N, `ray_of_frost` A+ (1d8 холодом,
   `slow` −10), `shocking_grasp` A+ (касание, 1d8 электричеством), `true_strike` TS-б.
 - Волшебник, 1 круг (30): `alarm` ✓N (ритуал), `burning_hands` ✓E, `charm_person` C (Мдр, очарован, 1 ч; вне боя — NPC с `creature`),
-  `chromatic_orb` E-attack (3d8, тип — `variants`: acid, cold, fire, lightning, poison, thunder; подгруппа «▸», решение 19), `color_spray` C (зона, Лов → ослеплён до конца следующего хода), `comprehend_languages` N+
+  `chromatic_orb` E-attack (3d8, тип — `variants`: acid, cold, fire, lightning, poison, thunder; подгруппа «▸», решение 19), `color_spray` C (зона, Тел → ослеплён до конца следующего хода; SRD 5.2 — Constitution, было «Лов» — папа, 2026-11-02), `comprehend_languages` N+
   (языки: все), `detect_magic` (общий), `disguise_self` N, `expeditious_retreat` V, `false_life` T (1d4+4), `feather_fall` FF-б,
   `find_familiar` PT-б, `floating_disk` N, `fog_cloud` ✓F, `grease` C (зона, Лов → «Лежит»), `hideous_laughter` C (Мдр, «Лежит» +
   недееспособен, концентрация, повтор), `ice_knife` A+Z (1d10 колющего по цели + 2d6 холодом Лов по зоне), `identify` N+ (цель —
@@ -309,8 +324,9 @@ SA `sanctuary`, WB `bond`, C′ `condition` с новой адаптацией, 
   (общий), `enlarge_reduce` SZ-б, `flaming_sphere` W (2d6 огнём, Лов, бонусное), `gentle_repose` (общий), `gust_of_wind` P (зона, Сил,
   толчок), `hold_person` (общий), `invisibility` K (`invisible` до атаки/заклинания), `knock` N, `levitate` FL-б, `locate_object` (общий),
   `magic_mouth` N, `magic_weapon` E-buff (+1 к атаке и урону оружием — `value`), `mind_spike` S (Мдр, 3d8 психического), `mirror_image`
-  IM-б, `misty_step` V (бонусное), `phantasmal_force` C′-б (Инт, 1d6 психического в начале хода — `burn`), `ray_of_enfeeblement` A+C
-  (Тел → «ослаблен»: половина урона оружием), `rope_trick` N, `scorching_ray` M (3 луча 2d6 огнём, +1 за круг), `see_invisibility` SI-б,
+  IM-б, `misty_step` V (бонусное), `phantasmal_force` C′-б (Инт, 1d6 психического в начале хода — `burn`), `ray_of_enfeeblement` C
+  (Тел, провал → модификатор −1d8 к урону оружием + помеха на атаки цели, `repeat` — решение 49 Р32; урона нет по SRD 5.2.1; было A+C
+  «половина» — папа, 2026-11-02), `rope_trick` N, `scorching_ray` M (3 луча 2d6 огнём, +1 за круг), `see_invisibility` SI-б,
   `shatter` E-area (сфера 10, Тел, 3d8 звуковым), `spider_climb` N, `suggestion` C′-б, `web` C (зона, Лов → опутан, концентрация, повтор).
 - Волшебник, 3 круг (29): `animate_dead` (общий), `bestow_curse` (общий), `blink` BL-б, `clairvoyance` (общий), `counterspell` N
   (триггера нет — решение 38: `utility` + пункт беклога), `dispel_magic` (общий), `fear` C (конус, Мдр → испуган), `fireball` E-area (сфера 20, Лов, 8d6 огнём,
@@ -360,7 +376,9 @@ SA `sanctuary`, WB `bond`, C′ `condition` с новой адаптацией, 
 (К3б: `zone`, `tempo`, `images`, `blink`, `flight`, `size`, `sanctuary`, `bond`, `breath`, `true_strike`, `dispel`, `revive`,
 `summon_creature` — только в К3б, не раньше); `EffectTarget` += `martial_weapons`, `heavy_armor`, `cantrips`, `ability_check` (Усиление
 способности — `EFFECT_TARGETS` в `rules/modifiers/effects.py:9` уже знает `ability_check`); `EffectMode` += `attack_roll`, `floor`-для-КД
-(есть `floor`); `EffectShape` += `sphere`, `cube`, `line`, `emanation` (сейчас `Literal["cone"]`, а `affected_zones` уже знает
+(есть `floor`), + `penalty` (знак Порчи/Луча ослабления) и `disadvantage` (Р32) — сделано П1; П1 добавил также `EffectType` `teleport`,
+`stabilize`, `fog` (были в «Суть»), `EffectSpec.item` (Сотворение пищи → `rations`), `UpcastStep.value` (+5 за круг у Помощи и Ложной
+жизни) — приняты в «Правках по ревью» П1 (папа, 2026-11-02); `EffectShape` += `sphere`, `cube`, `line`, `emanation` (сейчас `Literal["cone"]`, а `affected_zones` уже знает
 `sphere`/`cube`/`line`); `EffectSpec.skills: list[Skill] = []`, `EffectSpec.conditions: list[str] = []` (Малое восстановление),
 `EffectSpec.repeat: bool = False` (повтор спасброска); `EffectSpec.variants: list[str] = []` (решение 19 — значения для `damage_type`
 или `ability`, по пункту меню на каждое; валидатор: непусто только при `type` ∈ {damage, resist, modifier}); `EffectSpec.vs` (есть) — теги `ward`;
@@ -376,7 +394,8 @@ SA `sanctuary`, WB `bond`, C′ `condition` с новой адаптацией, 
 `builder.py:354`), новая `armor_allowed(hero, registry, armor)` для `inventory.equip:146`, `effect_ac_parts:176` (КД-пол `floor`),
 `armor_class:214`, `skill_parts:64` (модификатор умения с `add` — сейчас читает только `feat_effects`), `resource_maxes:421` — без
 правок; `spellcasting.py` — `spell_kind:25`, `cast_problem:92` (ритуал), `roll_heal:150` (Ученик жизни), `swap_problem:225`,
-`swap_prepared:261`; `rests.py` — `short_rest:41` (+ `arcane_recovery.recover`), `long_rest:59` — без правок; `healing.py` — новая `expire_max_hp(hero, world)
+`swap_prepared:261`; `rests.py` — без правок (`arcane_recovery.recover` вызывается из `protocol/handlers/resources.py:rest_apply:947` — сделано П2
+по «Умолчаниям», папа 2026-11-02); `healing.py` — новая `expire_max_hp(hero, world)
 -> list[str]` (решение 26: герой и `world.npcs` с `creature`, как `drop_concentration` в `spellcasting.py:168`; истёкшие `kind="max_hp"` →
 `hp_max -= amount`, `hp_current = min(hp_current, hp_max)`, эффект убирается, строка лога), вызов рядом с каждым `expire_concentration`
 (grep 2026-11-01: `combat/end.py:release_concentration:133` (:144), `game/turn.py:TurnRunner.attempt:246` (:266),
@@ -470,16 +489,20 @@ Potent Cantrip Мощный заговор, Spellbook Книга заклина�
 правки Влада, не коммичено): свои подклассы жреца и волшебника (решение 1), потеря и переписывание книги (решение 5), воскрешение героя
 заклинанием (Р3 → С-блок: герой — единственный заклинатель, оживить его некому), Приказ остальными словами (Р9), модели для
 `utility`-заклинаний (свет и зрение, языки, замки, вес, ловушки, компоненты заклинаний — Тишина) — «если понадобятся»,
-монстры-заклинатели → Контрзаклятие (решение 38), `Alter Self` — природное оружие. Пункт «Хроматический шар… по типам» не заводится —
+монстры-заклинатели → Контрзаклятие (решение 38), `Alter Self` — природное оружие. Пункт «Цветной шар… по типам» не заводится —
 типы сделаны подгруппой (решение 19). Пункт «заклинания без механики К3» не заводится (решение 16); 29 заклинаний К3б — строкой ROADMAP
 (решение 17, вносит архитектор после аппрува этого плана), не пунктом беклога; их план — `docs/plan-k3b.md` (вход — «Приложение»).
 
-**Функции (grep 2026-10-31, e3ebd9c):** изменяются — `ai_dm.rules.spellcasting:spell_kind` (:25), `:cast_problem` (:92), `:roll_heal`
+**Функции (grep 2026-10-31, e3ebd9c; сдвиг строк на 7ee68d0 после П2 и e0fa9e7 — grep 2026-11-02: `spellcasting.py` `spell_kind:26`,
+`cast_problem:109`, `roll_heal:169`, `swap_problem:248`, `swap_prepared:292`; `available.py` `menu_targets:44` (новая, дежурный),
+`cast_options:137`, `spell_entries:155`, `circle_options:176`, `standard_actions:625`, `bonus_actions:647`, `list_options:672`;
+`cast.py` без сдвига):** изменяются — `ai_dm.rules.spellcasting:spell_kind` (:25), `:cast_problem` (:92), `:roll_heal`
 (:150), `:swap_problem` (:225), `:swap_prepared` (:261); `ai_dm.rules.progression:required_choices` (:144), `:needed_choices` (:173),
 `:missing_choices` (:192), `:next_choice` (:212), `:spells_left` (:234), `:spell_candidates` (:242), `:choice_options` (:275),
 `:choice_errors` (:327), `:spell_errors` (:407), `:apply_level_choices` (:439); `ai_dm.rules.derived:weapon_proficient` (:229),
 `:skill_parts` (:64), `:effect_ac_parts` (:176), `:armor_class` (:214); `ai_dm.rules.builder:build_character` (:270);
-`ai_dm.rules.inventory:equip` (:110); `ai_dm.rules.rests:short_rest` (:41); `ai_dm.rules.hero_options:spell_counts` (:47);
+`ai_dm.rules.inventory:equip` (:110); `ai_dm.protocol.handlers.resources:rest_apply` (:923 — вместо `rests:short_rest`, П2);
+`ai_dm.rules.hero_options:spell_counts` (:47); `ai_dm.combat.available:spell_entries` (:155 — `hits`, e0fa9e7; `menu_targets:44` не меняется);
 `ai_dm.combat.actions.cast:castable_spells` (:41), `:cast_targets` (:84), `:cast_attack` (:153), `:cast_area` (:273), `:cast_heal` (:307),
 `:cast_buff` (:319), `:perform` (:355); `ai_dm.combat.area:affected_zones` (:1); `ai_dm.combat.available:cast_options` (:129),
 `:spell_entries` (:147), `:circle_options` (:164 — решение 19), `:standard_actions` (:613), `:bonus_actions` (:635), `:list_options` (:660);
@@ -525,8 +548,8 @@ inert_spells` (:63 — тело не меняется, меняется множ
    не входят до К3б — у 29 файлов `effects` пишутся в К3б, в П1 они без `effects`, как сейчас `alarm`); поля моделей из «Модели» (новые
    `EffectType`/`EffectShape`/поля `EffectSpec`) — только чтобы файлы грузились; движок их пока не читает (`spell_kind` → `None` →
    `inert_spells`);
-   8 заклинаний готовых видов (E: `guidance`, `resistance`, `prayer_of_healing`, `chill_touch`, `chromatic_orb`, `shatter`, `fireball`,
-   `lightning_bolt`) работают в бою сразу; глоссарий (заклинания); `rules-adaptation.md:165, 170` (усиление ячейкой — работает,
+   7 заклинаний готовых видов (E: `guidance`, `resistance`, `prayer_of_healing`, `chromatic_orb`, `shatter`, `fireball`,
+   `lightning_bolt`) работают в бою сразу (`chill_touch` — касание по сверке SRD, до П3а меню с ним падает, решение 44; было 8 — папа, 2026-11-02); глоссарий (заклинания); `rules-adaptation.md:165, 170` (усиление ячейкой — работает,
    уже сделано К1), `:238–242`; `test_srd_minimum.py` `SPELLS`; новый `tests/unit/content/test_k3_spells.py` (146 id грузятся, у каждого
    `classes` ⊂ {cleric, wizard, ranger}, круг 0–3, `school`, у ритуалов `ritual`; число заклинаний жреца/волшебника по кругам =
    7/15/17/19 и 15/30/36/29).
@@ -576,36 +599,101 @@ inert_spells` (:63 — тело не меняется, меняется множ
    цели ▸»); вне боя — `cast_spell` ветки `max_hp` (Р25) и `utility` и N+ (`identify`, языки, `gentle_repose`, `phantom_steed`/`travel`),
    `CastSpell.variant` (Р26), `condition` на NPC (Очарование личности, `checks.saving_throw`); `sheet_data.active_spells`, `effect_lines`
    (+ Помощь); `rules-adaptation.md` (адаптации заклинаний, `utility`, Помощь, варианты); 5 следопытских из BACKLOG 11.
-   Риск объёма: П3 — самая большая партия (17 видов + варианты + вне боя); если кабан не укладывается в один вызов — делить П3 на П3а
-   (виды боя) и П3б (`utility`, вне боя, `sheet_data`, варианты в меню) без возврата к плану (внутреннее, не развилка).
-   На выходе: `uv run pytest tests/unit/combat tests/unit/rules tests/unit/ui -q` зелёный; `test_ranger_combat.py`, `test_bless.py`,
-   `test_upcast.py`, `test_actions_cast.py` — без изменения ожиданий (регресс следопыта/Грея); руками — волшебник 3 ур. в тестовом
-   мире: Удержание личности, Палящий луч, Щит (см. «Тесты»).
-   mutmut: `FUNCS="ai_dm.rules.spellcasting:spell_kind ai_dm.combat.actions.cast:castable_spells ai_dm.combat.actions.cast:cast_targets
-   ai_dm.combat.actions.cast:cast_attack ai_dm.combat.actions.cast:cast_area ai_dm.combat.actions.cast:cast_heal
-   ai_dm.combat.actions.cast:cast_buff ai_dm.combat.actions.cast:perform ai_dm.combat.actions.cast_effects:cast_save
-   ai_dm.combat.actions.cast_effects:cast_condition ai_dm.combat.actions.cast_effects:cast_cure
+   **Деление — решено (папа, 2026-11-02, внутреннее): П3 идёт двумя партиями П3а и П3б, каждая со своим кругом кабан → доеба → мама →
+   свекровь → `make cov`/`smells`/`dead`/mutmut → коммит.** Основание (по коду, не по времени): П2 — 46 файлов src, +794/−56 (`git diff
+   --shortstat 21434d2 fd891ae -- src/`), кабан 58 мин + правки 37 мин, 45 красных тестов доебе (agents.md сессии); П3 — 48 функций в
+   трёх раздельных mutmut-запусках (бой; протокол/мастер/игра; TUI) и 4 новых модуля (`cast_effects`, `shield`, `zone_effects`,
+   `utility_spells`) против 2 новых модулей П2 — объём src ожидаемо ≥ ×1,5 П2 (ожидание, не проверено), а ревью одного диффа на три
+   области (движок, протокол, TUI) хуже двух. Граница — по области кода: П3а = `rules/` + `combat/` + меню боя (всё, что видно в бою);
+   П3б = Помощь целиком (первый «откат по часам», решение 26 — атомарно в одной партии) + `protocol/` + `master/` + `game/` (вне боя,
+   листы) + документы/пороги. Промежуточное состояние после коммита П3а: Помощь — `inert_spells` («пока недоступно в бою», как 29 К3б),
+   `utility` вне боя — как сейчас (`else`-ветка `cast_spell`); видимо только в тестовом мире — живых жрецов/волшебников нет («Груминг»).
+   - **П3а — виды боя + варианты в бою** (`rules/spellcasting.py`, `combat/`, `ui/combat_menu.py`, `ui/tui/app.py`): всё из абзаца выше,
+     кроме Помощи (`max_hp` в цепочку `spell_kind` **не** добавляется — одна строка в П3б) и ветвей вне боя; варианты — `EffectSpec.variants`
+     (данные уже в П1, `test_variant_spells`), `circle_options` по пункту на вариант, `cast_attack`/`cast_defense`/`cast_buff` читают
+     `params["variant"]`, подгруппа «<Заклинание> ▸» в `target_block`/`group_rows`, `action_menu_back` — «Назад» в родителя (Р26.1);
+     + **от дежурного e0fa9e7** (`available.py:menu_targets:44`, `spell_entries:155`): множество «атакующих» видов `hits = cast.spell_kind(spell)
+     in ("attack", "darts", "mark")` расширить новыми враждебными видами — «Умолчания», «лежачие»; лечение/стабилизация/`cure` лежачих
+     союзников — цели остаются (`menu_targets` фильтрует только героевы атаки); 5 следопытских из BACKLOG 11; `rules-adaptation.md` — боевые
+     адаптации. Из П1 сюда перенесены (решение 44, «Правки по ревью» П1 «Отступления после правок» п. 1): меню-тест волшебника (15 заговоров
+     в `known_of()` + 30 заклинаний 1 круга в `prepared_of()` → `available_actions` не падает; `shocking_grasp`, `inflict_wounds`,
+     `chill_touch`, `vampiric_touch` — касание) и «`build_view` не падает». Замеры (решение 43, риски «меню боя волшебника» и «`utility` в
+     меню»): `len(list_options)` у волшебника 5 ур. с полным списком до/после — цифры в «Итог»; рост > ×2 — развилка (свернуть круги).
+     На выходе: `uv run pytest tests/unit/combat tests/unit/rules tests/unit/ui -q` зелёный; `test_ranger_combat.py`, `test_bless.py`,
+     `test_upcast.py`, `test_actions_cast.py` — без изменения ожиданий (регресс следопыта/Грея); `inert_spells` у волшебника 5 ур. = 24
+     (23 К3б + `flaming_sphere` до П4), у жреца = 14 (11 К3б + `aid` до П3б + `spiritual_weapon`, `spirit_guardians` до П4; было «29 / 11 + aid»
+     — 29 это объединение классов; поправлено по хэнд-бэку П3а, папа 2026-11-02); руками — волшебник 3 ур. в тестовом мире: Удержание личности, Палящий луч, Щит, Цветной шар ▸ (см. «Тесты»).
+   - **П3б — Помощь, вне боя, листы, пороги** (`rules/healing.py`, `protocol/`, `master/`, `game/`): `max_hp` в `spell_kind`, `cast_max_hp`,
+     `expire_max_hp` + вызов в 5 точках (`release_concentration`, `TurnRunner.attempt`, `close_scene`, `shift_clock`, `concentration_note`),
+     `effect_lines` (+ Помощь, + действующие заклинания), `spells_data`/`sheet_data.active_spells` + `languages` «все»; вне боя — `cast_spell`
+     ветки `max_hp` (Р25), `utility` и N+ (`utility_spells.py`: `identify`, языки, `gentle_repose`, `phantom_steed`/`travel`), `CastSpell.variant`
+     (Р26.2), `condition` на NPC (Очарование личности), `defense` на героя или NPC с `creature` (Невидимость → `invisible`, Доспехи мага → `ac`,
+     Дубовая кора → `ac_floor`, Размытие, Щит веры, Защита от энергии → `resist`; сейчас ветка `else` только ставит концентрацию —
+     «Правки по ревью» П3а, «Невидимость вне боя»; `drop_concentration` снимает и состояния героя с `Expiry(concentration)`);
+     `narrator_rules.md:112` — фраза об `utility`; **мандат решения 52:** `make prompt-budget`
+     → `STATIC_MAX` поднять до замера + десятки, причина в шапке `test_static_budget.py` («К3 П3б: CastSpell.variant, фраза об utility»), без
+     окна, цифры — в «Итог»; **решение 50:** снять блок «К3 П1 (решение Влада 50)» (`vulture_allowlist.py:106–109` — `repeat`, `ritual`,
+     `effect_text`; `ritual` читается с П2, остальные — с П3а/П3б), `make dead` чисто; `rules-adaptation.md` — `utility`, Помощь, варианты вне боя,
+     «Условности данных: раунды и „пока не развеют“ в данных = `instant`; Послание — `self` вместо неограниченной дальности» («Правки по ревью»
+     П1, ревью); `test_effect_text_only_where_utility` ослабить только если П3б даст `effect_text` небоевому заклинанию без `utility`.
+     На выходе: `uv run pytest tests/unit/rules tests/unit/protocol tests/unit/master tests/unit/game -q` зелёный; `inert_spells` у жреца = 11;
+     `test_static_total_is_within_threshold` зелёный на новом пороге; `make dead` без allowlist-блока П1; golden `k0_sheet_data_v4_dragon.json`
+     не меняется.
+   mutmut П3а (список по коду кабана, сверен grep `def` 2026-11-02 — «Правки по ревью» П3а; три модуля вместо `cast_effects.py`;
+   сверка с `git diff` после повтора 2 аудита — «Правки по ревью» П3а, «сверка FUNCS с diff»):
+   `FUNCS="ai_dm.rules.spellcasting:spell_kind ai_dm.rules.spellcasting:has_effect ai_dm.rules.spellcasting:reach_ft
+   ai_dm.rules.spellcasting:effect_line ai_dm.rules.spellcasting:MaxRng.d ai_dm.rules.spellcasting:modifier_params
+   ai_dm.combat.actions.cast:castable_spells ai_dm.combat.actions.cast:cast_targets ai_dm.combat.actions.cast:in_reach
+   ai_dm.combat.actions.cast:groups_of ai_dm.combat.actions.cast:targets_limit ai_dm.combat.actions.cast:enemy_refs
+   ai_dm.combat.actions.cast:ally_refs ai_dm.combat.actions.cast:area_zones ai_dm.combat.actions.cast:ranged_zones
+   ai_dm.combat.actions.cast:cure_refs ai_dm.combat.actions.cast:defense_refs ai_dm.combat.actions.cast:dying_refs
+   ai_dm.combat.actions.cast:condition_refs ai_dm.combat.actions.cast:heal_refs ai_dm.combat.actions.cast:buff_refs
+   ai_dm.combat.actions.cast:cast_attack ai_dm.combat.actions.cast:cast_mark ai_dm.combat.actions.cast:cast_area
+   ai_dm.combat.actions.cast:cast_heal ai_dm.combat.actions.cast:cast_buff ai_dm.combat.actions.cast:perform
+   ai_dm.combat.actions.cast_support:with_variant ai_dm.combat.actions.cast_support:scaled_dice
+   ai_dm.combat.actions.cast_support:spell_expiry ai_dm.combat.actions.cast_support:condition_expiry
+   ai_dm.combat.actions.cast_support:is_potent ai_dm.combat.actions.cast_support:roll_spell_attack
+   ai_dm.combat.actions.cast_support:hit_damage ai_dm.combat.actions.cast_support:damage_on_save
+   ai_dm.combat.actions.cast_conditions:cast_condition ai_dm.combat.actions.cast_conditions:impose_effects
+   ai_dm.combat.actions.cast_conditions:repeat_saves ai_dm.combat.actions.cast_conditions:release_held
+   ai_dm.combat.actions.cast_conditions:cast_cure ai_dm.combat.actions.cast_conditions:condition_targets
+   ai_dm.combat.actions.cast_conditions:condition_names
+   ai_dm.combat.actions.cast_effects:cast_save ai_dm.combat.actions.cast_effects:cast_rays
    ai_dm.combat.actions.cast_effects:cast_temp_hp ai_dm.combat.actions.cast_effects:cast_defense
-   ai_dm.combat.actions.cast_effects:cast_rays ai_dm.combat.actions.cast_effects:cast_teleport
-   ai_dm.combat.actions.cast_effects:cast_stabilize ai_dm.combat.actions.cast_effects:cast_fog
-   ai_dm.combat.actions.cast_effects:cast_hazard ai_dm.combat.actions.cast_effects:cast_create_item
-   ai_dm.combat.actions.cast_effects:cast_max_hp ai_dm.rules.healing:expire_max_hp ai_dm.combat.available:circle_options
-   ai_dm.combat.end:release_concentration
-   ai_dm.combat.actions.cast_effects:cast_utility ai_dm.combat.actions.cast_effects:cast_ward
-   ai_dm.combat.actions.cast_effects:attack_riders ai_dm.combat.actions.cast_effects:repeat_saves
+   ai_dm.combat.actions.cast_effects:defend
+   ai_dm.combat.actions.cast_effects:cast_ward ai_dm.combat.actions.cast_effects:cast_stabilize
+   ai_dm.combat.actions.cast_effects:cast_teleport ai_dm.combat.actions.cast_effects:cast_retreat
+   ai_dm.combat.actions.cast_effects:cast_fog ai_dm.combat.actions.cast_effects:cast_hazard
+   ai_dm.combat.actions.cast_effects:cast_zone ai_dm.combat.actions.cast_effects:cast_create_item
+   ai_dm.combat.actions.cast_effects:cast_utility ai_dm.combat.actions.cast_effects:attack_riders
+   ai_dm.combat.actions.cast_effects:cast_burst ai_dm.combat.actions.cast_effects:push_zone
    ai_dm.combat.actions.shield:react ai_dm.combat.zone_effects:zone_effects ai_dm.combat.zone_effects:obscured
-   ai_dm.combat.area:affected_zones ai_dm.combat.engine:CombatEngine.impose
-   ai_dm.combat.available:cast_options ai_dm.combat.available:spell_entries ai_dm.combat.available:bonus_actions
-   ai_dm.combat.actions.attack:attack ai_dm.combat.actions.attack:base_advantage ai_dm.combat.engine:CombatEngine.next_turn
-   ai_dm.combat.downed:after_damage ai_dm.combat.actions.move:hazard_check ai_dm.rules.derived:effect_ac_parts
-   ai_dm.rules.derived:armor_class" TESTS="tests/unit/combat tests/unit/rules"`; вне боя отдельным запуском
+   ai_dm.combat.area:affected_zones ai_dm.combat.engine:CombatEngine.impose ai_dm.combat.engine:CombatEngine.warded
+   ai_dm.combat.engine:CombatEngine.next_turn ai_dm.combat.available:lying ai_dm.combat.available:cast_options
+   ai_dm.combat.available:spell_entries ai_dm.combat.available:circle_options ai_dm.combat.available:variants_of
+   ai_dm.combat.available:retreat_options ai_dm.combat.available:bonus_actions
+   ai_dm.combat.actions.attack:roll_attack ai_dm.combat.actions.attack:spell_disadvantage
+   ai_dm.combat.actions.attack:weapon_damage_mods ai_dm.combat.actions.attack:reveal ai_dm.combat.actions.attack:attack
+   ai_dm.combat.downed:after_damage ai_dm.combat.downed:release_until_damage ai_dm.combat.actions.move:perform
+   ai_dm.combat.actions.move:thorns ai_dm.rules.derived:floor_parts ai_dm.rules.derived:armor_class_parts
+   ai_dm.rules.modifiers.effects:EffectSource.modifiers ai_dm.rules.roll_pipeline:roll_d20 ai_dm.rules.inventory:use_item"
+   TESTS="tests/unit/combat tests/unit/rules"`; меню вариантов отдельно `FUNCS="ai_dm.ui.menu_variants:group_of
+   ai_dm.ui.menu_variants:parent_of ai_dm.ui.menu_variants:spell_rows ai_dm.ui.menu_variants:variant_rows
+   ai_dm.ui.combat_menu:target_block ai_dm.ui.combat_menu:group_rows ai_dm.ui.tui.app:AiDmApp.action_menu_back
+   ai_dm.game.combat_flow:option_list ai_dm.game.combat_flow:above_base"
+   TESTS="tests/unit/ui tests/unit/game"` (Pilot-тесты, долго — plan-111; `combat_flow` — решение 56, тесты на `option_list`/`above_base`
+   лежат в `tests/unit/ui/test_combat_menu.py`, остальные вызовы — `tests/unit/game` (grep `combat_flow`); граница П3а расширена на эти две
+   функции — «Правки по ревью» П3а, аудит свекрови); вне боя отдельно `FUNCS="ai_dm.protocol.handlers.resources:cast_spell"
+   TESTS="tests/unit/protocol"` (одна строка — `modifier_params`, регресс Грея). Переносы без правки (`cast_support.hold_concentration`,
+   `ui/menu_rows.py`) в список не входят; `cast_mark` — спасбросок Проклятия (менялась), `cast_darts`/`cast_rider` — нет.
+   mutmut П3б: `FUNCS="ai_dm.rules.spellcasting:spell_kind ai_dm.combat.actions.cast_effects:cast_max_hp ai_dm.rules.healing:expire_max_hp
+   ai_dm.combat.end:release_concentration" TESTS="tests/unit/combat tests/unit/rules"` (`spell_kind` — одна строка `max_hp`); вне боя
    `FUNCS="ai_dm.protocol.handlers.resources:cast_spell ai_dm.protocol.handlers.resources:spell_target
    ai_dm.protocol.handlers.resources:travel ai_dm.protocol.handlers.resources:concentration_note ai_dm.master.prompt:spells_data
    ai_dm.master.prompt:PromptBuilder.sheet_data ai_dm.game.sheet_text:effect_lines ai_dm.game.turn:TurnRunner.attempt
    ai_dm.game.scene:close_scene ai_dm.game.inv_actions:shift_clock" TESTS="tests/unit/protocol tests/unit/master tests/unit/game"`
-   (`cast_spell` меняется и в П2 (ритуал), и в П3 (`utility`, `max_hp`, `variant`) — в обоих списках, по диффу своей партии); меню
-   вариантов отдельно `FUNCS="ai_dm.ui.combat_menu:target_block ai_dm.ui.combat_menu:group_rows ai_dm.ui.tui.app:AiDmApp.action_menu_back"
-   TESTS="tests/unit/ui"` (Pilot-тесты, долго — plan-111).
+   (`cast_spell` менялся и в П2 (ритуал) — по диффу своей партии); функции `protocol/handlers/utility_spells.py` — новые, имена по коду кабана,
+   в тот же запуск.
 4. **П4 — жрец в бою, призывы, авто-герой, сетка, закрытие.** Божественный канал (решения 6–8; группа «Божественный канал ▸» — Р8),
    Выжигание нежити, Духовное оружие/Пылающий шар (`summons`), Духовные стражи (`aura`), `AutoHeroController` жреца (решение 14, 50),
    `make sim-grid` — новая `sim_grid_baseline.yaml`, числа до/после — в «Итог»; `ARCHITECTURE.md`, `rules-adaptation.md` (жрец),
@@ -645,7 +733,7 @@ test_tui_spells.py` (окно `/spells`).
 - `registry.all("spell")` = 146 + 8 следопытских (154); жрец 7/15/17/19, волшебник 15/30/36/29 по кругам; у общих оба класса; `ritual`
   у списка ритуалов; `spell_kind` у 8 E-заклинаний не `None`, у новых с новыми типами эффектов — `None` до П3 (`inert_spells` их
   показывает); `test_srd_minimum.py` зелёный с дополненным `SPELLS`.
-- мастер создания: жрец — шаг «Заговоры» ×3 из 7 (`count_cantrips` = 3), «Заклинания 1 круга» ×4 из 15 (`spells: 4`), «Подготовленные»
+- мастер создания: жрец — шаг «Заговоры» ×3 из 7 (`count_cantrips` = 3; с Чудотворцем 4 — сделано П2, `test_hero_steps.py:1155`), «Заклинания 1 круга» ×4 из 15 (`spells: 4`), «Подготовленные»
   ×4; волшебник — 3 из 15, 6 из 30, подготовлено 4; `test_ui_hero_wizard.py` — руками TUI: списки листаются.
 - бой: волшебник с 15 заговорами в известных → `build_view` не падает, лишнее в «Ещё…» (`test_combat_menu.py`).
 
@@ -675,15 +763,29 @@ test_tui_spells.py` (окно `/spells`).
   изменений (golden `k0_sheet_data_v4_dragon.json` зелёный).
 - схема: `test_schema_fingerprint` зелёный на v14 (если красный — риск «отпечаток», v15 решает архитектор).
 
-П3:
+П3 (деление — П3а: бой и варианты в меню; П3б: Помощь, вне боя, листы; папа, 2026-11-02):
+- меню-тест (из П1, решение 44): волшебник с 15 заговорами в `known_of()` и 30 заклинаниями 1 круга в `prepared_of()` →
+  `engine.available_actions` и `build_view` не падают; `shocking_grasp`/`inflict_wounds`/`chill_touch`/`vampiric_touch` — цели только в своей зоне.
+- лежачие (e0fa9e7, «Умолчания»): гоблин `status == "down"` → у героя нет пунктов Священного пламени, Палящего луча, Цветного шара,
+  Удержания личности по нему (как атак); Лечащее слово/Пощада умирающих по лежачему союзнику — пункт есть.
+- `ward` на живом монстре с `creature_type: elemental` (`air_elemental`, 63e1ef9) — помеха атакам, как у скелета (`engine.tags` берёт тип существа).
+- истечение `resist` вне боя (85b497b): Защита от энергии (`variant="fire"`, 1 ч) → `cast_spell` → через 2 ч `damage` (`resources.damage`,
+  `roll_hazard(now_s=)`) огнём — полный урон, до истечения — половина. (П3б)
+- `defense` вне боя (П3б, «Правки по ревью» П3а «Невидимость вне боя»): `cast_spell(invisibility)` → у героя `conditions ∋ invisible(source=
+  "invisibility", expires=concentration, owner=hero.id)` и `concentration.spell_id == "invisibility"`; затем бой → гоблин атакует героя с
+  помехой, первая атака героя → «больше не скрыт», «Невидимость кончается», концентрации нет (решение 62); `shift_clock` на час без боя →
+  `concentration_note` снимает и концентрацию, и `invisible`; `cast_spell(mage_armor)` без доспеха → `armor_class_parts` ∋ «Доспехи мага» +3
+  на 8 ч, концентрации нет; `cast_spell(barkskin)` → КД не ниже 17; `circle > level` у `defense` вне боя → `bad_circle` (одна цель, как `buff`).
 - `save`: Священное пламя по гоблину — спасбросок Лов СЛ, провал → 1d8 излучением, успех → 0; Мощный заговор (Воплотитель) →
-  половина при успехе; 5 ур. → 2d8; Кислотный плевок — все в зоне цели, кроме заклинателя.
+  половина при успехе; 5 ур. → 2d8; Кислотный плевок — все в зоне цели, кроме заклинателя; Нанесение ран — Тел, 2d10 некротического,
+  успех → половина (`mode: half`), цель только в своей зоне (касание).
 - `condition`: Удержание личности → спасбросок Мдр, провал → `paralyzed` c `Expiry(concentration)`, `held`-эффект; конец хода цели →
   повтор, успех снимает; 3 круг → 2 цели (`targets` + upcast); Усыпление → одна цель, недееспособен, в конце её хода — спасбросок,
   провал → без сознания; Смазка → все в зоне Лов → «Лежит»; Страх — конус как Огненные руки; Проклятие → `mark` на цели (+1d8 некротического
   к попаданиям заклинателя), Мдр; Опутывание → `restrained`, повтор Сил.
 - `cure`: Малое восстановление по союзнику с `poisoned` и `blinded` → снимает `blinded` (первое по порядку, Р16); без состояний —
-  пункта нет; Снятие проклятия → `cursed`.
+  пункта нет; Снятие проклятия → `cursed`. Защита от яда — по Р40 («Правки по ревью» П3а, аудит свекрови): при (а) пункт на здорового
+  союзника есть, каст → `ActiveEffect(kind="resist", damage_type poison)` на 1 ч без строки «снимает»; при (б) — пункта нет.
 - `temp_hp`: Ложная жизнь → `hp_temp` 1d4+4, второе применение не складывается (максимум).
 - `max_hp` (решение 26, Р25): Помощь на жреца 10/10 и двух союзников в соседней зоне → у каждого `hp_max` 15, `hp_current` 15,
   `ActiveEffect(kind="max_hp", amount 5, seconds now+28800)`; союзник в двух зонах — не цель; 3 круг → +10; повтор на той же цели — не
@@ -693,19 +795,20 @@ test_tui_spells.py` (окно `/spells`).
   снимает только 5; `test_schema_fingerprint` зелёный (поля не добавлены — ожидание, не проверено); вне боя `cast_spell(aid, target=hero)` →
   то же на героя, `target=<NPC с creature>` → на NPC и его откат при `expire_max_hp` через `world.npcs`; `circle > 2` вне боя → `bad_circle`
   как у `buff`.
-- варианты (решение 19, Р26): Хроматический шар у волшебника 1 ур. → в «Заклинания на цель ▸» одна строка «Хроматический шар ▸»; раскрыть →
+- варианты (решение 19, Р26): Цветной шар у волшебника 1 ур. → в «Заклинания на цель ▸» одна строка «Цветной шар ▸»; раскрыть →
   «Назад», «кислота → гоблин», «холод → …», «огонь → …», «молния → …», «яд → …», «гром → …» (6); выбор «огонь» → `cast_attack` с
   `damage_type="fire"` (`test_damage_types`: сопротивление огню режет вдвое); `list_options` рассказчику — 6 `ActionOption` с `params["variant"]`;
-  «Назад» из подгруппы → группа «Заклинания на цель ▸», не корень; при ≤ 2 заклинаниях на цель строка «Хроматический шар ▸» — прямо в блоке
+  «Назад» из подгруппы → группа «Заклинания на цель ▸», не корень; при ≤ 2 заклинаниях на цель строка «Цветной шар ▸» — прямо в блоке
   цели; Защита от энергии — 5 вариантов в «Заклинания без цели ▸» → «Защита от энергии ▸» (цель — союзник или сам); вне боя
   `cast_spell(protection_from_energy, variant="")` → `Invalid(bad_variant)` с перечнем, `variant="fire"` → `ActiveEffect(kind="resist",
   damage_type fire, 1 ч)`; `variant` у заклинания без `variants` — игнорируется; `golden k0_sheet_data_v4_dragon.json` не меняется.
 - `defense`: Доспехи мага без доспеха → КД +3 (`effect_ac_parts` «Доспехи мага»), с доспехом — пункта нет; Щит веры +2, концентрация;
-  Дубовая кора → `armor_class` не ниже 17; Размытие → атаки по цели с помехой; Невидимость → `invisible`, атака снимает.
+  Дубовая кора → `armor_class` не ниже 17; Размытие → атаки по цели с помехой; Невидимость → `invisible`, атака снимает; концентрация после атаки — по Р41 («Правки по ревью» П3а, повтор свекрови).
 - `rays`: Палящий луч → 3 броска атаки 2d6 по одной цели, 3 круг → 4; `test_damage_types` — огонь.
 - всадники: Направленный снаряд попал → следующая атака по цели с преимуществом, затем флаг снят; Луч холода → `speed` −10 (как
   Замедление, одна строка); Кислотная стрела → `burning` 2d4 в начале хода цели; Луч болезни → Тел → `poisoned` до конца следующего
-  хода; Вампирское касание → лечит заклинателя на половину; Нанесение ран/Удар электричеством — цель только в своей зоне.
+  хода; Вампирское касание → лечит заклинателя на половину; Удар электричеством — цель только в своей зоне (Нанесение ран — вид `save`,
+  см. выше и «Файлы»:287; из ряда атак убрано, папа 2026-11-02).
 - лечение: Лечащее слово — бонусное действие, цель в соседней зоне (60 фт = две), 2d4 + Мдр; Множественное лечащее слово — 6 целей через
   запятую; Лечение ран — как было (`test_actions_cast.py` зелёный).
 - Щит (Р5 а): гоблин бросает 15 против КД 12 волшебника с ячейкой и подготовленным Щитом → «Щит: КД 17, промах», ячейка −1, реакция
@@ -713,18 +816,21 @@ test_tui_spells.py` (окно `/spells`).
 - Туманный шаг → пункт бонусного действия в соседнюю зону, провоцированных атак нет; Стремительное отступление → `dash_bonus` каждый
   ход при концентрации; Громовая волна → все в своей зоне, Тел, толчок в соседнюю (`falling.push`), заклинатель цел.
 - туман (Р18 а): Туманное облако на зону → атаки в неё и из неё с помехой (`base_advantage`), концентрация снимает.
-- Шипастая поросль → вход в зону 2d4 колющего (`hazard_check`); Чудо-ягоды → `goodberries` ×10 в инвентаре, съесть — бонусное, +1 HP.
+- Шипастая поросль → вход в зону и выход из неё — 2d4 колющего (`move.thorns` в `move.perform`, и монстрам); Чудо-ягоды → `goodberries` ×10 в инвентаре, съесть — бонусное, +1 HP.
 - `casting_time: 10m` (Молитва исцеления) в бою нет, вне боя `cast_spell` лечит до 6 целей (протокол: цель `hero` — как есть).
 - `utility` (решение 16): волшебник с Фокусами (`prestidigitation`) и Посланием в бою → пункты `cast:prestidigitation:0:` в группе
-  «Заклинания без цели ▸», выбор тратит действие, лог «<имя> читает Фокусы — <effect_text>», `ActiveEffect(kind="spell")` нет
-  (`duration` instant); Языки (`tongues`, 1 ч) вне боя → ячейка 3 круга −1, эффект `kind="spell"` до now+3600, `sheet_data["active_spells"]`
+  «Заклинания без цели ▸», выбор тратит действие, лог «<имя> читает Фокусы — <effect_text>», у Фокусов `ActiveEffect(kind="spell")`
+  до now+3600 (`prestidigitation.yaml duration: 1h` — SRD 5.2 «до 1 часа»; повтор не копит — старая метка снимается), у Послания
+  (`message`, без `duration`) метки нет (было «нет (instant)» — ошибка плана, папа 2026-11-02); Языки (`tongues`, 1 ч) вне боя → ячейка 3 круга −1, эффект `kind="spell"` до now+3600, `sheet_data["active_spells"]`
   = [{id: tongues, …}], `sheet_data["languages"]` ∋ «все»; `/sheet` строка «Эффекты: Языки (до 14:30)»; через 1 ч — строки нет; `inert_spells`
-  у волшебника 5 ур. с полным списком — ровно 29 id К3б (тест-перечень в `test_k3_spells.py`), у жреца — 11.
+  у волшебника 5 ур. с полным списком — после П3а 24 id (23 К3б + `flaming_sphere`), у жреца 14 (11 К3б + `aid`, `spiritual_weapon`,
+  `spirit_guardians`); после П3б у жреца без `aid`, после П4 — ровно 23 и 11 К3б (тест-перечень в `test_k3_spells.py`).
 - N+: Опознание с `target=<id предмета>` → `result["item"]` = {`effects`, `magic`, `rarity`}; не предмет и не NPC → `unknown_npc` как
   сейчас; Призрачный скакун → следующий `travel` в течение 1 ч — `seconds` вдвое меньше (`travel_seconds` × маршрут // 2), через час —
   как было; Покой на мёртвого NPC с `creature` → эффект на `npc.creature`, без `creature` → `bad_target`.
-- `ward`: Защита от зла и добра на герое → скелет (`undead`) бьёт с помехой, гоблин — нет; `engine.impose(frightened, source=скелет)` →
-  False и строка лога, от гоблина — ложится; Усиление способности (решение 19: подгруппа «Усиление способности ▸» → 6 характеристик; выбор «Телосложение») →
+- `ward`: Защита от зла и добра на герое → скелет (`undead`) и гоблин (`goblin_warrior.creature_type: fey` — SRD 5.2) бьют с помехой,
+  стражник (`guard`, `humanoid`) — нет; `engine.impose(frightened, source=скелет)` → False и строка лога, от стражника — ложится
+  (было «гоблин — нет» — ошибка плана, поправлено по вопросу доебы, папа 2026-11-02); Усиление способности (решение 19: подгруппа «Усиление способности ▸» → 6 характеристик; выбор «Телосложение») →
   проверки Тел с преимуществом (`EffectSource` `mode: advantage`, `ability` из `params["variant"]`), остальные — нет; Маяк надежды → `roll_heal(cure_wounds)` = максимум костей (2d8 → 16 + Мдр), спасброски
   Мдр и от смерти с преимуществом; Сотворение пищи → `rations` ×15 в инвентаре.
 - Очарование личности вне боя: NPC с `creature`, Мдр провал → `conditions ∋ charmed(source=hero.id, expires=seconds)`, успех — нет и
@@ -768,7 +874,7 @@ test_tui_spells.py` (окно `/spells`).
   заклинатель, оживить его некому — посмертие С1 не трогается), безымянные монстры — нет (в `world.npcs` их нет, `death` не пишется);
   (б) ещё и безымянные участники боя (убитый в этом бою скелет-союзник К3б → снова встаёт). Рекомендую (а): (б) требует записи
   времени смерти у `Participant` — поле схемы. Партия — К3б-П4 (Р19).
-- **Р4 Хроматический шар, Защита от энергии, Усиление способности (+ Дыхание дракона К3б) — тип/характеристика — решено: 19 (б),**
+- **Р4 Цветной шар (имя — решение 46), Защита от энергии, Усиление способности (+ Дыхание дракона К3б) — тип/характеристика — решено: 19 (б),**
   вне рекомендации папы (а). Следствия: `EffectSpec.variants`, пункт на вариант в `circle_options`, подгруппа «<Заклинание> ▸» второго
   уровня в меню боя (сейчас у меню один уровень раскрытия — `menu.expanded` одно имя группы, `ui/tui/app.py:222, 246`), `CastSpell.variant`
   вне боя; пункт беклога «по типам» не заводится. Поведение подгруппы и вне боя — новая развилка Р26.
@@ -856,7 +962,7 @@ test_tui_spells.py` (окно `/spells`).
   вызовов рядом с готовыми, игрок видит и начало, и конец; (б) — правка десятка чтений ради одного заклинания; (в) — игрок не поймёт,
   почему HP упали. Разблокирует: П3 (`cast_max_hp`, `expire_max_hp`). Риск (а): между 8 ч и ближайшей точкой хода часов +5 висит дольше —
   как у концентрации сейчас.
-- **Р26 Подгруппа типов — поведение (решение 19).** (1) «Назад» из подгруппы «Хроматический шар ▸»: (а) в родительскую группу
+- **Р26 Подгруппа типов — поведение (решение 19).** (1) «Назад» из подгруппы «Цветной шар ▸»: (а) в родительскую группу
   («Заклинания на цель ▸») — `menu.expanded` хранит родителя (`ui/tui/app.py:222, 246` — сейчас одно имя, «Назад» → корень); (б) в корень
   меню, как сейчас у всех групп. Рекомендую (а): иначе выбор второго заклинания — три нажатия вместо одного. (2) Вне боя (Защита от
   энергии, Усиление способности — 1 ч, читаются вне боя через рассказчика): (а) `CastSpell.variant: str` — рассказчик берёт тип из слов
@@ -866,8 +972,8 @@ test_tui_spells.py` (окно `/spells`).
   (`list_options`) — принять, замер в П3 (риск «меню боя волшебника»). Разблокирует: П3 (меню и `cast_spell`).
 
 Риски:
-- **Риск — объём решения 16:** 146 механик против 69 в плане до решения; П3 — 17 видов + варианты + вне боя (деление П3а/П3б —
-  внутреннее, см. П3); К3б — четыре партии только кода, с v15; смета тестя (режим 1 ниже) считана до решения 16 и до решений 19/26 —
+- **Риск — объём решения 16:** 146 механик против 69 в плане до решения; П3 — 17 видов + варианты + вне боя (деление на П3а/П3б —
+  решено 2026-11-02, см. П3; смета — пересчёт тестя при закрытии); К3б — четыре партии только кода, с v15; смета тестя (режим 1 ниже) считана до решения 16 и до решений 19/26 —
   пересчёт тестя. Мера — решение 17 (К3 = П1–П5).
 - **Риск — откат Помощи (решение 26):** первый эффект в движке, который по истечении меняет состояние, а не просто перестаёт читаться;
   пропущенная точка хода часов — +5 к максимуму «навсегда» до следующей проверки. Мера — вызов `expire_max_hp` ровно там, где
@@ -956,10 +1062,16 @@ test_tui_spells.py` (окно `/spells`).
   неполной ячейке ≤ 5 круга; возвращает строки для лога `rest` (протокол) — `short_rest` сейчас возвращает `int`; расширить
   возвращаемое → кортеж или писать строки в `hero`-независимый список — решить кабану: минимально `recover` вызывает `rest` протокола до
   `short_rest`, движок правил не трогается.
-- Запоминание заклинания — `swap_problem(…, limit=1)` при `kind == "short"` и `memorize_spell`; `Rest.prepared_swap` описание —
-  «после длинного отдыха — любые, после короткого — одно у волшебника 5 ур.».
-- Ритуал — `CastSpell.ritual: bool = False`; в `cast_spell`: `spell.ritual` обязателен (`not_ritual`), ячейка не тратится, `circle` =
-  `spell.level`, `clock.advance(600)`; `cast_problem(..., ritual=False)` — новый параметр с умолчанием.
+- Запоминание заклинания — `swap_problem(…, limit=1)` при `kind == "short"` и `memorize_spell`; описание `Rest.prepared_swap` не меняется —
+  правило во фразе `narrator_rules.md:112` (П2, ради STATIC_MAX; папа, 2026-11-02).
+- Ритуал — `CastSpell.ritual: bool = False`; в `cast_spell`: `spell.ritual` обязателен (`not_ritual`), ячейка не тратится, `circle !=
+  spell.level` → `bad_circle` «только базовым кругом N» (`ritual_problem`, `spellcasting.py:93` — П2; папа, 2026-11-02), `clock.advance(600)`;
+  `cast_problem(..., ritual=False)` — новый параметр с умолчанием.
+- Лежачие в меню заклинаний (дежурный e0fa9e7, решение Влада 2026-11-01 «атаки и атакующие заклинания по лежачим убраны, добивать —
+  текстом»): в П3а множество `hits` в `spell_entries:166` расширяется до всех видов с враждебной одиночной целью — `attack`, `darts`, `mark`,
+  `save`, `rays`, `condition` (константа `HOSTILE_KINDS` в `cast.py`); `heal`/`cure`/`stabilize`/`buff`/`max_hp`/`defense` — цели-союзники,
+  лежачие остаются; зоны (`area`, `fog`, `hazard`) — `cast_targets` даёт id зон, фильтр не касается. Состав списка — к Владу (хэнд-бэк
+  2026-11-02): следует из его решения, но видимо в меню.
 - Ученик жизни — `roll_heal` + `2 + circle` при `disciple_of_life` и `spell.level >= 1` (строка «+3 Ученик жизни»); Выжигание —
   `max(1, wis_mod)` d8 излучением в `turn_undead` при `sear_undead`.
 - Мощный заговор — в `cast_save`/`cast_attack` при `spell.level == 0` и `potent_cantrip`: половина урона при успехе/промахе.
@@ -1048,7 +1160,7 @@ test_tui_spells.py` (окно `/spells`).
 Факты ниже с пометкой «проверено» — прогон `scratchpad/k3_p1_probe.py` (волшебник 1 ур. из `combat_kit.make_wizard`, гоблин
 в той же зоне, `Rng(7)`): `spell_kind` по 154 заклинаниям, `available_actions` и `engine.perform` по 11 заклинаниям.
 
-**Отступления — принять (план поправить при П3, код не трогать):**
+**Отступления — принять (план поправить при П3, код не трогать; внесено в «Модели»/«Файлы» 2026-11-02, папа):**
 1. `EffectType` += `teleport`, `stabilize`, `fog` — были в «Суть»/«Умолчаниях», в списке «Модели» пропущены; принять.
 2. `EffectMode` += `penalty` (Порча: `bane.yaml:21, 26`) — внутреннее представление знака; принять. П3: `cast_buff`/`cast_condition`
    при `mode == "penalty"` пишут `params["sign"] = -1` («Умолчания», «Дебаффы»), `rules/modifiers/effects.py:39` читает знак.
@@ -1118,14 +1230,15 @@ test_tui_spells.py` (окно `/spells`).
 
 **Р29 — имя Chromatic Orb (видимо в меню).** Кабан: «Цветной шар» (glossary:131, dnd.su; правило плана «Файлы»: имена — dnd.su/глоссарий);
 план в 7 местах — «Хроматический шар». (а) «Цветной шар» — план поправить при П3; (б) «Хроматический шар» — правка glossary и `name`.
-Рекомендую (а) — по правилу плана.
+Рекомендую (а) — по правилу плана. Решение 46 (а); план поправлен 2026-11-02 (папа): 6 мест → «Цветной шар», здесь — запись как была.
 
 **Порядок после решений:** кабан (тот же id) — «вернуть» 1–5 → доеба (тесты П1, при Р28 = а — скрипт сверки; прогон `uv run pytest tests/unit/content
 tests/unit/combat tests/unit/game tests/unit/rules tests/unit/master tests/unit/devtools -q`) → мама ‖ свекровь → `make cov`, `make smells` (200/200 —
 решение 35 выполнено), `make dead`; mutmut П1 — не нужен при Р27 = а (см. выше). Коммит П1, `git push`.
 
 **Отступления кабана после правок (папа-кабан, 2026-11-01, решения 44–46):**
-1. Меню-тест волшебника (15 заговоров в `known_of()` + 30 заклинаний 1 круга в `prepared_of()` → `available_actions` не падает) — **перенести в П3**.
+1. Меню-тест волшебника (15 заговоров в `known_of()` + 30 заклинаний 1 круга в `prepared_of()` → `available_actions` не падает) — **перенести в П3**
+   (внесено в П3а и «Тесты» П3 2026-11-02, папа).
    Он был условием «вернуть» п. 1/п. 5 при Р27 = (а); решение 44 = (б) — защиты `spell_kind` нет, тест красный на `shocking_grasp`/`inflict_wounds`
    (`cast.py:95`). В П3 — вместе с переписью `spell_kind`: в `test_k3_spells.py` (или `tests/unit/combat`, по месту), в «На выходе» П3 и
    `FUNCS` П3 (`spell_kind` там уже есть). Строка «Тесты» П1 «бой: волшебник с 15 заговорами → `build_view` не падает» — туда же (тот же
@@ -1198,17 +1311,19 @@ tests/unit/combat tests/unit/game tests/unit/rules tests/unit/master tests/unit/
 нет). Мама — «можно мержить», замечание: `test_variant_spells` проверяет тип первого эффекта — исправлено кабаном. Свекровь — «решить»:
 коммит правок ROADMAP/BACKLOG 240–250 — у папы → решение 51 (два коммита). `make dead` красный (3 поля) → решение 50, кабан —
 блок в `vulture_allowlist.py`, `vulture` пусто. migrate_dusk_vibe.py — в П1 по решению 35 (папа). Мама круг 3, свекровь повтор 2 —
-чисто. **В П3 (на выходе):** снять блок «К3 П1 (решение 50)» из `vulture_allowlist.py`, `make dead`; в rules-adaptation.md — «Условности
+чисто. **В П3 (на выходе; → П3б, внесено 2026-11-02):** снять блок «К3 П1 (решение 50)» из `vulture_allowlist.py`, `make dead`; в rules-adaptation.md — «Условности
 данных: раунды и „пока не развеют“ = `instant`; Послание — `self` вместо неограниченной дальности» (папа; Вампирское касание — в пакете
 «касание = своя зона»).
 `make cov` П1: 98,19 %, 3 красных в `tests/unit/ui/test_ui_hero_wizard.py` (рост списков П1) — кабан поправил тесты (один переименован в
 `test_cleric_chooses_cantrips_and_spells_up_to_the_limits`), `tests/unit/ui` 2051 прошло; src не менялся — cov не повторяется. Мама круг 4 — тест волшебника переименован в
-`test_wizard_chooses_cantrips_and_spells_up_to_the_limits` (кабан). На П2/П3: «Чудотворец» (+1 заговор жрецу) — пересмотреть «3 заговора».
+`test_wizard_chooses_cantrips_and_spells_up_to_the_limits` (кабан). На П2/П3: «Чудотворец» (+1 заговор жрецу) — пересмотреть «3 заговора»
+(закрыто П2: `count_cantrips` + `cantrip_bonus`, `test_hero_steps.py:1155` «4 с Чудотворцем, иначе 3»; «Поведение» (1) уточнено 2026-11-02, папа).
 
 **Порядок после решений Р30–Р32:** кабан (тот же id) — п. 5 (`chill_touch`, `ray_of_enfeeblement` по Р32, BACKLOG 250) → доеба — `uv run pytest
 tests/unit/content -q`, повтор `check_srd.py` (ожидание: строки `chill_touch`, `ray_of_enfeeblement` уходят) → мама ‖ свекровь → `make cov`,
 `make smells`, `make dead`; коммит П1, `git push`. Поправки плана по п. 2, 3, 5 («Файлы»:268, 283, 302; П1:518; пакет адаптаций) — при П3,
-как и прежние.
+как и прежние (внесены 2026-11-02, папа: `inflict_wounds` S, `chill_touch` касание, `ray_of_enfeeblement` C, П1 «7 готовых», Леденящее
+прикосновение в пакете «касание = своя зона»; Р31 — строка `rules-adaptation.md:257` уже есть с П1; «Условности данных» — П3б).
 
 ### П2 — разбор хэнд-бэка кабана (папа-кабан, 2026-11-01)
 
@@ -1217,7 +1332,8 @@ tests/unit/content -q`, повтор `check_srd.py` (ожидание: стро�
 кабан не писал (kaban.md п. 5 — юнит-тесты зона доебы; в П1 тесты данных писал кабан — исключение, не правило). Факты «проверено» — Read
 диффа, grep, `make prompt-budget` (explore 24357: rules 12458, tools 11899).
 
-**Принять (код не трогать; план поправить при П3, где не сказано иначе):**
+**Принять (код не трогать; план поправить при П3, где не сказано иначе — внесено 2026-11-02, папа: «Правила» `rests.py`, «Функции»
+`rest_apply`, «Поведение» (6), «Умолчания» ритуал/`prepared_swap`):**
 1. `arcane_recovery.recover` вызывается из `rest_apply` (`resources.py:944`), `rests.short_rest` не тронут — ровно «Умолчания» (план:950–953,
    «минимально `recover` вызывает `rest` протокола»). mutmut П2: `ai_dm.rules.rests:short_rest` — убрать; `ai_dm.protocol.handlers.resources:rest_apply`
    — в протокольный запуск (функция `rest:913` — обёртка, `rest_apply:923` — тело; в плане было `rest`).
@@ -1339,6 +1455,383 @@ tests/scenarios -q` → мама ‖ свекровь → `make cov`, `make smel
 - Мама, повтор 2: тест `test_missing_feature_choices_message_lists_features_comma_separated` подменяет внутренний импорт
   `builder.option_features_at` — Влад: оставить как есть (2026-11-02).
 
+### П3а — разбор хэнд-бэка кабана (папа-кабан, 2026-11-02)
+
+Хэнд-бэк: scratchpad `k3-p3a-kaban-handback.md`. Дифф: `git diff HEAD -- src/` — 20 файлов (+544/−223) + 9 неотслеживаемых src
+(`cast_support.py`, `cast_conditions.py`, `cast_effects.py`, `shield.py`, `zone_effects.py`, `menu_rows.py`, `menu_variants.py`, `rations.yaml`,
+`goodberries.yaml`) + `rules-adaptation.md`. `git status tests/` — пусто: тестов П3а кабан не писал (как П2 — зона доебы). Факты «проверено» —
+Read диффа и новых модулей, grep, прогон `scratchpad/papa_measure.py` (срез HEAD — `git archive` в scratchpad, удалён после замера; все
+функции FUNCS ниже найдены grep `def`).
+
+**Принять (код не трогать; план поправлен в этом разборе):**
+1. Три модуля вместо одного `cast_effects.py` (п. 1) и вынос `menu_rows.py`/`menu_variants.py` — внутреннее, ради порога qlty (199/200);
+   имена функций те же. `cast_support.scaled_dice`/`hold_concentration` — перенос из `cast.py` (HEAD:128, 141), не новые. FUNCS — в «Партии».
+2. `shield.react` внутри `roll_attack` (п. 2) — один вызов на все броски атаки по герою (оружие, атака по возможности, будущие атаки
+   заклинаниями монстров); `engine.heroes.get(target_ref)` отсекает цели-монстры. Лучше плана («после `roll_attack` в `attack`»).
+3. Помеха тумана и `ward` — `attack.spell_disadvantage` в `roll_attack`, `guided`/`blur` — `ActiveEffect(kind="modifier", side=target)`
+   (п. 3) — механизм Sap/Vex уже есть; `base_advantage` не трогается. Соответствует Р18 (а): помеха и в зону, и из зоны, у монстров тоже.
+4. Шипастая поросль — `move.thorns` в `move.perform` на выход из зоны и на вход (п. 4), не `hazard_check` (тот зовётся и в начале хода).
+   План («Адаптации», «Тесты») поправлен. Бьёт и монстров — по SRD.
+5. `repeat_saves` из `CombatEngine.next_turn` (п. 5) — по плану.
+6. Вариант подставляется в копию заклинания (`cast_support.with_variant`) на входе `perform`, `params["title"]` для подгруппы (п. 6) —
+   внутреннее; `cast_attack`/`cast_defense`/`cast_buff` без параметра `variant` — проще плана.
+7. Данные (п. 7): `rations` 50 мм — SRD 5.2.1 «Rations (1 day) 5 SP», видимо в таблице цен справочника листа (красный снимок № 8 — доебе);
+   `entangle` `repeat: true` — «Умолчания» («Опутывание → `restrained`, повтор Сил»); `spike_growth` `hazard` 2d4 колющего, сфера 20 — «Файлы»
+   (HZ). `pass_without_trace` `targets: 3` — к Владу (Р38, видимо число целей в меню).
+8. Двухстадийное Усыпление по данным (`STAGED`: последний `apply_condition` = `unconscious` при ≥ 2 состояниях, п. 8) — внутреннее;
+   даёт ровно «Тесты» П3 («недееспособен, в конце её хода — спасбросок, провал → без сознания»). Доебе — тест на `sleep.yaml` и на
+   одно-состояние заклинание (Удержание — без `next`).
+9. Видимое из п. 9: Туманный шаг — соседние зоны по `size_ft` (30) — план «в соседнюю зону», принято; Доспехи мага только герою без
+   доспеха (`UNARMORED_ONLY`) — «Тесты» П3 («с доспехом — пункта нет»), решение 18 (+3 без доспеха), принято; Защита от яда всегда в
+   меню (`cure_refs`: `resist` даёт пункт и здоровому) — следует из классификации R+K («Файлы», решение 18: «снять отравление, сопротивление
+   яду 1 ч»), принято, строка в `rules-adaptation.md` уже есть. Волшебное оружие на атаку заклинанием и порядок `reveal` — к Владу (Р36, Р37).
+10. Не сделано по делению (п. 11) — верно: Помощь, вне боя, `CastSpell.variant`, листы — П3б; призыв/аура, авто-герой, сетка — П4.
+    `inert_spells` после П3а: волшебник 5 ур. = 24 (23 К3б + `flaming_sphere` до П4), жрец = 14 (11 К3б + `aid` до П3б + `spiritual_weapon`,
+    `spirit_guardians` до П4) — план писал «29 / 11 + aid», 29 — объединение классов; «Партии» П3а и «Тесты» П3 поправлены.
+11. `make sim-grid --check` зелёный (жрец goblins3 11,0 → 14,0 % — в допуске) — базовая линия перегенерируется в П4 по плану.
+    `STATIC_MAX` не менялся — промпт и схемы П3а не трогала. `make smells` 199, `make dead` чисто.
+
+**Вернуть кабану (тот же id):**
+1. **п. 10 — регресс в живом мире, чинится в П3а, не в П3б** (правило 9: регресс в области плана — в текущую партию). Факт (проверено):
+   Грей (`saves/drunk_dragon-00000001`, следопыт 10 ур.) знает `pass_without_trace`; до П3а у него не было `effects` → `spell_kind` `None`
+   → вне боя ветка `else` `cast_spell` (`resources.py:548`) ставила концентрацию и молчала; после П3а вид `buff` → `params={"target": …,
+   "dice": None}` → `ActiveEffect.params: dict[str, int | str | bool]` (`state/creature.py:31`) — ошибка валидации при «читаю Бесследное
+   передвижение» вне боя. Правка минимальная: `modifier_params` (`cast_conditions.py:37`) переезжает в `rules/spellcasting.py` (рядом с
+   `effect_of`; импорт из `cast_conditions` и из `resources.py` — протокол `rules/` уже импортирует, `combat/` — нет), в ветке `buff`
+   `cast_spell` → `params=modifier_params(effect)`. Побочно вне боя заработают `magic_weapon`/`beacon_of_hope` (без костей) и
+   `enhance_ability` — до П3б без `variant`, т. е. без `ability` в params → преимущество на все проверки (живых волшебников нет; П3б даёт
+   `bad_variant`). `start_concentration` у `buff` без концентрации (Волшебное оружие — 1 ч без концентрации по SRD 5.2.1) — ветка вне боя,
+   П3б, здесь не трогать. Тест — доебе («Красные/новые П3а» ниже).
+2. После решений Влада: Р36 = (б) — `EffectTarget` += `weapon_attack` и фильтр; Р37 = (б) — `reveal(engine, ref, keep=spell.id)`; Р38 = (б) —
+   цель «все союзники в 30 фт» одним пунктом. При (а) по всем трём — кабану делать нечего, кроме строки о `pass_without_trace` (3 цели,
+   SRD — все в 30 фт) в `rules-adaptation.md` и пункта беклога № 256 при Р35 = (а).
+3. Красные тесты 1–8 — доебе, не кабану (рост контракта по плану, как П2 п. 7).
+
+**Красные/новые П3а (доебе; все 8 — следствие плана):** 1 `test_spells_without_combat_kind_are_not_offered` — ожидание → в бою теперь и `entangle`,
+`fog_cloud`, `goodberry` (`create_item`, Р15), `longstrider` (`utility`, решение 34), `pass_without_trace`, `spike_growth`, `barkskin`,
+`lesser_restoration` (только при состоянии у союзника); не предлагаются `speak_with_animals` (без `effects`) и `alarm` (`casting_time` 1 мин); 2–3 `test_game_inert_spells` — Тревога (`utility`) и Туманное облако больше не inert; 4–5 `test_combat_menu.py` — контракт id
+дополнить `cast:fog_cloud:1:<зона>` и прочими; 6–7 `test_tui_live1_edges`/`test_tui_spells` — Туманное облако доступно; 8 снимок
+`sheet_reference_vale.json` — перегенерировать, мама сверяет дифф: только строки `rations`, `goodberries` в таблице цен. Новые тесты — по
+«Тесты» П3 (часть П3а) + п. 1 «вернуть»: следопыт вне боя `cast_spell(pass_without_trace, target=hero)` → `accepted`, `ActiveEffect(kind=
+"modifier", params={"target": "skill", "skill": "stealth", "amount": 10})`, проверка Скрытности +10 (`checks.py:33` передаёт `skill`;
+`EffectSource.modifiers` фильтр `params["skill"]`); `hide` в бою под ним — +10. Pilot-флак `test_soft_limit_save_and_quit_saves_and_ends_app`
+(WorkerCancelled) — повторить отдельно, в отчёт.
+
+**Замер меню (решение 43; проверено, `scratchpad/papa_measure.py`, три гоблина, герой сетки 5 ур.):**
+| герой | список | HEAD options / cast | дерево options / cast | × | символов options рассказчику HEAD → дерево |
+|---|---|---|---|---|---|
+| жрец 5 | все 58 минус 5 падавших на HEAD | 72 / 28 | 146 / 102 | ×2,03 | 7297 → 14697 |
+| жрец 5 | все 58 | — (падает) | 162 / 118 | ×2,25 к заниженному «до» | — → 16396 |
+| волшебник 5 | все 110 минус 9 падавших | 153 / 118 | 282 / 247 | ×1,84 | 14976 → 28409 |
+| волшебник 5 | все 110 | — (падает) | 297 / 262 | ×1,94 к заниженному | — → 30005 |
+| следопыт 5 | как у героя сетки | 54 / 10 | 67 / 23 | ×1,24 | 5690 → 6824 |
+| жрец 5 | **реальный репертуар** (4 заговора + 9 подготовленных) | — | 104 / 60 | — | 10506 |
+| волшебник 5 | **реальный** (6 заговоров + 9 подготовленных, с Цветным шаром) | — | 138 / 103 | — | 15119 |
+Цифры кабана совпадают с замером. «До» занижено только исключением падавших заклинаний; по одинаковым спискам жрец ×2,03, волшебник ×1,84.
+Откуда рост: круги выше базового (жрец — 60 cast-пунктов, базовым кругом 23; волшебник 103 / 39) и варианты (Цветной шар: 6 типов × 3
+цели × 3 круга = 54 из 103 у реального волшебника). Куда идут options: только рассказчику в режиме `combat_classify` (`prompt.py:536`,
+`combat_flow.option_list:151`), TUI держит `fit`/«Ещё…». В токенах по оценке проекта (`estimate_tokens`, 3,5 симв./токен — `config/app.py:40`):
+реальный жрец ≈ 3000, реальный волшебник ≈ 4300 на вызов классификации; полный список волшебника ≈ 8100.
+
+**Развилки к Владу (решает Влад; рекомендация — первой):**
+- **Р35 Рост меню > ×2 (жрец ×2,03 по одинаковым спискам; план: «> ×2 — развилка „свернуть круги“»).** Видимое: что рассказчик умеет
+  классифицировать из фразы игрока. (а) принять как есть: порог достигнут на пределе и только у жреца с полным списком; реальный репертуар —
+  104/138 пунктов, ≈ 3000/4300 токенов на вызов `combat_classify`; пункт беклога № 256 «options рассказчику: свёртка кругов/вариантов при
+  росте репертуара (К4–К6, 7+ ур.)» — кабан; (б) свернуть круги для рассказчика: `option_list` отдаёт пункты заклинаний только базовым
+  кругом (`params["circle"] == spell.level`; измерено: cast-пунктов жрец 60 → 23, волшебник 103 → 39) — фраза «Лечение ран третьим кругом»
+  рассказчику не классифицируется (`unsupported_action`), в TUI круги остаются (К1, решение 10); (в) свернуть и варианты — нельзя без
+  кода: пункт без `variant` у Цветного шара не исполняется. Рекомендую (а): ×2 из плана — порог для взгляда, а не правило; (б) отнимает у
+  фразы выбор круга, который Влад выбрал решением 10. Разблокирует: закрытие замера (цифры — в «Итог»).
+- **Р36 Волшебное оружие: +1 к броску атаки заклинанием (п. 9).** Факт (проверено): `magic_weapon.yaml` — `modifier target: attack_roll`;
+  `EffectSource.modifiers` отличает только `request.kind` (`EFFECT_TARGETS`), тега «оружие» в запросе броска атаки нет (`attack_tags:245`,
+  `roll_spell_attack` — нет; `tags["weapon"]` есть лишь у запроса урона, `attack.py:303`). Видимо: жрец под своим Волшебным оружием бьёт
+  Направленным снарядом с +1. (а) принять упрощение — строка в `rules-adaptation.md` уже есть; (б) по SRD: `EffectTarget` += `weapon_attack`
+  (`EFFECT_TARGETS["weapon_attack"] = ("attack",)` + условие `request.tags.get("weapon")`), тег `weapon: True` в запросе броска атаки из
+  `attack()` (не из `roll_spell_attack`), `magic_weapon.yaml` → `weapon_attack` — ожидание ≈ 8 строк в трёх модулях + тест. Рекомендую (а):
+  случай — заклинатель под собственным Волшебным оружием с атакой заклинанием, +1 к d20; (б) — в беклог не нужно, при жалобе — одним
+  мини дежурного.
+- **Р37 Порядок строк лога при касте из скрытности (п. 9).** Было: «читает X» → строки эффекта → «больше не скрыт»; стало: «читает X» →
+  «больше не скрыт» → строки эффекта (`reveal` до каста, иначе Невидимость снимала сама себя — `cast.perform:487`). (а) как сделано;
+  (б) `reveal` после каста с исключением только что наложенной Невидимости (`keep=spell.id`) — порядок как был. Рекомендую (а): герой
+  выходит из скрытности, начиная колдовать — порядок естественный, кода ноль.
+- **Р38 Бесследное передвижение — число целей в бою (п. 7).** SRD 5.2.1: каждое выбранное существо в 30 фт; данные кабана — `targets: 3`
+  (как Благословение) → в меню до 3 союзников через запятую. (а) 3 — как сделано, строка в `rules-adaptation.md`; (б) все союзники в 30 фт
+  одним пунктом — новая семантика данных (`targets: 0` = все) и ветка в `buff_refs`. Рекомендую (а): в бою у Грея союзников ≤ 2, вне боя
+  (П3б) и так одна цель (`bad_circle` «цель одна»).
+
+**mutmut П3а — сверено grep `def` (все найдены), список кабана дополнен и перенесён в «Партии» П3а:** + `ai_dm.rules.spellcasting:has_effect`,
+`:reach_ft`, `:effect_line`, `:modifier_params` (после переезда, п. 1 «вернуть»), `ai_dm.combat.actions.cast:in_reach`, `:groups_of`,
+`:targets_limit`, `ai_dm.combat.actions.cast_effects:cast_zone`, `ai_dm.rules.roll_pipeline:roll_d20` (знак `penalty`),
+`ai_dm.combat.available:bonus_actions` (вызов `retreat_options`); `cast_support.hold_concentration` — перенос без правки (HEAD `cast.py:141`),
+в список не входит; `menu_rows.py` — перенос без правки, не входит. Отдельный третий запуск — `ai_dm.protocol.handlers.resources:cast_spell`
+(одна строка п. 1) с `TESTS="tests/unit/protocol"`.
+
+**Порядок после решений Р35–Р38:** кабан (тот же id) — п. 1 «вернуть» (+ при (б) по Р36–Р38 — соответствующие правки; при Р35 = а — BACKLOG 256,
+при Р38 = а — строка в `rules-adaptation.md`) → доеба — тесты П3а по «Тесты» П3 (часть П3а) + «Красные/новые П3а», прогон `uv run pytest
+tests/unit/combat tests/unit/rules tests/unit/ui tests/unit/game tests/unit/protocol tests/unit/master -q`, руками — волшебник 3 ур. в тестовом
+мире (Удержание личности, Палящий луч, Щит, Цветной шар ▸) → мама ‖ свекровь → `make cov`, `make smells` (≤ 200), `make dead`, mutmut П3а по
+трём запускам фоном → `make mutate-diff` → коммит П3а, `git push`. Цифры замера — в «Итог» при закрытии.
+
+### П3а — вопросы доебы (папа-кабан, 2026-11-02)
+
+Тесты доебы: `tests/unit/combat/test_cast_p3a.py`, `test_cast_p3a_effects.py`, `test_cast_variants.py`, `test_wizard3_scenario.py`,
+`tests/unit/ui/test_menu_variants.py`. Факты «проверено» — Read YAML, кода и тестов, grep.
+
+1. **Защита от зла и добра, «гоблин — нет» — ошибка плана, доеба прав.** Проверено: `goblin_warrior.yaml:6` и `goblin_boss.yaml:6`
+   `creature_type: fey` (SRD 5.2 — гоблины феи), `guard.yaml:6` `humanoid`; `engine.tags:242` берёт `creature_type` → `warded:446`.
+   Гоблин под `ward` бьёт с помехой — по SRD. План «Тесты» П3 (`ward`) поправлен: скелет и гоблин — помеха, стражник — нет; тесты
+   `test_ward_gives_disadvantage_against_a_fey_goblin` / `test_ward_does_not_affect_a_humanoid` — верные, править нечего. Кабану — ничего.
+2. **Фокусы, `kind="spell"` — ошибка плана, данные верны.** Проверено: `prestidigitation.yaml duration: 1h` — SRD 5.2 «Duration: up to
+   1 hour»; `cast_utility:192` → `add_spell_duration:297` ставит метку до now+3600 (`duration_s` None — не ставит). Видимое — «Эффекты:
+   Фокусы (до HH:MM)» в `/sheet` — следует из решения 34 (Р20 а: `utility` в бою и вне + строка «Эффекты:»), не новая развилка. Срок у
+   Фокусов не убирать. План «Тесты» П3 (`utility`) поправлен; доебе — тест на Фокусы: после каста `ActiveEffect(kind="spell",
+   id="prestidigitation")` с `expires.value == now+3600`; повтор каста — одна метка (`cast_utility:197` снимает старую);
+   `test_instant_utility_spell_leaves_no_effect_on_the_caster` на `message` (без `duration`, проверено) — оставить.
+3. **Нанесение ран — вид `save`, доеба прав.** Проверено: `inflict_wounds.yaml` `save_effect con, mode: half` + `damage` → `spell_kind:72`
+   → `save`; «Файлы»:287 уже S (правка П1). Хвост «в ряду всадников» в «Тесты» П3:789 — остаток старого A+; перенесён в пункт `save`
+   (касание = своя зона через `in_reach:93`, `reach_ft:87` = 10). Тесты `test_inflict_wounds_*` верные. Кабану — ничего.
+4. **Порыв ветра без концентрации — недоработка плана, не кабана; видимое — развилка Р39 (ниже).** Проверено: `gust_of_wind.yaml`
+   `concentration: true, duration: 1m`, эффекты `area` + `save_effect` + `push` без `damage` → `spell_kind:64` = `area` → `cast_area:360`,
+   где `hold_concentration` нет (класс P в «Файлы»:319 списан с Громовой волны — мгновенной). Среди `area` с концентрацией в данных
+   он один (остальные — `entangle`, `fear`, `hypnotic_pattern`, `stinking_cloud`, `web` — без `push`, вид `condition`, там
+   `hold_concentration` есть — `cast_conditions.py:77`). Итог сейчас: волшебник читает Порыв ветра под Благословением/Туманом — прежняя
+   концентрация не падает, своей не возникает — дешевле SRD. Решает Влад; при (а) — кабану одна строка в `cast_area` (условие
+   `spell.concentration` → `hold_concentration`, как `cast_utility:194`), строка в `rules-adaptation.md`; `cast_area` уже в FUNCS
+   («Партии»:642); тест доебе: после каста `concentration.spell_id == "gust_of_wind"`, прежняя концентрация снята.
+6. **Усыпление: цель просыпается стоя — дефект, вернуть кабану (тот же id).** Проверено: `wake_sleeping:53` ставит `prone` с
+   `source=asleep[0].source` — у заклинания это `"sleep"` (`impose_effects:46`, `repeat_saves:112` — `source=spell.id`); следом
+   `release_until_damage:64` снимает все состояния с `source in UNTIL_DAMAGE` — и свежий `prone`. У сонной стрелы `source` — стрелок
+   (`test_woken_target_prone_comes_from_the_archer`), коллизии нет. По SRD упавший без сознания лежит, пока не встанет (аналог —
+   `test_woken_target_is_prone`, `test_woken_target_stands_up_in_its_turn_spending_move`): правка минимальная — в `release_until_damage`
+   фильтр не трогает `prone` (`c.source not in UNTIL_DAMAGE or c.id == "prone"`); `incapacitated`, `unconscious` и `held` снимаются как
+   сейчас. Две строки лога («просыпается от боли», «боль прерывает заклинание») — оставить: вторая нужна Гипнотическому узору и
+   Изгнанию, у которых сна нет. `downed:release_until_damage` в FUNCS уже есть («Партии»:666). Тест доебе: после удара по спящему
+   от Усыпления — `prone` в состояниях, `unconscious`/`incapacitated` нет, `held` нет; в своём ходу встаёт за половину движения
+   (как `test_woken_target_stands_up_in_its_turn_spending_move`); `test_damage_wakes_a_sleeping_target_and_ends_the_spell` дополнить
+   `assert "prone" in conditions(...)`.
+
+**Не покрытое — нужны тесты (доебе):**
+- Число целей Бесследного (решение 59, видимое Владу): `tracker_engine` + 3 союзника в 30 фт → в меню есть `cast:pass_without_trace:2:
+  hero,a,b` (3 через запятую, `groups_of:98` + `targets_limit:103` по `targets: 3`), группы из 4 нет; союзник в двух зонах — не в
+  списке (`ally_refs:119`, «на себя» = 30 фт). Один тест на оба утверждения.
+- Р36 (а): жрец под собственным Волшебным оружием (`cast:magic_weapon:2:<сам>`), атака заклинанием (Направленный снаряд / Священный
+  огонь) — бросок d20 +1 (`modifier target: attack_roll` без тега оружия — `rules-adaptation.md:352`). Один тест: он фиксирует принятое
+  упрощение, при переходе на (б) меняется осознанно.
+- Р37 (а): герой в скрытности (`invisible`, `source="hidden"`) читает Невидимость → после каста `invisible` с `source=spell.id` стоит
+  (регресс, из-за которого `reveal` перенесён до каста — `cast.perform:487`), порядок лога: «читает Невидимость» → «больше не скрыт» →
+  строка эффекта. Один тест на оба утверждения (тестов на «больше не скрыт» в тестах П3а нет — grep).
+
+**Развилка к Владу (решает Влад; рекомендация — первой):**
+- **Р39 Порыв ветра и концентрация (п. 4).** Видимое: падает ли прежняя концентрация (Благословение, Туман) при касте Порыва ветра и
+  занимает ли он концентрацию сам. (а) занимает: `cast_area` ставит `hold_concentration` при `concentration: true` — читает Порыв ветра
+  → «концентрация на Благословении кончилась», `/sheet` «Концентрация: Порыв ветра» на 1 мин; толчок разовый при касте (как сделано),
+  ветер дальше ничего не делает; строка в `rules-adaptation.md` «Порыв ветра — разовый толчок при касте, концентрацию занимает по SRD»;
+  одна строка кода + тест. (б) как сделано: разовый толчок без концентрации — Порыв ветра дешевле SRD (под Благословением); строка в
+  `rules-adaptation.md`. (в) по SRD — зона ветра: эффект `kind="zone"` на заклинателе, спасбросок Сил в начале хода существа в зоне
+  → толчок, движение против ветра вдвое; это класс ZE («Коды К3б», решение 17) — в `docs/plan-k3b.md`, не П3а. Рекомендую (а): цена
+  как в SRD, данные уже `concentration: true`, одна строка; (в) — при желании Влада строкой в набросок К3б.
+
+**Порядок:** Р39 (окно Владу) → кабан (тот же id): п. 6 (`release_until_damage`), п. 1 «вернуть» выше (`modifier_params`), при Р39 = (а)
+— `cast_area`; строки `rules-adaptation.md` (Порыв ветра) → доеба: тесты п. 2, п. 6, «не покрытое», при (а) — п. 4; прогон по «Порядок
+после решений Р35–Р38» → мама ‖ свекровь.
+
+### П3а — аудит свекрови (папа-кабан, 2026-11-02)
+
+Аудит: scratchpad `k3-p3a-svekrov.md`. Два пункта «решить»/«к пользователю», остальное — «оставить».
+
+1. **Граница партии: `game/combat_flow.py` в П3а — принято, FUNCS дополнены.** Правка `option_list` + новая `above_base` (`combat_flow.py:151`,
+   `:161`; дифф +10/−2) — реализация решения 56 (Р35 б), принятого в разборе хэнд-бэка П3а; строка в `rules-adaptation.md:359` и тесты доебы
+   (`test_combat_menu.py:957`, `:984`, `:991`, `:1002`) уже лежат. По смыслу это «всё, что видно в бою» (граница П3а), а не «вне боя, листы» (П3б):
+   `option_list` — список пунктов боя рассказчику (`turn.py:516`). Переносить в П3б — откатывать код и тесты и коммитить П3а с замером ×2 без
+   принятого решения. Граница в «Партии»:604–605 читать с исключением: `game/combat_flow.option_list`/`above_base` — П3а. FUNCS второго
+   запуска mutmut (меню) дополнены `ai_dm.game.combat_flow:option_list ai_dm.game.combat_flow:above_base`, TESTS расширен до
+   `tests/unit/ui tests/unit/game` (`grep -l combat_flow tests/` — оба каталога; AGENTS.md: каталог целиком). Время — ожидание, не проверено.
+2. **Защита от яда в меню всегда — развилка Р40 (окно Владу), не умолчание папы.** Факт (проверено): `cure_refs` (`cast.py:164`) даёт пункт
+   на каждого союзника в касании, если у него есть состояние из списка **или** у заклинания есть `resist` (`:170`); `cast_cure`
+   (`cast_conditions.py:119`) снимает первое состояние, если оно есть, и в любом случае вешает `ActiveEffect(kind="resist", poison)` на 1 ч
+   с логом «<жрец>: Защита от яда на <имя>». Строка `rules-adaptation.md:370–371` описывает (а). Решение Влада 18 (пакет адаптаций) и
+   классификация R+K («Файлы»:297) задают *что делает* заклинание, а не *когда его предлагать* — свекровь права, это видимое меню.
+
+**Развилка к Владу (решает Влад; рекомендация — первой):**
+- **Р40 Защита от яда у здорового союзника.** Видимое: есть ли в меню боя жреца пункт «Защита от яда → <союзник>», когда никто не отравлен.
+  (а) как сделано — пункт всегда (на каждого союзника в касании, как у Защиты от энергии и Щита веры — все `defense`-заклинания предлагаются
+  без условия); здоровому даёт сопротивление яду на 1 ч, строка лога «… Защита от яда на <имя>», без «снимает»; цена — один пункт на союзника
+  в меню жреца с подготовленной Защитой от яда; кода ноль. (б) только при отравлении — как Малое восстановление (Р16): `cure_refs:170` без
+  `or has_effect(spell, "resist")`, одна строка + правка `rules-adaptation.md:371`; сопротивление яду заранее (перед пауками/змеями) наложить
+  нельзя — заклинание слабее SRD. (в) всегда, но подпись различает («Защита от яда (снять отравление)» / «(сопротивление)») — правка
+  `spell_rows`/подписей, лишний код ради одного заклинания, не рекомендую. Рекомендую (а): по SRD 5.2.1 сопротивление даётся независимо от
+  отравления и игрок вправе читать заранее; поведение совпадает с другими `defense`; кода нет. Разблокирует: тест доебе (при (а) — каст на
+  здорового → `resist` на 1 ч, лога «снимает» нет; при (б) — пункта нет), закрытие аудита П3а.
+
+**Порядок:** Р40 (окно Владу, вместе с Р39, если ещё открыт) → при (б) кабан (тот же id): `cure_refs:170` + `rules-adaptation.md:371` →
+доеба: тест Р40 → далее «Порядок» выше.
+
+### П3а — правки по ревью мамы и аудиту свекрови (оркестратор, 2026-11-02)
+- Мама (k3-p3a-mama.md), кабан внёс все 5 пунктов: Щит не читается недееспособным (`is_capable`, `incapacitated`);
+  русские имена в логе (`engine.impose`, `weapon_damage_mods`); Невидимость — упрощение, концентрация не прекращается
+  (строка в rules-adaptation.md, выбор кабана по «либо» мамы); комментарий у `VARIANTS_GROUP`; `live_effects` в
+  `spell_disadvantage`/`warded` не нужен — ward и туман только с концентрацией.
+- Доеба: тесты Щита под paralyzed/incapacitated, вставания после Усыпления, русских имён в логе; тест Р40 (а).
+- Свекровь: граница `game/combat_flow` — решение папы (выше, FUNCS дополнены); Защита от яда — решение 61 Влада (Р40 а).
+- Повтор свекрови: Невидимость — решение 62 Влада (Р41 б): кабан в `attack.reveal` завершает концентрацию и снимает
+  Невидимость со всех целей, строка упрощения из rules-adaptation убрана; доеба — тесты Р41.
+- Вопрос доебы «Невидимость на 3 круге одна цель» — дефект П3а (папа, ниже): кабан — `defense_refs` через
+  `groups_of`/`targets_limit`, `cast_effects.cast_defense` цикл по целям (новый helper `defend`); доеба — тесты двух целей,
+  ручной хак убран. combat+ui 4809 passed.
+- Повтор 2 мамы: кабан — имя «<заклинание> кончается» в `attack.reveal` из реестра; ref героя в бою = `hero.id`, правки
+  не нужно. Повтор 2 свекрови: FUNCS П3а сверены папой (+ `defend`, `condition_names`, `MaxRng.d`; − `roll_heal`).
+  Невидимость вне боя — П3б (папа, ниже). combat 2731 passed.
+- Проверки П3а: smells 199, dead/ruff чисто; cov 98,24 % (23941 passed, 1 Pilot-флак test_tui_key, повтор зелёный).
+  mutmut (бой/меню/вне боя): в диффе 87/10/0, старые строки 157 — ждут П5 (решение 15). Доеба (sonnet): 93 убиты
+  тестами, 4 эквивалентны (`area.affected_zones_34`, `cast_conditions.impose_effects_63`, `move.thorns_53`,
+  `menu_variants.variant_rows_24`); повтор mutmut по 93 именам — 0 выживших.
+
+### П3а — повтор аудита свекрови (папа-кабан, 2026-11-02)
+
+Повтор: scratchpad `k3-p3a-svekrov.md`, раздел «Повтор». Одно «к пользователю»: Невидимость, снятая атакой или заклинанием,
+концентрацию не прекращает — упрощение выбрал кабан по «либо» мамы (`k3-p3a-mama.md` ⚠️ 3), строка `rules-adaptation.md:354–355`;
+решения Влада нет, а поведение видимое (экран боя, лог, `/sheet`). Факты «проверено» — Read `attack.py:232–242, 295, 449–451`,
+`cast.py:483, 489`, `cast_effects.py:77–106`, `cast_support.py:44–53`, `combat_flow.py:118–134`, `downed.py:130–158`, `end.py:133–147`,
+`standard.py:112–116`, тесты `test_cast_p3a_effects.py:130–148`, `test_cast_variants.py:654–665`.
+
+Факт кода: `cast_defense` кладёт на цель `AppliedCondition(id="invisible", source="invisibility", expires=Expiry(concentration,
+owner=<заклинатель>))` и ставит заклинателю концентрацию (`hold_concentration`); цель — сам или союзник в касании (`defense_refs` →
+`ally_refs`), +1 цель за круг. `attack.reveal` (вызовы: `roll_attack:295` после броска атаки, `cast.perform:489` до каста — Р37 а,
+`:483` при неудавшемся касте) снимает `invisible` с `source in ("hidden", "invisibility")` и пишет «больше не скрыт»; концентрацию не
+трогает. SRD 5.2.1 Invisibility: «The spell ends early immediately after the target makes an attack roll, deals damage, or casts a
+spell» — заклинание кончается, с ним и концентрация. Заклинатель известен без поиска: `expires.owner` снятого состояния. Готовый образец
+снятия чужой концентрации по событию — `attack.py:449–451` и `standard.py:112–116` (`end_concentration` + `drop_concentration_effects`
++ лог «<заклинание> кончается»); `end_concentration` в `attack.py` уже импортирован (`:9`).
+
+**Развилка к Владу (решает Влад; рекомендация — первой):**
+- **Р41 Невидимость после атаки — что с концентрацией.** Видимое: что показывает экран боя и лог после того, как невидимый герой (или
+  союзник под его Невидимостью) атакует или колдует.
+  (б) по SRD — заклинание кончается: в `reveal` у снятого `invisible` с `expires.kind == "concentration"` → `end_concentration` владельца
+  (`expires.owner`) + `engine.drop_concentration_effects(owner)` + строка лога «  Невидимость кончается» сразу после «больше не скрыт»;
+  строка «Концентрация: Невидимость до HH:MM» с экрана боя пропадает; при 3 круге (две цели) невидимость второй цели тоже снимается — по
+  тексту SRD «the spell ends»; скрытность без заклинания (`source="hidden"`, `expires` None) — как сейчас, концентрацию не трогает
+  (регресс `test_invisibility_cast_from_hiding_keeps_the_spell_invisibility` — не задевается: там снимается `hidden`, концентрация ставится
+  после). Цена: ≈ 5 строк в `attack.reveal` по образцу `:449–451` (функция уже в FUNCS mutmut П3а — «Партии»:668); строку
+  `rules-adaptation.md:354–355` убрать, в `:361` дописать «и концентрация кончается»; тесты доебе: `test_attack_ends_invisibility`
+  (`test_cast_p3a_effects.py:137`) + `assert concentration is None` и строка лога; новый — Невидимость на союзника (`cast:invisibility:2:<союзник>`),
+  союзник атакует → у волшебника концентрации нет; `source="hidden"` атакует → концентрация (например, Благословение) цела. Риск: `make smells`
+  199/200 — `reveal` растёт на одну ветку (ожидание, не проверено; при красном — вынести снятие в `cast_support`, не в `attack`).
+  (а) как сделано — упрощение: после «больше не скрыт» экран боя продолжает показывать «Концентрация: Невидимость до HH:MM»
+  (`concentration_line`), при уроне герой бросает спасбросок Тел за пустую концентрацию (лог «Концентрация (…)» / «концентрация удержана»,
+  `hero_damaged:155–158`), следующее заклинание с концентрацией сбрасывает пустую молча; после боя `/sheet` держит «Концентрация:
+  Невидимость до HH:MM» до часа, затем «Концентрация: Невидимость кончилась» (`resources.py:779`). Цена — 0 строк, строка в
+  `rules-adaptation.md` уже есть; но игроку оно выглядит как ошибка («я давно виден — почему концентрация?»).
+  (в) как (б), но только когда невидимым был сам заклинатель (союзник — как (а)) — первое предложение мамы; дешевле не выходит (владелец
+  известен из `expires.owner` в обоих случаях), а поведение разное у двух одинаковых случаев — не рекомендую.
+  Рекомендую (б): по SRD, ≈ 5 строк готовым механизмом, снимает призрачную строку и лишние спасброски; (а) экономит ноль строк.
+  Разблокирует: закрытие повтора аудита П3а, коммит П3а. Решает: Влад.
+
+**Порядок:** Р41 (окно Владу) → при (б) кабан (тот же id): `attack.reveal`, `rules-adaptation.md:354–355, 361` → доеба: тесты Р41 → мама ‖
+свекровь (повтор) → далее «Порядок после решений Р35–Р38». При (а) — кабану ничего; решение — строкой в «Решения», доебе тест «после атаки
+концентрация стоит» (фиксирует принятое упрощение, как тест Р36 а).
+
+### П3а — вопрос доебы: Невидимость на 3 круге одна цель (папа-кабан, 2026-11-02)
+
+**Вердикт: дефект П3а, чинить в партии** (правило 9 — область плана). Основания по коду и плану:
+- Данные `invisibility.yaml` с П1 (коммит 21434d2) несут `upcast.per_slot_level.targets: 1`; П3а сделала общий механизм
+  `cast.targets_limit:103` + `cast.groups_of:98` и подключила его к `condition_refs:197`, `heal_refs:205`, `buff_refs:210`, но
+  `defense_refs:175` (`TARGETERS["defense"]:223`, лямбда без `circle`) отдаёт одиночных союзников. Итог виден игроку: пункт
+  `cast:invisibility:3:wiz` в меню есть, тратит ячейку 3 круга и не даёт ничего сверх 2 круга — пункт-обманка.
+- Решение 62 (Р41 б, «Правки по ревью» выше, 2026-11-02) принималось с текстом «при 3 круге (две цели) невидимость второй цели тоже
+  снимается»; тест `test_attack_ends_invisibility_of_every_target_of_the_spell` (`test_cast_p3a_effects.py:180`) сейчас кладёт второе
+  состояние вручную с пометкой «вопрос папе» — сценарий без меню недостижим.
+- В «Сути» (:126–127) `targets` прописаны у `heal`, у `defense` — нет; но план и не исключал, а данные и механизм уже в партии.
+  Расхождение с ТЗ не нужно: SRD «ещё одна цель за круг» — то, что в YAML.
+
+**Правило:** было `TARGETERS["defense"] = lambda e, r, s, c: defense_refs(e, r, s)` (одна цель) → станет
+`defense_refs(engine, ref, spell, circle)` → `groups_of(allies, targets_limit(spell, circle, <типы defense>))` (от одной до `targets`
+целей через запятую, как `buff_refs:210`). **Поведение:** меняется — меню боя: у Невидимости на 3 круге появляются пары
+`cast:invisibility:3:<a>,<b>` (одиночные остаются, как у Удержания личности); у Доспехов мага / Дубовой коры / Размытия / Щита веры
+ничего не меняется (`targets` нет, `upcast.targets` нет → предел 1); `range_kind: self` → по-прежнему `[ref]`. **Вне репо:** нет.
+
+**Кабану (способ):**
+1. `src/ai_dm/combat/actions/cast.py:175 defense_refs` — добавить параметр `circle`; после фильтра `UNARMORED_ONLY` вернуть
+   `groups_of(allies, targets_limit(spell, circle, "ac_bonus", "resist", "invisible", "blur"))` (типы — те же, что дают вид `defense`
+   в таблице `spellcasting.py:49–50`; отдельной константы там нет — четыре типа перечислить). Ветка `self` → `[ref]` без изменений.
+   `TARGETERS:223` — `"defense": defense_refs` (без лямбды, как `condition_refs`).
+2. `src/ai_dm/combat/actions/cast_effects.py:77 cast_defense` — строки 82–104 в цикл `for one_ref in target_ref.split(","):`
+   (`creature`, очистка `active_effects` по `spell.id`, эффекты — на каждую цель); `hold_concentration` — один раз до цикла, как сейчас;
+   лог одной строкой с именами через «, » по образцу `cast_buff:435` («<wiz>: Невидимость на <a>, <b>»).
+3. `attack.reveal:232` не трогать: по решению 62 `drop_concentration_effects(owner)` (`engine.py:307`) уже снимает `invisible` второй цели.
+4. `docs/rules-adaptation.md`, раздел К3 — строка про Невидимость: «на 3 круге — две цели (ещё одна за круг), в меню через запятую».
+   FUNCS mutmut не меняется: `cast:defense_refs`, `cast:targets_limit`, `cast_effects:cast_defense` уже в списке («Партии»:643 и
+   хэнд-бэк П3а). Риск: `make smells` 199/200 — цикл в `cast_defense` +1 к сложности (ожидание, не проверено); при красном — вынести
+   тело цикла в `cast_effects.defend_one(engine, ref, spell, one_ref)`.
+
+**Доебе (тесты, `tests/unit/combat/test_cast_p3a_effects.py`):**
+- новый `test_invisibility_at_third_circle_offers_pairs_of_allies`: wiz + ally (как в `:165`), ids содержат
+  `cast:invisibility:3:wiz,ally` (порядок — порядок `engine.state.participants`, как у `groups_of`) и `cast:invisibility:3:wiz`;
+  `cast:invisibility:2:wiz,ally` отсутствует; группы из трёх на 3 круге нет (нужен 4 круг — у волшебника 5 ур. нет);
+- новый `test_invisibility_on_two_targets_hides_both`: perform `cast:invisibility:3:wiz,ally` → `invisible` у обоих,
+  `concentration.spell_id == "invisibility"`, `spell_slot:3` −1, `spell_slot:2` цел, одна строка лога «Невидимость на …, …»;
+- `test_attack_ends_invisibility_of_every_target_of_the_spell:180` — убрать ручное копирование состояния и пометку «вопрос папе»,
+  читать `cast:invisibility:3:wiz,ally`; ожидание остаётся (атака союзника снимает `invisible` с обоих, концентрации нет);
+- регресс: в ids нет `,` у `cast:barkskin:3:`, `cast:blur:3:`, `cast:mage_armor:2:`; Доспехи мага по-прежнему только на безбронных;
+- красный снимок `test_combat_menu.py::test_list_options_ids_are_unchanged_in_fight_with_three_goblins` (уже в списке доебы) — при
+  герое с Невидимостью и союзником в фикстуре появятся пары, учесть при обновлении; замер «297 пунктов волшебника 5 ур.» из хэнд-бэка
+  вырастет на число пар союзников в 30 фт (ожидание, не проверено).
+
+Развилок для Влада нет: вариант «оставить одну цель и убрать 3 круг из меню» противоречит данным и решению 62, не предлагаю.
+
+### П3а — повтор 2 аудита свекрови: сверка FUNCS с diff (папа-кабан, 2026-11-02)
+
+Повтор 2 (scratchpad `k3-p3a-svekrov.md`, «Повтор 2»), пункт «решить»: `cast_effects.defend` (`:90`) — тело цикла `cast_defense`,
+вынесено по разрешению «вопроса доебы» п. 4 (красный smells); в FUNCS не было. **Решение: добавить** — в `defend` ушли все ветки с
+мутируемым кодом (`ac_floor`/`ac` по `mode`, `params`, `continue` у `invisible`), в `cast_defense` остались `split`, цикл и лог; без
+`defend` в списке mutmut П3а эти строки не прогоняются. Фраза «FUNCS mutmut не меняется» в «вопросе доебы» верна только для
+варианта без выноса.
+
+Заодно сверка FUNCS П3а с `git diff -U0 HEAD -- src` (новые `def`/`class` в tracked и `grep def` по untracked, 2026-11-02):
+- `ai_dm.combat.actions.cast_conditions:condition_names` (`cast_conditions.py:19`) — новая (в HEAD одноимённая только в `game/sheet_text.py`,
+  другая), в FUNCS не было — добавлена;
+- `ai_dm.rules.spellcasting:MaxRng.d` (`spellcasting.py:224`) — новый класс, Маяк надежды; в FUNCS не было — добавлен (ожидание: 0–1 мутант,
+  тело `return sides`);
+- `ai_dm.rules.spellcasting:roll_heal` — в diff П3а не менялась (Маяк реализован через `MaxRng` в `cast.cast_heal:400`, не через
+  `heal_max` в `roll_heal`, как ждала «Суть»:595); из FUNCS П3а убрана — мутирована в П2 («Партии»:581), AGENTS п. 1 — только изменённые;
+- остальные новые функции diff уже в списке (`cast:in_reach…buff_refs`, `attack:spell_disadvantage`/`weapon_damage_mods`, `move:thorns`,
+  `available:lying`/`variants_of`/`retreat_options`, `downed:release_until_damage`, `engine:CombatEngine.warded`, `combat_flow:above_base`,
+  `derived:floor_parts`, `spellcasting:modifier_params`/`has_effect`/`reach_ft`/`effect_line`, все `cast_support`/`cast_effects`/`shield`/
+  `zone_effects`/`menu_variants`);
+- переносы без правки подтверждены diff-ом: `cast_support.hold_concentration` = HEAD `cast.py:141–152`, `ui/menu_rows.py`
+  (`MenuRow`, `target_of`, `short_label`, `option_row`) = HEAD `combat_menu.py:64–160` — в список не входят;
+- константы модулей (`available.VARIANT_WORDS`, `downed.UNTIL_DAMAGE`, `engine.WARDED`, `spellcasting.KIND_BY_EFFECT`, `cast.CASTERS`) —
+  `make mutate FUNCS` их не берёт; покрываются тестами функций, которые их читают.
+TESTS первого запуска (`tests/unit/combat tests/unit/rules`) не меняются: `defend`/`condition_names` — `tests/unit/combat`, `MaxRng` —
+`tests/unit/combat/test_cast_variants.py` (grep `beacon`). Код не трогался.
+
+### П3а — Невидимость вне боя: не ставится `invisible` (папа-кабан, 2026-11-02)
+
+Вопрос (хэнд-бэк кабана, «Повтор 2 мамы» п. 2): вне боя `cast_spell` для вида `defense` только ставит концентрацию, состояния на героя
+нет — ставший невидимым до боя в бою невидимым не будет. **Вердикт: пробел формулировки плана, по существу — П3б; в П3а ничего не делать.**
+
+Факты (проверено Read): `resources.py:461 cast_spell` — ветки `heal:526`, `mark:536`, `else:549` (`start_concentration`, если
+`spell.concentration` или `buff`; эффекты — только у `buff:553`); все шесть `defense`-заклинаний (Невидимость, Доспехи мага, Дубовая кора,
+Размытие, Щит веры, Защита от энергии) вне боя попадают в `else` — Невидимость/Щит веры/Размытие ставят пустую концентрацию, Доспехи мага и
+Дубовая кора (без концентрации) не делают ничего, ячейка тратится. `engine.creature(ref)` для героя возвращает `hero.creature`
+(`engine.py:172–174`) — состояние, поставленное вне боя, в бой переходит; значит правка только в протоколе. Граница П3а/П3б —
+«Партии»:607–608: `protocol/` — П3б; П3б уже ждёт `defense` вне боя в «Тестах»:769–770 и :794–796 (Защита от энергии → `ActiveEffect(kind=
+"resist")` через `CastSpell.variant`, Р26.2), но в строке «Партии» П3б (:629) вид `defense` назван не был — дописан. Не правило 9 для П3а:
+живых волшебников и жрецов нет («Груминг»), до П3а поведение было таким же (`else` — HEAD `resources.py:548`), регресса нет.
+
+Что дописано в П3б (кабану П3б — способ, доебе — тесты в «Тестах»:771+):
+- `cast_spell` — ветка `defense` после `buff`: цель — `spell_target` (герой или NPC с `creature`, как `buff`), `circle > level` → `bad_circle`
+  (одна цель вне боя, как `buff:484`); эффекты — те же `kind`/`params`, что в `cast_effects.defend:90` (`ac`/`ac_floor` по `mode`, `resist` с
+  `damage_type` из `variant`, `modifier` Размытия, `AppliedCondition(invisible)`); `expires` — `Expiry(concentration, owner=hero.id)` при
+  `spell.concentration`, иначе `Expiry(seconds, now_s + duration_s)` (как `resist` предметов — `resources.py:430`). Чтобы не дублировать
+  таблицу эффектов, предложение: вынести построение `(kind, params)` из `defend` в чистую функцию `rules/spellcasting.py:defense_effect(effect,
+  spell) -> tuple[str, dict] | None` («новая»), `defend` и `cast_spell` читают её; `cast_effects:defend` тогда меняется в П3б — в FUNCS П3б.
+- `rules/spellcasting.py:253 drop_concentration` — снимать у героя, кроме `kind="spell"`, ещё `active_effects` и `conditions` с
+  `Expiry(concentration, owner=hero.id)` (сейчас у героя снимается только метка длительности, у NPC — эффекты; `invisible` героя после
+  истечения часа остался бы). В бою это делает `engine.drop_concentration_effects:307`.
+- `attack.reveal` не трогать: `source="invisibility"` и `expires.owner=hero.id` совпадают с боевыми (хэнд-бэк кабана, «Повтор 2 мамы» п. 2
+  — подтверждаю).
+Развилок для Влада нет: состояние от заклинания вне боя — следствие данных SRD и решения 62, альтернативы «не ставить» не предлагаю.
+
 ## Приложение — набросок К3б (не партии К3; вход для `docs/plan-k3b.md`)
 
 Решение 17 (2026-10-31): К3б — отдельный шаг сразу после К3, перед К4, со своим планом и аппрувом; сейв v15 — там. Здесь — набросок
@@ -1416,7 +1909,7 @@ kaban 20,05 $, doeba 7,06 $, mama 8,02 $, svekrov 4,92 $, papa 8,21 $, орке�
 |---|---|
 | П1 заклинания: данные (137 YAML + `effects`) | kaban 60–100, doeba 10–20, мама 6–10, свекровь 4–8 (≈ 80–140 мин); cov 15–25 мин; mutmut не нужен |
 | П2 классы, прогрессия, книга, наборы | kaban 75–115, doeba 25–45, мама 8–14, свекровь 5–10 (≈ 115–185 мин); cov 15–25 мин; mutmut 3–5 ч фоном |
-| П3 заклинания в бою: виды (17 видов, варианты, Помощь, вне боя; при делении на П3а/П3б — +10–15 мин на второй заход) | kaban 110–160, doeba 25–40, мама 10–16, свекровь 6–12 (≈ 150–235 мин); cov 15–25 мин; mutmut 3–5 ч фоном |
+| П3 заклинания в бою: виды (17 видов, варианты, Помощь, вне боя; разделена на П3а/П3б 2026-11-02 — +10–15 мин на второй заход, пересчёт тестя при закрытии) | kaban 110–160, doeba 25–40, мама 10–16, свекровь 6–12 (≈ 150–235 мин); cov 15–25 мин; mutmut 3–5 ч фоном |
 | П4 жрец в бою, призывы, авто-герой, сетка | kaban 70–110, doeba 20–35, мама 8–12, свекровь 5–8 (≈ 100–165 мин); cov 15–25 мин; mutmut 2–3 ч (+ Pilot); sim-grid 10–20 мин |
 | П5 мутанты 236 и К3 (доеба, фон) | прогон фоном ≥ 8 ч (окно Владу); разбор доебой 40–90 мин |
 | проверка руками + живой прогон Влада (К3) | 30–60 мин |

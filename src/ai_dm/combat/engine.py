@@ -2,6 +2,7 @@ from ai_dm.combat import disarm, downed, end, initiative, offhand, roles, shove,
 from ai_dm.combat.actions import (
     attack,
     cast,
+    cast_conditions,
     features,
     fighter,
     improvise,
@@ -36,6 +37,10 @@ from ai_dm.state.creature import CreatureState
 
 class CombatRoundLimit(RuntimeError):
     pass
+
+
+# состояния, которые защита от существ не даёт наложить
+WARDED = ("charmed", "frightened")
 
 
 # вид варианта -> функция, которая его выполняет
@@ -426,8 +431,22 @@ class CombatEngine:
             word = self.registry.get("condition", condition.id).name
             self.log(f"  {self.name(ref)}: иммунитет к состоянию {word}")
             return False
+        if condition.id in WARDED and self.warded(ref, condition.source):
+            word = self.registry.get("condition", condition.id).name
+            self.log(f"  {self.name(ref)}: защита не даёт наложить состояние {word}")
+            return False
         self.creature(ref).conditions.append(condition)
         return True
+
+    def warded(self, ref, source) -> bool:
+        # цель под защитой от существ с тегами источника (Защита от зла и добра)
+        if source not in {p.ref for p in self.state.participants}:
+            return False
+        tags = self.tags(source)
+        return any(
+            e.kind == "ward" and tags & set(e.params["tags"].split(","))
+            for e in self.creature(ref).active_effects
+        )
 
     def burn(self, ref) -> list[DomainEvent]:
         # зажигательная стрела: в начале хода цели ещё урон огнём (эффект сам снимается далее);
@@ -472,6 +491,8 @@ class CombatEngine:
         return events
 
     def next_turn(self) -> None:
+        # конец хода: повторные спасброски удержанного (Удержание личности, Паутина)
+        cast_conditions.repeat_saves(self, self.state.initiative_order[self.state.turn_index])
         self.state.turn_index += 1
         if self.state.turn_index >= len(self.state.initiative_order):
             self.state.turn_index = 0

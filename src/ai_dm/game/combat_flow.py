@@ -149,12 +149,20 @@ def preview_options(bundle, registry, cfg):
 
 
 def option_list(bundle, registry, cfg) -> list[dict]:
-    # варианты героя для промпта: [{id, label}]
+    # варианты героя для промпта: [{id, label}]; заклинания рассказчику -- только базовым кругом
+    # (Р35 б), повышенные круги выбирает игрок в меню
     return [
         {"id": option.id, "label": option.label, "cost": option.cost}
         for option in preview_options(bundle, registry, cfg)
-        if option.kind not in HIDDEN_KINDS
+        if option.kind not in HIDDEN_KINDS and not above_base(option, registry)
     ]
+
+
+def above_base(option, registry) -> bool:
+    # пункт заклинания повышенным кругом
+    if option.kind != "cast":
+        return False
+    return option.params["circle"] > registry.get("spell", option.params["spell"]).level
 
 
 def part_creature(bundle, part):

@@ -11,6 +11,8 @@ class Modifier(BaseModel):
     disadvantage: bool = False
     flat: int = 0
     dice: str | None = None
+    # кубики вычитаются (Порча, Луч ослабления)
+    penalty: bool = False
     auto_fail: bool = False
     auto_crit: bool = False
     # прибавляется к цели броска (КД или СЛ), например укрытие

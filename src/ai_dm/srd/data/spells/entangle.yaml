@@ -11,3 +11,12 @@ duration: 1m
 concentration: true
 classes:
 - ranger
+effects:
+- type: area
+  shape: cube
+  size_ft: 20
+- type: save_effect
+  ability: str
+  repeat: true
+- type: apply_condition
+  condition: restrained

@@ -30,6 +30,7 @@ from ai_dm.rules.spellcasting import (
     cast_problem,
     effect_of,
     expire_concentration,
+    modifier_params,
     roll_cast_checks,
     roll_heal,
     spell_kind,
@@ -556,7 +557,7 @@ def cast_spell(ctx, request):
                     creature.active_effects.append(
                         ActiveEffect(
                             id=spell.id, source=hero.id, kind="modifier",
-                            params={"target": effect.target, "dice": effect.dice},
+                            params=modifier_params(effect),
                             expires=Expiry(kind="concentration", owner=hero.id),
                         )
                     )

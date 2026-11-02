@@ -259,6 +259,53 @@ def test_removing_one_of_two_copies_keeps_item_worn(registry):
 
 # зелье лечения
 
+# К3 П3а: Чудо-ягода лечит ровно 1 HP без кубиков (heal value 1, dice None)
+
+def test_goodberry_heals_exactly_one_hp_without_rolling(registry):
+    class NoRolls(Rng):
+        def randbelow(self, n):
+            raise AssertionError("ягода не бросает кубики")
+
+    hero = make_hero(hp_current=3)
+    add_item(hero, "goodberries", 10, cost_cp=0)
+    assert use_item(hero, "goodberries", registry, NoRolls(1)) == 1
+    assert hero.creature.hp_current == 4
+
+
+def test_goodberry_is_consumed_one_at_a_time(registry):
+    hero = make_hero(hp_current=3)
+    add_item(hero, "goodberries", 10, cost_cp=0)
+    use_item(hero, "goodberries", registry, Rng(7))
+    assert count_item(hero, "goodberries") == 9
+
+
+def test_goodberry_at_full_hp_restores_nothing_but_is_spent(registry):
+    hero = make_hero(hp_current=12)
+    add_item(hero, "goodberries", cost_cp=0)
+    assert use_item(hero, "goodberries", registry, Rng(7)) == 0
+    assert count_item(hero, "goodberries") == 0
+
+
+def test_computed_heal_bonus_uses_the_hero_and_the_registry(registry):
+    # вычисляемая добавка эффекта (мастерство героя 1 ур. = 2) складывается со value
+    berry = registry.get("item", "goodberries")
+    effect = berry.effects[0].model_copy(update={"add": "proficiency_bonus"})
+    custom = registry.with_items({
+        "item": [berry.model_copy(update={"id": "royal_berries", "effects": [effect]})],
+    })
+    hero = make_hero(hp_current=3)
+    add_item(hero, "royal_berries", cost_cp=0)
+    assert use_item(hero, "royal_berries", custom, Rng(7)) == 1 + 2
+    assert hero.creature.hp_current == 6
+
+
+def test_rations_are_not_usable_as_medicine(registry):
+    hero = make_hero(hp_current=3)
+    add_item(hero, "rations", cost_cp=0)
+    with pytest.raises(InventoryError):
+        use_item(hero, "rations", registry, Rng(7))
+
+
 def test_potion_heals_by_2d4_plus_2(registry):
     hero = make_hero(hp_current=1)
     hero.creature.hp_max = 100

@@ -202,6 +202,20 @@ def effect_ac_parts(hero, now_s, ignore_magic) -> list[tuple[str, int, str]]:
     return parts
 
 
+def floor_parts(hero, now_s, ignore_magic, parts) -> list[tuple[str, int, str]]:
+    # КД не ниже значения (Дубовая кора): добавка до пола, если сумма слагаемых меньше
+    total = sum(value for _, value, _ in parts)
+    result = []
+    for effect in live_effects(hero.creature, now_s):
+        if effect.kind != "ac_floor" or (ignore_magic and effect.params.get("magic")):
+            continue
+        floor = effect.params["amount"]
+        if total < floor:
+            result.append((effect.params["label"], floor - total, f"не ниже {floor}"))
+            total = floor
+    return result
+
+
 def pierce_parts(hero, registry, parts) -> list[tuple[str, int, str]]:
     # бронебойная стрела: без щита, доспех не выше 12 (если КД больше 12)
     if sum(value for _, value, _ in parts) > 12:
@@ -221,6 +235,7 @@ def armor_class_parts(
     parts = base_armor_parts(hero, registry, ability_mod(hero, "dex"))
     parts += feat_ac_parts(hero, registry)
     parts += effect_ac_parts(hero, now_s, ignore_magic)
+    parts += floor_parts(hero, now_s, ignore_magic, parts)
     if pierce:
         parts = pierce_parts(hero, registry, parts)
     return parts

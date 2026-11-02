@@ -10,3 +10,9 @@ duration: 1h
 concentration: true
 classes:
 - ranger
+effects:
+- type: modifier
+  target: skill
+  skill: stealth
+  value: 10
+  targets: 3

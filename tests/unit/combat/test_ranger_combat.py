@@ -385,7 +385,7 @@ def test_archery_does_not_help_melee_attack(registry, cfg):
 
 # заклинания без вида боя
 
-def test_spells_without_combat_kind_are_not_offered(registry, cfg):
+def ranger_prepared_spells(registry, cfg):
     hero = make_ranger(registry, level=5)
     hero.sheet.prepared_of()[:] = [
         "cure_wounds", "entangle", "fog_cloud", "goodberry",
@@ -393,9 +393,23 @@ def test_spells_without_combat_kind_are_not_offered(registry, cfg):
         "lesser_restoration", "barkskin",
     ]
     engine = ranger_engine(registry, cfg, ScriptedRng(), hero=hero)
-    spells = {i.split(":")[1] for i in option_ids(engine, "hero") if i.startswith("cast:")}
-    assert spells <= {"hunters_mark", "cure_wounds"}
-    assert "hunters_mark" in spells
+    return {i.split(":")[1] for i in option_ids(engine, "hero") if i.startswith("cast:")}
+
+
+def test_ranger_spells_with_combat_effects_are_offered(registry, cfg):
+    # К3 П3а: пять следопытских заклинаний (BACKLOG 11) и Чудо-ягоды/Скороход теперь в бою
+    spells = ranger_prepared_spells(registry, cfg)
+    assert {
+        "hunters_mark", "cure_wounds", "entangle", "fog_cloud", "goodberry", "longstrider",
+        "pass_without_trace", "spike_growth", "barkskin",
+    } <= spells
+
+
+def test_ranger_spells_without_combat_use_are_not_offered(registry, cfg):
+    # Разговор с животными без боевых эффектов; Тревога -- 1 минута; Малое восстановление --
+    # нет состояния, которое можно снять
+    spells = ranger_prepared_spells(registry, cfg)
+    assert not {"speak_with_animals", "alarm", "lesser_restoration"} & spells
 
 
 # D2: Убийца колоссов -- раз в любой ход, в том числе в атаке по возможности

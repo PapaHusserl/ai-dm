@@ -343,9 +343,10 @@ def test_in_combat_inert_spells_are_listed_but_not_selectable(cfg, tmp_path, tui
 
     async def steps(app, pilot):
         await start_fight(tui, app, pilot)
+        hero_of(game.bundle).sheet.known_of().append("speak_with_animals")
         await open_spells(tui, app, pilot)
         rows = list(app.screen.rows)
-        index = next(i for i, r in enumerate(rows) if r[0].startswith(FOG))
+        index = next(i for i, r in enumerate(rows) if r[0].startswith("Разговор с животными"))
         turn_before = game.bundle.session.turn_seq
         await pilot.press(str(index + 1))
         await pilot.pause()
@@ -429,3 +430,43 @@ def test_preview_screen_matches_separate_previews(cfg, tmp_path, tui):
         )
 
     assert run(app, steps) == (True, True, True)
+
+
+# К3 П3а: «Назад» из подгруппы вариантов Цветного шара (решение 19)
+
+ORB_GROUP = "variants:spells_target:chromatic_orb:1:g1"
+
+
+def test_escape_from_a_variants_subgroup_goes_to_the_parent_group(cfg, tmp_path, tui):
+    game = combat_game(cfg, tmp_path)
+    hero_of(game.bundle).sheet.prepared_of().append("chromatic_orb")
+    app = AiDmApp(PlaySession(game))
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        app.menu.expanded = ORB_GROUP
+        app.show_menu()
+        app.action_menu_back()
+        first = app.menu.expanded
+        app.action_menu_back()
+        return first, app.menu.expanded
+
+    assert run(app, steps) == ("spells_target", None)
+
+
+def test_variants_subgroup_shows_back_and_six_damage_types_in_the_menu(cfg, tmp_path, tui):
+    game = combat_game(cfg, tmp_path)
+    hero_of(game.bundle).sheet.prepared_of().append("chromatic_orb")
+    app = AiDmApp(PlaySession(game))
+
+    async def steps(app, pilot):
+        await start_fight(tui, app, pilot)
+        app.menu.expanded = ORB_GROUP
+        app.show_menu()
+        return [row.label for row in app.menu.view().rows]
+
+    labels = run(app, steps)
+    assert labels[0] == "← Назад"
+    assert [label.split(" ")[0] for label in labels[1:7]] == [
+        "кислота", "холод", "огонь", "молния", "яд", "гром",
+    ]

@@ -10,6 +10,7 @@ EFFECT_TARGETS = {
     "attack_roll": ("attack",),
     "saving_throw": ("save", "death_save"),
     "ability_check": ("check",),
+    "skill": ("check",),
 }
 
 
@@ -45,7 +46,14 @@ class EffectSource:
                 if request.kind not in EFFECT_TARGETS.get(params.get("target"), ()):
                     continue
                 # ability: эффект только для спасбросков этой характеристики (Уклонение -- Ловкость)
-                if "ability" in params and params["ability"] != request.ability:
+                # (Маяк надежды: спасброски от смерти -- без характеристики)
+                if (
+                    "ability" in params and params["ability"] != request.ability
+                    and request.kind != "death_save"
+                ):
+                    continue
+                # skill: бонус только к проверке этого навыка (Бесследное передвижение)
+                if "skill" in params and params["skill"] != request.skill:
                     continue
                 against = params.get("against")
                 if against is not None and against != request.target_id:
@@ -55,7 +63,9 @@ class EffectSource:
                         source=effect.id,
                         advantage=params.get("mode") == "advantage",
                         disadvantage=params.get("mode") == "disadvantage",
+                        flat=params.get("amount", 0),
                         dice=params.get("dice"),
+                        penalty=params.get("mode") == "penalty",
                         consumes=effect if params.get("consume") else None,
                     )
                 )

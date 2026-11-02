@@ -1,11 +1,12 @@
 from ai_dm.combat import downed, mastery, monster_traits, sneak, thrown
-from ai_dm.combat.actions import features, rogue
+from ai_dm.combat.actions import features, rogue, shield
 from ai_dm.combat.ammo import spend as spend_ammo
 from ai_dm.combat.controllers import is_quarreling, quarrel_targets
+from ai_dm.combat.zone_effects import obscured
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
-from ai_dm.core.dice import parse_dice
+from ai_dm.core.dice import parse_dice, roll_dice
 from ai_dm.core.events import DomainEvent
-from ai_dm.rules.creatures import end_concentration
+from ai_dm.rules.creatures import end_concentration, live_effects
 from ai_dm.rules.damage import DamageResult
 from ai_dm.rules.derived import (
     ability_modifier,
@@ -231,11 +232,22 @@ def base_label(engine, ref, target_ref, info) -> str:
 def reveal(engine, ref) -> None:
     # скрытность кончается с первой атакой или заклинанием
     creature = engine.creature(ref)
-    hidden = [c for c in creature.conditions if c.id == "invisible" and c.source == "hidden"]
+    hidden = [
+        c for c in creature.conditions
+        if c.id == "invisible" and c.source in ("hidden", "invisibility")
+    ]
     if not hidden:
         return
     creature.conditions = [c for c in creature.conditions if c not in hidden]
     engine.log(f"  {engine.name(ref)} больше не скрыт")
+    # Невидимость кончается целиком, с ней и концентрация заклинателя
+    for condition in hidden:
+        if condition.expires is not None and condition.expires.kind == "concentration":
+            owner = condition.expires.owner
+            end_concentration(engine.creature(owner))
+            engine.drop_concentration_effects(owner)
+            name = engine.registry.get("spell", condition.source).name
+            engine.log(f"  {name} кончается")
 
 
 def attack_tags(engine, ref, target_ref) -> dict:
@@ -255,12 +267,30 @@ def attack_tags(engine, ref, target_ref) -> dict:
     return tags
 
 
+def spell_disadvantage(engine, ref, target_ref) -> list[str]:
+    # помеха от заклинаний: туман в зоне цели или атакующего (Р18), защита цели от существ
+    # с тегами атакующего (Защита от зла и добра)
+    notes = []
+    zones = {engine.part(ref).zone_id, engine.part(target_ref).zone_id}
+    if any(obscured(engine, zone_id) for zone_id in zones):
+        notes.append("туман")
+    tags = engine.tags(ref)
+    for effect in engine.creature(target_ref).active_effects:
+        if effect.kind == "ward" and tags & set(effect.params["tags"].split(",")):
+            notes.append(engine.registry.get("spell", effect.id).name)
+    return notes
+
+
 def roll_attack(
     engine, ref, target_ref, bonus, base_adv, label="", parts=None, dc=None, dc_note="",
     base_note=""
 ):
     if dc is None:
         dc = engine.armor_class(target_ref)
+    notes = spell_disadvantage(engine, ref, target_ref)
+    if notes:
+        base_adv = {"normal": "disadvantage", "advantage": "normal"}.get(base_adv, base_adv)
+        base_note = ", ".join([n for n in [base_note] + notes if n])
     request = RollRequest(
         kind="attack", actor=engine.actor(ref), actor_id=ref, target=engine.actor(target_ref),
         target_id=target_ref, tags=attack_tags(engine, ref, target_ref), base_adv=base_adv,
@@ -269,6 +299,7 @@ def roll_attack(
     )
     result = roll(request, engine.rng, engine.registry, modifiers=engine.modifiers)
     engine.log(f"{engine.name(ref)} -> {engine.name(target_ref)}: {result.log.text}")
+    shield.react(engine, target_ref, result, dc)
     reveal(engine, ref)
     return result
 
@@ -503,6 +534,23 @@ def arrow_conditions(engine, ref, target_ref, ammo, effects) -> None:
             sleep_arrow(engine, ref, target_ref, effect)
 
 
+def weapon_damage_mods(engine, ref) -> int:
+    # заклинания на бьющем: +1 к урону оружием (Магическое оружие), −1d8 (Луч ослабления)
+    total = 0
+    now_s = engine.world.clock.now_s
+    for effect in live_effects(engine.creature(ref), now_s):
+        if effect.kind != "modifier" or effect.params.get("target") != "weapon_damage":
+            continue
+        change = effect.params.get("amount", 0)
+        if "dice" in effect.params:
+            rolled = roll_dice(effect.params["dice"], engine.rng).total
+            change += -rolled if effect.params.get("mode") == "penalty" else rolled
+        total += change
+        name = engine.registry.get("spell", effect.id).name
+        engine.log(f"  {engine.name(ref)}: {change:+d} к урону ({name})")
+    return total
+
+
 def attack(
     engine, ref, target_ref, info, nonlethal=False, provoked=False, ammo=None
 ) -> list[DomainEvent]:
@@ -541,6 +589,7 @@ def attack(
                 engine, ref, info.advantage_dice, 0, crit, label=f"Урон ({info.name}, доп.)",
                 damage_type=info.damage_type,
             ).total
+        total = max(0, total + weapon_damage_mods(engine, ref))
         total = rogue.uncanny_dodge(engine, target_ref, total)
         dealt = engine.damage(target_ref, total, info.damage_type)
         dealt = mark_damage(engine, ref, target_ref, crit, dealt)

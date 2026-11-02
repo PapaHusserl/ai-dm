@@ -244,3 +244,102 @@ def test_invalid_travel_does_not_end_anything(registry, cfg):
     hero.creature.concentration = Concentration(spell_id="bless", circle=1, until_s=0)
     apply(ctx, req("advance_time", travel_to="nowhere"))
     assert hero.creature.concentration is not None
+
+
+# К3 П3а: Бесследное передвижение (pass_without_trace) вне боя -- следопыт Грей (BACKLOG 11).
+# До П3а у заклинания не было effects и cast_spell молча ставил концентрацию; с видом buff
+# params эффекта обязаны пройти валидацию ActiveEffect (значения int | str | bool, без None).
+
+@pytest.fixture
+def tracer(dragon):
+    # Грей 5 ур. со второй ячейкой (в живом мире он выше): Бесследное передвижение подготовлено
+    from ai_dm.rules.progression import sync_resources
+
+    registry, bundle = dragon
+    hero = bundle.heroes[0]
+    hero.sheet.primary.level = 5
+    hero.sheet.prepared_of().append("pass_without_trace")
+    sync_resources(hero, registry)
+    return dragon
+
+
+def cast_trace(registry, cfg, bundle, **fields):
+    ctx = make_ctx(registry, cfg, bundle=bundle)
+    data = {"spell_id": "pass_without_trace", "circle": 2, "target": "hero", "free": False}
+    return ctx, apply(ctx, req("cast_spell", **(data | fields)))
+
+
+def stealth_total(registry, cfg, bundle):
+    from ai_dm.core.rng import Rng
+
+    ctx = make_ctx(registry, cfg, rng=Rng(7), bundle=bundle)
+    return apply(ctx, req("skill_check", skill="stealth", category="easy")).result["total"]
+
+
+def test_pass_without_trace_outside_combat_is_accepted(tracer, cfg):
+    registry, bundle = tracer
+    _, d = cast_trace(registry, cfg, bundle)
+    assert d.status == "accepted"
+
+
+def test_pass_without_trace_puts_a_stealth_modifier_on_the_hero(tracer, cfg):
+    registry, bundle = tracer
+    cast_trace(registry, cfg, bundle)
+    hero = bundle.heroes[0]
+    modifiers = [e for e in hero.creature.active_effects if e.kind == "modifier"]
+    assert [(e.id, e.params) for e in modifiers] == [
+        ("pass_without_trace", {"target": "skill", "skill": "stealth", "amount": 10})
+    ]
+    assert modifiers[0].expires == Expiry(kind="concentration", owner=hero.id)
+
+
+def test_pass_without_trace_holds_concentration_for_an_hour(tracer, cfg):
+    registry, bundle = tracer
+    start = bundle.world.clock.now_s
+    _, d = cast_trace(registry, cfg, bundle)
+    assert bundle.heroes[0].creature.concentration.spell_id == "pass_without_trace"
+    assert bundle.heroes[0].creature.concentration.until_s == start + HOUR
+    assert d.result["concentration"] == "pass_without_trace"
+
+
+def test_pass_without_trace_spends_a_second_circle_slot(tracer, cfg):
+    registry, bundle = tracer
+    pool = bundle.heroes[0].creature.resources["spell_slot:2"]
+    before = pool.current
+    cast_trace(registry, cfg, bundle)
+    assert pool.current == before - 1
+
+
+def test_pass_without_trace_adds_10_to_a_stealth_check(tracer, cfg):
+    registry, bundle = tracer
+    plain = stealth_total(registry, cfg, bundle.model_copy(deep=True))
+    cast_trace(registry, cfg, bundle)
+    assert stealth_total(registry, cfg, bundle) == plain + 10
+
+
+def test_pass_without_trace_does_not_change_other_skill_checks(tracer, cfg):
+    from ai_dm.core.rng import Rng
+
+    registry, bundle = tracer
+
+    def total(current):
+        ctx = make_ctx(registry, cfg, rng=Rng(7), bundle=current)
+        return apply(ctx, req("skill_check", skill="athletics", category="easy")).result["total"]
+
+    plain = total(bundle.model_copy(deep=True))
+    cast_trace(registry, cfg, bundle)
+    assert total(bundle) == plain
+
+
+def test_pass_without_trace_cannot_be_cast_at_a_higher_circle_outside_combat(tracer, cfg):
+    registry, bundle = tracer
+    _, d = cast_trace(registry, cfg, bundle, circle=3)
+    assert d.code == "bad_circle"
+
+
+def test_pass_without_trace_ends_with_its_hour(tracer, cfg):
+    registry, bundle = tracer
+    cast_trace(registry, cfg, bundle)
+    go(registry, cfg, bundle, "advance_time", category="hour")
+    assert bundle.heroes[0].creature.concentration is None
+    assert [e for e in bundle.heroes[0].creature.active_effects if e.kind == "modifier"] == []

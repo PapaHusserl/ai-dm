@@ -920,3 +920,102 @@ def test_effect_without_expiry_applies_with_now_s(registry):
     )
     result = roll(make_request(actor=actor, now_s=10**6), two_dice(), registry)
     assert result.advantage == "disadvantage"
+
+
+# К3 П3а: кубики-штраф, плоская добавка, фильтр по навыку, спасбросок от смерти без характеристики
+
+def test_penalty_dice_are_subtracted_from_the_total(registry):
+    actor = make_creature()
+    actor.active_effects.append(
+        modifier_effect("ray", target="attack_roll", dice="1d8", mode="penalty")
+    )
+    result = roll(make_request(actor=actor), ScriptedRng((20, 10), (8, 3)), registry)
+    assert result.total == 10 + 5 - 3
+
+
+def test_penalty_dice_do_not_give_advantage_or_disadvantage(registry):
+    actor = make_creature()
+    actor.active_effects.append(
+        modifier_effect("ray", target="attack_roll", dice="1d8", mode="penalty")
+    )
+    result = roll(make_request(actor=actor), ScriptedRng((20, 10), (8, 3)), registry)
+    assert result.advantage == "normal"
+
+
+def test_bonus_dice_without_penalty_mode_are_added(registry):
+    actor = make_creature()
+    actor.active_effects.append(modifier_effect("bless", target="attack_roll", dice="1d8"))
+    result = roll(make_request(actor=actor), ScriptedRng((20, 10), (8, 3)), registry)
+    assert result.total == 10 + 5 + 3
+
+
+def stealth_effect(**extra):
+    params = {"target": "skill", "skill": "stealth", "amount": 10} | extra
+    return modifier_effect("pass_without_trace", **params)
+
+
+def stealth_request(actor, skill="stealth", kind="check"):
+    return make_request(kind, actor=actor, ability="dex", skill=skill)
+
+
+def test_skill_effect_adds_its_flat_amount_to_that_skill(registry):
+    actor = make_creature()
+    actor.active_effects.append(stealth_effect())
+    result = roll(stealth_request(actor), ScriptedRng((20, 8)), registry)
+    assert result.total == 8 + 5 + 10
+
+
+def test_skill_effect_ignores_another_skill(registry):
+    actor = make_creature()
+    actor.active_effects.append(stealth_effect())
+    result = roll(stealth_request(actor, skill="athletics"), ScriptedRng((20, 8)), registry)
+    assert result.total == 8 + 5
+
+
+def test_skill_effect_does_not_touch_attacks_or_saves(registry):
+    actor = make_creature()
+    actor.active_effects.append(stealth_effect())
+    attack = roll(make_request(actor=actor), ScriptedRng((20, 8)), registry)
+    save = roll(stealth_request(actor, kind="save"), ScriptedRng((20, 8)), registry)
+    assert (attack.total, save.total) == (8 + 5, 8 + 5)
+
+
+def test_flat_amount_without_skill_filter_applies_to_every_skill_check(registry):
+    actor = make_creature()
+    actor.active_effects.append(modifier_effect("boost", target="skill", amount=2))
+    result = roll(stealth_request(actor, skill="athletics"), ScriptedRng((20, 8)), registry)
+    assert result.total == 8 + 5 + 2
+
+
+def beacon(**extra):
+    params = {"target": "saving_throw", "mode": "advantage", "ability": "wis"} | extra
+    return modifier_effect("beacon_of_hope", **params)
+
+
+def test_ability_filtered_save_effect_applies_to_that_ability(registry):
+    actor = make_creature()
+    actor.active_effects.append(beacon())
+    request = make_request("save", actor=actor, ability="wis")
+    assert roll(request, two_dice(), registry).advantage == "advantage"
+
+
+def test_ability_filtered_save_effect_skips_other_abilities(registry):
+    actor = make_creature()
+    actor.active_effects.append(beacon())
+    request = make_request("save", actor=actor, ability="con")
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_effect_for_another_ability_does_not_hide_the_next_effect(registry):
+    actor = make_creature()
+    actor.active_effects.append(beacon(ability="dex"))
+    actor.active_effects.append(beacon())
+    request = make_request("save", actor=actor, ability="wis")
+    assert roll(request, two_dice(), registry).advantage == "advantage"
+
+
+def test_ability_filtered_effect_applies_to_death_saves_without_ability(registry):
+    actor = make_creature()
+    actor.active_effects.append(beacon())
+    request = make_request("death_save", actor=actor, dc=None, bonus=0)
+    assert roll(request, two_dice(), registry).advantage == "advantage"

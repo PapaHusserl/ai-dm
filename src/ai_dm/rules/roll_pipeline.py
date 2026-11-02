@@ -252,8 +252,9 @@ def roll_d20(request, rng, registry, mods, rerollers) -> RollResult:
             dice_roll = roll_dice(m.dice, rng)
             detail = f"{dice_roll.expr} ({dice_roll.total})"
             label = source_label(registry, m.source)
+            sign = -1 if m.penalty else 1
             extra_terms.append(
-                RollTerm(source=m.source, value=dice_roll.total, detail=detail, label=label)
+                RollTerm(source=m.source, value=sign * dice_roll.total, detail=detail, label=label)
             )
     if kept_pair is not None and request.kind in D20_KINDS:
         kept_pair.extra = request.bonus + sum(t.value for t in extra_terms)

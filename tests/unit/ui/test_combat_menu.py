@@ -933,6 +933,7 @@ FLAT_IDS_3_GOBLINS = [
     "attack:composite_longbow:g2:ammo:arrow_silver",
     "attack:composite_longbow:g3:ammo:arrow_silver",
     "cast:cure_wounds:1:hero",
+    "cast:fog_cloud:1:door", "cast:fog_cloud:1:hall", "cast:fog_cloud:1:balcony",
     "dash", "disengage", "dodge",
     "parley:g1:intimidation:surrender", "parley:g1:persuasion:defect", "parley:g1:deception:flee",
     "parley:g2:intimidation:surrender", "parley:g2:persuasion:defect", "parley:g2:deception:flee",
@@ -959,6 +960,56 @@ def test_option_list_for_narrator_is_the_full_flat_list(cfg, tmp_path):
     flat = [o for o in game.runner.preview_turn() if o.kind not in ("equip", "unequip")]
     assert [item["id"] for item in shown] == FLAT_IDS_3_GOBLINS
     assert shown == [{"id": o.id, "label": o.label, "cost": o.cost} for o in flat]
+
+
+def second_circle_game(cfg, tmp_path):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.state.creature import ResourcePool
+
+    game = goblins_game(cfg, tmp_path, 3)
+    hero_of(game.bundle).creature.resources["spell_slot:2"] = ResourcePool(current=2, max=2)
+    return game
+
+
+def test_player_menu_keeps_higher_circles_of_a_spell(cfg, tmp_path):
+    # К3 решение 56 (Р35 б): круги остаются в меню игрока (решение 10 К1)
+    game = second_circle_game(cfg, tmp_path)
+    flat = [o.id for o in game.runner.preview_turn()]
+    assert "cast:cure_wounds:1:hero" in flat
+    assert "cast:cure_wounds:2:hero" in flat
+
+
+def test_narrator_gets_only_the_base_circle_of_spells(cfg, tmp_path):
+    game = second_circle_game(cfg, tmp_path)
+    shown = [item["id"] for item in combat_flow.option_list(game.bundle, game.registry, cfg)]
+    assert "cast:cure_wounds:1:hero" in shown
+    assert "cast:cure_wounds:2:hero" not in shown
+
+
+def test_narrator_list_loses_only_the_higher_circle_spell_options(cfg, tmp_path):
+    game = second_circle_game(cfg, tmp_path)
+    shown = [item["id"] for item in combat_flow.option_list(game.bundle, game.registry, cfg)]
+    flat = [
+        o.id for o in game.runner.preview_turn()
+        if o.kind not in ("equip", "unequip") and not (
+            o.kind == "cast" and o.params["circle"] > game.registry.get(
+                "spell", o.params["spell"]).level
+        )
+    ]
+    assert shown == flat
+
+
+def test_above_base_is_true_only_for_a_cast_above_the_spell_level(registry):
+    def cast_option(spell, circle):
+        return ActionOption(
+            id=f"cast:{spell}:{circle}:hero", kind="cast", label="x",
+            params={"spell": spell, "circle": circle, "target": "hero"},
+        )
+
+    assert combat_flow.above_base(cast_option("cure_wounds", 2), registry) is True
+    assert combat_flow.above_base(cast_option("cure_wounds", 1), registry) is False
+    assert combat_flow.above_base(cast_option("fire_bolt", 0), registry) is False
+    assert combat_flow.above_base(attack("sword", "g1"), registry) is False
 
 
 def test_option_list_for_narrator_hides_the_equipment_swap_options(cfg, tmp_path):

@@ -11,3 +11,9 @@ duration: 10m
 concentration: true
 classes:
 - ranger
+effects:
+- type: hazard
+  dice: 2d4
+  damage_type: piercing
+  shape: sphere
+  size_ft: 20

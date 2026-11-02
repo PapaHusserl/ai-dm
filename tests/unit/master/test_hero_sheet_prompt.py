@@ -404,7 +404,8 @@ def test_every_builder_limit_constant_is_in_limits(registry, cfg):
 # Б2а (A2): class_data переведён на rules.hero_options -- справочник листа байт-в-байт прежний
 # (снимок снят с кода Б1 до правок Б2 на пак vale; К7к: в таблицу цен добавлен доспех chain_shirt;
 # К3 П1: списки заклинаний и заговоров жреца и волшебника; К3 П2: cantrip_count, divine_order_ids,
-# spellbook у классов, наборы воина/плута/жреца/волшебника, цены наборов и книги)
+# spellbook у классов, наборы воина/плута/жреца/волшебника, цены наборов и книги;
+# К3 П3а: в таблицу цен добавлены rations и goodberries)
 
 def test_sheet_reference_block_is_byte_identical_to_the_b1_snapshot(registry, cfg):
     from hero_kit import sheet_task, vale_pack
