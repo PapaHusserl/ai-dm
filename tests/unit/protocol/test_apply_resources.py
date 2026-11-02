@@ -20,7 +20,7 @@ from ai_dm.core.clock import DAY
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.rules.inventory import count_item
-from ai_dm.state.creature import AppliedCondition
+from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 from ai_dm.state.world import Connection, Location
 
 
@@ -42,6 +42,28 @@ def test_damage_nuisance_rolls_1d10(registry, cfg):
     assert d.status == "accepted"
     assert hp_of(ctx) == 193
     assert d.report_tag is None
+
+
+def stoneskin_ctx(registry, cfg, expires_s):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d10=[8]))
+    ctx.bundle.world.clock.now_s = 500
+    ctx.hero.creature.active_effects = [ActiveEffect(
+        id="stoneskin_elixir", source="h1", kind="resist",
+        params={"damage_type": "bludgeoning"}, expires=Expiry(kind="seconds", value=expires_s),
+    )]
+    return ctx
+
+
+def test_damage_expired_resistance_effect_does_not_halve(registry, cfg):
+    ctx = stoneskin_ctx(registry, cfg, 100)
+    apply(ctx, req("damage", severity="nuisance", damage_type="bludgeoning"))
+    assert hp_of(ctx) == 192
+
+
+def test_damage_live_resistance_effect_halves(registry, cfg):
+    ctx = stoneskin_ctx(registry, cfg, 1000)
+    apply(ctx, req("damage", severity="nuisance", damage_type="bludgeoning"))
+    assert hp_of(ctx) == 196
 
 
 def test_damage_dangerous_rolls_2d10(registry, cfg):

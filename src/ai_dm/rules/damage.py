@@ -125,13 +125,14 @@ def hazard_dice(level: int, severity: str, registry) -> str:
 
 
 def roll_hazard(
-    hero, severity: str, damage_type: str, registry, rng, *, failed_save: bool = False
+    hero, severity: str, damage_type: str, registry, rng, *,
+    failed_save: bool = False, now_s=None,
 ) -> HazardResult:
     dice = hazard_dice(hero.sheet.level, severity, registry)
     if severity == "deadly" and not failed_save:
         raise HazardError("смертельный урон только после проваленного спасброска")
     rolled = roll_damage_dice(dice, 0, rng)
-    applied = apply_damage(hero, rolled.total, damage_type, registry)
+    applied = apply_damage(hero, rolled.total, damage_type, registry, now_s=now_s)
     log = RollLogEntry(text=damage_log_text(
         rolled, 0, False, label="Урон (опасность)", damage_type=damage_type
     ))

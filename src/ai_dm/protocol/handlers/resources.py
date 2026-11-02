@@ -110,12 +110,12 @@ def damage(ctx, request):
     if severity == "deadly" and not spent_fail_ref(ctx, request.failed_roll_ref):
         severity = "dangerous"
         cut = True
+    now_s = ctx.bundle.world.clock.now_s
     hazard = roll_hazard(
         hero, severity, request.damage_type, ctx.registry, ctx.rng,
-        failed_save=(severity == "deadly"),
+        failed_save=(severity == "deadly"), now_s=now_s,
     )
     log = [hazard.log.text] + hazard.damage.notes
-    now_s = ctx.bundle.world.clock.now_s
 
     def intervene(target):
         # божественное вмешательство (+9) вместо смерти героя

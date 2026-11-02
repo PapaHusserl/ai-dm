@@ -17,11 +17,13 @@
 #       4d10 10d10 18d10 / 10d10 18d10 24d10;
 #       уровень вне 1..20 или неизвестная тяжесть -> ValueError
 #   HazardError(ValueError)
-#   roll_hazard(hero, severity, damage_type, registry, rng, *, failed_save=False) -> HazardResult
+#   roll_hazard(hero, severity, damage_type, registry, rng, *,
+#               failed_save=False, now_s=None) -> HazardResult
 #       HazardResult(BaseModel): damage: DamageResult (итог apply_damage), log: RollLogEntry
 #       (B6; строка с гранями: "урон 2d10 (4, 7) + 0 = 11", текст по формату урона конвейера)
 #       кубики по hero.sheet.level; "deadly" без failed_save=True -> HazardError до броска
-#       (rng и HP не тронуты); урон применяется через apply_damage
+#       (rng и HP не тронуты); урон применяется через apply_damage;
+#       now_s передаётся туда же: seconds-эффекты (сопротивление) с value <= now_s не считаются
 #   concentration_check(hero, damage: int, registry, rng, *, modifiers=None, rerollers=None)
 #       -> RollResult | None   (modifiers / rerollers пробрасываются в спасбросок, B7)
 #       нет creature.concentration -> None (rng не трогается); иначе спасбросок ТЕЛ (через checks.
@@ -349,6 +351,31 @@ def test_roll_hazard_respects_resistance_of_species(registry):
     hero = make_hero("dwarf")
     result = roll_hazard(hero, "nuisance", "poison", registry, ScriptedRng((10, 8)))
     assert result.damage.final == 4
+
+
+def stoneskin(expires_s):
+    return ActiveEffect(
+        id="stoneskin_elixir", source="h1", kind="resist",
+        params={"damage_type": "bludgeoning"}, expires=Expiry(kind="seconds", value=expires_s),
+    )
+
+
+def test_roll_hazard_ignores_expired_resistance_effect(registry):
+    hero = make_hero(hp=50)
+    hero.creature.active_effects = [stoneskin(100)]
+    result = roll_hazard(
+        hero, "nuisance", "bludgeoning", registry, ScriptedRng((10, 8)), now_s=500
+    )
+    assert result.damage.final == result.damage.raw
+
+
+def test_roll_hazard_keeps_live_resistance_effect(registry):
+    hero = make_hero(hp=50)
+    hero.creature.active_effects = [stoneskin(1000)]
+    result = roll_hazard(
+        hero, "nuisance", "bludgeoning", registry, ScriptedRng((10, 8)), now_s=500
+    )
+    assert result.damage.final == result.damage.raw // 2
 
 
 def test_roll_hazard_returns_log_with_dice_faces(registry):
