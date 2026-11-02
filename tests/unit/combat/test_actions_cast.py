@@ -72,6 +72,19 @@ def test_fire_bolt_miss(registry, cfg):
     assert rng.left("d10") == 1
 
 
+def test_no_fire_bolt_at_a_downed_enemy(registry, cfg):
+    engine = caster_engine(registry, cfg, ScriptedRng())
+    part(engine, "goblin_1").status = "down"
+    assert "cast:fire_bolt:0:goblin_1" not in option_ids(engine, "wiz")
+
+
+def test_no_magic_missile_at_a_downed_enemy(registry, cfg):
+    engine = caster_engine(registry, cfg, ScriptedRng())
+    assert "cast:magic_missile:1:goblin_1" in option_ids(engine, "wiz")
+    part(engine, "goblin_1").status = "down"
+    assert "cast:magic_missile:1:goblin_1" not in option_ids(engine, "wiz")
+
+
 def test_fire_bolt_does_not_spend_a_slot(registry, cfg):
     engine = caster_engine(registry, cfg, ScriptedRng(d20=[10], d10=[7]))
     engine.perform("wiz", "cast:fire_bolt:0:goblin_1")

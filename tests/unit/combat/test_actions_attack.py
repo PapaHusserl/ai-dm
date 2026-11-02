@@ -122,11 +122,14 @@ def test_dead_enemy_is_not_a_target(registry, cfg):
     assert "attack:longsword:goblin_1" not in option_ids(engine, "hero")
 
 
-def test_downed_enemy_can_still_be_attacked(registry, cfg):
+def test_downed_enemy_is_not_in_hero_menu(registry, cfg):
+    # лежащих добивает рассказчик, в меню героя их нет
     engine = duel(registry, cfg)
     part(engine, "goblin_1").status = "down"
     set_hp(engine, "goblin_1", 0)
-    assert "attack:longsword:goblin_1" in option_ids(engine, "hero")
+    ids = option_ids(engine, "hero")
+    assert "attack:longsword:goblin_1" not in ids
+    assert "attack:longsword:goblin_1:nonlethal" not in ids
 
 
 def test_allies_are_not_targets(registry, cfg):
@@ -215,6 +218,12 @@ def test_downed_enemy_in_own_zone_does_not_give_disadvantage(registry, cfg):
     set_hp(engine, "goblin_1", 0)
     engine.perform("hero", "attack:shortbow:goblin_2")
     assert rng.left("d20") == 0
+
+
+def test_no_ranged_attack_on_a_downed_enemy(registry, cfg):
+    engine = duel(registry, cfg, hero=archer(registry))
+    part(engine, "goblin_1").status = "down"
+    assert "attack:shortbow:goblin_1" not in option_ids(engine, "hero")
 
 
 def test_ranged_attack_on_enemy_in_own_zone_is_allowed(registry, cfg):

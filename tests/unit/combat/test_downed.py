@@ -20,7 +20,8 @@
 #       status "active" и герой ДЕЙСТВУЕТ В ЭТОТ ЖЕ ХОД (контроллер спрашивается как обычно),
 #       3 провала -- mark_dead; бой кончается сразу, если героев/союзников больше нет (outcome
 #       "hero_dead"), иначе идёт дальше, пока стоят союзники (test_end.py).
-#       Атаки по лежащему вблизи -- автокрит (провал +2), издали обычные (провал +1);
+#       Атаки монстров по лежащему герою вблизи -- автокрит (провал +2), издали обычные (провал +1);
+#       лежащих врагов в меню героя нет (available.menu_targets), добивает рассказчик;
 #       last_hit_by обновляется каждым ударом.
 #     Группа последнего удара: падение от опасности (attacker_ref is None, hazard) сбрасывает
 #       state.defeat_group_id в None; удар по уже лежащему герою обновляет defeat_group_id группой
@@ -53,6 +54,7 @@ from combat_kit import (
 
 from ai_dm.combat.controllers import ScriptedController
 from ai_dm.rules.death_saves import is_dying, is_stable
+from ai_dm.rules.results import Rejected
 from ai_dm.state.combat import Group
 
 INTENT_OPTIONS = [
@@ -138,13 +140,22 @@ def test_nonlethal_knockout_leaves_the_world_alone(registry, cfg):
     assert engine.world.flags == {}
 
 
-def test_downed_monster_is_finished_by_a_normal_attack(registry, cfg):
-    # лежащий: преимущество (два d20) и автокрит вблизи -> 2d8
-    engine = goblins(registry, cfg, ScriptedRng(d20=[15, 15], d8=[1, 1]))
+def test_downed_monster_is_not_offered_to_the_hero(registry, cfg):
+    # лежащего добивает рассказчик: атаки героя по нему в меню нет, perform отклоняет
+    engine = goblins(registry, cfg)
     set_hp(engine, "goblin_1", 0)
     part(engine, "goblin_1").status = "down"
-    engine.perform("hero", "attack:longsword:goblin_1")
-    assert part(engine, "goblin_1").status == "dead"
+    assert "attack:longsword:goblin_1" not in [o.id for o in engine.available_actions("hero")]
+    assert isinstance(engine.perform("hero", "attack:longsword:goblin_1"), Rejected)
+    assert part(engine, "goblin_1").status == "down"
+
+
+def test_monster_still_has_the_downed_hero_as_a_target(registry, cfg):
+    # фильтр только для меню героя: монстры бьют лежащего героя
+    engine = goblins(registry, cfg)
+    down_hero(engine, "hero")
+    ids = [o.id for o in engine.available_actions("goblin_1")]
+    assert any(i.endswith(":hero") for i in ids if i.startswith("attack:"))
 
 
 def test_downed_monster_is_not_a_fit_fighter(registry, cfg):

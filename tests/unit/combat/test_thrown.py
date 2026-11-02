@@ -55,6 +55,12 @@ def throw_mode(engine, weapon):
 
 # --- варианты ---
 
+def test_no_throw_at_a_downed_enemy(registry, cfg):
+    engine, _ = thrower(registry, cfg)
+    engine.part("goblin_1").status = "down"
+    assert THROW not in option_ids(engine, "hero")
+
+
 def test_thrown_weapon_in_the_next_zone_is_offered_as_a_throw(registry, cfg):
     engine, _ = thrower(registry, cfg)
     assert THROW in option_ids(engine, "hero")

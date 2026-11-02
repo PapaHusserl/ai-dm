@@ -41,12 +41,20 @@ def target_text(engine, target) -> str:
     return ", ".join(names)
 
 
+def menu_targets(engine, ref) -> list[str]:
+    # цели вариантов меню: у героя лежащих (status down, без сознания) нет, их добивает рассказчик
+    targets = attack_targets(engine, ref)
+    if not engine.is_hero(ref):
+        return targets
+    return [t for t in targets if engine.part(t).status != "down"]
+
+
 def attack_options(engine, ref) -> list[ActionOption]:
     result = []
     for info in [i for i in attacks_of(engine, ref) if ammo.can_shoot(engine, ref, i)]:
         stock = ammo.stock_text(engine, ref, info)
         verb = "Бросок" if info.grip == "thrown" else "Атака"
-        for target_ref in attack_targets(engine, ref):
+        for target_ref in menu_targets(engine, ref):
             if base_advantage(engine, ref, target_ref, info) is None:
                 continue
             params = {
@@ -95,7 +103,7 @@ def ammo_options(engine, ref) -> list[ActionOption]:
             continue
         weapon = engine.registry.get("weapon", info.id)
         for item, qty in special_ammo(engine, ref, info.id):
-            for target_ref in attack_targets(engine, ref):
+            for target_ref in menu_targets(engine, ref):
                 if base_advantage(engine, ref, target_ref, info) is None:
                     continue
                 params = {
@@ -155,8 +163,12 @@ def spell_entries(engine, ref, spell, cost) -> list[ActionOption]:
         if spell.level not in usable:
             circles = [spell.level] + usable
     result = []
+    # атакующие заклинания лежащих не берут (как атаки): их добивает рассказчик
+    hits = cast.spell_kind(spell) in ("attack", "darts", "mark")
     for circle in circles:
         for target in cast.cast_targets(engine, ref, spell, circle):
+            if hits and engine.part(target).status == "down":
+                continue
             result += circle_options(engine, spell, (circle, target), (usable, free_pool), cost)
     return result
 
@@ -411,7 +423,7 @@ def free_attack_options(engine, ref, flag_id, kind, title) -> list[ActionOption]
         return []
     info = infos[0]
     targets = [
-        t for t in attack_targets(engine, ref)
+        t for t in menu_targets(engine, ref)
         if t != params["target"] and engine.part(t).zone_id == params["zone"]
         and base_advantage(engine, ref, t, info) is not None
     ]
@@ -557,7 +569,7 @@ def offhand_options(engine, ref) -> list[ActionOption]:
             label=f"Удар второй рукой{note}: {one.name} → {engine.name(target)}",
             params={"weapon": one.id, "target": target}, cost=cost,
         )
-        for target in attack_targets(engine, ref)
+        for target in menu_targets(engine, ref)
         if base_advantage(engine, ref, target, one) is not None
     ]
 

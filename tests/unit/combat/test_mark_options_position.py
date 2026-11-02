@@ -48,6 +48,13 @@ def test_mark_is_offered_on_both_goblins_through_a_zone(registry, cfg):
     assert targets == {"goblin_1", "goblin_2"}
 
 
+def test_no_mark_on_a_downed_goblin(registry, cfg):
+    engine = dragon_engine(registry, cfg)
+    engine.part("goblin_1").status = "down"
+    targets = {o.params["target"] for o in mark_options(engine)}
+    assert targets == {"goblin_2"}
+
+
 def test_slot_mark_is_offered_on_each_goblin(registry, cfg):
     engine = dragon_engine(registry, cfg)
     assert "cast:hunters_mark:1:goblin_1" in option_ids(engine, "hero")

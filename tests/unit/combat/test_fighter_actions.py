@@ -223,6 +223,13 @@ def test_a_hit_opens_cleave_on_the_other_goblin(registry, cfg):
     assert cleave_ids(engine) == ["cleave:goblin_2"]
 
 
+def test_no_cleave_option_on_a_downed_goblin(registry, cfg):
+    engine = cleaver(registry, cfg, ScriptedRng(d20=[15], d12=[5]))
+    engine.perform("hero", "attack:greataxe:goblin_1")
+    part(engine, "goblin_2").status = "down"
+    assert cleave_ids(engine) == []
+
+
 def test_cleave_option_is_free_and_labelled(registry, cfg):
     engine = cleaver(registry, cfg, ScriptedRng(d20=[15], d12=[5]))
     engine.perform("hero", "attack:greataxe:goblin_1")

@@ -73,6 +73,13 @@ def test_offhand_option_appears_after_a_light_attack(registry, cfg):
     assert option_ids(engine, "hero").count(OFF) == 1
 
 
+def test_no_offhand_option_on_a_downed_enemy(registry, cfg):
+    engine = dual(registry, cfg, rng_hits(d6=[3]))
+    main_attack(engine)
+    engine.part("goblin_1").status = "down"
+    assert offhand(engine) == []
+
+
 def test_offhand_option_costs_the_bonus_action(registry, cfg):
     engine = dual(registry, cfg, rng_hits(d6=[3]))
     main_attack(engine)

@@ -242,6 +242,14 @@ def test_without_plain_arrows_only_special_shots_remain(dragon, cfg):
     assert f"{SHOOT}:ammo:arrow_fire" in ids
 
 
+def test_downed_enemy_gets_no_special_arrow_option(dragon, cfg):
+    engine = make(dragon, cfg, ScriptedRng())
+    part(engine, "goblin_1").status = "down"
+    ids = option_ids(engine, "hero")
+    assert SHOOT not in ids
+    assert f"{SHOOT}:ammo:arrow_fire" not in ids
+
+
 def test_special_arrows_are_picked_up_after_victory(dragon, cfg):
     rng = ScriptedRng(d20=[1] * 4 + [hit_roll(dragon, 3)], d8=[5, 5], d6=[4])
     engine = make(dragon, cfg, rng)

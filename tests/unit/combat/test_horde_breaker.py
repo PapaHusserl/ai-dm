@@ -80,6 +80,13 @@ def test_hit_opens_the_horde_option_on_the_other_goblin(registry, cfg):
     assert horde_ids(engine) == ["horde_breaker:goblin_2"]
 
 
+def test_no_horde_option_on_a_downed_goblin(registry, cfg):
+    engine = horde(registry, cfg, ScriptedRng(d20=[15], d6=[3]))
+    engine.perform("hero", HIT)
+    part(engine, "goblin_2").status = "down"
+    assert horde_ids(engine) == []
+
+
 def test_miss_opens_the_horde_option_too(registry, cfg):
     engine = horde(registry, cfg, ScriptedRng(d20=[2]))
     engine.perform("hero", HIT)
