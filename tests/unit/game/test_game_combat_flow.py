@@ -1046,3 +1046,54 @@ def test_concentration_line_is_empty_without_concentration(registry, cfg):
     from ai_dm.game.combat_flow import concentration_line
 
     assert concentration_line(make_bundle(registry), registry, cfg) == ""
+
+
+# смена оружия номером: ход открыт -- без рассказчика, строка лога в память хода
+
+def swap_turn(rig):
+    ids = option_ids(rig.runner)
+    swap_id = next(i for i in ids if i.startswith("unequip:"))
+    count = len(rig.adapter.requests)
+    result = rig.runner.play(str(ids.index(swap_id) + 1))
+    return result, rig.adapter.requests[count:]
+
+
+def test_swap_with_open_turn_skips_narrator(registry, cfg, tmp_path):
+    rig, _ = start_fight(registry, cfg, tmp_path)
+    result, fresh = swap_turn(rig)
+    assert result.committed is True
+    assert fresh == []
+    assert result.narration == ""
+    assert any("убирает:" in line for line in result.log)
+
+
+def test_swap_turn_record_keeps_log_lines(registry, cfg, tmp_path):
+    rig, _ = start_fight(registry, cfg, tmp_path)
+    result, _ = swap_turn(rig)
+    record = rig.runner.bundle.memory.recent_turns[-1]
+    assert record.narration == "\n".join(result.log)
+    assert "убирает:" in record.narration
+
+
+def test_attack_by_number_calls_narrator(registry, cfg, tmp_path):
+    rig, _ = start_fight(registry, cfg, tmp_path)
+    count = len(rig.adapter.requests)
+    rig.runner.play(str(attack_or_move_number(rig.runner)))
+    assert [tool_names(r) for r in rig.adapter.requests[count:]] == [NARRATE]
+
+
+def test_swap_that_ends_turn_calls_narrator(registry, cfg, tmp_path, monkeypatch):
+    from ai_dm.game.controllers import PlayerController
+
+    rig, _ = start_fight(registry, cfg, tmp_path)
+    # после смены нечего делать: ход кончается, враги ходят
+    original = PlayerController.__init__
+
+    def no_hold(self, steps=None, improvise=None, hold=False, parley=None):
+        original(self, steps, improvise, False, parley)
+        self.planned = False
+
+    monkeypatch.setattr(PlayerController, "__init__", no_hold)
+    result, fresh = swap_turn(rig)
+    assert [tool_names(r) for r in fresh] == [NARRATE]
+    assert result.narration

@@ -2,6 +2,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 
+from ai_dm.combat.available import HIDDEN_KINDS
 from ai_dm.combat.engine import CombatRoundLimit
 from ai_dm.config.app import profile_for
 from ai_dm.core.rng import Rng
@@ -298,7 +299,9 @@ class TurnRunner:
         work.memory.recent_turns.append(
             TurnRecord(
                 turn_seq=work.session.turn_seq, at_s=work.world.clock.now_s,
-                player_input=player_input, narration=narration, requests=list(result.requests),
+                # смена оружия без рассказчика: в память хода -- строки лога боя
+                player_input=player_input, narration=narration or "\n".join(result.log),
+                requests=list(result.requests),
                 rolls=list(result.rolls), scene_id=work.session.current_scene.id,
                 outcomes=list(result.outcomes), money_delta_cp=money_delta,
             )
@@ -522,6 +525,7 @@ class TurnRunner:
         parley = None
         said = ""
         hold = False
+        swap = False
         if text.strip().isdigit():
             options = combat_flow.preview_options(work, self.registry, self.cfg)
             number = int(text)
@@ -529,6 +533,7 @@ class TurnRunner:
                 raise ValueError(f"нет такого варианта: {number}")
             steps = [options[number - 1].id]
             hold = True
+            swap = options[number - 1].kind in HIDDEN_KINDS
         else:
             plans = []
 
@@ -551,6 +556,7 @@ class TurnRunner:
             said = text
         state = work.session.active_combat
         log_start = len(state.log)
+        turn_before = (state.round, state.turn_index)
         engine = combat_flow.make_engine(
             ctx, session, run_id, self.world_text, PlayerController(steps, improvise, hold, parley)
         )
@@ -558,6 +564,9 @@ class TurnRunner:
         if not engine.is_over:
             combat_flow.advance_until_player(engine, hero_of(work).id)
         result.log = state.log[log_start:]
+        if swap and (state.round, state.turn_index) == turn_before:
+            # смена оружия или щита, ход героя открыт: рассказчика не зовём, хватает строки лога
+            return ""
         narration = self.narrate_combat(work, rng, said, result.log, session, run_id, result)
         if combat_flow.is_finished(state):
             self.end_fight(work, result, fold=True)
