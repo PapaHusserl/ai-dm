@@ -20,6 +20,7 @@ from ai_dm.reports.capture import TurnCapture
 from ai_dm.rules.battle_memory import remember_battle
 from ai_dm.rules.custom_items import world_registry
 from ai_dm.rules.goals import on_kill
+from ai_dm.rules.healing import expire_max_hp
 from ai_dm.rules.knowledge import note_combat, note_presence
 from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.rules.survivors import classify, materialize, reveal_names
@@ -264,6 +265,7 @@ class TurnRunner:
             raise
         # страховка: любой сдвиг часов в ходе (в т.ч. left_to_die) мог закончить концентрацию
         expire_concentration(hero_of(work), work.world)
+        result.lines += expire_max_hp(hero_of(work), work.world)
         return work, rng, narration
 
     def retry_result(self, started, reason) -> TurnResult:

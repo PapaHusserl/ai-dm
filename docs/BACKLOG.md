@@ -1474,3 +1474,25 @@ updated: 2026-11-01
 2 `alarm`, `barkskin`, все с истёкшим сроком. Каждый потребитель обязан сам фильтровать по `now_s`; пропуск в одном
 месте «оживил» истёкший эликсир (урон опасности `roll_hazard` без `now_s` — мини дежурного 2026-11-01). Нужна чистка
 истёкших при ходе времени (тик часов). Без смены формата сейва; как — решает архитектор.
+
+## 256. Выжившие мутанты на старых строках effects_line (К3 П3б)
+status: idea
+priority: low
+updated: 2026-11-03
+
+(разбор мутантов К3 П3б, правило 4 AGENTS — docs/plan-k3.md, «Старые мутанты П3б»)
+Выжили на строках до партии: `ai_dm.rules.inventory.effects_line` — 3, 5, 39, 41, 58, 59, 60, 66, 71, 78, 86.
+Те же строки раньше — BACKLOG 157 (61 выживший У1 П1). Возможно, часть убивают `tests/unit/ui/test_ui_effects_visible.py`
+и `tests/unit/game/test_sheet_effects.py` вне прогона П3б (TESTS) — ожидание, не проверено.
+
+## 257. Выжившие мутанты на старых строках (К3 П3а)
+status: idea
+priority: low
+updated: 2026-11-03
+
+(разбор мутантов К3 П3а, правило 4 AGENTS и строка «Партии» — docs/plan-k3.md:547, «Правки по ревью» П3а)
+Выжили на строках до партии, 157: `protocol.handlers.resources.cast_spell` 106; `rules.modifiers.effects.EffectSource.modifiers` 31
+(та же функция — BACKLOG 157); `rules.roll_pipeline.roll_d20` 8; `rules.inventory.use_item` 4; `combat.actions.cast.perform` 3;
+`combat.area.affected_zones` 3; `combat.available.bonus_actions` 1; `ui.combat_menu.group_rows` 1.
+Номера мутантов — `make mutate` по этим функциям заново (scratchpad П3а не сохраняется). Добить, когда шаг трогает функцию
+(`cast_spell` — К3б).

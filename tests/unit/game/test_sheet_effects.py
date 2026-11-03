@@ -15,7 +15,8 @@ from game_kit import ReactiveAdapter, make_app
 from ai_dm.campaign.loader import pack_content_dir
 from ai_dm.content.loader import load_registry
 from ai_dm.game.scene import hero_of
-from ai_dm.game.sheet_text import boon_effects, effect_lines
+from ai_dm.game.sheet_text import boon_effects, effect_lines, until_text
+from ai_dm.rules.healing import grant_max_hp
 from ai_dm.rules.inventory import effects_line
 from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
 
@@ -239,3 +240,130 @@ def test_effects_line_skips_spell_effect(app, dragon_registry):
 def test_effects_line_skips_modifier_effect(app, dragon_registry):
     line = effects_line_after(app, dragon_registry, groomed(now(app) + HOUR))
     assert line == "Действует: Каменная Кожа (+2 КД) до 01:00"
+
+
+# К3 П3б: эффекты заклинаний со сроком по часам не падают в «Действует:» и не берутся за предметы
+
+def test_effects_line_skips_spell_ac_effect_that_is_not_an_item(app, dragon_registry):
+    skipped = ActiveEffect(
+        id="mage_armor", source="x", kind="ac", params={"amount": 3},
+        expires=Expiry(kind="seconds", value=now(app) + HOUR),
+    )
+    line = effects_line_after(app, dragon_registry, skipped)
+    assert line == "Действует: Каменная Кожа (+2 КД) до 01:00"
+
+
+@pytest.mark.parametrize("kind", ["spell", "modifier"])
+def test_effects_line_ignores_spell_and_modifier_kinds_even_with_an_item_id(
+    app, dragon_registry, kind
+):
+    hero = give(app)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="stoneskin_elixir", source="x", kind=kind, params={},
+        expires=Expiry(kind="seconds", value=now(app) + HOUR),
+    ))
+    assert effects_line(hero, dragon_registry, now(app)) == ""
+
+
+def test_effects_line_of_only_spell_resist_is_empty(app):
+    hero = give(app)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="protection_from_energy", source="x", kind="resist", params={"damage_type": "fire"},
+        expires=Expiry(kind="seconds", value=now(app) + HOUR),
+    ))
+    assert effects_line(hero, app.registry, now(app)) == ""
+
+
+def test_effects_line_still_shows_an_item_resist(app, dragon_registry):
+    hero = give(app)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="stoneskin_elixir", source="x", kind="resist",
+        params={"damage_type": "fire"}, expires=Expiry(kind="seconds", value=now(app) + HOUR),
+    ))
+    assert effects_line(hero, dragon_registry, now(app)) == (
+        "Действует: Каменная Кожа (сопр. огненному) до 01:00"
+    )
+
+
+# until_text / spell_lines / effect_lines(registry): заклинания в «Эффекты:»
+
+def spell_mark(spell_id, until):
+    return ActiveEffect(
+        id=spell_id, source="hero", kind="spell", expires=Expiry(kind="seconds", value=until),
+    )
+
+
+def test_until_text_same_day(app):
+    assert until_text(HOUR, 0) == "до 01:00"
+
+
+def test_until_text_tomorrow(app):
+    assert until_text(86400 + HOUR, 0) == "до 01:00, завтра"
+
+
+def test_until_text_in_several_days(app):
+    assert until_text(3 * 86400 + HOUR, 0) == "до 01:00, через 3 дн."
+
+
+def test_effect_lines_without_registry_skips_spells(app):
+    hero = give(app)
+    hero.creature.active_effects.append(spell_mark("tongues", now(app) + HOUR))
+    assert effect_lines(hero, now(app)) == []
+
+
+def test_effect_lines_shows_a_spell_with_its_end(app):
+    hero = give(app)
+    hero.creature.active_effects.append(spell_mark("tongues", now(app) + HOUR))
+    assert effect_lines(hero, now(app), app.registry) == ["Языки (до 01:00)"]
+
+
+def test_effect_lines_shows_aid_with_hp_bonus(app):
+    hero = give(app)
+    grant_max_hp(hero.creature, "aid", hero.id, 5, now(app) + 8 * HOUR)
+    assert effect_lines(hero, now(app), app.registry) == ["Помощь (+5 HP, до 08:00)"]
+
+
+def test_effect_lines_puts_boons_before_spells(app):
+    hero = give(app, now(app) + HOUR, inspired=True)
+    hero.creature.active_effects.append(spell_mark("tongues", now(app) + HOUR))
+    lines = effect_lines(hero, now(app), app.registry)
+    assert lines == ["ухожен (до 01:00)", "вдохновение", "Языки (до 01:00)"]
+
+
+def test_effect_lines_drops_an_expired_spell(app):
+    hero = give(app)
+    hero.creature.active_effects.append(spell_mark("tongues", now(app) + HOUR))
+    assert effect_lines(hero, now(app) + HOUR, app.registry) == []
+
+
+def test_effect_lines_skips_spell_effects_bound_to_concentration(app):
+    hero = give(app)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="tongues", source="hero", kind="spell",
+        expires=Expiry(kind="concentration", owner="hero"),
+    ))
+    assert effect_lines(hero, now(app), app.registry) == []
+
+
+def test_effect_lines_marks_a_spell_ending_tomorrow(app):
+    hero = give(app)
+    hero.creature.active_effects.append(spell_mark("tongues", 86400 + HOUR))
+    assert effect_lines(hero, now(app), app.registry) == ["Языки (до 01:00, завтра)"]
+
+
+def test_sheet_shows_a_spell_in_the_effects_line(app):
+    give(app).creature.active_effects.append(spell_mark("tongues", now(app) + HOUR))
+    assert effects_row(app) == ["Эффекты: Языки (до 01:00)"]
+
+
+def test_sheet_shows_aid_as_exactly_one_line(app):
+    hero = give(app)
+    grant_max_hp(hero.creature, "aid", hero.id, 5, now(app) + 8 * HOUR)
+    assert effects_row(app) == ["Эффекты: Помощь (+5 HP, до 08:00)"]
+
+
+def test_sheet_drops_the_aid_line_after_it_ends(app):
+    hero = give(app)
+    grant_max_hp(hero.creature, "aid", hero.id, 5, now(app) + 8 * HOUR)
+    app.bundle.world.clock.advance(8 * HOUR)
+    assert effects_row(app) == []

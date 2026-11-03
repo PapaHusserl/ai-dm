@@ -178,6 +178,38 @@ def boons_data(hero, now_s):
     ]
 
 
+def spells_data(hero, registry, now_s):
+    # действующие заклинания героя со сроком по часам мира (Языки, Фокусы, Помощь с прибавкой HP):
+    # [{id, name, until_s}]
+    result = []
+    for effect in live_effects(hero.creature, now_s):
+        if effect.kind not in ("spell", "max_hp"):
+            continue
+        item = {
+            "id": effect.id, "name": registry.get("spell", effect.id).name,
+            "until_s": effect.expires.value,
+        }
+        if effect.kind == "max_hp":
+            item["hp_bonus"] = effect.params["amount"]
+        result.append(item)
+    return result
+
+
+def language_data(hero, registry, now_s):
+    # языки героя (+ «все» под Языками) и действующие заклинания; now_s None -- только языки листа
+    languages = list(hero.sheet.languages)
+    data = {}
+    if now_s is not None:
+        active = spells_data(hero, registry, now_s)
+        if active:
+            data["active_spells"] = active
+        if any(e.kind == "languages" for e in live_effects(hero.creature, now_s)):
+            languages.append("все")
+    if languages:
+        data["languages"] = languages
+    return data
+
+
 def gear_names(gear, registry):
     names = []
     for entry in gear:
@@ -450,8 +482,9 @@ class PromptBuilder:
             "deity": hero.deity_id,
         }
 
-    def sheet_data(self, hero, registry):
-        # класс, подкласс, текстовые и выбранные умения, заклинания, ячейки, спутник
+    def sheet_data(self, hero, registry, now_s=None):
+        # класс, подкласс, текстовые и выбранные умения, заклинания, ячейки, спутник;
+        # now_s -- действующие заклинания и языки на этот момент
         sheet = hero.sheet
         features = []
         for feature_id in hero_feature_ids(hero, registry):
@@ -466,8 +499,7 @@ class PromptBuilder:
             "subclass": sheet.subclass_id,
             "features": features,
         }
-        if sheet.languages:
-            data["languages"] = list(sheet.languages)
+        data.update(language_data(hero, registry, now_s))
         if sheet.skill_expertise:
             data["expertise"] = list(sheet.skill_expertise)
         resources = hero.creature.resources
@@ -623,7 +655,7 @@ class PromptBuilder:
             "level": hero.sheet.level,
             "xp": hero.sheet.xp,
         }
-        hero_data.update(self.sheet_data(hero, ctx.registry))
+        hero_data.update(self.sheet_data(hero, ctx.registry, world.clock.now_s))
         hero_data.update(identity_data(hero))
         boons = boons_data(hero, world.clock.now_s)
         if boons:

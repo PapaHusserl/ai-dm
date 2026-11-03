@@ -222,6 +222,7 @@ TARGETERS = {
     **dict.fromkeys(("temp_hp", "utility", "create_item", "retreat"), lambda e, r, s, c: [""]),
     "cure": lambda e, r, s, c: cure_refs(e, r, s),
     "defense": defense_refs,
+    "max_hp": lambda e, r, s, c: groups_of(ally_refs(e, r, s), targets_limit(s, c, "max_hp")),
     "ward": lambda e, r, s, c: ally_refs(e, r, s),
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
     "teleport": lambda e, r, s, c: ranged_zones(e, r, s, effect_of(s, "teleport").size_ft),
@@ -447,6 +448,7 @@ CASTERS = {
     "fog": cast_effects.cast_fog, "hazard": cast_effects.cast_hazard,
     "create_item": cast_effects.cast_create_item, "utility": cast_effects.cast_utility,
     "ward": cast_effects.cast_ward, "retreat": cast_effects.cast_retreat,
+    "max_hp": cast_effects.cast_max_hp,
 }
 
 

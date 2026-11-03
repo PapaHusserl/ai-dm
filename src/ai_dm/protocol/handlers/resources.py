@@ -1,8 +1,19 @@
+from ai_dm.combat.actions.cast import UNARMORED_ONLY
+from ai_dm.combat.actions.cast_support import with_variant
+from ai_dm.combat.available import variants_of
 from ai_dm.core.clock import DAY
 from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.loot_gear import gold_loot
+from ai_dm.protocol.handlers.utility_spells import (
+    apply_condition,
+    apply_defense,
+    apply_max_hp,
+    cast_utility,
+    steed_seconds,
+    utility_target,
+)
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed, item_ids, reachable_ids
 from ai_dm.rules import arcane_recovery, custom_items, divine, loot, money, rests, time_ops, xp
@@ -13,7 +24,7 @@ from ai_dm.rules.cast_checks import default_cast_check_registry
 from ai_dm.rules.damage import roll_hazard
 from ai_dm.rules.death_saves import after_damage, is_stable, resolve_out_of_combat
 from ai_dm.rules.derived import clock_text, hero_feature_ids
-from ai_dm.rules.healing import heal
+from ai_dm.rules.healing import expire_max_hp, heal
 from ai_dm.rules.inventory import (
     add_catalog_item,
     add_item,
@@ -30,6 +41,7 @@ from ai_dm.rules.spellcasting import (
     cast_problem,
     effect_of,
     expire_concentration,
+    has_effect,
     modifier_params,
     roll_cast_checks,
     roll_heal,
@@ -433,8 +445,14 @@ def drink_once(hero, item, registry, now_s):
 
 
 def spell_target(ctx, spell, kind, target):
-    # цель заклинания: (герой или NPC или None, Invalid или None)
+    # цель заклинания: (герой или NPC или None, Invalid или None); None без Invalid -- предмет
+    # инвентаря (Опознание)
     hero = ctx.hero
+    if kind == "utility":
+        special = utility_target(ctx, spell, target)
+        if special is not None:
+            return special
+    single = kind == "condition" and not has_effect(spell, "area")
     npc = None
     if target is not None and target != "hero":
         npc = ctx.bundle.world.npcs.get(target)
@@ -447,14 +465,19 @@ def spell_target(ctx, spell, kind, target):
             return None, Invalid(
                 code="bad_target", message=f"{npc.name} сейчас не рядом с героем или не жив"
             )
-    if kind == "mark" and npc is None:
+    if (kind == "mark" or single) and npc is None:
         return None, Invalid(code="bad_target", message=f"{spell.name} нужна цель: NPC в локации")
-    if kind in ("heal", "buff") and npc is not None and npc.creature is None:
+    needs_creature = kind in ("heal", "buff", "max_hp", "defense") or single
+    if needs_creature and npc is not None and npc.creature is None:
         return None, Invalid(
             code="bad_target", message=f"у {npc.name} нет состояния здоровья: цель не подходит"
         )
     if npc is not None:
         return npc, None
+    if spell.id in UNARMORED_ONLY and hero.equipped.armor is not None:
+        return None, Invalid(
+            code="bad_target", message=f"{spell.name}: действует только на существо без доспеха"
+        )
     return hero, None
 
 
@@ -481,11 +504,21 @@ def cast_spell(ctx, request):
     kind = spell_kind(spell)
     if kind == "rider":
         return Invalid(code="combat_only", message=f"{spell.name} заряжается только в бою")
-    if kind == "buff" and request.circle > spell.level:
+    one_target = kind in ("buff", "max_hp", "defense")
+    one_target = one_target or (kind == "condition" and not has_effect(spell, "area"))
+    if one_target and request.circle > spell.level:
         return Invalid(
             code="bad_circle",
             message=f"вне боя {spell.name} — базовым кругом: цель одна",
         )
+    variants = variants_of(spell)
+    if variants:
+        if request.variant not in variants:
+            return Invalid(
+                code="bad_variant",
+                message=f"{spell.name}: нужен variant" + allowed(variants),
+            )
+        spell = with_variant(spell, request.variant)
     who, invalid = spell_target(ctx, spell, kind, request.target)
     if invalid is not None:
         return invalid
@@ -546,6 +579,24 @@ def cast_spell(ctx, request):
         log.append(f"  {spell.name}: цель {who.name}, держится концентрация")
         result["target"] = who.name
         result["concentration"] = spell.id
+    elif kind == "max_hp":
+        log.append(apply_max_hp(ctx, spell, who, now_s))
+        result["target"] = who.name
+    elif kind == "utility":
+        log += cast_utility(ctx, spell, who, request, result)
+    elif kind == "defense":
+        if spell.concentration:
+            start_concentration(hero, world, spell, request.circle, now_s)
+            result["concentration"] = spell.id
+        apply_defense(ctx, spell, who, now_s)
+        result["target"] = who.name
+        log.append(f"  {spell.name}: на {who.name}")
+    elif kind == "condition" and not has_effect(spell, "area"):
+        if spell.concentration:
+            start_concentration(hero, world, spell, request.circle, now_s)
+            result["concentration"] = spell.id
+        log += apply_condition(ctx, spell, who, now_s)
+        result["target"] = who.name
     else:
         if spell.concentration or kind == "buff":
             start_concentration(hero, world, spell, request.circle, now_s)
@@ -563,7 +614,9 @@ def cast_spell(ctx, request):
                     )
             result["target"] = who.name
             log.append(f"  {spell.name}: на {who.name}")
-    add_spell_duration(hero, spell, now_s)
+    if kind != "max_hp":
+        # у Помощи срок виден по самому эффекту
+        add_spell_duration(hero, spell, now_s)
     if spell.duration_s is not None:
         result["until"] = clock_text(now_s + spell.duration_s)
     return Decision(status="accepted", result=result, log=log)
@@ -778,6 +831,7 @@ def concentration_note(ctx, log, result) -> None:
         name = ctx.registry.get("spell", ended).name
         log.append(f"Концентрация: {name} кончилась")
         result["concentration_ended"] = ended
+    log += expire_max_hp(ctx.hero, ctx.bundle.world)
 
 
 def apply_swap(ctx, request, log, result) -> None:
@@ -1145,6 +1199,7 @@ def travel(ctx, request):
         )
     pace = request.pace or "normal"
     seconds = sum(time_ops.travel_seconds(d, pace, ctx.cfg) for _, d in route)
+    seconds = steed_seconds(hero, world.clock.now_s, seconds)
     world.clock.advance(seconds)
     hero.location_id = request.travel_to
     companions = []

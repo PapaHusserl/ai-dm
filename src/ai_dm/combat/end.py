@@ -3,6 +3,7 @@ from ai_dm.core.events import DomainEvent
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.death_saves import is_dying, is_stable
+from ai_dm.rules.healing import expire_max_hp
 from ai_dm.rules.inventory import add_item
 from ai_dm.rules.spellcasting import expire_concentration, spell_kind
 from ai_dm.rules.time_ops import rounds_to_seconds
@@ -144,6 +145,9 @@ def release_concentration(engine) -> None:
         elif expire_concentration(hero, engine.world) is not None:
             engine.drop_concentration_effects(ref)
             engine.log(f"{engine.name(ref)}: {spell.name} кончается")
+    for hero in engine.heroes.values():
+        for line in expire_max_hp(hero, engine.world):
+            engine.log(line)
 
 
 def conclude(engine) -> list[DomainEvent]:

@@ -14,10 +14,11 @@ from ai_dm.combat.actions.cast_support import (
 from ai_dm.core.dice import roll_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.derived import spell_save_dc
-from ai_dm.rules.healing import heal
+from ai_dm.rules.healing import grant_max_hp, heal
 from ai_dm.rules.inventory import add_catalog_item
 from ai_dm.rules.spellcasting import (
     add_spell_duration,
+    defense_effect,
     effect_line,
     effect_of,
     upcast_dice,
@@ -87,28 +88,41 @@ def cast_defense(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
     return []
 
 
+def cast_max_hp(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
+    # Помощь: +N к максимуму и текущим HP на срок заклинания; откат по часам мира
+    amount = effect_of(spell, "max_hp").value
+    steps = upcast_steps(spell, circle)
+    if steps > 0:
+        amount += steps * (spell.upcast.per_slot_level.value or 0)
+    until_s = engine.world.clock.now_s + spell.duration_s
+    targets = target_ref.split(",")
+    given = []
+    for one_ref in targets:
+        if grant_max_hp(engine.creature(one_ref), spell.id, ref, amount, until_s):
+            given.append(one_ref)
+        else:
+            engine.log(f"  {engine.name(one_ref)}: уже под более сильной Помощью")
+    names = ", ".join(f"{engine.name(one)} {engine.hp_text(one)}" for one in given)
+    if given:
+        engine.log(f"{engine.name(ref)}: {spell.name} (+{amount} HP) на {names}")
+    return []
+
+
 def defend(engine, ref, spell, target_ref) -> None:
     # эффекты защиты заклинания на одну цель
     creature = engine.creature(target_ref)
     creature.active_effects = [e for e in creature.active_effects if e.id != spell.id]
     for effect in spell.effects:
         expires = spell_expiry(engine, ref, spell)
-        if effect.type == "ac_bonus":
-            kind = "ac_floor" if effect.mode == "floor" else "ac"
-            params = {"label": spell.name, "amount": effect.value, "magic": True}
-        elif effect.type == "resist":
-            kind = "resist"
-            params = {"damage_type": effect.damage_type}
-        elif effect.type == "blur":
-            kind = "modifier"
-            params = {"target": "attack_roll", "side": "target", "mode": "disadvantage"}
-        elif effect.type == "invisible":
+        if effect.type == "invisible":
             engine.impose(
                 target_ref, AppliedCondition(id="invisible", source=spell.id, expires=expires)
             )
             continue
-        else:
+        built = defense_effect(effect, spell)
+        if built is None:
             continue
+        kind, params = built
         creature.active_effects.append(
             ActiveEffect(id=spell.id, source=ref, kind=kind, params=params, expires=expires)
         )

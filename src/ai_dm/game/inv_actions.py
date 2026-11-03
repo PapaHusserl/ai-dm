@@ -13,6 +13,7 @@ from ai_dm.game.inv_lookup import (
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import fit
 from ai_dm.protocol.handlers.resources import consumables_left, drink_once, heal_once
+from ai_dm.rules.healing import expire_max_hp
 from ai_dm.rules.inventory import InventoryError, blocking_slots, equip, find_item, unequip
 from ai_dm.rules.spellcasting import expire_concentration
 
@@ -53,6 +54,7 @@ def shift_clock(app, hero, minutes, lines):
     ended = expire_concentration(hero, world)
     if ended is not None:
         lines.append(f"Концентрация: {app.registry.get('spell', ended).name} кончилась.")
+    lines += expire_max_hp(hero, world)
 
 
 def equip_cmd(app, hero, text):

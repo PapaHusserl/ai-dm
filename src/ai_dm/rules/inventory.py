@@ -223,7 +223,7 @@ def effects_line(hero, registry, now_s: int) -> str:
         if effect.expires is None or effect.expires.kind != "seconds":
             continue
         # заклинания и бонусы услуг (groomed) -- не предметы реестра
-        if effect.kind in ("spell", "modifier"):
+        if effect.kind in ("spell", "modifier") or not registry.has("item", effect.id):
             continue
         if effect.id not in order:
             order.append(effect.id)

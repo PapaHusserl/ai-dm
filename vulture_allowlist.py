@@ -103,9 +103,5 @@ cha  # unused variable (protocol/requests.py)
 until_s  # unused variable (state/creature.py: Concentration, TempForm)
 temp_hp_granted  # unused variable (state/creature.py)
 temp_form  # unused variable (state/creature.py)
-# К3 П1 (решение Влада 50): поля данных под П2/П3 -- снять в П3
-repeat  # unused variable (content/models/common.py)
-ritual  # unused variable (content/models/spells.py)
-effect_text  # unused variable (content/models/spells.py)
 # ДН (решение Влада, плана п. 6): сдвиг на одну категорию, покрыт тестами rules/test_time_ops.py
 advance_by_category  # unused function (rules/time_ops.py)

@@ -333,7 +333,10 @@ class CastSpell(Request):
         False, description="true: бесплатное применение умения (например, Избранный враг)."
     )
     ritual: bool = Field(False, description="true: ритуал, без ячейки, +10 минут.")
-    NEUTRAL: ClassVar[dict] = {"target": ""}
+    variant: str = Field(
+        "", description="Выбор у заклинания с вариантами (тип урона, характеристика); иначе пусто."
+    )
+    NEUTRAL: ClassVar[dict] = {"target": "", "variant": ""}
 
 
 class TakeItem(Request):

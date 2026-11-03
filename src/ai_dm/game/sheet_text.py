@@ -355,20 +355,42 @@ def boon_effects(hero, now_s):
     return result
 
 
-def effect_lines(hero, now_s):
-    # «ухожен (до 07:00, завтра)», «вдохновение» -- для строки «Эффекты:» в /sheet
+def until_text(until, now_s):
+    # «до 07:00», «до 07:00, завтра», «до 07:00, через 3 дн.»
+    when = f"до {clock_text(until)}"
+    days = until // DAY - now_s // DAY
+    if days == 1:
+        when += ", завтра"
+    elif days > 1:
+        when += f", через {days} дн."
+    return when
+
+
+def spell_lines(hero, registry, now_s):
+    # действующие заклинания со сроком по часам мира: «Языки (до 14:30)», «Помощь (+5 HP, до 22:30)»
+    lines = []
+    for effect in live_effects(hero.creature, now_s):
+        if effect.kind not in ("spell", "max_hp") or effect.expires.kind != "seconds":
+            continue
+        name = registry.get("spell", effect.id).name
+        when = until_text(effect.expires.value, now_s)
+        if effect.kind == "max_hp":
+            when = f"+{effect.params['amount']} HP, {when}"
+        lines.append(f"{name} ({when})")
+    return lines
+
+
+def effect_lines(hero, now_s, registry=None):
+    # «ухожен (до 07:00, завтра)», «вдохновение», действующие заклинания (если дан registry) --
+    # для строки «Эффекты:» в /sheet
     lines = []
     for name, until in boon_effects(hero, now_s):
         if until is None:
             lines.append(name)
-            continue
-        when = f"до {clock_text(until)}"
-        days = until // DAY - now_s // DAY
-        if days == 1:
-            when += ", завтра"
-        elif days > 1:
-            when += f", через {days} дн."
-        lines.append(f"{name} ({when})")
+        else:
+            lines.append(f"{name} ({until_text(until, now_s)})")
+    if registry is not None:
+        lines += spell_lines(hero, registry, now_s)
     return lines
 
 

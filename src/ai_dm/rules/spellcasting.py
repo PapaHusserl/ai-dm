@@ -43,13 +43,25 @@ def has_effect(spell, *types) -> bool:
     return any(effect.type in types for effect in spell.effects)
 
 
+def defense_effect(effect, spell) -> tuple[str, dict] | None:
+    # (вид ActiveEffect, параметры) для эффекта защиты; невидимость -- состояние, её здесь нет
+    if effect.type == "ac_bonus":
+        kind = "ac_floor" if effect.mode == "floor" else "ac"
+        return kind, {"label": spell.name, "amount": effect.value, "magic": True}
+    if effect.type == "resist":
+        return "resist", {"damage_type": effect.damage_type}
+    if effect.type == "blur":
+        return "modifier", {"target": "attack_roll", "side": "target", "mode": "disadvantage"}
+    return None
+
+
 # первый подходящий эффект даёт вид (после rider, mark и area)
 KIND_BY_EFFECT = (
     ("heal", "heal"), ("remove_condition", "cure"), ("temp_hp", "temp_hp"),
     ("ac_bonus", "defense"), ("resist", "defense"), ("invisible", "defense"),
     ("blur", "defense"), ("ward", "ward"), ("teleport", "teleport"), ("hazard", "hazard"),
     ("create_item", "create_item"), ("stabilize", "stabilize"), ("fog", "fog"),
-    ("action", "retreat"),
+    ("action", "retreat"), ("max_hp", "max_hp"),
 )
 
 
@@ -258,16 +270,15 @@ def drop_concentration(hero, world) -> None:
     hero.creature.active_effects = [
         e for e in hero.creature.active_effects if not (e.kind == "spell" and e.id == old)
     ]
-    for npc in world.npcs.values():
-        if npc.creature is None:
-            continue
-        npc.creature.active_effects = [
-            e for e in npc.creature.active_effects
+    # эффекты и состояния от своей концентрации (Невидимость героя вне боя) снимаем и у героя
+    for creature in [hero.creature] + [n.creature for n in world.npcs.values() if n.creature]:
+        creature.active_effects = [
+            e for e in creature.active_effects
             if not (e.expires is not None and e.expires.kind == "concentration"
                     and e.expires.owner == hero.id)
         ]
-        npc.creature.conditions = [
-            c for c in npc.creature.conditions
+        creature.conditions = [
+            c for c in creature.conditions
             if not (c.expires is not None and c.expires.kind == "concentration"
                     and c.expires.owner == hero.id)
         ]

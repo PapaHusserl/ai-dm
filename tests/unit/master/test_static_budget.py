@@ -57,7 +57,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # (замер 24212; 24030 -> 24240).
 # БП: фраза правил о поштучных боеприпасах в give_item (замер 24281; 24240 -> 24300).
 # К3 П2: CastSpell.ritual, фраза о книге волшебника (замер 24357; 24300 -> 24380).
-STATIC_MAX = 24380
+# К3 П3б: CastSpell.variant, фраза об utility (замер 24481: rules 12528, tools 11953;
+# 24380 -> 24500).
+STATIC_MAX = 24500
 
 MODES = sorted(MODE_TOOLS)
 

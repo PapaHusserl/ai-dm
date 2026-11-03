@@ -193,7 +193,7 @@ def cmd_sheet(app, arg):
     conditions = condition_names(hero, app.registry)
     if conditions:
         lines.append("Состояния: " + ", ".join(conditions))
-    boons = effect_lines(hero, now_s)
+    boons = effect_lines(hero, now_s, app.registry)
     if boons:
         lines.append("Эффекты: " + "; ".join(boons))
     concentration = app.runner.concentration_line()

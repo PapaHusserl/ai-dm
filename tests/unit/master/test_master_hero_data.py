@@ -335,3 +335,117 @@ def test_hero_data_has_no_heroic_inspiration_key_when_false(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.hero.heroic_inspiration = False
     assert "heroic_inspiration" not in hero_data(ctx)
+
+
+# К3 П3б: действующие заклинания (active_spells) и языки под Языками
+
+def spell_effect(registry_id, kind, until_s, **params):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    return ActiveEffect(
+        id=registry_id, source="hero", kind=kind, params=params,
+        expires=Expiry(kind="seconds", value=until_s),
+    )
+
+
+def clock_now(ctx):
+    return ctx.bundle.world.clock.now_s
+
+
+def test_hero_data_has_no_active_spells_key_without_spells(registry, cfg):
+    assert "active_spells" not in hero_data(make_ctx(registry, cfg))
+
+
+def test_hero_data_lists_a_timed_spell(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    until = clock_now(ctx) + 3600
+    ctx.hero.creature.active_effects.append(spell_effect("tongues", "spell", until))
+    assert hero_data(ctx)["active_spells"] == [
+        {"id": "tongues", "name": "Языки", "until_s": until},
+    ]
+
+
+def test_hero_data_lists_aid_with_hp_bonus(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    until = clock_now(ctx) + 8 * 3600
+    ctx.hero.creature.active_effects.append(spell_effect("aid", "max_hp", until, amount=5))
+    assert hero_data(ctx)["active_spells"] == [
+        {"id": "aid", "name": "Помощь", "until_s": until, "hp_bonus": 5},
+    ]
+
+
+def test_hero_data_spell_without_hp_bonus_has_no_such_key(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(
+        spell_effect("tongues", "spell", clock_now(ctx) + 3600)
+    )
+    assert "hp_bonus" not in hero_data(ctx)["active_spells"][0]
+
+
+def test_hero_data_active_spells_skip_expired_ones(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(spell_effect("tongues", "spell", clock_now(ctx)))
+    assert "active_spells" not in hero_data(ctx)
+
+
+def test_hero_data_active_spells_skip_other_effect_kinds(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(
+        spell_effect("mage_armor", "ac", clock_now(ctx) + 3600, amount=3)
+    )
+    assert "active_spells" not in hero_data(ctx)
+
+
+def test_hero_data_languages_gain_all_under_tongues(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = ["common", "elvish"]
+    ctx.hero.creature.active_effects.append(
+        spell_effect("tongues", "languages", clock_now(ctx) + 3600, all=True)
+    )
+    assert hero_data(ctx)["languages"] == ["common", "elvish", "все"]
+
+
+def test_hero_data_languages_ignore_expired_tongues(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = ["common"]
+    ctx.hero.creature.active_effects.append(
+        spell_effect("tongues", "languages", clock_now(ctx), all=True)
+    )
+    assert hero_data(ctx)["languages"] == ["common"]
+
+
+def test_hero_data_languages_without_tongues_are_the_sheet_ones(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = ["common", "elvish"]
+    assert hero_data(ctx)["languages"] == ["common", "elvish"]
+
+
+def test_hero_data_under_tongues_without_sheet_languages_has_all_only(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = []
+    ctx.hero.creature.active_effects.append(
+        spell_effect("tongues", "languages", clock_now(ctx) + 3600, all=True)
+    )
+    assert hero_data(ctx)["languages"] == ["все"]
+
+
+def test_hero_data_without_languages_has_no_languages_key(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = []
+    assert "languages" not in hero_data(ctx)
+
+
+def test_sheet_data_without_now_keeps_the_old_output(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.sheet.languages = ["common"]
+    ctx.hero.creature.active_effects.append(spell_effect("tongues", "spell", 99999))
+    data = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)
+    assert data["languages"] == ["common"]
+    assert "active_spells" not in data
+
+
+def test_sheet_data_with_now_has_active_spells(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(spell_effect("tongues", "spell", 99999))
+    data = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry, 0)
+    assert [s["id"] for s in data["active_spells"]] == ["tongues"]

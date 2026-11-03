@@ -4,6 +4,8 @@
 #     (left_to_die); ровно в срок -- кончилась; бессрочная (until_s None) и будущая -- держатся.
 #   scene.close_scene: после ensure_min_advance (10 мин) -- тот же вызов: Благословение вне боя
 #     (1 мин) снимается до автосейва; без сдвига часов просроченная всё равно снимается.
+from types import SimpleNamespace
+
 import game_kit
 from game_kit import (
     advance_call,
@@ -18,7 +20,9 @@ from game_kit import (
 )
 from protocol_kit import make_bundle
 
+from ai_dm.game.inv_actions import shift_clock
 from ai_dm.game.scene import close_scene
+from ai_dm.rules.healing import grant_max_hp
 from ai_dm.state.creature import ActiveEffect, Concentration, Expiry
 
 
@@ -158,6 +162,87 @@ def test_close_scene_still_sets_the_reason(registry, cfg):
     blessed(bundle, until_s=60)
     close_scene(bundle, "turn_limit", cfg)
     assert bundle.session.current_scene.closed_reason == "turn_limit"
+
+
+# К3 П3б: Помощь (kind="max_hp", срок по часам) откатывается в тех же точках
+
+def aided(bundle, until_s, now_s=0):
+    hero = bundle.heroes[0]
+    bundle.world.clock.advance(now_s)
+    hero.creature.hp_max = hero.creature.hp_current = 10
+    grant_max_hp(hero.creature, "aid", hero.id, 5, until_s)
+    return hero
+
+
+def test_turn_reverts_an_aid_that_ran_out_before_it(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    aided(bundle, until_s=500, now_s=1000)
+    rig, _ = play(registry, cfg, tmp_path, bundle)
+    hero = rig.runner.bundle.heroes[0]
+    assert (hero.creature.hp_max, hero.creature.hp_current) == (10, 10)
+    assert hero.creature.active_effects == []
+
+
+def test_turn_reports_the_reverted_aid_in_result_lines(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=500, now_s=1000)
+    hero.creature.hp_current = 8
+    _, result = play(registry, cfg, tmp_path, bundle)
+    assert f"Помощь кончилась: {hero.name} HP 8/10" in result.lines
+
+
+def test_turn_without_expired_aid_has_no_aid_line(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    aided(bundle, until_s=100000, now_s=1000)
+    _, result = play(registry, cfg, tmp_path, bundle)
+    assert not any("Помощь кончилась" in line for line in result.lines)
+
+
+def test_turn_keeps_an_aid_with_time_left(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    aided(bundle, until_s=100000, now_s=1000)
+    rig, _ = play(registry, cfg, tmp_path, bundle)
+    assert rig.runner.bundle.heroes[0].creature.hp_max == 15
+
+
+def test_close_scene_reverts_an_aid_after_the_minimum_advance(registry, cfg):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=60)
+    close_scene(bundle, "end_scene", cfg)
+    assert (hero.creature.hp_max, hero.creature.hp_current) == (10, 10)
+
+
+def test_close_scene_keeps_an_aid_that_outlasts_the_minimum(registry, cfg):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=3600)
+    close_scene(bundle, "end_scene", cfg)
+    assert hero.creature.hp_max == 15
+
+
+def test_close_scene_reverts_an_overdue_aid_without_a_time_shift(registry, cfg):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=100, now_s=900)
+    close_scene(bundle, "end_scene", cfg)
+    assert hero.creature.hp_max == 10
+
+
+def test_shift_clock_reverts_an_aid_and_reports_it(registry, cfg):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=60 * 30)
+    hero.creature.hp_current = 8
+    lines = []
+    shift_clock(SimpleNamespace(bundle=bundle, registry=registry), hero, 31, lines)
+    assert hero.creature.hp_max == 10
+    assert lines[-1] == f"Помощь кончилась: {hero.name} HP 8/10"
+
+
+def test_shift_clock_keeps_an_aid_with_time_left(registry, cfg):
+    bundle = make_bundle(registry)
+    hero = aided(bundle, until_s=60 * 30)
+    lines = []
+    shift_clock(SimpleNamespace(bundle=bundle, registry=registry), hero, 10, lines)
+    assert hero.creature.hp_max == 15
+    assert lines == ["Прошло минут: 10."]
 
 
 # поражение с left_to_die: часы уходят на часы внутри хода боя, концентрацию снимает attempt

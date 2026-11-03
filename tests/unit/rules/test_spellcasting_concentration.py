@@ -8,7 +8,11 @@
 from combat_kit import make_wizard
 
 from ai_dm.core.rng import Rng
-from ai_dm.rules.spellcasting import expire_concentration, start_concentration
+from ai_dm.rules.spellcasting import (
+    defense_effect,
+    expire_concentration,
+    start_concentration,
+)
 from ai_dm.state.creature import (
     ActiveEffect,
     AppliedCondition,
@@ -216,3 +220,83 @@ def test_expire_keeps_non_concentration_effects_of_the_hero(registry):
     hero.creature.active_effects.append(ActiveEffect(id="dodge", source="wiz", kind="dodge"))
     expire_concentration(hero, make_world(10))
     assert [e.id for e in hero.creature.active_effects] == ["dodge"]
+
+
+# К3 П3б: эффекты и состояния от своей концентрации снимаются и у самого героя (Невидимость вне боя)
+
+def test_expire_removes_own_concentration_condition_of_the_hero(registry):
+    hero = make_wizard(registry)
+    hold(hero, "invisibility", until_s=10, circle=2)
+    hero.creature.conditions.append(AppliedCondition(
+        id="invisible", source="invisibility", expires=Expiry(kind="concentration", owner="wiz"),
+    ))
+    expire_concentration(hero, make_world(10))
+    assert hero.creature.conditions == []
+
+
+def test_expire_removes_own_concentration_effect_of_the_hero(registry):
+    hero = make_wizard(registry)
+    hold(hero, "protection_from_energy", until_s=10, circle=3)
+    hero.creature.active_effects.append(concentration_effect(effect_id="protection_from_energy"))
+    expire_concentration(hero, make_world(10))
+    assert hero.creature.active_effects == []
+
+
+def test_expire_keeps_timed_and_foreign_conditions_of_the_hero(registry):
+    hero = make_wizard(registry)
+    hold(hero, until_s=10)
+    hero.creature.conditions.append(AppliedCondition(
+        id="charmed", source="x", expires=Expiry(kind="seconds", value=5000),
+    ))
+    hero.creature.conditions.append(AppliedCondition(
+        id="invisible", source="other", expires=Expiry(kind="concentration", owner="other"),
+    ))
+    expire_concentration(hero, make_world(10))
+    assert [c.id for c in hero.creature.conditions] == ["charmed", "invisible"]
+
+
+def test_expire_keeps_conditions_without_expiry_of_the_hero(registry):
+    hero = make_wizard(registry)
+    hold(hero, until_s=10)
+    hero.creature.conditions.append(AppliedCondition(id="prone"))
+    expire_concentration(hero, make_world(10))
+    assert [c.id for c in hero.creature.conditions] == ["prone"]
+
+
+# defense_effect: (вид ActiveEffect, параметры) для эффекта защиты
+
+def effect_of_spell(registry, spell_id, effect_type):
+    spell = registry.get("spell", spell_id)
+    return next(e for e in spell.effects if e.type == effect_type), spell
+
+
+def test_defense_effect_of_an_ac_bonus_is_an_ac_effect(registry):
+    effect, spell = effect_of_spell(registry, "mage_armor", "ac_bonus")
+    assert defense_effect(effect, spell) == (
+        "ac", {"label": "Доспехи мага", "amount": 3, "magic": True},
+    )
+
+
+def test_defense_effect_of_a_floor_ac_bonus_is_an_ac_floor(registry):
+    effect, spell = effect_of_spell(registry, "barkskin", "ac_bonus")
+    assert defense_effect(effect, spell) == (
+        "ac_floor", {"label": "Дубовая кора", "amount": 17, "magic": True},
+    )
+
+
+def test_defense_effect_of_a_resist_carries_the_damage_type(registry):
+    effect, spell = effect_of_spell(registry, "protection_from_energy", "resist")
+    effect = effect.model_copy(update={"damage_type": "fire"})
+    assert defense_effect(effect, spell) == ("resist", {"damage_type": "fire"})
+
+
+def test_defense_effect_of_blur_is_a_disadvantage_modifier(registry):
+    effect, spell = effect_of_spell(registry, "blur", "blur")
+    assert defense_effect(effect, spell) == (
+        "modifier", {"target": "attack_roll", "side": "target", "mode": "disadvantage"},
+    )
+
+
+def test_defense_effect_of_invisibility_is_none(registry):
+    effect, spell = effect_of_spell(registry, "invisibility", "invisible")
+    assert defense_effect(effect, spell) is None
