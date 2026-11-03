@@ -22,6 +22,7 @@ from ai_dm.content.loader import load_registry  # noqa: E402
 from ai_dm.game import combat_flow  # noqa: E402
 from ai_dm.game.scene import hero_of  # noqa: E402
 from ai_dm.game.starter import new_world_from_pack  # noqa: E402
+from ai_dm.rules.money import format_cp  # noqa: E402
 from ai_dm.state.creature import ResourcePool  # noqa: E402
 from ai_dm.ui.session import PlaySession  # noqa: E402
 from ai_dm.ui.tui.app import AiDmApp  # noqa: E402
@@ -470,3 +471,33 @@ def test_variants_subgroup_shows_back_and_six_damage_types_in_the_menu(cfg, tmp_
     assert [label.split(" ")[0] for label in labels[1:7]] == [
         "кислота", "холод", "огонь", "молния", "яд", "гром",
     ]
+
+
+def test_hero_sheet_shows_all_three_slot_circles_of_a_ranger(cfg, tmp_path, tui):
+    game = grey_game(cfg, tmp_path)
+    hero_of(game.bundle).sheet.classes[0].level = 9
+    app = AiDmApp(PlaySession(game))
+
+    async def steps(app, pilot):
+        await pilot.pause()
+        hero = app.query_one("#hero")
+        # +2 -- рамка #hero (верх и низ)
+        need = hero.get_content_height(hero.size, hero.size, hero.size.width) + 2
+        return tui.text_of(hero), need, hero.region.height
+
+    text, virtual, shown = run(app, steps, size=(140, 40))
+    assert [f"{n} круг" in text for n in (1, 2, 3)] == [True] * 3
+    # содержимое листа целиком помещается в виджет: ничего не обрезано высотой
+    assert virtual <= shown
+
+
+def test_hero_sheet_shows_money(cfg, tmp_path, tui):
+    game = grey_game(cfg, tmp_path)
+    hero_of(game.bundle).money_cp = 1234
+    app = AiDmApp(PlaySession(game))
+
+    async def steps(app, pilot):
+        await pilot.pause()
+        return tui.text_of(app.query_one("#hero"))
+
+    assert f"Деньги: {format_cp(1234)}" in run(app, steps)

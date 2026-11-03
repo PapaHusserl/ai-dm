@@ -9,6 +9,7 @@ from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import slots_lines, title_line
 from ai_dm.rules.derived import ac_summary
 from ai_dm.rules.inventory import effects_line
+from ai_dm.rules.money import format_cp
 from ai_dm.ui.combat_menu import clip
 from ai_dm.ui.tui import strings
 
@@ -26,6 +27,7 @@ def hero_lines(game):
         title_line(hero, registry),
         f"HP {hero.creature.hp_current}/{hero.creature.hp_max}",
         ac_summary(hero, registry, now_s),
+        f"Деньги: {format_cp(hero.money_cp)}",
     ]
     effects = effects_line(hero, registry, now_s)
     if effects:
