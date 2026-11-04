@@ -304,28 +304,33 @@ Grimtooth.
 
 ### Ловушки (262)
 
-**SRD 5.2 [стр, зеркало [dmdocs](https://dmdocs.vercel.app/docs/toolbox/traps)]** —
-с PDF 5.2.1 не сверено.
-- Тяжесть nuisance или deadly по ярусам 1–4, 5–10, 11–16, 17–20.
-- Обнаружение: Search + Perception или Study + Investigation. Ямы находит только Investigation.
-- Обезвреживание часто без проверки (клин, растяжка).
+**SRD 5.2.1 [стр]** — сверено 2026-11-05 по
+[downfallx/dnd-5e-srd-markdown](https://github.com/downfallx/dnd-5e-srd-markdown)
+(`gameplay-toolbox.md` «Traps», `rules-glossary.md` «Search», «Study», «Hide»,
+«Passive Perception»). Это markdown-конвертация, с оригинальным PDF не сверяли.
+- Тяжесть (nuisance или deadly) задана для одного яруса. На высших ярусах растут урон,
+  СЛ и площадь. Rolling Stone — единственная ловушка не для 1–4.
+- Обнаружение: Search + Perception или Study + Investigation. Ищут только рядом с объектом;
+  искать не там бесполезно при любом итоге (`playing-the-game.md` «Finding Hidden Objects»).
+- **Правила «пассивная Внимательность против СЛ ловушки» в 5.2.1 нет** (оно было в 5.1).
+  Пассивная Внимательность есть только в глоссарии, к ловушкам её не применяют.
+  Автопроверка при приближении, как в BG3, — наша адаптация.
+- Засада: Hide — Stealth СЛ 15, нужно укрытие; результат броска становится СЛ для
+  Perception ищущего. Застигнутый врасплох получает Disadvantage на инициативу,
+  ход не теряет. Порядок марша решает, кого задевают ловушки.
 
-Ловушки 1–4 уровня:
+Ловушки SRD 5.2.1 (урон на 1–4, далее рост по ярусам 5–10 / 11–16 / 17–20):
 
-| Ловушка | Тяжесть | Обнаружение | Обезвреживание | Спасбросок | Урон |
-|---|---|---|---|---|---|
-| Collapsing Roof | deadly | Perception 11 | обойти или перерезать растяжку | Dex 13 | 2d10 дробящего |
-| Falling Net | nuisance | Perception 11 | обойти или перерезать растяжку | Dex 10, иначе Restrained | выбраться — Athletics 10 |
-| Fire-Casting Statue | deadly | плита: Perception 15, глиф: Perception 10 | стереть глиф; клин под плиту | Dex 15 | 2d10 огнём, конус 30 фт |
-| Hidden Pit | nuisance | Investigation 15 | клин в крышку | — | 1d6 дробящего |
-| Poisoned Darts | deadly | Perception 15 | заткнуть отверстия; клин под плиту | Dex 13 | 1d3 дротика по 1d6 ядом |
-| Poisoned Needle | nuisance | Perception 15 | Sleight of Hand 15, провал — срабатывание | Con 11 | 1d10 ядом, Poisoned на 1 ч |
-| Spiked Pit | deadly | Investigation 15 | клин в крышку | — | 1d6 + 2d8 |
-| Rolling Stone (11–16) | deadly | Investigation 15 | клин под плиту | Dex 15 | 10d10, сбит с ног |
-
-- Пассивная Внимательность против СЛ есть в SRD 5.1
-  ([roll20](https://roll20.net/compendium/dnd5e/Rules:Traps)); есть ли она в 5.2.1 —
-  не проверено.
+| Ловушка | Тяжесть | Триггер, сброс | Обнаружение | Обезвреживание | Спасбросок | Урон |
+|---|---|---|---|---|---|---|
+| Collapsing Roof | deadly 1–4 | растяжка; не сбрасывается | Perception 11 | разрезать или обойти растяжку, без проверки | Dex 13/15/17/19, при успехе половина | 2d10 → 4d10/10d10/18d10 |
+| Falling Net | nuisance 1–4 | растяжка | Perception 11 | разрезать или обойти растяжку | Dex 10, при провале Restrained | урона нет; освободиться — Athletics 10 действием; СЛ 12/14/16 |
+| Fire-Casting Statue | deadly 1–4 | плита; сброс в начале следующего хода | глиф Perception 10, плита Perception 15, смысл глифа Arcana 15 | стереть глиф действием или вбить клин под плиту | Dex 15, при успехе половина | 2d10 огнём, конус **15 фт** → 4d10 и 30 фт / 10d10 и 60 фт / 18d10 и 120 фт |
+| Hidden Pit | nuisance 1–4 | крышка, остаётся открытой | Investigation 15 | клин или Arcane Lock | — | 1d6 → 3d6/6d6/12d6 |
+| Poisoned Darts | deadly 1–4 | плита; сброс, если сработала < 3 раз | отверстия и плита — Perception 15 | заткнуть отверстия или вбить клин | Dex 13 | 1d3 дротика по 1d6 ядом → 2d6/4d6/7d6 |
+| Poisoned Needle | nuisance 1–4 | замок | Perception 15 | Sleight of Hand 15 действием, при провале срабатывает | Con 11 | 1d10 ядом и Poisoned на 1 ч → 2d10 СЛ 13 / 4d10 СЛ 15 / 10d10 СЛ 17 |
+| Rolling Stone | deadly 11–16, nuisance 17–20 | плита | Investigation 15 | клин; замедлить — Athletics 20; AC 17, 100 HP | Dex 15 | 10d10 и Prone |
+| Spiked Pit | deadly 1–4 | крышка | Investigation 15 | клин или Arcane Lock | — | 1d6 + 2d8 → по ярусам до 12d6 + 13d8 |
 - **BG3 [поиск]**: при приближении к ловушке Perception проверяется автоматически. Успех —
   ловушку подсвечивают и дают Disarm; провал не виден до срабатывания. Обезвреживание — набор
   инструментов + Sleight of Hand.
