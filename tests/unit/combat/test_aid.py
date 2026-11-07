@@ -57,8 +57,8 @@ def test_aid_is_not_inert_for_a_caster(registry, cfg):
     assert "aid" not in [s.id for s in inert_spells(engine, "wiz")]
 
 
-def test_cleric_full_list_has_thirteen_inert_spells_after_p3b(registry, cfg):
-    # 11 К3б + spiritual_weapon + spirit_guardians; aid -- уже с механикой (после П4 останется 11)
+def test_cleric_full_list_has_eleven_inert_spells_after_p4(registry, cfg):
+    # только 11 К3б: aid (П3б), spiritual_weapon и spirit_guardians (П4) -- с механикой
     cleric = [
         s for s in registry.all("spell") if "cleric" in s.classes and s.level <= 3
     ]
@@ -68,7 +68,7 @@ def test_cleric_full_list_has_thirteen_inert_spells_after_p3b(registry, cfg):
     engine = engine_of(registry, cfg, hero)
     inert = [s.id for s in inert_spells(engine, "wiz")]
     assert "aid" not in inert
-    assert len(inert) == 13
+    assert len(inert) == 11
 
 
 def test_aid_has_the_max_hp_kind(registry):

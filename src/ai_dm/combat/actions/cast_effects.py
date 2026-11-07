@@ -1,4 +1,4 @@
-from ai_dm.combat import downed, falling
+from ai_dm.combat import aura, downed, falling
 from ai_dm.combat.actions import move
 from ai_dm.combat.actions.attack import arrow_conditions, attack_event, roll_damage, split_dice
 from ai_dm.combat.actions.cast_conditions import impose_effects
@@ -161,7 +161,7 @@ def cast_teleport(engine, ref, spell, zone_id, circle) -> list[DomainEvent]:
     p.zone_id = zone_id
     name = [z.name for z in engine.state.zones if z.id == zone_id][0]
     engine.log(f"{engine.name(ref)}: {spell.name} — {name}")
-    return move.hazard_check(engine, ref)
+    return move.hazard_check(engine, ref) + aura.on_enter(engine, ref)
 
 
 def cast_retreat(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
@@ -200,6 +200,24 @@ def cast_hazard(engine, ref, spell, zone_id, circle) -> list[DomainEvent]:
     effect = effect_of(spell, "hazard")
     params = {"kind": "hazard", "dice": effect.dice, "damage_type": effect.damage_type}
     cast_zone(engine, ref, spell, zone_id, params)
+    return []
+
+
+def cast_aura(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
+    # Духовные стражи: аура на заклинателе; конец хода врага в зоне, вход (aura.tick, on_enter)
+    hold_concentration(engine, ref, spell, circle)
+    effect = effect_of(spell, "aura")
+    engine.creature(ref).active_effects.append(
+        ActiveEffect(
+            id=spell.id, source=ref, kind="aura",
+            params={
+                "spell": spell.id, "dice": scaled_dice(spell, engine.heroes[ref], effect, circle),
+                "ability": effect.ability, "damage_type": effect.damage_type,
+            },
+            expires=Expiry(kind="concentration", owner=ref),
+        )
+    )
+    engine.log(f"{engine.name(ref)}: {spell.name}")
     return []
 
 

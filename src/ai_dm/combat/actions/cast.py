@@ -1,6 +1,6 @@
 from itertools import combinations
 
-from ai_dm.combat import downed
+from ai_dm.combat import downed, summons
 from ai_dm.combat.actions import cast_conditions, cast_effects
 from ai_dm.combat.actions.attack import attack_event, reveal, roll_damage, split_dice
 from ai_dm.combat.actions.cast_effects import push_zone
@@ -42,7 +42,7 @@ from ai_dm.rules.spellcasting import free_cast_left as rules_free_cast_left
 from ai_dm.state.creature import ActiveEffect, Expiry
 
 # виды с враждебной одиночной целью: лежащего врага по ним в меню героя нет (решение 55)
-HOSTILE_KINDS = ("attack", "darts", "mark", "save", "rays", "condition")
+HOSTILE_KINDS = ("attack", "darts", "mark", "save", "rays", "condition", "summon")
 # Доспехи мага: только на существо без доспеха
 UNARMORED_ONLY = ("mage_armor",)
 
@@ -227,6 +227,8 @@ TARGETERS = {
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
     "teleport": lambda e, r, s, c: ranged_zones(e, r, s, effect_of(s, "teleport").size_ft),
     **dict.fromkeys(("fog", "hazard"), lambda e, r, s, c: ranged_zones(e, r, s)),
+    "summon": lambda e, r, s, c: summons.summon_targets(e, r, s),
+    "aura": lambda e, r, s, c: [""],
 }
 
 
@@ -448,7 +450,7 @@ CASTERS = {
     "fog": cast_effects.cast_fog, "hazard": cast_effects.cast_hazard,
     "create_item": cast_effects.cast_create_item, "utility": cast_effects.cast_utility,
     "ward": cast_effects.cast_ward, "retreat": cast_effects.cast_retreat,
-    "max_hp": cast_effects.cast_max_hp,
+    "max_hp": cast_effects.cast_max_hp, "summon": summons.summon, "aura": cast_effects.cast_aura,
 }
 
 

@@ -112,7 +112,7 @@ from ai_dm.core.rng import Rng  # noqa: E402
 from ai_dm.rules.builder import CharacterChoices, build_character  # noqa: E402
 from ai_dm.rules.inventory import add_item, count_item, equip  # noqa: E402
 from ai_dm.state.combat import CombatState, Group, Participant, Zone, ZoneFeature  # noqa: E402
-from ai_dm.state.creature import AppliedCondition, CreatureState  # noqa: E402
+from ai_dm.state.creature import AppliedCondition, CreatureState, ResourcePool  # noqa: E402
 from ai_dm.state.world import NPC, Location, WorldState  # noqa: E402
 
 
@@ -186,6 +186,33 @@ def make_fighter(registry, hero_id="hero"):
 def make_wizard(registry, hero_id="wiz"):
     # эльф-волшебник 1 ур.: HP 8, КД 11, СЛ 13, атака заклинанием +5, ячейки spell_slot:1 2/2
     return build_character(wizard_choices(hero_id), registry)
+
+
+def cleric_choices(hero_id):
+    return CharacterChoices(
+        name="Отец Марк", species_id="human", class_id="cleric", background="soldier",
+        ability_method="standard_array",
+        ability_scores={"str": 10, "dex": 8, "con": 14, "int": 12, "wis": 15, "cha": 13},
+        background_bonus={"str": 2, "con": 1}, class_skills=["history", "insight"],
+        weapon_masteries=[], feature_choices={"divine_order": ["protector"]},
+        species_choices={"skill": "stealth", "feat": "skilled"},
+        feat_choices={"skilled": ["medicine", "religion", "nature"]},
+        class_kit="a", hero_id=hero_id,
+    )
+
+
+def make_cleric(registry, level=2, subclass=None, charges=None, hero_id="cler"):
+    # человек-жрец (Мдр 15, модификатор +2), кит «а» (булава, щит), уровень и подкласс выставлены
+    # напрямую; Канал -- charges зарядов (по умолчанию 2), ячейки 1-3 круга
+    hero = build_character(cleric_choices(hero_id), registry)
+    entry = hero.sheet.classes[0]
+    entry.level = level
+    entry.subclass_id = subclass
+    count = 2 if charges is None else charges
+    hero.creature.resources["channel_divinity"] = ResourcePool(current=count, max=2)
+    for circle, size in ((1, 4), (2, 3), (3, 2)):
+        hero.creature.resources[f"spell_slot:{circle}"] = ResourcePool(current=size, max=size)
+    return hero
 
 
 def give_weapon(hero, registry, weapon_id):

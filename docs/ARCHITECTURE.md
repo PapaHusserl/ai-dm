@@ -1103,8 +1103,10 @@ ui.cli ──> ui.simple ─┐
 доступная атака по цели (оружие вытесняется последним), переговоры, обезоруживание, заклинания (>2 — «Заклинания на цель ▸»),
 особые стрелы (по луку — «Стрелы ▸»), Удар второй рукой, Истребитель орд, Рассечение; бесцелевой: «Идти», Рывок, Уклонение,
 Отход, Второе дыхание, Всплеск действий, Верный прицел, Хитрое действие, «Хитрый удар ▸» (группа, `STRIKE_GROUP`),
-Стабилизировать, «Заклинания без цели ▸», «Закончить ход»;
-последняя строка — «Ещё…» (`MoreModal`: полный плоский список). В TUI `CombatMenu` (`#actions`) с `TargetBar` и `MenuLine`:
+«Божественный канал ▸» (группа жреца, `CHANNEL_GROUP`, rank 2; К3 П4), Стабилизировать, «Заклинания без цели ▸»,
+«Закончить ход»;
+запасные атаки (безоружный, импровизированное, бросок подручного) при строке настоящего оружия (в руке или из инвентаря) по той же цели имеют rank 5 и вытесняются первыми
+(`spare_rank`, решение 70); последняя строка — «Ещё…» (`MoreModal`: полный плоский список). В TUI `CombatMenu` (`#actions`) с `TargetBar` и `MenuLine`:
 цифры 1–9, 0 — строки, Tab/Shift+Tab — цель, F3 — оглушающий, F4 — «Ещё…», Esc — назад из группы; «цифра+Enter» в поле —
 номер видимой строки. Выбор → `start_turn(плоский номер)`, эхо — полный label варианта.
 
@@ -1229,3 +1231,27 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
 - **Авто-герой** (`AutoHeroController`): Второе дыхание → Верный прицел (враг в своей зоне) → стабилизация/Истребитель орд →
   подбор → заклинание → тактика движка → Всплеск действий, когда делать больше нечего (`pick_own` — первые четыре шага).
   Метательное оружие авто-герой не бросает (`EngineTactics.pick_attack` отсеивает `*_thrown`).
+
+## К3. Жрец и волшебник 1–5 (сейв v14 не меняется, docs/plan-k3.md)
+
+- **Вид заклинания** (`rules/spellcasting.spell_kind`) — по данным; цепочка `KIND_BY_EFFECT` после `rider`/`mark`/`area`. Виды боя:
+  `attack`, `darts`, `rays`, `save`, `condition`, `cure`, `temp_hp`, `max_hp` (Помощь), `defense`, `ward`, `summon`, `aura`, `teleport`,
+  `hazard`, `create_item`, `stabilize`, `fog`, `retreat`, `heal`, `buff`, `mark`, `rider`, `area`, `utility`; вид без записи в
+  `CASTERS` в бою не используется (`inert_spells` — строка «пока недоступно в бою», у жреца и волшебника — заклинания К3б).
+  Выбор цели по виду — `cast.TARGETERS`, исполнение — `cast.CASTERS` (`cast_effects`, `cast_conditions`, `cast_support`, `summons`).
+- **Эффекты на участниках** (`ActiveEffect`, поля сейва не менялись): `held` (повтор спасброска в конце хода цели,
+  `cast_conditions.repeat_saves` из `next_turn`), `zone` с `params["kind"]` (`fog`, `hazard`; `combat/zone_effects.py`), `ward`,
+  `max_hp` (Помощь, откат по часам мира `healing.expire_max_hp`), `summon`, `aura`, `dash_bonus`, `resist`, `ac`/`ac_floor`.
+- **Призыв и аура** (К3 П4): `combat/summons.py` — `summon` ставит `kind="summon"` на заклинателе (`params`: зона, заклинание, кости
+  с повышением круга), `summon_options` даёт бонусные пункты `summon_attack`/`summon_move` (вызов из `available.list_options`);
+  `combat/aura.py`: `tick` — конец хода врага в зоне заклинателя с `kind="aura"` (из `CombatEngine.step`), `on_enter` — вход в зону
+  (из `move.perform`); спасбросок и урон, раз в ход существа (метка `aura_hit`). `summons.summon` с целью-врагом бьёт сразу (`strike`).
+  Оба эффекта держатся концентрацией (`Expiry(kind="concentration")`) и снимаются вместе с ней.
+- **Божественный канал** (К3 П4): `combat/actions/cleric.py` — `channel_options` (пункты `kind="channel_divinity"`, id
+  `channel:<эффект>[:<цель>]`), `perform` (`PERFORM["channel_divinity"]`) тратит заряд пула `channel_divinity` и действие, затем
+  `divine_spark`, `turn_undead` (состояния с источником `turn_undead` снимает урон — `downed.UNTIL_DAMAGE`), `preserve_life`.
+- **Авто-герой**: `combat/auto_cleric.py` (`pick_heal`, `pick_bless`) вызывается из `AutoHeroController` (`pick_own`, `choose_turn`);
+  приоритет атакующих заклинаний — `controllers.ATTACK_SPELLS`.
+- **Книга волшебника** = `CharacterSheet.spells_known["wizard"]`; подготовленные — из книги (`rules/spellbook.py`); Магическое
+  восстановление — `rules/arcane_recovery.py`; Помощь вне боя и `utility`-заклинания вне боя — `protocol/handlers/utility_spells.py`.
+- **Сетка** `devtools/sim_grid`: базовая линия `devtools/sim_grid_baseline.yaml` перегенерирована в К3 П4 (жрец и волшебник 1–5).

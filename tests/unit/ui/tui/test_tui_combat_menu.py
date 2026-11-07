@@ -178,16 +178,25 @@ def test_menu_replaces_flat_numbering_with_visible_rows(cfg, tmp_path, tui):
     assert sorted(rows) == list(range(1, len(rows) + 1)) or 0 in rows
 
 
-def test_all_available_weapons_are_visible_for_target(cfg, tmp_path, tui):
+def menu_text(cfg, tmp_path, tui):
     app, _ = goblins_app(cfg, tmp_path)
 
     async def steps(app, pilot):
         await start_fight(tui, app, pilot)
         return " | ".join(menu_rows(app).values())
 
-    text = run(app, steps)
-    for weapon in (LONGBOW, HARPOON, THROWN):
+    return run(app, steps)
+
+
+def test_all_available_weapons_are_visible_for_target(cfg, tmp_path, tui):
+    text = menu_text(cfg, tmp_path, tui)
+    for weapon in (LONGBOW, HARPOON):
         assert weapon in text
+
+
+def test_spare_thrown_attack_is_pushed_out_of_the_main_menu(cfg, tmp_path, tui):
+    # решение 70: запасная атака (бросок подручного предмета) при оружии уходит в «Ещё…»
+    assert THROWN not in menu_text(cfg, tmp_path, tui)
 
 
 def test_more_is_the_last_row(cfg, tmp_path, tui):

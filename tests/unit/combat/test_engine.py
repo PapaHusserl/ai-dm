@@ -322,3 +322,55 @@ def test_concentration_effect_is_not_touched_by_ticks(registry, cfg):
     for _ in range(4):
         engine.step()
     assert effect_ids(engine, "hero") == ["e1"]
+
+
+# игрок держит ход (choice "hold"): ход остаётся открытым и продолжается со следующего шага
+
+class HoldOnce:
+    # первый выбор -- «держать ход», дальше -- закончить ход
+    def __init__(self):
+        self.held = False
+
+    def choose(self, options, ctx):
+        if self.held:
+            return "end_turn"
+        self.held = True
+        return "hold"
+
+
+def held_engine(registry, cfg):
+    return two_sides(
+        registry, cfg, {"hero": HoldOnce(), "goblin_1": ScriptedController([])}
+    )
+
+
+def test_held_turn_clears_the_held_flag_after_the_step(registry, cfg):
+    engine = held_engine(registry, cfg)
+    engine.step()
+    assert engine.held is False
+
+
+def test_held_turn_remembers_whose_turn_is_open(registry, cfg):
+    engine = held_engine(registry, cfg)
+    engine.step()
+    assert engine.state.turn_started_for == "hero"
+
+
+def test_held_turn_does_not_advance_the_turn_order(registry, cfg):
+    engine = held_engine(registry, cfg)
+    engine.step()
+    assert (engine.state.turn_index, engine.state.round) == (0, 1)
+
+
+def test_held_turn_continues_without_a_second_turn_header(registry, cfg):
+    engine = held_engine(registry, cfg)
+    engine.step()
+    events = engine.step()
+    assert [e.type for e in events if e.type == "turn_started"] == []
+
+
+def test_held_turn_marker_is_cleared_when_the_turn_continues(registry, cfg):
+    engine = held_engine(registry, cfg)
+    engine.step()
+    engine.step()
+    assert engine.state.turn_started_for is None

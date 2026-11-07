@@ -57,6 +57,8 @@ def check_participants(state, codes):
         if p.ref in refs:
             add_code(codes, "participant_duplicate")
         refs.append(p.ref)
+        if p.ref in zone_ids:
+            add_code(codes, "participant_ref_is_zone")
         if p.zone_id is None:
             add_code(codes, "participant_unplaced")
         elif p.zone_id not in zone_ids:

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import ammo, disarm, offhand, shove, sneak
-from ai_dm.combat.actions import cast, parley, rogue
+from ai_dm.combat import ammo, disarm, offhand, shove, sneak, summons
+from ai_dm.combat.actions import cast, cleric, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
 from ai_dm.rules.death_saves import is_dying
@@ -682,6 +682,7 @@ def standard_actions(engine, ref, conditions) -> list[ActionOption]:
     options += parley_options(engine, ref)
     options += stabilize_options(engine, ref)
     options += escape_options(engine, ref)
+    options += cleric.channel_options(engine, ref)
     zone = [z for z in engine.state.zones if z.id == p.zone_id][0]
     if zone.exit and "restrained" not in conditions:
         options.append(ActionOption(id="flee", kind="flee", label="Бежать"))
@@ -731,6 +732,7 @@ def list_options(engine, ref) -> list[ActionOption]:
     options += cast_options(engine, ref)
     options += move_options(engine, ref)
     options += bonus_actions(engine, ref) + strike_options(engine, ref)
+    options += summons.summon_options(engine, ref)
     options += standard_actions(engine, ref, conditions)
     options += pickup_options(engine, ref) + horde_options(engine, ref)
     options += cleave_options(engine, ref)

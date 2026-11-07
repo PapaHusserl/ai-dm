@@ -1,4 +1,4 @@
-from ai_dm.combat import downed
+from ai_dm.combat import aura, downed
 from ai_dm.combat.actions.attack import roll_damage
 from ai_dm.combat.zones import drop_steps
 from ai_dm.core.events import DomainEvent
@@ -49,4 +49,5 @@ def push(engine, ref, target, zone) -> list[DomainEvent]:
     engine.record_move(target, from_zone, zone)
     engine.part(target).zone_id = zone
     engine.log(f"  {engine.name(target)} отброшен в зону {zone}")
-    return fall(engine, target, from_zone, ref)
+    # падение раньше входа в зону с аурой: упавший без сознания спасбросок не бросает
+    return fall(engine, target, from_zone, ref) + aura.on_enter(engine, target)

@@ -210,6 +210,20 @@ def test_duplicate_participant_refs_are_rejected():
     assert "participant_duplicate" in validate_start(make_state(participants=participants))
 
 
+def test_participant_ref_equal_to_a_zone_id_is_rejected():
+    # ref совпал с id зоны: цели зон и существ в меню не различить
+    participants = [
+        Participant(ref="hero", side="heroes", group_id="party", zone_id="door"),
+        Participant(ref="hall", side="enemies", group_id="goblins", zone_id="hall"),
+    ]
+    codes = validate_start(make_state(participants=participants))
+    assert "participant_ref_is_zone" in codes
+
+
+def test_distinct_participant_refs_and_zone_ids_have_no_ref_is_zone_code():
+    assert "participant_ref_is_zone" not in validate_start(make_state())
+
+
 def test_participant_with_unknown_group_is_rejected():
     participants = [
         Participant(ref="hero", side="heroes", group_id="party", zone_id="door"),

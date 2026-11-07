@@ -1,4 +1,4 @@
-from ai_dm.combat import downed, opportunity
+from ai_dm.combat import aura, downed, opportunity
 from ai_dm.combat.actions import rogue
 from ai_dm.combat.actions.attack import roll_damage, split_dice
 from ai_dm.combat.zone_effects import zone_effects
@@ -65,4 +65,5 @@ def perform(engine, ref, option) -> list[DomainEvent]:
     engine.log(f"{engine.name(ref)} идёт: {zone_of(engine, new_zone).name}")
     if is_difficult(zone_of(engine, new_zone)):
         p.turn.move = 0
-    return events + hazard_check(engine, ref) + thorns(engine, ref, new_zone)
+    events += hazard_check(engine, ref) + thorns(engine, ref, new_zone)
+    return events + aura.on_enter(engine, ref)

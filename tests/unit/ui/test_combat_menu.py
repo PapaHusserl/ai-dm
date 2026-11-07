@@ -6,7 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tui"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "game"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "combat"))
 
+from combat_kit import make_cleric, make_engine, mon  # noqa: E402
 from game_kit import script_then_react, start_combat_call, text_step, tools_step  # noqa: E402
 
 from ai_dm.combat.available import ActionOption  # noqa: E402
@@ -15,6 +17,7 @@ from ai_dm.ui.combat_menu import (  # noqa: E402
     BACK_LABEL,
     MAX_ROWS,
     MORE_LABEL,
+    SPARE_RANK,
     MenuRow,
     MenuState,
     TargetChip,
@@ -354,8 +357,9 @@ def test_target_block_includes_unarmed_improvised_and_special_ammo_only_for_targ
         attack("bow", "g2"), attack("bow", "g2", ammo="fire"),
     ] + free_block_options(("hall",))
     view = build_view(options, roster(2), "g1")
+    # решение 70: безоружный удар при оружии в руках вытесняется первым
     assert ids(view.target_rows) == [
-        "attack:sword:g1", "attack:unarmed:g1", "attack:improvised_melee:g1",
+        "attack:sword:g1", "attack:improvised_melee:g1",
         "attack:bow:g1", "attack:bow:g1:ammo:fire",
     ]
 
@@ -1030,14 +1034,16 @@ def test_view_does_not_change_the_flat_options(cfg, tmp_path):
 
 
 def test_real_fight_view_fits_and_has_all_three_weapons(cfg, tmp_path):
+    # решение 70: запасная атака (бросок подручного) при оружии в руках вытесняется первой
     game = goblins_game(cfg, tmp_path, 3)
     options = game.runner.preview_turn()
     chips = [TargetChip(f"g{i}", f"Воин-гоблин {i}", "7/7") for i in (1, 2, 3)]
     view = build_view(options, chips, "g2")
     shown = ids(view.rows)
     assert len(view.rows) <= MAX_ROWS
-    for weapon in ("composite_longbow", "harpoon_dart", "improvised_thrown"):
+    for weapon in ("composite_longbow", "harpoon_dart"):
         assert f"attack:{weapon}:g2" in shown
+    assert "attack:improvised_thrown:g2" not in shown
     assert not any(i and i.endswith(":g1") for i in shown)
 
 
@@ -1414,3 +1420,301 @@ def test_steady_aim_and_hide_bonus_rows_are_in_the_free_block():
     ]
     view = build_view(options, roster(2), "g1")
     assert {"steady_aim", "hide_bonus"} <= set(ids(view.free_rows))
+
+
+# К3 П4: Божественный канал и призывы жреца (docs/plan-k3.md, «Тесты» П4, решения 68-69)
+
+def channel(effect, label, target=None):
+    params = {"effect": effect} | ({"target": target} if target else {})
+    return ActionOption(
+        id=f"channel:{effect}" + (f":{target}" if target else ""), kind="channel_divinity",
+        label=label, params=params,
+    )
+
+
+def spark():
+    return [
+        channel("spark_damage", "Божественная искра: урон → Гоблин 1", "g1"),
+        channel("turn_undead", "Изгнание нежити"),
+    ]
+
+
+def weapon_strike(ref):
+    return ActionOption(
+        id=f"summon_attack:spiritual_weapon:{ref}", kind="summon_attack",
+        label=f"Духовное оружие: удар → {NAMES[ref]}",
+        params={"spell": "spiritual_weapon", "target": ref}, cost="bonus",
+    )
+
+
+def weapon_move(zone):
+    return ActionOption(
+        id=f"summon_move:spiritual_weapon:{zone}", kind="summon_move",
+        label=f"Духовное оружие: переместить → {zone}",
+        params={"spell": "spiritual_weapon", "zone": zone}, cost="bonus",
+    )
+
+
+def test_channel_group_is_one_expand_row_in_the_free_block():
+    options = [attack("mace", "g1", "melee", "булава"), *spark(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    expands = [r for r in view.free_rows if r.kind == "expand" and r.group == "channel_divinity"]
+    assert [r.label for r in expands] == ["Божественный канал ▸"]
+
+
+def test_channel_effects_are_not_rows_of_the_main_menu():
+    options = [attack("mace", "g1", "melee", "булава"), *spark(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert not [i for i in ids(view.rows) if str(i).startswith("channel:")]
+
+
+def test_no_channel_group_without_its_options():
+    view = build_view(free_block_options(), roster(2), "g1")
+    assert "channel_divinity" not in [r.group for r in view.rows]
+
+
+def test_expanded_channel_group_lists_the_effects_with_back():
+    options = [*spark(), *free_block_options()]
+    view = build_view(options, roster(2), "g1", expanded="channel_divinity")
+    assert labels(view.rows) == [
+        BACK_LABEL, "Божественная искра: урон → Гоблин 1", "Изгнание нежити",
+    ]
+
+
+def test_expanded_channel_group_rows_point_to_the_channel_ids():
+    options = [*spark(), *free_block_options()]
+    view = build_view(options, roster(2), "g1", expanded="channel_divinity")
+    assert ids(view.rows)[1:] == ["channel:spark_damage:g1", "channel:turn_undead"]
+
+
+def test_channel_effects_stay_in_the_more_list():
+    options = [attack("mace", "g1", "melee", "булава"), *spark(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert {"channel:spark_damage:g1", "channel:turn_undead"} <= {o.id for o in view.more}
+
+
+def test_summon_strike_is_a_row_of_the_target_block():
+    options = [attack("mace", "g1", "melee", "булава"), weapon_strike("g1"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "summon_attack:spiritual_weapon:g1" in ids(view.target_rows)
+
+
+def test_summon_strike_row_drops_the_arrow_and_the_target_name():
+    options = [weapon_strike("g1"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    row = [r for r in view.target_rows if r.option_id == "summon_attack:spiritual_weapon:g1"][0]
+    assert row.label == "Духовное оружие: удар"
+
+
+def test_summon_strike_of_another_target_is_not_in_the_selected_target_block():
+    options = [weapon_strike("g2"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "summon_attack:spiritual_weapon:g2" not in ids(view.target_rows)
+
+
+def test_summon_strike_counts_as_a_target():
+    assert targets([weapon_strike("g2")], roster(2)) == [roster(2)[1]]
+
+
+def test_target_of_summon_strike_is_params_target():
+    assert target_of(weapon_strike("g1")) == "g1"
+
+
+def test_summon_move_is_not_a_row_of_the_main_menu():
+    options = [attack("mace", "g1", "melee", "булава"), weapon_move("hall"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "summon_move:spiritual_weapon:hall" not in ids(view.rows)
+
+
+def test_summon_move_is_reachable_through_the_more_list():
+    options = [attack("mace", "g1", "melee", "булава"), weapon_move("hall"), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "summon_move:spiritual_weapon:hall" in {o.id for o in view.more}
+
+
+def test_target_of_summon_move_is_none():
+    assert target_of(weapon_move("hall")) is None
+
+
+def cleric_view(registry, cfg, *, mace_only, level=2):
+    # реальный жрец 2 ур. (кит «а», булава в руке) против гоблина в зоне; mace_only -- без копья
+    # и лука предыстории «солдат»
+    hero = make_cleric(registry, level=level)
+    if mace_only:
+        gone = ("spear", "shortbow", "arrows", "quiver")
+        hero.inventory = [i for i in hero.inventory if i.item_id not in gone]
+    engine = make_engine(
+        registry, cfg, heroes=[hero], monsters=[mon("g1", "goblin_warrior", "hall")]
+    )
+    chips = [TargetChip("g1", "Гоблин", "10/10", 0)]
+    return build_view(engine.available_actions("cler"), chips, "g1")
+
+
+def test_channel_group_is_on_screen_for_a_cleric_with_the_mace_kit(registry, cfg):
+    view = cleric_view(registry, cfg, mace_only=True)
+    assert "Божественный канал ▸" in labels(view.rows)
+
+
+def test_channel_group_is_on_screen_for_a_soldier_cleric_with_a_spear(registry, cfg):
+    # решение 70: запасные атаки уходят первыми, поэтому Канал при копье предыстории виден
+    view = cleric_view(registry, cfg, mace_only=False)
+    assert "Божественный канал ▸" in labels(view.rows)
+
+
+def test_soldier_cleric_menu_has_no_spare_attack_rows_and_keeps_the_limit(registry, cfg):
+    view = cleric_view(registry, cfg, mace_only=False)
+    shown = ids(view.rows)
+    assert len(view.rows) <= MAX_ROWS
+    assert not [i for i in shown if i and ":unarmed:" in i or i and ":improvised" in i]
+
+
+def test_soldier_cleric_keeps_both_real_weapons_on_screen(registry, cfg):
+    shown = ids(cleric_view(registry, cfg, mace_only=False).rows)
+    assert {"attack:mace:g1", "attack:spear:g1"} <= set(shown)
+
+
+def test_spare_attacks_stay_reachable_through_the_more_list(registry, cfg):
+    more = {o.id for o in cleric_view(registry, cfg, mace_only=False).more}
+    assert {"attack:unarmed:g1", "attack:improvised:g1", "attack:improvised_thrown:g1"} <= more
+
+
+# решение 70 (Р49 в): запасные атаки вытесняются первыми только при оружии по той же цели
+
+def spare_options():
+    return [
+        attack("unarmed", "g1", "melee", "безоружный"),
+        attack("improvised", "g1", "melee", "импровизированное"),
+        attack("improvised_thrown", "g1", "ranged", "бросок подручного"),
+    ]
+
+
+def test_spare_attacks_keep_their_place_without_a_real_weapon():
+    view = build_view(spare_options() + free_block_options(), roster(2), "g1")
+    assert ids(view.target_rows) == [
+        "attack:unarmed:g1", "attack:improvised:g1", "attack:improvised_thrown:g1",
+    ]
+
+
+def test_spare_attacks_keep_their_place_when_the_weapon_aims_at_another_target():
+    options = [attack("sword", "g2", "melee", "меч"), *spare_options(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "attack:unarmed:g1" in ids(view.target_rows)
+
+
+def test_spare_attacks_are_pushed_out_before_other_free_rows_when_a_weapon_exists():
+    options = [
+        attack("sword", "g1", "melee", "меч"), *spare_options(),
+        *free_block_options(("hall", "yard", "cellar")),
+        *[plain(f"x{i}", kind="steady_aim", label=f"Свободное {i}") for i in range(3)],
+    ]
+    view = build_view(options, roster(2), "g1")
+    shown = ids(view.rows)
+    assert not [i for i in shown if i and (":unarmed:" in i or ":improvised" in i)]
+    assert "attack:sword:g1" in shown
+
+
+def test_free_menu_without_enemies_keeps_its_rows():
+    view = build_view(free_block_options(), roster(2), "g1")
+    assert {"dash", "disengage", "dodge", "end_turn"} <= set(ids(view.free_rows))
+
+
+def test_spare_attack_with_a_ranged_weapon_only_is_still_pushed_out():
+    options = [attack("bow", "g1"), *spare_options(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert "attack:unarmed:g1" in {o.id for o in view.more}
+    assert "attack:bow:g1" in ids(view.target_rows)
+
+
+def rogue_view(registry, cfg, only_shortsword=True):
+    # реальный плут 5 ур. с коротким мечом и союзником в зоне гоблина (даёт Хитрый удар);
+    # only_shortsword -- без прочего оружия набора (копьё, лук, кинжалы дают 6 строк оружия)
+    from combat_kit import give_weapon
+
+    from ai_dm.devtools.grid_heroes import build_hero
+
+    hero = build_hero("rogue", 5, registry)
+    give_weapon(hero, registry, "shortsword")
+    if only_shortsword:
+        weapons = ("spear", "shortbow", "arrows", "dagger", "quiver")
+        hero.inventory = [i for i in hero.inventory if i.item_id not in weapons]
+    engine = make_engine(
+        registry, cfg, heroes=[hero],
+        monsters=[
+            mon("g1", "goblin_warrior", "hall"),
+            mon("ally", "goblin_warrior", "hall", side="heroes", group="allies"),
+        ],
+    )
+    chips = [TargetChip("g1", "Гоблин", "10/10", 0)]
+    return build_view(engine.available_actions(hero.id), chips, "g1")
+
+
+def weapon_cast_view(registry, cfg):
+    # жрец 3 ур. с Духовным оружием, гоблин в соседней зоне (решение 72)
+    hero = make_cleric(registry, level=3)
+    hero.sheet.prepared_of().append("spiritual_weapon")
+    engine = make_engine(
+        registry, cfg, heroes=[hero], monsters=[mon("g1", "goblin_warrior", "balcony")]
+    )
+    chips = [TargetChip("g1", "Воин-гоблин", "10/10", 1)]
+    return build_view(engine.available_actions("cler"), chips, "g1")
+
+
+def test_weapon_cast_at_the_target_is_a_row_of_the_target_block(registry, cfg):
+    view = weapon_cast_view(registry, cfg)
+    assert "cast:spiritual_weapon:2:g1" in ids(view.target_rows)
+
+
+def test_weapon_cast_row_in_the_target_block_is_named_by_the_spell(registry, cfg):
+    view = weapon_cast_view(registry, cfg)
+    row = [r for r in view.target_rows if r.option_id == "cast:spiritual_weapon:2:g1"][0]
+    assert row.label == "Духовное оружие"
+
+
+def test_weapon_cast_at_the_target_reads_with_the_arrow_in_the_more_list(registry, cfg):
+    view = weapon_cast_view(registry, cfg)
+    label = [o.label for o in view.more if o.id == "cast:spiritual_weapon:2:g1"]
+    assert label == ["Духовное оружие → Воин-гоблин"]
+
+
+def test_rogue_cunning_strike_group_is_on_screen(registry, cfg):
+    view = rogue_view(registry, cfg)
+    assert "Хитрый удар ▸" in labels(view.rows)
+
+
+def test_menu_of_the_mace_cleric_keeps_the_row_limit(registry, cfg):
+    view = cleric_view(registry, cfg, mace_only=True)
+    assert len(view.rows) == MAX_ROWS
+
+
+def test_channel_group_still_lists_the_spark_for_the_mace_cleric(registry, cfg):
+    more = cleric_view(registry, cfg, mace_only=True).more
+    assert [o.id for o in more if o.kind == "channel_divinity"] == ["channel:spark_damage:g1"]
+
+
+# добор по выжившим мутантам П4
+
+def test_spare_attacks_keep_the_attack_rank_without_a_real_weapon():
+    view = build_view(spare_options() + free_block_options(), roster(2), "g1")
+    assert [r.rank for r in view.target_rows] == [0, 0, 0]
+
+
+def test_spare_attacks_keep_the_attack_rank_when_the_weapon_aims_at_another_target():
+    options = [attack("sword", "g2", "melee", "меч"), *spare_options(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    assert [r.rank for r in view.target_rows] == [0, 0, 0]
+
+
+def test_spare_attacks_drop_to_the_spare_rank_when_a_weapon_aims_at_the_same_target():
+    options = [attack("sword", "g1", "melee", "меч"), *spare_options(), *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    ranks = {r.option_id: r.rank for r in view.target_rows}
+    assert (ranks["attack:sword:g1"], ranks["attack:unarmed:g1"]) == (0, SPARE_RANK)
+
+
+def test_channel_group_row_goes_out_of_the_menu_with_the_cunning_strike_group():
+    # одна ступень вытеснения: Канал виден ровно так же, как Хитрый удар
+    options = [attack("dagger", "g1", "melee", "кинжал"), *strikes(), *spark(),
+               *free_block_options()]
+    view = build_view(options, roster(2), "g1")
+    ranks = {r.group: r.rank for r in view.free_rows if r.kind == "expand"}
+    assert ranks["channel_divinity"] == ranks["cunning_strike"]

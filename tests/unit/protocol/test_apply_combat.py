@@ -243,6 +243,19 @@ def test_start_combat_duplicate_refs_is_invalid(registry, cfg):
     assert d.code == "participant_duplicate"
 
 
+def test_start_combat_enemy_ref_equal_to_a_zone_id_is_invalid(registry, cfg):
+    request = combat_request(enemies=[goblin("hall")])
+    ctx, d = start(registry, cfg, request)
+    assert isinstance(d, Invalid)
+    assert d.code == "participant_ref_is_zone"
+
+
+def test_invalid_start_message_for_ref_equal_to_zone_has_the_hint(registry, cfg):
+    ctx, d = start(registry, cfg, combat_request(enemies=[goblin("hall")]))
+    assert has_cyrillic(d.message)
+    assert "не должен совпадать с id зоны" in d.message
+
+
 def test_start_combat_unknown_monster_is_invalid(registry, cfg):
     request = combat_request(
         enemies=[{"ref": "g1", "monster_id": "tarrasque_9", "zone": "hall", "group": "goblins"}]

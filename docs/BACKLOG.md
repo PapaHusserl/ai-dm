@@ -1683,3 +1683,13 @@ updated: 2026-11-06
 отвечает `clamped`: «лимит новых сюжетных предметов за сцену: 5», предмет не выдан. Купленное в лавке не должно
 съедать лимит сюжетных предметов (длинная сцена-рынок упирается в него). Данные:
 saves/dusk_academy-d3de6c57/issues/20261105T205206-t3067-limit-exceeded/.
+
+## 276. Выжившие мутанты на старых строках функций К3 П4
+status: idea
+priority: low
+updated: 2026-11-07
+
+(оркестратор, mutmut К3 П4, `make mutate-diff` → «старые строки») Выжили 17 мутантов на строках, которые были до П4:
+`controllers:AutoHeroController.pick_own` 6; `available:list_options` 34, 112, 113; `engine:CombatEngine.step` 1, 2, 3, 11,
+12, 15; `cast_effects:cast_teleport` 10, 11, 13; `ui.combat_menu:free_block` 32, 68; `ui.combat_menu:group_rows` 1. Разобрать
+доебой (тесты или «эквивалентный»). Шаг — docs/plan-k3.md.

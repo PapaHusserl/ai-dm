@@ -59,7 +59,8 @@ def defense_effect(effect, spell) -> tuple[str, dict] | None:
 KIND_BY_EFFECT = (
     ("heal", "heal"), ("remove_condition", "cure"), ("temp_hp", "temp_hp"),
     ("ac_bonus", "defense"), ("resist", "defense"), ("invisible", "defense"),
-    ("blur", "defense"), ("ward", "ward"), ("teleport", "teleport"), ("hazard", "hazard"),
+    ("blur", "defense"), ("summon", "summon"), ("aura", "aura"), ("ward", "ward"),
+    ("teleport", "teleport"), ("hazard", "hazard"),
     ("create_item", "create_item"), ("stabilize", "stabilize"), ("fog", "fog"),
     ("action", "retreat"), ("max_hp", "max_hp"),
 )

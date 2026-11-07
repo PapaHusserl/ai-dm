@@ -9,6 +9,7 @@ RANK_BY_KIND = {
     "end_turn": -1,
     **dict.fromkeys(("attack", "stabilize", "multiattack"), 0),
     **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), 0),
+    **dict.fromkeys(("summon_attack", "summon_move"), 0),
     "move": 1,
     **dict.fromkeys(("dodge", "second_wind", "action_surge", "steady_aim"), 2),
     **dict.fromkeys(("dash", "disengage", "hide_bonus", "cast", "transfer_mark"), 3),
@@ -16,7 +17,7 @@ RANK_BY_KIND = {
 }
 TARGET_PARAM_KINDS = (
     "attack", "cast", "transfer_mark", "parley", "disarm", "offhand_attack", "horde_breaker",
-    "cleave",
+    "cleave", "summon_attack",
 )
 SUFFIX = re.compile(r" \(ещё (\d+) из 2\)$")
 NAME = re.compile(r" → [^()]*?(?= \(|$)")

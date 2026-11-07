@@ -1,8 +1,21 @@
-from ai_dm.combat import disarm, downed, end, initiative, offhand, roles, shove, sneak, stealth
+from ai_dm.combat import (
+    aura,
+    disarm,
+    downed,
+    end,
+    initiative,
+    offhand,
+    roles,
+    shove,
+    sneak,
+    stealth,
+    summons,
+)
 from ai_dm.combat.actions import (
     attack,
     cast,
     cast_conditions,
+    cleric,
     features,
     fighter,
     improvise,
@@ -72,6 +85,9 @@ PERFORM = {
     "equip": item.swap,
     "unequip": item.swap,
     "transfer_mark": cast.transfer_mark,
+    "channel_divinity": cleric.perform,
+    "summon_attack": summons.summon_attack,
+    "summon_move": summons.summon_move,
     "escape": standard.escape,
     "end_turn": lambda engine, ref, option: [],
 }
@@ -521,13 +537,18 @@ class CombatEngine:
         # колеблющийся теряет ход, но эффекты начала хода (горение и т.п.) уже сработали
         if self.is_capable(ref) and not parley.lose_turn(self, ref):
             events += self.run_controller(ref)
-            if self.is_over:
-                return events
-            if self.held:
-                self.held = False
-                self.state.turn_started_for = ref
+            if self.is_over or self.held:
+                if not self.is_over:
+                    # игрок держит ход: он продолжится со следующего шага
+                    self.held = False
+                    self.state.turn_started_for = ref
                 return events
         self.expire("end_of_turn", ref)
+        # конец хода во вражеской ауре (Духовные стражи)
+        events += self.finish(aura.tick(self, ref))
+        aura.clear_marks(self)
+        if self.is_over:
+            return events
         self.next_turn()
         return events
 

@@ -13,20 +13,24 @@ from ai_dm.state.combat import CombatState, Group, Participant, Zone, ZoneFeatur
 from ai_dm.state.creature import AppliedCondition, CreatureState
 
 # коды validate_start -> подсказка мастеру
-SETUP_HINTS = {
+ZONE_HINTS = {
     "zones_count": "зон должно быть от 2 до 5",
     "zone_ids_duplicate": "id зон должны быть разными",
     "zone_names_duplicate": "названия зон должны быть разными",
     "graph_unknown_zone": "в adjacent указана зона, которой нет в zones",
     "graph_asymmetric": "связь зон должна быть взаимной: если A соседняя с B, то B с A",
     "graph_disconnected": "граф зон несвязный: из любой зоны должен быть путь в любую",
+}
+PARTICIPANT_HINTS = {
     "participant_unplaced": "у участника не указана зона",
     "participant_zone_unknown": "участник в в зоне, которой нет в zones (zone врага или hero_zone)",
     "participant_duplicate": "ref врагов должны быть разными и не совпадать с героем",
+    "participant_ref_is_zone": "ref участника не должен совпадать с id зоны",
     "group_unknown": "у врага указана группа, которой нет в groups",
     "group_intent_missing": "у группы врагов должно быть намерение (intent)",
     "group_leader_invalid": "лидер группы должен быть врагом из этой же группы",
 }
+SETUP_HINTS = {**ZONE_HINTS, **PARTICIPANT_HINTS}
 
 
 # коды spec_problem -> подсказка модели; {…} подставляет improvise_problem

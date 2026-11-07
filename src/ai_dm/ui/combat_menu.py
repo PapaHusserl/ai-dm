@@ -17,6 +17,10 @@ SPELLS_FREE_LABEL = "Заклинания без цели ▸"
 AMMO_LABEL = "Стрелы ▸"
 STRIKE_LABEL = "Хитрый удар ▸"
 STRIKE_GROUP = "cunning_strike"
+CHANNEL_LABEL = "Божественный канал ▸"
+CHANNEL_GROUP = "channel_divinity"
+SPARE_WEAPONS = ("unarmed", "improvised", "improvised_thrown")
+SPARE_RANK = 5
 AMMO_INLINE = 1
 AMMO_GROUP = "ammo:"
 NO_STUN_NOTE = " (дальнобойным — не оглушить)"
@@ -24,6 +28,8 @@ NO_STUN_NOTE = " (дальнобойным — не оглушить)"
 CATEGORY_BY_KIND = {
     **dict.fromkeys(("attack", "parley", "disarm"), "target"),
     **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), "target"),
+    # summon_move без `target` — в блок цели не попадает, только «Ещё…» и раскрытые группы
+    **dict.fromkeys(("summon_attack", "summon_move"), "target"),
     **dict.fromkeys(("cast", "transfer_mark"), "spell"),
     "move": "move",
     **dict.fromkeys(("dash", "disengage", "dodge", "second_wind", "stabilize"), "free"),
@@ -97,11 +103,24 @@ def fit(rows, limit):
 def attack_row(option, options, target, nonlethal):
     stun = [o for o in options if o.id == option.id + ":nonlethal"]
     if nonlethal and stun:
-        return option_row(stun[0], "target", target)
+        return spare_rank(option_row(stun[0], "target", target), stun[0], options)
     label = short_label(option, target)
     if nonlethal:
         label += NO_STUN_NOTE
-    return option_row(option, "target", target, label)
+    return spare_rank(option_row(option, "target", target, label), option, options)
+
+
+def spare_rank(row, option, options):
+    # запасные атаки (безоружный, импровизированное, бросок подручного) при строке настоящего
+    # оружия (в руке или из инвентаря) по той же цели вытесняются первыми (решение 70)
+    if option.params.get("weapon") not in SPARE_WEAPONS:
+        return row
+    armed = any(
+        o.kind == "attack" and o.params["weapon"] not in SPARE_WEAPONS
+        and o.params["target"] == option.params["target"]
+        for o in options
+    )
+    return replace(row, rank=SPARE_RANK) if armed else row
 
 
 def is_target_spell(option, target):
@@ -172,6 +191,12 @@ def free_block(options, enemies):
         MenuRow(STRIKE_LABEL, kind="expand", group=STRIKE_GROUP, rank=2, block="free")
         for _ in strikes[:1]
     ]
+    # одна строка группы «Божественный канал ▸», если есть хоть один его пункт
+    channels = [o for o in options if o.kind == CHANNEL_GROUP]
+    rows += [
+        MenuRow(CHANNEL_LABEL, kind="expand", group=CHANNEL_GROUP, rank=2, block="free")
+        for _ in channels[:1]
+    ]
     if any(is_free_spell(option, enemies) for option in options):
         rows.append(
             MenuRow(SPELLS_FREE_LABEL, kind="expand", group="spells_free", rank=4, block="free")
@@ -189,7 +214,7 @@ def group_rows(options, target, enemies, group, nonlethal=False):
         return [MenuRow(BACK_LABEL, kind="back")] + rows
     if group.startswith(VARIANTS_GROUP):
         return variant_rows(options, target, group)
-    if group in ("move", STRIKE_GROUP):
+    if group in ("move", STRIKE_GROUP, CHANNEL_GROUP):
         # имя группы совпадает с видом её пунктов
         chosen = [option for option in options if option.kind == group]
     elif group == "spells_target":

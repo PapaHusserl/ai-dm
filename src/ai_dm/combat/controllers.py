@@ -1,7 +1,11 @@
 from typing import Protocol
 
+from ai_dm.combat import auto_cleric
 from ai_dm.combat.zones import distance, drop_steps
 from ai_dm.state.combat import DecisionPoint
+
+# атакующие заклинания авто-героя по приоритету; цель -- слабейший враг
+ATTACK_SPELLS = ("magic_missile", "guiding_bolt", "scorching_ray", "sacred_flame", "fire_bolt")
 
 
 class Controller(Protocol):
@@ -222,6 +226,9 @@ class AutoHeroController(EngineTactics):
         chosen = self.pick_own(options, ref)
         if chosen is not None:
             return chosen
+        bless = auto_cleric.pick_bless(self.engine, ref, options)
+        if bless is not None:
+            return bless
         spell = self.pick_spell(options)
         if spell is not None:
             return spell
@@ -233,7 +240,8 @@ class AutoHeroController(EngineTactics):
         return chosen
 
     def pick_own(self, options, ref):
-        # что герой делает сам раньше заклинаний и атаки: лечение, прицел, стабилизация, подбор
+        # что герой делает сам раньше заклинаний и атаки: лечение, прицел, стабилизация, подбор;
+        # лечение союзника (заклинание или Искра) -- после Верного прицела
         ids = [o.id for o in options]
         creature = self.engine.creature(ref)
         if creature.hp_current <= creature.hp_max // 2 and "second_wind" in ids:
@@ -241,6 +249,13 @@ class AutoHeroController(EngineTactics):
         # Верный прицел перед атакой по врагу в своей зоне (ходить после него нельзя)
         if "steady_aim" in ids and self.enemy_here(ref):
             return "steady_aim"
+        return self.pick_support(options, ref)
+
+    def pick_support(self, options, ref):
+        # лечение союзника, стабилизация, Истребитель орд, подбор оружия
+        healing = auto_cleric.pick_heal(self.engine, ref, options)
+        if healing is not None:
+            return healing
         for option in options:
             if option.kind in ("stabilize", "horde_breaker"):
                 return option.id
@@ -254,7 +269,7 @@ class AutoHeroController(EngineTactics):
         return any(self.zone(t) == self.zone(ref) for t in self.enemies(ref, "active"))
 
     def pick_spell(self, options):
-        for spell_id in ("magic_missile", "fire_bolt"):
+        for spell_id in ATTACK_SPELLS:
             casts = [o for o in options if o.kind == "cast" and o.params["spell"] == spell_id]
             if casts:
                 target = self.weakest([o.params["target"] for o in casts])
