@@ -521,7 +521,9 @@ class NpcCreate(Request):
     named: bool = Field(False, description="Именованный NPC.")
     key: bool = Field(False, description="Ключевой NPC.")
     motive: str = Field("", description="Мотив NPC; пусто = нет.")
-    location_id: str = Field("", description="Id локации, где NPC находится; пусто = нет.")
+    location_id: str = Field(
+        "", description="Id локации, где NPC находится; пусто = локация героя."
+    )
     trade_kind: str = Field(
         "none", description="Тип торговца (пресет ассортимента), если NPC торгует; none = нет."
     )

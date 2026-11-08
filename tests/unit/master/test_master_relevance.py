@@ -9,7 +9,7 @@ import json
 from master_kit import make_bundle, make_ctx
 
 from ai_dm.master.prompt import PromptBuilder
-from ai_dm.master.relevance import relevant_npcs
+from ai_dm.master.relevance import known_places, relevant_npcs
 from ai_dm.state.triggers import Secret, Trigger
 from ai_dm.state.world import NPC
 
@@ -810,3 +810,42 @@ def test_irrelevant_unnamed_npc_before_avenger_does_not_hide_him(registry):
     add_npc(bundle, "plain", name="Простой", named=False, location_id="vale")
     avenger(bundle, location_id="vale")
     assert "goblin_1" in relevant_npcs(bundle)
+
+
+# Л1: known_places -- посещённые не соседние места (цели travel_to и «Знакомые места» /where)
+
+def test_known_places_is_empty_when_nothing_is_visited(registry):
+    bundle = make_bundle(registry)
+    assert known_places(bundle.world, set()) == []
+
+
+def test_known_places_lists_places_with_visited_field(registry):
+    bundle = make_bundle(registry)
+    bundle.world.locations["forest"].visited = True
+    assert [p.id for p in known_places(bundle.world, set())] == ["forest"]
+
+
+def test_known_places_lists_places_with_visited_flag(registry):
+    bundle = make_bundle(registry)
+    bundle.world.flags["visited:goblin_den"] = True
+    assert [p.id for p in known_places(bundle.world, set())] == ["goblin_den"]
+
+
+def test_known_places_skips_the_given_neighbour_ids(registry):
+    bundle = make_bundle(registry)
+    bundle.world.locations["forest"].visited = True
+    bundle.world.locations["goblin_den"].visited = True
+    assert [p.id for p in known_places(bundle.world, {"forest"})] == ["goblin_den"]
+
+
+def test_known_places_are_sorted_by_id(registry):
+    bundle = make_bundle(registry)
+    for place_id in ("vale", "goblin_den", "forest"):
+        bundle.world.locations[place_id].visited = True
+    assert [p.id for p in known_places(bundle.world, set())] == ["forest", "goblin_den", "vale"]
+
+
+def test_known_places_ignores_unvisited_false_flag(registry):
+    bundle = make_bundle(registry)
+    bundle.world.flags["visited:forest"] = False
+    assert known_places(bundle.world, set()) == []

@@ -28,6 +28,15 @@ def nearby_locations(world, place):
     return result
 
 
+def known_places(world, near_ids):
+    # посещённые места, не соседние текущей (цели travel_to по пути карты), по id
+    return [
+        p
+        for p in sorted(world.locations.values(), key=lambda p: p.id)
+        if (p.visited or world.flags.get(f"visited:{p.id}")) and p.id not in near_ids
+    ]
+
+
 def npc_reason_set(bundle, npc, location_id, text, nearby_ids) -> set[str]:
     reasons = set()
     if npc.follows is not None and npc.follows == bundle.manifest.current_hero_id:

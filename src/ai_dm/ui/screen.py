@@ -51,9 +51,10 @@ def status_line(app):
     names = condition_names(hero, app.registry)
     names += [name for name, _until in boon_effects(hero, clock.now_s)]
     conditions = "".join(f" · {name}" for name in names)
+    place = app.bundle.world.locations[hero.location_id]
     return (
         f"HP {hero.creature.hp_current}/{hero.creature.hp_max}{conditions} · "
-        f"{ac_summary(hero, app.registry, clock.now_s)} · "
+        f"{ac_summary(hero, app.registry, clock.now_s)} · {place.name} · "
         f"{clock.to_date()} {clock_text(clock.now_s)} "
         f"{day_part(clock.now_s, app.settings.rules)} · сессия ${spent:.4f}"
     )

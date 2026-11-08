@@ -75,6 +75,14 @@ def test_status_line_shows_ac_with_effect(world):
     assert f"КД 19 (Каменная Кожа до {until(world[2])})" in status_line(world[3])
 
 
+def test_status_line_drops_an_expired_effect(world):
+    drink(world)
+    world[2].world.clock.now_s += 2 * 3600
+    line = status_line(world[3])
+    assert "Каменная Кожа" not in line
+    assert "КД 19" not in line
+
+
 def test_status_line_without_effect_has_no_effect_note(world):
     assert "Каменная Кожа до" not in status_line(world[3])
 

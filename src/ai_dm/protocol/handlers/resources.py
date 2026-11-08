@@ -1191,6 +1191,12 @@ def travel(ctx, request):
             + allowed(reachable_ids(world, hero.location_id)),
         )
     route = time_ops.route_path(world, hero.location_id, request.travel_to)
+    if route == []:
+        name = world.locations[request.travel_to].name
+        return rejected(
+            f"герой уже в «{name}»",
+            f"Герой уже в «{name}»: опиши сцену на месте, travel_to не повторяй",
+        )
     if not route:
         return Invalid(
             code="no_route",

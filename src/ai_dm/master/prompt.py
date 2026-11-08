@@ -16,6 +16,7 @@ from ai_dm.master.leaks import cut_leaks
 from ai_dm.master.recap import RECAP_MAX, scene_recap
 from ai_dm.master.relevance import (
     absent_mentions,
+    known_places,
     nearby_locations,
     npc_reasons,
     previous_narration,
@@ -605,9 +606,7 @@ class PromptBuilder:
             # посещённые не соседние места: цели travel_to по пути карты (132); блок фиксированный
             near_ids = {x["id"] for x in near}
             known_locations = [
-                {"id": p.id, "name": p.name}
-                for p in sorted(world.locations.values(), key=lambda p: p.id)
-                if (p.visited or world.flags.get(f"visited:{p.id}")) and p.id not in near_ids
+                {"id": p.id, "name": p.name} for p in known_places(world, near_ids)
             ]
             for npc in world.npcs.values():
                 if npc.status == "alive" and npc.location_id == hero.location_id:

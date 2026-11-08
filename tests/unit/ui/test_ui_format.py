@@ -231,8 +231,81 @@ def test_status_line_is_separator_of_full_width(registry, tmp_path):
 def test_status_line_keeps_the_content(registry, tmp_path):
     app = text_app(registry, tmp_path, [text_step()])
     raw = play(app, []).raw
-    status = next(line for line in raw if "HP 12/12" in line)
-    assert re.search(r"HP 12/12 · .+ \d\d:\d\d (утро|день|вечер|ночь) · сессия \$\d+\.\d+", status)
+    first = next(i for i, line in enumerate(raw) if "HP 12/12" in line)
+    # по решению 20 ряд, который не влезает в 80 колонок, режется по « · » на два
+    rows = [line.strip("─ ") for line in raw[first : first + 2]]
+    status = " · ".join(rows) if "сессия" not in rows[0] else rows[0]
+    assert re.search(
+        r"HP 12/12 · .+ · .+ \d\d:\d\d (утро|день|вечер|ночь) · сессия \$\d+\.\d+", status
+    )
+
+
+def test_every_status_row_is_of_full_width(registry, tmp_path):
+    app = text_app(registry, tmp_path, [text_step()])
+    raw = play(app, []).raw
+    rows = [line for line in raw if line.startswith("── ")]
+    assert len(rows) == 2
+    assert all(len(line) == WIDTH and line.endswith("──") for line in rows)
+
+
+# Л1 (решение 20): статус режется по « · » на ряды, только когда не влезает
+
+def test_short_status_is_one_row_of_full_width():
+    from ai_dm.ui.format import status_lines
+
+    rows = status_lines("HP 12/12 · КД 19", WIDTH)
+    assert rows == ["── HP 12/12 · КД 19 " + "─" * (WIDTH - len("── HP 12/12 · КД 19 "))]
+    assert len(rows[0]) == WIDTH
+
+
+def test_status_that_fits_exactly_stays_one_row():
+    from ai_dm.ui.format import status_lines
+
+    # «── a · b » = 9 знаков + хвост из двух ─
+    assert status_lines("a · b", 11) == ["── a · b ──"]
+
+
+def test_status_one_column_too_long_is_split_in_two_rows():
+    from ai_dm.ui.format import status_lines
+
+    assert status_lines("a · b", 10) == ["── a ─────", "── b ─────"]
+
+
+def test_status_packs_parts_into_rows_greedily():
+    from ai_dm.ui.format import status_lines
+
+    rows = status_lines("aaaaaaaa · bbbbbbbb · cccccccc · dddddddd", 30)
+    assert rows == [
+        "── aaaaaaaa · bbbbbbbb " + "─" * 7,
+        "── cccccccc · dddddddd " + "─" * 7,
+    ]
+
+
+def test_split_status_rows_are_all_of_full_width():
+    from ai_dm.ui.format import status_lines
+
+    text = "HP 12/12 · КД 19 · Таверна «Хромой гусь» · 0001-01-01 00:00 ночь · сессия $0.0000"
+    rows = status_lines(text, WIDTH)
+    assert len(rows) == 2
+    assert all(len(row) == WIDTH for row in rows)
+
+
+def test_split_status_keeps_all_parts_in_order():
+    from ai_dm.ui.format import status_lines
+
+    text = "HP 12/12 · КД 19 · Таверна «Хромой гусь» · 0001-01-01 00:00 ночь · сессия $0.0000"
+    rows = [row.strip("─ ") for row in status_lines(text, WIDTH)]
+    assert " · ".join(rows) == text
+
+
+def test_long_place_name_is_never_cut():
+    from ai_dm.ui.format import status_lines
+
+    name = "Причал Каменных Гнёзд у Нижних верфей великого города"
+    text = f"HP 12/12 · КД 19 · {name} · 0001-01-01 00:00 ночь · сессия $0.0000"
+    rows = status_lines(text, WIDTH)
+    assert any(f" {name} " in row for row in rows)
+    assert all(len(row) == WIDTH for row in rows)
 
 
 def test_status_line_is_after_each_turn(registry, tmp_path):

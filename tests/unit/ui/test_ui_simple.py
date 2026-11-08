@@ -58,6 +58,13 @@ def limited_app(registry, root, steps, limit_micro):
 
 # строка состояния
 
+def printed_status(lines):
+    # статус в простом режиме может уйти на два ряда (решение 20): склеиваем ряды обратно
+    start = max(i for i, x in enumerate(lines) if x.startswith("HP "))
+    end = next(i for i in range(start, len(lines)) if "сессия $" in lines[i])
+    return " · ".join(lines[start : end + 1])
+
+
 def test_status_line_has_hp_date_time_and_session_cost(registry, tmp_path):
     from ai_dm.ui.simple import status_line
 
@@ -69,7 +76,16 @@ def test_status_line_has_hp_date_time_and_session_cost(registry, tmp_path):
     assert "00:00" in line
     assert re.search(r"сессия \$0\.0{3,4}$", line)
     assert re.search(r"HP \d+/\d+ · КД \d+ · ", line)
-    assert line.count(" · ") == 3
+    assert line.count(" · ") == 4
+
+
+def test_status_line_has_location_before_date(registry, tmp_path):
+    from ai_dm.ui.simple import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    place = app.bundle.world.locations[hero_of(app.bundle).location_id]
+    line = status_line(app)
+    assert f" · {place.name} · {app.bundle.world.clock.to_date()} " in line
 
 
 def test_status_line_hp_follows_hero(registry, tmp_path):
@@ -119,7 +135,7 @@ def test_status_line_is_printed_at_start(registry, tmp_path):
 
     app = text_app(registry, tmp_path, [text_step()])
     out = play(app, [])
-    assert status_line(app) in out.lines
+    assert printed_status(out.lines) == status_line(app)
 
 
 def test_narration_is_printed(registry, tmp_path):
@@ -133,8 +149,9 @@ def test_status_line_is_printed_after_reply(registry, tmp_path):
 
     app = text_app(registry, tmp_path, [PAID])
     out = play(app, ["Здравствуйте"])
-    assert out.lines[-2] == status_line(app)
+    assert printed_status(out.lines) == status_line(app)
     assert out.lines[-1] == "Сохранено: auto."
+    assert out.lines[-2].startswith("сессия $")
 
 
 def test_command_output_is_printed(registry, tmp_path):

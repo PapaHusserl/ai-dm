@@ -107,5 +107,12 @@ def turn_menu_lines(options, turn, width=WIDTH, concentration="", ac="", effects
 
 
 def status_lines(text, width=WIDTH):
-    head = f"── {text} "
-    return [head + "─" * max(2, width - len(head))]
+    # строка не шире width: не влезает — режется по « · » на ряды, каждый добит до полной ширины
+    rows = []
+    for part in text.split(" · "):
+        if rows and len(f"── {rows[-1]} · {part} ") + 2 <= width:
+            rows[-1] += f" · {part}"
+        else:
+            rows.append(part)
+    heads = [f"── {row} " for row in rows]
+    return [head + "─" * max(2, width - len(head)) for head in heads]

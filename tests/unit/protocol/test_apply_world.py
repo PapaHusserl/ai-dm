@@ -94,6 +94,51 @@ def test_npc_create_adds_npc(registry, cfg):
     assert d.log
 
 
+def test_npc_create_key_flag_is_stored(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc(key=True))
+    assert ctx.bundle.world.npcs["brana"].key is True
+
+
+def test_npc_create_without_motive_has_empty_motive(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc())
+    assert ctx.bundle.world.npcs["brana"].motive == ""
+
+
+def test_npc_create_without_location_goes_to_hero_location(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc())
+    assert ctx.bundle.world.npcs["brana"].location_id == ctx.hero.location_id == "vale"
+
+
+def test_npc_create_with_empty_location_goes_to_hero_location(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc(location_id=""))
+    assert ctx.bundle.world.npcs["brana"].location_id == "vale"
+
+
+def test_npc_create_follows_the_hero_after_travel(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.location_id = "forest"
+    apply(ctx, new_npc())
+    assert ctx.bundle.world.npcs["brana"].location_id == "forest"
+
+
+def test_npc_create_explicit_location_is_kept(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc(location_id="forest"))
+    assert ctx.bundle.world.npcs["brana"].location_id == "forest"
+
+
+def test_npc_create_without_location_is_in_the_hero_scene_npcs(registry, cfg):
+    from ai_dm.game.scene import scene_npc_ids
+
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_npc())
+    assert "brana" in scene_npc_ids(ctx.bundle)
+
+
 def test_npc_create_named_defaults_to_false(registry, cfg):
     ctx = make_ctx(registry, cfg)
     apply(ctx, new_npc(id="guard_7", name="Стражник", named=False))

@@ -1,4 +1,4 @@
-from ai_dm.game import difficulty, inv_actions, shop_actions, tone
+from ai_dm.game import difficulty, inv_actions, shop_actions, tone, travel_actions
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
 from ai_dm.game.lore_text import lore_lines
@@ -42,6 +42,8 @@ HELP = {
     "sheet": "лист героя: характеристики, навыки, черты",
     "inv": "инвентарь по группам; надеть <предмет> [левая] · снять <слот> · выпить <предмет>",
     "shop": "торговцы здесь: что купить и что продать",
+    "go": "<место или номер из /where> идти в известное место",
+    "where": "где ты: соседние и знакомые места",
     "lore": "[имя] журнал знаний героя: кто, что, откуда",
     "spells": "заклинания и ячейки",
     "abilities": "умения класса, подкласса, вида и черт",
@@ -262,6 +264,14 @@ def cmd_shop(app, arg):
     return app.reply(fit(lines, app.settings.app.ui.width))
 
 
+def cmd_go(app, arg):
+    return travel_actions.run(app, arg)
+
+
+def cmd_where(app, arg):
+    return app.reply(fit(travel_actions.where_lines(app), app.settings.app.ui.width))
+
+
 def cmd_lore(app, arg):
     lines = lore_lines(hero_of(app.bundle), app.bundle.world, app.registry, arg)
     return app.reply(fit(lines, app.settings.app.ui.width))
@@ -325,6 +335,8 @@ COMMANDS = {
     "sheet": cmd_sheet,
     "inv": cmd_inv,
     "shop": cmd_shop,
+    "go": cmd_go,
+    "where": cmd_where,
     "lore": cmd_lore,
     "spells": cmd_spells,
     "abilities": cmd_abilities,

@@ -653,6 +653,22 @@ def test_travel_uses_connection_recorded_only_in_target(registry, cfg):
     assert ctx.bundle.world.clock.now_s == 3600
 
 
+def test_travel_to_current_location_is_rejected_as_already_here(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("advance_time", travel_to="vale"))
+    assert isinstance(d, Decision)
+    assert d.status == "rejected"
+    assert d.reason == "герой уже в «Вейл»"
+    assert dump(ctx) == before
+
+
+def test_travel_already_here_signal_tells_narrator_not_to_repeat(registry, cfg):
+    d = apply(make_ctx(registry, cfg), req("advance_time", travel_to="vale"))
+    assert "Герой уже в «Вейл»" in d.signal_to_master
+    assert "travel_to не повторяй" in d.signal_to_master
+
+
 def test_travel_to_unknown_location_is_invalid(registry, cfg):
     ctx = make_ctx(registry, cfg)
     d = apply(ctx, req("advance_time", travel_to="atlantis"))

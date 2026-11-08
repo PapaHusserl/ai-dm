@@ -77,8 +77,8 @@ def npc_create(ctx, request):
         return problem
     npc = NPC(
         id=request.id, name=request.name, named=bool(request.named), key=bool(request.key),
-        motive=request.motive or "", means=request.means, location_id=request.location_id,
-        origin="ai",
+        motive=request.motive or "", means=request.means,
+        location_id=request.location_id or ctx.hero.location_id, origin="ai",
     )
     conflicts = uniqueness.check_npc(world, npc, ctx.bundle.heroes)
     if conflicts:

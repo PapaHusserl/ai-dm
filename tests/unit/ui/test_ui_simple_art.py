@@ -28,12 +28,12 @@ def test_simple_mode_prints_title_at_start(registry, tmp_path):
 
 
 def test_title_is_printed_before_status_line(registry, tmp_path):
-    from ai_dm.ui.simple import status_line
-
     app = text_app(registry, tmp_path, [text_step()])
     out = play(app, [])
     first = rows_of(art_for_event("title"))[0]
-    assert out.lines.index(first) < out.lines.index(status_line(app))
+    # статус может занять два ряда (решение 20): берём первый
+    status_first = next(i for i, x in enumerate(out.lines) if x.startswith("HP "))
+    assert out.lines.index(first) < status_first
 
 
 def test_title_is_printed_once_over_several_turns(registry, tmp_path):

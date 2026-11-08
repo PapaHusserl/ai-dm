@@ -1694,3 +1694,20 @@ updated: 2026-11-08
 (папа, К3 П4, docs/plan-k3.md «Правки по ревью» П4 п. 25) Авто-жрец `make sim-grid` готовит и использует Духовное оружие
 (бонусное, не мешает Священному пламени) и Духовных стражей; сейчас `grid_heroes.cleric_choices` и `ATTACK_SPELLS` их не
 берут. Решает Влад при ранжировании.
+
+## 281. Разбор количества в `/shop` падает на надстрочной цифре
+status: idea
+priority: low
+updated: 2026-11-08
+
+(мама и папа, Л1 П1, docs/plan-l1.md) `game/shop_actions.py parse`: `rest[0].isdigit()` пропускает «²», затем `int()` даёт
+`ValueError`. Замена на `isdecimal()` и тест; в `/go` то же самое исправлено в Л1 П1.
+
+## 282. Выжившие мутанты старых строк после Л1 П1
+status: idea
+priority: low
+updated: 2026-11-08
+
+(mutmut партии Л1 П1, docs/plan-l1.md) На строках вне диффа: `protocol/handlers/world.py npc_create` — 24 выживших,
+`protocol/handlers/resources.py travel` — 3 (44, 45, 104), `ui/screen.py status_line` — 1 segfault (7). Разобрать, какие
+эквивалентны, остальные закрыть тестами.
