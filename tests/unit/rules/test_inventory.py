@@ -846,3 +846,98 @@ def test_equip_passes_after_unequipping_the_blockers(registry):
     equip(hero, "greatsword", registry)
     assert hero.equipped.main_hand == "greatsword"
 
+
+# К3 П5 (236): текст отказа equip видит игрок (refusal_text, builder equip_invalid) -- точные тексты
+
+
+def refusal(hero, item_id, registry, slot="main_hand"):
+    with pytest.raises(InventoryError) as caught:
+        equip(hero, item_id, registry, slot)
+    return str(caught.value)
+
+
+def hero_with(*items):
+    hero = make_hero()
+    for item in items:
+        add_item(hero, item, cost_cp=0)
+    return hero
+
+
+def test_equip_refusal_item_not_in_inventory(registry):
+    assert refusal(make_hero(), "longsword", registry) == "предмета нет в инвентаре: longsword"
+
+
+def test_equip_refusal_unknown_item(registry):
+    hero = hero_with("no_such_item")
+    assert refusal(hero, "no_such_item", registry) == "неизвестный предмет: no_such_item"
+
+
+def test_equip_refusal_weapon_in_a_wrong_slot(registry):
+    hero = hero_with("longsword")
+    assert refusal(hero, "longsword", registry, "armor") == "оружие нельзя надеть в слот: armor"
+
+
+def test_equip_refusal_heavy_weapon_in_the_left_hand(registry):
+    hero = hero_with("longsword")
+    text = refusal(hero, "longsword", registry, "off_hand")
+    assert text == "в левую руку только лёгкое оружие: longsword"
+
+
+def test_equip_refusal_left_hand_with_a_shield(registry):
+    hero = hero_with("dagger", "shield")
+    hero.equipped.shield = "shield"
+    assert refusal(hero, "dagger", registry, "off_hand") == "левая рука занята щитом: dagger"
+
+
+def test_equip_refusal_left_hand_with_a_two_handed_weapon(registry):
+    hero = hero_with("dagger", "greatsword")
+    hero.equipped.main_hand = "greatsword"
+    text = refusal(hero, "dagger", registry, "off_hand")
+    assert text == "в правой руке двуручное оружие: dagger"
+
+
+def test_equip_refusal_two_handed_weapon_with_a_shield(registry):
+    hero = hero_with("greatsword", "shield")
+    hero.equipped.shield = "shield"
+    text = refusal(hero, "greatsword", registry)
+    assert text == "двуручное оружие нельзя со щитом: greatsword"
+
+
+def test_equip_refusal_two_handed_weapon_with_an_off_hand_weapon(registry):
+    hero = hero_with("greatsword", "dagger")
+    hero.equipped.off_hand = "dagger"
+    text = refusal(hero, "greatsword", registry)
+    assert text == "двуручное оружие нельзя с оружием в левой руке: greatsword"
+
+
+def test_equip_refusal_shield_with_a_two_handed_weapon(registry):
+    hero = hero_with("greatsword", "shield")
+    hero.equipped.main_hand = "greatsword"
+    assert refusal(hero, "shield", registry) == "щит нельзя с двуручным оружием: greatsword"
+
+
+def test_equip_refusal_shield_with_an_off_hand_weapon(registry):
+    hero = hero_with("dagger", "shield")
+    hero.equipped.off_hand = "dagger"
+    assert refusal(hero, "shield", registry) == "щит нельзя с оружием в левой руке: dagger"
+
+
+def test_equip_refusal_one_item_in_both_hands(registry):
+    hero = hero_with("dagger")
+    hero.equipped.main_hand = "dagger"
+    assert refusal(hero, "dagger", registry, "off_hand") == (
+        "один предмет нельзя взять в обе руки: dagger"
+    )
+
+
+def test_equip_refusal_armor_without_proficiency(registry):
+    hero = hero_with("chain_mail")
+    hero.sheet.classes = [ClassLevel(class_id="wizard")]
+    assert refusal(hero, "chain_mail", registry) == "нет владения доспехом: chain_mail"
+
+
+def test_equip_refusal_item_that_cannot_be_worn(registry):
+    hero = hero_with("potion_of_healing")
+    text = refusal(hero, "potion_of_healing", registry)
+    assert text == "предмет нельзя экипировать: potion_of_healing"
+

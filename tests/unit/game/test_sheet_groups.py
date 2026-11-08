@@ -400,3 +400,109 @@ def test_feature_groups_put_each_chosen_option_after_its_feature(dragon_app):
 
 def test_sheet_title_uses_primary_class_and_total_level(dragon_app):
     assert lines_of(dragon_app, "/sheet")[0].startswith("Грей — человек, следопыт 3 ур.")
+
+
+# К3 П5, 236: spells_lines -- точный текст заголовков, отступов и бесплатных применений
+
+def spells_of(registry, class_id, level=3, with_description=False, prepare=None):
+    from ai_dm.devtools.grid_heroes import build_hero
+    from ai_dm.game.sheet_text import spells_lines
+
+    hero = build_hero(class_id, level, registry)
+    if prepare is not None:
+        hero.sheet.prepared_of()[:] = prepare
+    return hero, spells_lines(hero, registry, 80, with_description=with_description)
+
+
+def test_spells_of_a_non_caster_is_one_line(registry):
+    assert spells_of(registry, "fighter")[1] == ["Заклинаний нет."]
+
+
+def test_spells_start_with_the_slots_header_and_indented_slot_lines(registry):
+    lines = spells_of(registry, "ranger")[1]
+    assert lines[0] == "Ячейки:"
+    assert lines[1] == "  1 круг: ●●● (3/3)"
+
+
+def test_wizard_spells_have_cantrips_header_then_cantrips(registry):
+    lines = spells_of(registry, "wizard")[1]
+    at = lines.index("Заговоры:")
+    assert lines[at + 1] == "  Огненный снаряд (действие, 120 фт.)"
+    assert lines[at + 2] == "Подготовлено (6/6):"
+
+
+def test_ranger_spells_have_no_prepared_header(registry):
+    assert not [x for x in spells_of(registry, "ranger")[1] if x.startswith("Подготовлено")]
+
+
+def test_spells_unknown_to_the_registry_go_under_cantrips_by_name(registry):
+    _, lines = spells_of(registry, "ranger", prepare=["cure_wounds", "ghost_b", "ghost_a"])
+    at = lines.index("Заговоры:")
+    assert lines[at + 1 : at + 4] == ["  ghost_a", "  ghost_b", "Заклинания, 1 круг:"]
+    assert "  Лечение ран (действие, касание)" in lines
+
+
+def test_spells_sort_by_name_within_a_circle(registry):
+    lines = spells_of(registry, "ranger")[1]
+    at = lines.index("Заклинания, 1 круг:")
+    names = [x for x in lines[at + 1 : at + 6]]
+    assert names == [
+        "  Лечение ран (действие, касание)",
+        "  Метка охотника (бонусное, К, 90 фт.)",
+        "  Опутывание (действие, К, 90 фт.)",
+        "  Опутывающий удар (бонусное, К, на себя)",
+        "  Тревога (1 мин, 30 фт.)",
+    ]
+
+
+def test_spells_with_description_add_wrapped_description_lines(registry):
+    _, short = spells_of(registry, "ranger")
+    _, full = spells_of(registry, "ranger", with_description=True)
+    at = full.index("  Лечение ран (действие, касание)")
+    assert full[at + 1].startswith("    Касание:")
+    assert len(full) > len(short)
+
+
+def test_spells_without_description_have_no_indented_text(registry):
+    lines = spells_of(registry, "ranger")[1]
+    assert not [x for x in lines if x.startswith("    ")]
+
+
+def test_spells_free_uses_block_is_exact(registry):
+    lines = spells_of(registry, "ranger")[1]
+    assert lines[-2:] == [
+        "Бесплатные применения:",
+        "  Метка охотника без ячейки: 2/2 до долгого отдыха",
+    ]
+
+
+def test_spells_free_uses_show_the_current_value_of_the_pool(registry):
+    from ai_dm.devtools.grid_heroes import build_hero
+    from ai_dm.game.sheet_text import spells_lines
+
+    hero = build_hero("ranger", 3, registry)
+    hero.creature.resources["favored_enemy"].current = 1
+    lines = spells_lines(hero, registry, 80, with_description=False)
+    assert lines[-1] == "  Метка охотника без ячейки: 1/2 до долгого отдыха"
+
+
+def test_spell_without_free_pool_does_not_stop_the_free_uses_loop(registry, monkeypatch):
+    from ai_dm.devtools.grid_heroes import build_hero
+    from ai_dm.game import sheet_text
+
+    hero = build_hero("ranger", 3, registry)
+    monkeypatch.setattr(sheet_text, "always_prepared", lambda h, r: ["bless", "hunters_mark"])
+    lines = sheet_text.spells_lines(hero, registry, 80, with_description=False)
+    assert lines[-1] == "  Метка охотника без ячейки: 2/2 до долгого отдыха"
+
+
+def test_always_prepared_spell_without_free_pool_is_not_a_free_use(registry):
+    from ai_dm.devtools.grid_heroes import build_hero
+    from ai_dm.game.sheet_text import spells_lines
+    from ai_dm.state.hero import GrantedSpell
+
+    hero = build_hero("ranger", 3, registry)
+    hero.sheet.spells_always_prepared = [GrantedSpell(spell_id="bless", source="test")]
+    lines = spells_lines(hero, registry, 80, with_description=False)
+    assert lines[-1] == "  Метка охотника без ячейки: 2/2 до долгого отдыха"
+    assert not [x for x in lines if "Благословение без ячейки" in x]

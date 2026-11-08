@@ -1795,3 +1795,216 @@ def test_thaumaturge_cleric_in_chain_mail_is_equip_invalid(registry):
         feature_choices={"divine_order": ["thaumaturge"]},
     )
     assert "equip_invalid" in build_character(choices, registry).codes
+
+
+# К3 П5 (BACKLOG 236): build_character -- код и текст каждой ошибки (выжившие мутанты)
+
+def error_pairs(result):
+    assert isinstance(result, ValidationErrors)
+    return list(zip(result.codes, result.messages, strict=True))
+
+
+def test_unknown_class_has_its_code_and_text(registry):
+    pairs = error_pairs(build_character(fighter_choices(class_id="nope"), registry))
+    assert ("unknown_class", "неизвестный класс: nope") in pairs
+
+
+def test_unknown_background_has_its_code_and_text_and_no_crash(registry):
+    result = build_character(fighter_choices(background="nope", feat_choices={}), registry)
+    assert ("unknown_background", "неизвестная предыстория: nope") in error_pairs(result)
+
+
+def test_wrong_class_skills_have_their_text(registry):
+    result = build_character(fighter_choices(class_skills=["perception"]), registry)
+    assert ("class_skills_invalid", "навыки класса: неверное число или не из списка") in (
+        error_pairs(result)
+    )
+
+
+def test_wrong_mastery_count_has_its_text(registry):
+    result = build_character(fighter_choices(weapon_masteries=["longsword"]), registry)
+    assert ("mastery_count_invalid", "неверное число мастерств оружия") in error_pairs(result)
+
+
+def test_repeated_mastery_weapon_has_its_text(registry):
+    masteries = ["longsword", "longsword", "shortsword"]
+    result = build_character(fighter_choices(weapon_masteries=masteries), registry)
+    assert ("mastery_weapon_invalid", "мастерство оружия: повторяющееся оружие") in (
+        error_pairs(result)
+    )
+
+
+def test_unknown_mastery_weapon_has_its_text(registry):
+    masteries = ["longsword", "greatsword", "no_such_weapon"]
+    result = build_character(fighter_choices(weapon_masteries=masteries), registry)
+    assert ("mastery_weapon_invalid", "у оружия нет мастерства: no_such_weapon") in (
+        error_pairs(result)
+    )
+
+
+def test_mastery_weapon_without_proficiency_has_its_text(registry):
+    result = build_character(wizard_choices(weapon_masteries=["longsword"]), registry)
+    assert ("mastery_weapon_invalid", "нет владения оружием для мастерства: longsword") in (
+        error_pairs(result)
+    )
+
+
+def test_ranger_has_no_fighting_style_at_creation(registry):
+    # боевой стиль следопыта -- на 2 уровне, при создании его нет
+    result = build_character(fighter_choices(class_id="ranger", fighting_style="defense"), registry)
+    assert ("fighting_style_invalid", "у класса нет боевого стиля") in error_pairs(result)
+
+
+def test_not_a_fighting_style_feat_has_its_text(registry):
+    result = build_character(fighter_choices(fighting_style="alert"), registry)
+    assert ("fighting_style_invalid", "не боевой стиль: alert") in error_pairs(result)
+
+
+def test_spells_of_a_non_caster_have_their_text(registry):
+    result = build_character(fighter_choices(spells=["magic_missile"]), registry)
+    assert ("spells_invalid", "класс не владеет заклинаниями") in error_pairs(result)
+
+
+def test_repeated_spells_have_their_text(registry):
+    result = build_character(wizard_choices(spells=["fire_bolt", "fire_bolt"]), registry)
+    assert error_pairs(result) == [("spells_invalid", "заклинания: есть повторы")]
+
+
+def test_unknown_and_foreign_spells_are_both_reported(registry):
+    result = build_character(wizard_choices(spells=["no_such_spell", "cure_wounds"]), registry)
+    assert error_pairs(result) == [
+        ("spells_invalid", "неизвестное заклинание: no_such_spell"),
+        ("spells_invalid", "заклинание не из списка класса: cure_wounds"),
+    ]
+
+
+def test_second_circle_spell_is_not_available_at_creation(registry):
+    result = build_character(wizard_choices(spells=["acid_arrow"]), registry)
+    assert error_pairs(result) == [("spells_invalid", "круг заклинания недоступен: acid_arrow")]
+
+
+def test_ranger_level_1_spells_over_the_limit_have_their_text(registry):
+    spells = ["cure_wounds", "hunters_mark", "entangle"]
+    result = build_character(fighter_choices(class_id="ranger", spells=spells), registry)
+    assert ("spells_invalid", "заклинаний 1 круга больше 2") in error_pairs(result)
+
+
+def test_prepared_of_a_non_caster_have_their_text(registry):
+    result = build_character(fighter_choices(prepared=["magic_missile"]), registry)
+    assert ("spells_invalid", "подготовленные заклинания: класс не владеет заклинаниями") in (
+        error_pairs(result)
+    )
+
+
+def test_prepared_with_an_unknown_class_is_reported_without_crash(registry):
+    result = build_character(wizard_choices(class_id="nope", prepared=["magic_missile"]), registry)
+    assert ("spells_invalid", "подготовленные заклинания: класс не владеет заклинаниями") in (
+        error_pairs(result)
+    )
+
+
+def test_repeated_prepared_have_their_text(registry):
+    choices = wizard_choices(spells=["magic_missile", "shield"], prepared=["shield", "shield"])
+    assert error_pairs(build_character(choices, registry)) == [
+        ("spells_invalid", "подготовленные заклинания: есть повторы"),
+    ]
+
+
+def test_prepared_not_among_chosen_have_their_text(registry):
+    choices = wizard_choices(spells=["magic_missile"], prepared=["shield"])
+    assert error_pairs(build_character(choices, registry)) == [
+        ("spells_invalid", "подготовлены не выбранные заклинания 1+ круга"),
+    ]
+
+
+def test_prepared_over_the_limit_have_their_text(registry):
+    five = ["magic_missile", "shield", "sleep", "alarm", "burning_hands"]
+    choices = wizard_choices(spells=five, prepared=five)
+    assert error_pairs(build_character(choices, registry)) == [
+        ("spells_invalid", "подготовленных заклинаний больше 4"),
+    ]
+
+
+FEAT_CHOICES_TEXT = "выбор черты: не хватает, лишний или неверное число выборов"
+
+
+def test_missing_feat_choices_have_their_text(registry):
+    result = build_character(fighter_choices(feat_choices={}), registry)
+    assert ("feat_choices_invalid", FEAT_CHOICES_TEXT) in error_pairs(result)
+
+
+def test_invalid_feat_pick_has_its_text(registry):
+    picks = ["juggling", "religion", "nature"]
+    result = build_character(fighter_choices(feat_choices={"skilled": picks}), registry)
+    assert error_pairs(result) == [
+        ("feat_choices_invalid", "выбор черты: недопустимый или повтор: juggling"),
+    ]
+
+
+def test_skilled_tool_of_the_background_is_an_error(registry):
+    # инструмент предыстории уже есть (у солдата -- игровой набор): второй раз не берётся
+    picks = ["gaming_set", "medicine", "religion"]
+    result = build_character(fighter_choices(feat_choices={"skilled": picks}), registry)
+    assert error_pairs(result) == [
+        ("feat_choices_invalid", "выбор черты: недопустимый или повтор: gaming_set"),
+    ]
+
+
+def test_skilled_same_tool_twice_is_an_error(registry):
+    picks = ["thieves_tools", "thieves_tools", "religion"]
+    result = build_character(fighter_choices(feat_choices={"skilled": picks}), registry)
+    assert error_pairs(result) == [
+        ("feat_choices_invalid", "выбор черты: недопустимый или повтор: thieves_tools"),
+    ]
+
+
+def test_missing_species_choices_have_their_text(registry):
+    result = build_character(fighter_choices(species_choices={}), registry)
+    assert ("species_choices_invalid", "выбор вида: не хватает или лишний выбор") in (
+        error_pairs(result)
+    )
+
+
+def test_skillful_taken_skill_has_its_text(registry):
+    choices = fighter_choices(species_choices={"skill": "athletics", "feat": "skilled"})
+    assert ("species_choices_invalid", "умелость: нужен новый навык из списка") in (
+        error_pairs(build_character(choices, registry))
+    )
+
+
+def test_versatile_non_origin_feat_has_its_text(registry):
+    choices = fighter_choices(species_choices={"skill": "stealth", "feat": "defense"})
+    assert ("species_choices_invalid", "универсальность: нужна черта происхождения") in (
+        error_pairs(build_character(choices, registry))
+    )
+
+
+def test_versatile_feat_of_the_background_has_its_text(registry):
+    choices = fighter_choices(species_choices={"skill": "stealth", "feat": "savage_attacker"})
+    assert ("species_choices_invalid", "универсальность: черта уже у предыстории") in (
+        error_pairs(build_character(choices, registry))
+    )
+
+
+def test_unknown_inventory_item_has_its_text(registry):
+    result = build_character(fighter_choices(inventory=["no_such_item"], equip=[]), registry)
+    assert error_pairs(result) == [("item_unknown", "неизвестный предмет: no_such_item")]
+
+
+def test_equip_missing_item_has_its_text(registry):
+    result = build_character(fighter_choices(inventory=[], equip=["dagger"]), registry)
+    assert error_pairs(result) == [("equip_invalid", "надеваемого нет в инвентаре: dagger")]
+
+
+def test_equip_potion_has_its_text(registry):
+    choices = fighter_choices(inventory=["potion_of_healing"], equip=["potion_of_healing"])
+    assert error_pairs(build_character(choices, registry)) == [
+        ("equip_invalid", "предмет нельзя надеть: potion_of_healing"),
+    ]
+
+
+def test_equip_failure_in_inventory_layer_has_its_text(registry):
+    choices = fighter_choices(inventory=["greatsword", "shield"], equip=["greatsword", "shield"])
+    assert error_pairs(build_character(choices, registry)) == [
+        ("equip_invalid", "нельзя надеть: щит нельзя с двуручным оружием: greatsword"),
+    ]

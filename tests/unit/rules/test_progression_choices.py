@@ -421,6 +421,75 @@ def test_spell_errors_unknown_spell_does_not_stop_checking_the_rest(registry):
     assert codes(spell_errors(hero, registry, choices)) == ["spells_invalid", "spells_invalid"]
 
 
+def test_spell_errors_without_slots_allow_no_leveled_spell(registry, monkeypatch):
+    # К3 П5, 236: нет ячеек -- круг заклинания 1+ недоступен
+    from ai_dm.rules import progression
+
+    hero = ranger_at(registry, 3)
+    monkeypatch.setattr(progression, "spell_slots_for", lambda *args: {})
+    errors = spell_errors(hero, registry, LevelChoices(level=3, spells_add=["cure_wounds"]))
+    assert errors == [("spells_invalid", "круг заклинания недоступен: cure_wounds")]
+
+
+def texts(errors):
+    return [text for _, text in errors]
+
+
+def test_level_mismatch_names_both_levels(registry):
+    hero = ranger_at(registry, 2)
+    errors = choice_errors(hero, registry, LevelChoices(level=3))
+    assert texts(errors) == ["выборы для уровня 3, у героя 2"]
+
+
+def test_subclass_on_a_level_without_subclass_has_its_text(registry):
+    hero = ranger_at(registry, 2)
+    errors = choice_errors(hero, registry, LevelChoices(level=2, subclass_id="hunter"))
+    assert texts(errors) == ["подкласс на этом уровне не выбирается"]
+
+
+def test_fighting_style_on_the_wrong_level_has_its_text(registry):
+    hero = ranger_at(registry, 3)
+    errors = choice_errors(hero, registry, LevelChoices(level=3, fighting_style="archery"))
+    assert texts(errors) == ["боевой стиль на этом уровне не выбирается"]
+
+
+def test_expertise_on_the_wrong_level_has_its_text(registry):
+    hero = ranger_at(registry, 3)
+    errors = choice_errors(hero, registry, LevelChoices(level=3, expertise=["survival"]))
+    assert texts(errors) == ["экспертиза на этом уровне не выбирается"]
+
+
+def test_too_many_expertise_picks_have_their_text(registry):
+    hero = ranger_at(registry, 2)
+    errors = choice_errors(hero, registry, LevelChoices(level=2, expertise=["survival", "stealth"]))
+    assert texts(errors) == ["экспертиза: не больше 1 навыков, без повторов"]
+
+
+def test_asi_on_the_wrong_level_has_its_text(registry):
+    hero = ranger_at(registry, 2)
+    errors = choice_errors(hero, registry, LevelChoices(level=2, asi={"dex": 2}))
+    assert texts(errors) == ["повышение характеристик на этом уровне не выбирается"]
+
+
+def test_asi_together_with_a_feat_has_its_text(registry):
+    reg = feats_registry(registry)
+    hero = ranger_at(reg, 4)
+    errors = choice_errors(hero, reg, LevelChoices(level=4, asi={"dex": 2}, feat="tough"))
+    assert "нужно одно из двух: повышение характеристик или черта" in texts(errors)
+
+
+def test_spell_errors_of_a_non_caster_have_their_text(registry):
+    hero = make_class_hero("fighter", dict(SCORES))
+    errors = spell_errors(hero, registry, LevelChoices(level=1, spells_add=["cure_wounds"]))
+    assert errors == [("spells_invalid", "класс не владеет заклинаниями")]
+
+
+def test_spell_errors_duplicates_have_their_text(registry):
+    hero = ranger_at(registry, 3)
+    choices = LevelChoices(level=3, spells_add=["cure_wounds", "cure_wounds"])
+    assert ("spells_invalid", "заклинания: есть повторы") in spell_errors(hero, registry, choices)
+
+
 def test_spell_errors_circle_above_slots(registry):
     hero = ranger_at(registry, 3)
     choices = LevelChoices(level=3, spells_add=["pass_without_trace"])

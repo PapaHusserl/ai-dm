@@ -205,6 +205,15 @@ def test_choice_errors_checks_every_element_of_the_option_list(registry):
     assert [code for code, _ in choice_errors(hero, registry, choices)].count("option_invalid") == 1
 
 
+def test_choice_errors_option_after_a_mastery_key_is_still_checked(registry):
+    # К3 П5, 236: ключ weapon_mastery пропускается, а не обрывает проверку остальных
+    hero = ranger_at(registry, 3)
+    hero.sheet.primary.subclass_id = "hunter"
+    feature_choices = {"weapon_mastery": [], "hunters_prey": ["nope"]}
+    choices = LevelChoices(level=3, feature_choices=feature_choices)
+    assert "option_invalid" in [code for code, _ in choice_errors(hero, registry, choices)]
+
+
 def test_choice_errors_valid_option_is_fine(registry):
     hero = ranger_at(registry, 3)
     hero.sheet.primary.subclass_id = "hunter"
@@ -230,6 +239,13 @@ def test_spell_candidates_exclude_spells_of_the_draft(registry):
     hero = ranger_at(registry, 3)
     first = spell_candidates(hero, registry, LevelChoices(level=3))[0]
     assert first not in spell_candidates(hero, registry, LevelChoices(level=3, spells_add=[first]))
+
+
+def test_spell_candidates_without_slots_are_empty(registry, monkeypatch):
+    # К3 П5, 236: нет ячеек -- нет и кандидатов 1+ круга
+    hero = ranger_at(registry, 3)
+    monkeypatch.setattr(progression, "spell_slots_for", lambda *args: {})
+    assert spell_candidates(hero, registry, LevelChoices(level=3)) == []
 
 
 def test_spells_left_counts_prepared_of_the_class_and_draft(registry):

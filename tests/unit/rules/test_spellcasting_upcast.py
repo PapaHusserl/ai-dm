@@ -178,6 +178,14 @@ def test_problem_bad_circle_for_a_spell_without_upcast(registry):
     assert "повышение" in message
 
 
+def test_problem_bad_circle_text_is_exact(registry):
+    assert problem(registry, caster(registry), "hunters_mark", 2) == (
+        "bad_circle",
+        "Метка охотника: круг 1, запрошен 2; повышение — только у "
+        "заклинаний с усилением и не для бесплатного применения (0 для заговоров)",
+    )
+
+
 def test_problem_bad_circle_for_a_free_upcast(registry):
     hero = caster(registry)
     hero.creature.resources["favored_enemy"] = ResourcePool(current=2, max=2)
@@ -209,6 +217,68 @@ def test_problem_empty_base_circle_is_no_slot_even_with_a_higher_slot(registry):
     code, message = problem(registry, caster(registry, slot1=0), "cure_wounds", 1)
     assert code == "no_slot"
     assert "нет ячейки 1 круга" in message
+
+
+def test_problem_slot_with_exactly_one_charge_is_enough(registry):
+    # К3 П5, 236: последняя ячейка круга ещё позволяет сотворить
+    hero = caster(registry)
+    hero.creature.resources["spell_slot:1"].current = 1
+    assert problem(registry, hero, "cure_wounds", 1) is None
+
+
+def test_problem_known_cantrip_is_castable_and_unknown_is_not(registry):
+    hero = caster(registry)
+    hero.sheet.known_of()[:] = []
+    expected = ("not_known", "заговор Огненный снаряд герой не знает")
+    assert problem(registry, hero, "fire_bolt", 0) == expected
+    hero.sheet.known_of().append("fire_bolt")
+    assert problem(registry, hero, "fire_bolt", 0) is None
+
+
+def test_problem_free_cast_without_charges_is_no_free_cast(registry):
+    hero = make_ranger(registry)
+    hero.creature.resources["favored_enemy"].current = 0
+    spell = spell_of(registry, "hunters_mark")
+    result = cast_problem(hero, spell, 1, True, registry, CHECKS)
+    assert result == ("no_free_cast", "нет бесплатных применений для Метка охотника")
+
+
+class ScriptedChecks:
+    # реестр проверок заклинания с записью вызовов
+    def __init__(self, *checks):
+        self.checks = list(checks)
+        self.calls = []
+
+    def check(self, caster, spell_id, registry):
+        self.calls.append((caster, spell_id, registry))
+        return self.checks
+
+
+def test_problem_asks_the_checks_about_this_hero_spell_and_registry(registry):
+    hero = caster(registry)
+    checks = ScriptedChecks()
+    cast_problem(hero, spell_of(registry, "cure_wounds"), 1, False, registry, checks)
+    assert checks.calls == [(hero, "cure_wounds", registry)]
+
+
+def test_problem_forbidden_check_blocks_the_cast_with_its_reason(registry):
+    from ai_dm.rules.cast_checks import CastCheck
+
+    checks = ScriptedChecks(CastCheck(kind="forbidden", reason="отлучение"))
+    result = cast_problem(
+        caster(registry), spell_of(registry, "cure_wounds"), 1, False, registry, checks
+    )
+    assert result == ("forbidden", "Лечение ран недоступно: отлучение")
+
+
+def test_problem_ability_check_does_not_block_the_cast(registry):
+    from ai_dm.rules.cast_checks import CastCheck
+
+    checks = ScriptedChecks(CastCheck(kind="ability_check", ability="wis", dc=10))
+    result = cast_problem(
+        caster(registry), spell_of(registry, "cure_wounds"), 1, False, registry, checks
+    )
+    assert result is None
 
 
 # spend_cast
@@ -291,6 +361,32 @@ def test_heal_text_for_a_zero_modifier_has_a_plus(registry):
     rng = ScriptedRng(d8=[3, 4])
     _, text = roll_heal(spell_of(registry, "cure_wounds"), caster(registry), registry, rng, 1)
     assert text == "2d8 (3+4) + 0 Инт = 7"
+
+
+def fixed_bonus_heal(registry, value, upcast=True):
+    # К3 П5, 236: лечение без модификатора заклинателя -- фиксированная добавка value
+    spell = spell_of(registry, "cure_wounds").model_copy(deep=True)
+    spell.effects[0].add = None
+    spell.effects[0].value = value
+    if not upcast:
+        spell.upcast = None
+    return spell
+
+
+@pytest.mark.parametrize(
+    ("value", "tail"), [(3, " + 3 = 10"), (1, " + 1 = 8"), (-2, " - 2 = 5"), (0, " = 7")]
+)
+def test_heal_text_of_a_fixed_bonus_shows_sign_and_size(registry, value, tail):
+    rng = ScriptedRng(d8=[3, 4])
+    _, text = roll_heal(fixed_bonus_heal(registry, value), caster(registry), registry, rng, 1)
+    assert text == "2d8 (3+4)" + tail
+
+
+def test_heal_without_upcast_rolls_base_dice_at_the_base_circle(registry):
+    rng = ScriptedRng(d8=[3, 4])
+    spell = fixed_bonus_heal(registry, 0, upcast=False)
+    total, text = roll_heal(spell, caster(registry), registry, rng, 1)
+    assert (total, text) == (7, "2d8 (3+4) = 7")
 
 
 def test_upcast_heal_text_lists_all_rolls(registry):

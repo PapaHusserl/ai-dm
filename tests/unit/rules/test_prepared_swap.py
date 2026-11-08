@@ -204,6 +204,14 @@ def test_fighter_has_no_spellcasting(registry):
     assert code_of(problem) == "no_spellcasting"
 
 
+def test_no_spellcasting_and_bad_swap_have_their_text(registry):
+    # К3 П5, 236
+    no_cast = swap_problem(make_fighter(registry), registry, [], ["bless"])
+    assert no_cast == ("no_spellcasting", "у класса героя нет смены подготовленных заклинаний")
+    repeats = swap_problem(cleric(registry), registry, [], ["bless", "bless"])
+    assert repeats == ("bad_swap", "в списках drop и take есть повторы")
+
+
 def test_repeats_in_drop_are_bad_swap(registry):
     hero = cleric(registry)
     hero.sheet.prepared_of()[:] = ["bless"]
@@ -287,3 +295,20 @@ def test_unknown_spell_hint_for_the_wizard_excludes_cantrips(registry):
     assert "fire_bolt" not in hint
     assert "alarm" not in hint
     assert hint == ["burning_hands", "magic_missile"]
+
+
+def test_unknown_spell_hint_is_cut_to_twenty_ids(registry):
+    # К3 П5, 236: подсказка не длиннее 20 id (у жреца 5 ур. кандидатов больше)
+    hero = cleric(registry, 5)
+    problem = swap_problem(hero, registry, [], ["no_such_spell"])
+    hint = problem[1].split("допустимые id: ")[1].split(", ")
+    assert len(hint) == 20
+    assert hint == sorted(hint)
+
+
+def test_class_without_slots_has_no_candidates_for_the_hint(registry, monkeypatch):
+    from ai_dm.rules import spellcasting
+
+    monkeypatch.setattr(spellcasting, "spell_slots_for", lambda *args: {})
+    problem = swap_problem(cleric(registry), registry, [], ["no_such_spell"])
+    assert problem == ("unknown_spell", "нет заклинания 'no_such_spell'; допустимые id: ")

@@ -196,8 +196,9 @@ def test_skill_bonus_grows_with_level(registry):
 
 
 def test_unknown_skill_raises_value_error(registry):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as raised:
         skill_bonus(make_fighter(), registry, "juggling")
+    assert str(raised.value) == "неизвестный навык: 'juggling'"
 
 
 def test_passive_perception_is_10_plus_perception_bonus(registry):
@@ -842,6 +843,15 @@ def test_thaumaturge_bonus_is_at_least_plus_one(registry):
     hero = cleric_with_order(registry, "thaumaturge")
     hero.sheet.abilities["wis"] = 8
     assert feature_skill_parts(hero, registry, "religion") == [("Чудотворец", 1)]
+
+
+def test_skill_parts_of_an_expertise_skill_have_its_own_label(registry):
+    # К3 П5, 236: навык с экспертизой -- мастерство и компетентность отдельными частями
+    hero = cleric_with_order(registry, "protector")
+    hero.sheet.skill_proficiencies = ["religion"]
+    hero.sheet.skill_expertise = ["religion"]
+    labels = [name for name, _ in skill_parts(hero, registry, "religion")]
+    assert labels[1:] == ["мастерство", "компетентность"]
 
 
 def test_skill_parts_include_the_thaumaturge_part(registry):

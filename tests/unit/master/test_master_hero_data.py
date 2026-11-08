@@ -444,6 +444,43 @@ def test_sheet_data_without_now_keeps_the_old_output(registry, cfg):
     assert "active_spells" not in data
 
 
+def test_sheet_data_features_skip_those_with_effects_or_options(registry, cfg):
+    # К3 П5, 236: в features только умения без механики и без вариантов
+    ctx = grey_ctx(registry, cfg)
+    features = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)["features"]
+    assert features
+    for item in features:
+        feature = registry.get("feature", item["id"])
+        assert not feature.effects
+        assert not feature.options
+
+
+def test_sheet_data_hides_a_feature_with_effects_but_no_options(registry, cfg):
+    from ai_dm.rules.derived import hero_feature_ids
+
+    ctx = grey_ctx(registry, cfg)
+    hidden = [
+        fid
+        for fid in hero_feature_ids(ctx.hero, registry)
+        if registry.get("feature", fid).effects and not registry.get("feature", fid).options
+    ]
+    assert hidden
+    ids = [f["id"] for f in PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)["features"]]
+    assert not set(hidden) & set(ids)
+
+
+def test_sheet_data_has_always_prepared_spells_of_a_caster(registry, cfg):
+    ctx = grey_ctx(registry, cfg)
+    data = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)
+    assert data["spells_always_prepared"] == ["hunters_mark"]
+
+
+def test_sheet_data_companion_is_a_json_dict(registry, cfg):
+    ctx = grey_ctx(registry, cfg)
+    data = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)
+    assert data["companion"] == {"name": "Акела", "kind": "волк", "notes": "доверен Йоргеном"}
+
+
 def test_sheet_data_with_now_has_active_spells(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.hero.creature.active_effects.append(spell_effect("tongues", "spell", 99999))

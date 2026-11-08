@@ -129,6 +129,29 @@ def test_short_rest_without_hit_dice_pool_is_error_when_spending(registry, cfg):
         short_rest(hero, registry, ScriptedRng(), GameClock(), cfg=cfg, hit_dice=1)
 
 
+def short_rest_message(hero, registry, cfg, hit_dice=0):
+    # К3 П5 (236): текст отказа уходит игроку как message в rest_impossible
+    with pytest.raises(ValueError) as caught:
+        short_rest(hero, registry, ScriptedRng(), GameClock(), cfg=cfg, hit_dice=hit_dice)
+    return str(caught.value)
+
+
+def test_short_rest_of_dead_hero_says_so(registry, cfg):
+    hero = make_fighter(hp=3)
+    hero.status = "dead"
+    assert short_rest_message(hero, registry, cfg) == "герой мёртв"
+
+
+def test_short_rest_negative_dice_have_their_text(registry, cfg):
+    text = short_rest_message(make_fighter(hit_dice=1), registry, cfg, hit_dice=-1)
+    assert text == "hit_dice не может быть отрицательным"
+
+
+def test_short_rest_too_many_dice_have_their_text(registry, cfg):
+    text = short_rest_message(make_fighter(hit_dice=1), registry, cfg, hit_dice=2)
+    assert text == "не хватает костей хитов"
+
+
 def test_short_rest_recovers_one_second_wind(registry, cfg):
     hero = make_fighter(second_wind=0)
     short_rest(hero, registry, ScriptedRng(), GameClock(), cfg=cfg)

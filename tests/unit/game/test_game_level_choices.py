@@ -474,6 +474,23 @@ def test_weapon_mastery_picks_are_accumulated_in_the_draft(registry, tmp_path):
     assert draft.feature_choices["weapon_mastery"] == ["battleaxe", "mace"]
 
 
+def test_asi_or_feat_plain_key_is_written_as_a_feat(registry, tmp_path):
+    # К3 П5, 236: ключ без «+» -- черта, не прибавка
+    app = fighter_at_level_4_menu(registry, tmp_path)
+    app.record_choice("asi_or_feat", "alert")
+    draft = app.bundle.heroes[0].pending_level.draft
+    assert draft.feat == "alert"
+    assert not draft.asi
+
+
+def test_asi_or_feat_pair_key_is_two_single_points(registry, tmp_path):
+    app = fighter_at_level_4_menu(registry, tmp_path)
+    app.record_choice("asi_or_feat", "str+dex")
+    draft = app.bundle.heroes[0].pending_level.draft
+    assert draft.asi == {"str": 1, "dex": 1}
+    assert draft.feat is None
+
+
 # К3 П2: волшебник 2 ур. -- экспертиза Учёного, два заклинания в книгу, подготовка из книги
 
 def wizard_level_2_menu(registry, tmp_path):
