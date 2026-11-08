@@ -1,7 +1,7 @@
 from ai_dm.game.inv_actions import SELECT_FIRST, finish
 from ai_dm.game.scene import hero_of
 from ai_dm.game.shop_actions import apply_shop, lines_of
-from ai_dm.master.relevance import known_places, nearby_locations
+from ai_dm.master.relevance import known_places, nearby_locations, travel_intent
 from ai_dm.protocol.decision import Decision
 from ai_dm.protocol.requests import AdvanceTime
 from ai_dm.rules import time_ops
@@ -95,6 +95,21 @@ def arrival_note(app, outcome):
     if len(path) > 1:
         note += ", через " + ", ".join(world.locations[i].name for i in path[:-1])
     return note + ")"
+
+
+def go_by_text(app, line):
+    # «иду в X» в тексте игрока (вне боя): герой идёт до хода рассказчика, пометка уходит в ход
+    if hero_of(app.bundle).location_id not in app.bundle.world.locations:
+        return []
+    places = [p for p, _ in neighbours(app)] + known(app)
+    target = travel_intent(places, line)
+    if target is None:
+        return []
+    outcome = apply_shop(app, AdvanceTime(type="advance_time", travel_to=target))
+    if isinstance(outcome, Decision) and outcome.status == "accepted":
+        app.inv_notes.append(arrival_note(app, outcome))
+        return lines_of(outcome)
+    return []
 
 
 def refusal(app, arg):

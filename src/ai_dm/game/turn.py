@@ -10,7 +10,12 @@ from ai_dm.game import boundary, combat_flow, combat_fold
 from ai_dm.game.controllers import PlayerController
 from ai_dm.game.scene import check_close, hero_of
 from ai_dm.master.prompt import PromptBuilder
-from ai_dm.master.relevance import absent_mentions, previous_narration
+from ai_dm.master.relevance import (
+    absent_location_mention,
+    absent_mentions,
+    moved,
+    previous_narration,
+)
 from ai_dm.master.session import MasterSession, TurnFailed
 from ai_dm.master.summarizer import SummarizerSession
 from ai_dm.master.world import WorldSession
@@ -41,7 +46,11 @@ TEXT_NOTE = (
     "игрок видит только текст, размышления ему не показываются."
 )
 AUTH_HINT = "Ключ {provider} не принят — введите новый: /key, затем «1. повтор»."
-RETRY_NOTES = {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE}
+ROUNDS_NOTE = (
+    "Системная приписка: слишком много вызовов за ход — не повторяй отклонённые, "
+    "не листай прайс по категориям, уложись в 12."
+)
+RETRY_NOTES = {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE, "rounds": ROUNDS_NOTE}
 HARD_REFUSALS = ("PROHIBITED_CONTENT", "BLOCKLIST", "SPII")
 
 
@@ -503,6 +512,13 @@ class TurnRunner:
         before = absent_mentions(work, previous_narration(work))
         if set(before) & set(absent_mentions(work, narration)):
             self.take_tags(["npc_absent_ignored"], result)
+        # то же для места: названо в двух ходах подряд, а герой там не оказался (Л1)
+        # (ход с переходом не считается: герой сам дошёл или рассказчик вызвал travel_to)
+        places = absent_location_mention(work, previous_narration(work))
+        if set(places) & set(absent_location_mention(work, narration)) and not moved(
+            self.last_input, result.outcomes
+        ):
+            self.take_tags(["location_absent_ignored"], result)
 
     def check_told(self, master):
         # инструменты были, а рассказа почти нет (сцену модель написала в мышлении)

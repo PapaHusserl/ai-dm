@@ -849,3 +849,366 @@ def test_known_places_ignores_unvisited_false_flag(registry):
     bundle = make_bundle(registry)
     bundle.world.flags["visited:forest"] = False
     assert known_places(bundle.world, set()) == []
+
+
+# Л1 П2: absent_location_mention, moved_last_turn (герой в vale, сосед forest «Лес»)
+
+def moved_turn(bundle, narration="Ход.", player_input=None, outcomes=()):
+    scene_turn(bundle, narration)
+    record = bundle.memory.recent_turns[-1]
+    if player_input is not None:
+        record.player_input = player_input
+    record.outcomes = list(outcomes)
+
+
+def test_absent_location_finds_named_neighbour(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == ["forest"]
+
+
+def test_absent_location_finds_known_far_place(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["goblin_den"].visited = True
+    assert absent_location_mention(bundle, "Вы вспоминаете Логово.") == ["goblin_den"]
+
+
+def test_absent_location_ignores_unvisited_far_place(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    assert absent_location_mention(bundle, "Вы вспоминаете Логово.") == []
+
+
+def test_absent_location_ignores_the_current_place(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    assert absent_location_mention(bundle, "Вы стоите в Вейле.") == []
+
+
+def test_absent_location_is_sorted_by_id(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["goblin_den"].visited = True
+    assert absent_location_mention(bundle, "Логово и лес.") == ["forest", "goblin_den"]
+
+
+def test_absent_location_needs_the_full_name(registry):
+    from ai_dm.master.relevance import absent_location_mention
+    from ai_dm.state.world import Connection, Location
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["vale"].connections.append(Connection(to="docks", distance_m=40))
+    bundle.world.locations["docks"] = Location(id="docks", name="Нижние верфи")
+    assert absent_location_mention(bundle, "У наковальни верфи гремит молот.") == []
+    assert absent_location_mention(bundle, "У наковальни Нижние верфи гремит молот.") == ["docks"]
+    assert absent_location_mention(bundle, "У наковальни Нижних верфей гремит молот.") == ["docks"]
+
+
+def test_absent_location_is_empty_without_hero_location(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    bundle.heroes[0].location_id = None
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == []
+
+
+def test_absent_location_is_empty_after_a_travel_outcome(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, outcomes=["Путь в «Лес»: 60 с"])
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == []
+
+
+def test_absent_location_is_empty_after_an_arrival_note_in_player_input(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, player_input="(Перед этим герой сам: пришёл в «Лес» (60 с).) Осматриваюсь")
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == []
+
+
+def test_absent_location_stays_when_the_move_was_in_an_older_turn(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, outcomes=["Путь в «Лес»: 60 с"])
+    scene_turn(bundle, "Тихо.", n=2)
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == ["forest"]
+
+
+def test_moved_last_turn_is_false_without_turns_and_for_plain_turn(registry):
+    from ai_dm.master.relevance import moved_last_turn
+
+    bundle = make_bundle(registry)
+    assert moved_last_turn(bundle) is False
+    moved_turn(bundle, outcomes=["Золото: +5"])
+    assert moved_last_turn(bundle) is False
+
+
+def test_moved_last_turn_by_outcome_and_by_note(registry):
+    from ai_dm.master.relevance import moved_last_turn
+
+    by_outcome = make_bundle(registry)
+    moved_turn(by_outcome, outcomes=["Путь в «Лес»: 60 с"])
+    by_note = make_bundle(registry)
+    moved_turn(by_note, player_input="(Перед этим герой сам: пришёл в «Лес» (60 с).) Жду")
+    assert moved_last_turn(by_outcome) is True
+    assert moved_last_turn(by_note) is True
+
+
+def test_moved_last_turn_ignores_a_turn_of_another_scene(registry):
+    from ai_dm.master.relevance import moved_last_turn
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, outcomes=["Путь в «Лес»: 60 с"])
+    bundle.memory.recent_turns[-1].scene_id = "scene_0"
+    assert moved_last_turn(bundle) is False
+
+
+# Л1 П2: travel_intent («иду в X» в тексте игрока)
+
+def places_of(*pairs):
+    from ai_dm.state.world import Location
+
+    return [Location(id=i, name=n) for i, n in pairs]
+
+
+WHARF = ("stone_nests_wharf", "Причал Каменных Гнёзд")
+TAVERN = ("stone_nests_tavern", "Таверна «Каменный очаг»")
+
+
+def test_travel_intent_first_word_of_the_name_after_a_move_verb():
+    from ai_dm.master.relevance import travel_intent
+
+    assert travel_intent(places_of(WHARF, TAVERN), "иду на причал") == "stone_nests_wharf"
+
+
+def test_travel_intent_works_with_case_and_other_move_verbs():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF, TAVERN)
+    assert travel_intent(places, "Пойдём к Причалу") == "stone_nests_wharf"
+    assert travel_intent(places, "Отправляюсь на причал, к кузнецу") == "stone_nests_wharf"
+
+
+def test_travel_intent_full_name():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF, TAVERN)
+    assert travel_intent(places, "иду в Причал Каменных Гнёзд") == "stone_nests_wharf"
+
+
+def test_travel_intent_needs_a_move_verb():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF, TAVERN)
+    assert travel_intent(places, "расспросить о причале") is None
+    assert travel_intent(places, "причал") is None
+
+
+def test_travel_intent_two_places_in_the_phrase_is_none():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF, ("tavern", "Таверна"))
+    assert travel_intent(places, "иду с причала в таверну") is None
+
+
+def test_travel_intent_shared_first_word_of_two_places_is_none():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF, ("fish_wharf", "Причал Рыбаков"))
+    assert travel_intent(places, "иду на причал") is None
+
+
+def test_travel_intent_adjective_name_in_accusative():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("old_crypt", "Старая крипта"), TAVERN)
+    assert travel_intent(places, "иду в Старую крипту") == "old_crypt"
+
+
+def test_travel_intent_adjective_alone_does_not_move():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("old_crypt", "Старая крипта"), ("old_mill", "Старая мельница"))
+    assert travel_intent(places, "иду в Старую") is None
+
+
+def test_travel_intent_old_adjective_in_another_phrase_does_not_move():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("old_crypt", "Старая крипта"))
+    assert travel_intent(places, "иду к старому кузнецу") is None
+    assert travel_intent(places, "иду к старой ведьме") is None
+
+
+def test_travel_intent_big_hall_is_not_the_big_square():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("square", "Большая площадь"))
+    assert travel_intent(places, "иду в большой зал") is None
+
+
+def test_travel_intent_adjective_name_by_its_noun_in_a_case():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("docks", "Нижние верфи"), TAVERN)
+    assert travel_intent(places, "иду на Нижнюю верфь") == "docks"
+
+
+def test_travel_intent_by_the_noun_of_the_name():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("old_crypt", "Старая крипта"), TAVERN)
+    assert travel_intent(places, "иду к крипте") == "old_crypt"
+
+
+def test_travel_intent_two_taverns_is_none():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("tavern_a", "Таверна «Каменный очаг»"), ("tavern_b", "Таверна «Гусь»"))
+    assert travel_intent(places, "иду в таверну") is None
+
+
+def test_travel_intent_full_name_with_cases():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("old_crypt", "Старая крипта"), ("old_mill", "Старая мельница"))
+    assert travel_intent(places, "иду в Старую крипту") == "old_crypt"
+    assert travel_intent(places, "иду к Старой мельнице") == "old_mill"
+
+
+# Л1 П2 круг 1: moved (ход перехода)
+
+def test_moved_by_arrival_note_in_the_input():
+    from ai_dm.master.relevance import moved
+
+    assert moved("(Перед этим герой сам: пришёл в «Лес» (60 с).) Жду", []) is True
+
+
+def test_moved_by_travel_outcome_of_the_narrator():
+    from ai_dm.master.relevance import moved
+
+    assert moved("Жду", ["Золото: +5", "Путь в «Лес»: 60 с"]) is True
+
+
+def test_not_moved_without_note_and_travel_outcome():
+    from ai_dm.master.relevance import moved
+
+    assert moved("Иду в лес", ["Золото: +5", "Куда: Путь в «Лес»"]) is False
+
+
+# Л1 П2 круг 2: place_keys и travel_intent по решению 29
+
+def test_place_keys_full_name_first_noun_and_quoted_part():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Подвал таверны") == ["подвал таверны", "подвал"]
+    tavern = ["таверна «пьяный дракон»", "таверна", "пьяный дракон"]
+    assert place_keys("Таверна «Пьяный Дракон»") == tavern
+    assert place_keys("Лавка (Старая)") == ["лавка (старая)", "лавка", "старая"]
+
+
+def test_place_keys_adjective_is_skipped_to_the_first_noun():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Старая крипта") == ["старая крипта", "крипта"]
+
+
+def test_place_keys_short_main_word_has_no_key():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Неф Затонувшего собора") == ["неф затонувшего собора"]
+    assert place_keys("Дом Веларов") == ["дом веларов"]
+
+
+def test_place_keys_quoted_part_is_not_a_source_of_the_noun():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Чайная «Под дождём»") == ["чайная «под дождём»", "под дождём"]
+    assert place_keys("«Пьяный Дракон»") == ["«пьяный дракон»", "пьяный дракон"]
+
+
+def test_place_keys_without_a_noun_is_the_full_name_only():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Тёмный лес") == ["тёмный лес"]
+
+
+def test_travel_intent_dependent_adjective_of_the_name_does_not_move():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(WHARF)
+    assert travel_intent(places, "иду вдоль каменных домов") is None
+    assert travel_intent(places, "иду к гнёздам") is None
+
+
+def test_travel_intent_dependent_noun_of_the_name_does_not_move():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("nef", "Неф Затонувшего собора"))
+    assert travel_intent(places, "иду мимо затонувшего") is None
+    assert travel_intent(places, "иду в собор") is None
+    assert travel_intent(places, "иду к алтарю собора") is None
+    assert travel_intent(places, "иду в Неф Затонувшего собора") == "nef"
+
+
+def test_travel_intent_name_wholly_in_quotes():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("dragon", "«Пьяный Дракон»"))
+    assert travel_intent(places, "иду к дракону") is None
+    assert travel_intent(places, "иду в «Пьяный Дракон»") == "dragon"
+    assert travel_intent(places, "иду в Пьяный дракон") == "dragon"
+
+
+def test_travel_intent_basement_by_its_noun_not_by_the_dependent_word():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("cellar", "Подвал таверны"))
+    assert travel_intent(places, "иду к выходу из таверны") is None
+    assert travel_intent(places, "иду в подвал") == "cellar"
+
+
+def test_travel_intent_forge_of_master_torin_not_by_the_master():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("forge", "Кузница мастера Торина"))
+    assert travel_intent(places, "иду к мастеру") is None
+    assert travel_intent(places, "иду в кузницу") == "forge"
+
+
+def test_travel_intent_quoted_part_of_the_name():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("dragon", "Таверна «Пьяный Дракон»"))
+    assert travel_intent(places, "иду в «Пьяный Дракон»") == "dragon"
+    assert travel_intent(places, "иду к дракону") is None
+
+
+def test_travel_intent_part_in_parentheses():
+    from ai_dm.master.relevance import travel_intent
+
+    places = places_of(("inn", "Постоялый двор (Ржавый Гвоздь)"))
+    assert travel_intent(places, "иду в Ржавый Гвоздь") == "inn"
+    assert travel_intent(places, "иду к гвоздю") is None
+
+
+def test_travel_intent_unknown_place_or_no_places_is_none():
+    from ai_dm.master.relevance import travel_intent
+
+    assert travel_intent(places_of(WHARF), "иду в замок") is None
+    assert travel_intent([], "иду на причал") is None
+
+
+def test_place_keys_noun_after_adjective_and_quoted_part_in_the_middle():
+    from ai_dm.master.relevance import place_keys
+
+    assert place_keys("Старая «Ржавая» крипта") == ["старая «ржавая» крипта", "крипта", "ржавая"]

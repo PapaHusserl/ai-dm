@@ -207,7 +207,8 @@ def test_recent_turns_reach_next_request(registry, cfg, tmp_path):
 
 NETWORK = [{"error": "transient", "message": "сеть"}] * 4
 INVALID = [tools_step(BAD_CHECK)] * 3
-ROUNDS = [tools_step(flag_call(f"f{i}")) for i in range(9)]
+# 13 раундов -- провал; с Л1 rounds даёт автоповтор, поэтому провал и в повторе: ещё 13
+ROUNDS = [tools_step(flag_call(f"f{i}")) for i in range(26)]
 REFUSAL = [{"stop": "refusal"}] * 2
 FATAL = [{"error": "fatal", "message": "ключ отозван"}]
 CASES = [

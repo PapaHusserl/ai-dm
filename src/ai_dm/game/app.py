@@ -19,6 +19,7 @@ from ai_dm.game.models import (
     write_models,
 )
 from ai_dm.game.scene import ensure_chapter, hero_of, start_scene
+from ai_dm.game.travel_actions import go_by_text
 from ai_dm.game.turn import ERROR_MENU, TurnResult, TurnRunner, hard_refusal
 from ai_dm.llm.cost import CostLedger
 from ai_dm.llm.errors import MissingKey
@@ -215,7 +216,8 @@ class GameApp:
         in_combat = self.bundle.session.active_combat is not None
         if in_combat and line.isdigit() and not 1 <= int(line) <= len(self.runner.preview_turn()):
             return self.reply(["Нет такого варианта."])
-        return self.after_turn(self.runner.play(self.with_notes(line, in_combat)))
+        lead = [] if in_combat else go_by_text(self, line)
+        return self.after_turn(self.runner.play(self.with_notes(line, in_combat)), lead)
 
     def with_notes(self, line, in_combat) -> str:
         # что герой сделал из окна inv (надел, снял, выпил) -- рассказчику в начале следующего хода;
@@ -225,9 +227,9 @@ class GameApp:
         notes, self.inv_notes = self.inv_notes, []
         return f"({INV_NOTES_PREFIX}{'; '.join(notes)}.) {line}"
 
-    def after_turn(self, turn) -> Reply:
+    def after_turn(self, turn, lead=()) -> Reply:
         turn, lines = self.chain_turn(turn)
-        lines += self.auto_report(turn)
+        lines = [*lead, *lines, *self.auto_report(turn)]
         self.failed_reason = None if turn.failure is None else turn.failure.reason
         if not turn.committed or turn.boundary_failed:
             self.pending = "error_menu"

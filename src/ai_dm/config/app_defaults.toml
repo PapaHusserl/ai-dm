@@ -164,7 +164,7 @@ key_env = "DEEPINFRA_API_KEY"
 [retry]
 delays = [1, 3, 10]
 invalid_retries = 2
-max_tool_rounds = 8
+max_tool_rounds = 12
 timeout_s = 180
 # таймаут запроса Gemini, с (на фазу: connect, write, read, pool)
 gemini_timeout_s = 90

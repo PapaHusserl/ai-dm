@@ -18,7 +18,7 @@ from game_kit import (
 )
 from master_kit import flag_call
 
-from ai_dm.game.turn import ERROR_MENU, RETRY_NOTES, SOFTEN_NOTE, TEXT_NOTE
+from ai_dm.game.turn import ERROR_MENU, RETRY_NOTES, ROUNDS_NOTE, SOFTEN_NOTE, TEXT_NOTE
 from ai_dm.llm.types import Text
 
 LONG = "Ты идёшь по тихой улице Вейла, и ветер несёт запах дыма из труб, а в окнах гаснут огни."
@@ -62,7 +62,11 @@ def test_text_note_is_the_designer_decision():
 
 
 def test_retry_notes_by_reason():
-    assert RETRY_NOTES == {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE}
+    assert RETRY_NOTES == {"refusal": SOFTEN_NOTE, "short": TEXT_NOTE, "rounds": ROUNDS_NOTE}
+
+
+def test_rounds_note_asks_to_fit_into_twelve_calls():
+    assert "12" in ROUNDS_NOTE
 
 
 # повтор и успех

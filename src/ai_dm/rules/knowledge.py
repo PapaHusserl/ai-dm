@@ -18,6 +18,26 @@ CASE_ENDINGS = (
     "ами", "ями", "ой", "ей", "ою", "ею", "ом", "ем", "ам", "ям", "ах", "ях", "ов", "ев",
     "а", "я", "у", "ю", "ы", "и", "е", "о",
 )
+# имя-прилагательное: именительные окончания и падежные окончания прилагательных
+ADJ_NOM = ("ый", "ий", "ой", "ая", "яя", "ое", "ее", "ые", "ие")
+ADJ_ENDINGS = (
+    "ого", "его", "ому", "ему", "ыми", "ими", "ым", "им", "ых", "их", "ую", "юю", "ою", "ею",
+    "ой", "ей", "ом", "ем",
+)
+
+# косвенные формы прилагательных без «ой/ей/ом/ем» (они совпадают с существительными)
+ADJ_OBLIQUE = ("ого", "его", "ому", "ему", "ыми", "ими", "ых", "их", "ую", "юю")
+
+
+def is_adjective_word(word) -> bool:
+    return word.endswith(ADJ_NOM + ADJ_OBLIQUE)
+
+
+def is_noun_word(word) -> bool:
+    # слово имени длиннее SHORT_NAME и не прилагательное (ADJ_NOM, ADJ_OBLIQUE)
+    return len(word) > SHORT_NAME and not is_adjective_word(word)
+
+
 # значимые слова секрета и доля их попадания в текст заметки, с которой это пересказ секрета
 SECRET_WORD_MIN = 4
 SPOIL_SHARE = 0.6
@@ -64,8 +84,16 @@ def word_pattern(word) -> str:
     # короткое -- целиком, иначе «Ян» найдётся в «Яндексе»
     if len(word) <= SHORT_NAME:
         return rf"(?<!\w){re.escape(word)}(?!\w)"
+    if len(word) >= 5 and word.endswith(ADJ_NOM):
+        # прилагательное («Нижние» -> «Нижнюю», «нижних»): основа без двух букв окончания
+        stem, tail = word[:-2], word[-2:]
+        endings = "|".join((*ADJ_ENDINGS, *(tail[0] + c for c in CASE_ENDINGS), tail))
+        return rf"(?<!\w){re.escape(stem)}(?:{endings})(?!\w)"
     stem = word[:-1] if word[-1] in STEM_VOWELS else word
-    endings = "|".join((*CASE_ENDINGS, word[len(stem):]))
+    # на «и» ещё «ь» (верфи -- верфь, топи -- топь); для прочих «ь» дал бы ложное
+    # («грета» -- «греть»)
+    soft = ("ь",) if word[-1] == "и" else ()
+    endings = "|".join((*CASE_ENDINGS, word[len(stem):], *soft))
     return rf"(?<!\w){re.escape(stem)}(?:{endings})?(?!\w)"
 
 

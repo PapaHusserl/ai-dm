@@ -693,6 +693,72 @@ def test_no_absent_npcs_when_npc_is_not_named_in_previous_turn(registry, cfg):
     assert "absent_npcs" not in data
 
 
+def place_ctx(registry, cfg, narration="Вы думаете про лес.", scene_id="scene_1", **fields):
+    # Л1: место (Лес, сосед Вейла) названо в прошлом ходу; fields -- поля записи хода
+    ctx = make_ctx(registry, cfg)
+    record = turn_record(1, narration)
+    record.scene_id = scene_id
+    for key, value in fields.items():
+        setattr(record, key, value)
+    ctx.bundle.memory.recent_turns.append(record)
+    return ctx
+
+
+def test_absent_location_lists_place_named_in_previous_turn_of_scene(registry, cfg):
+    data = data_of(build(place_ctx(registry, cfg)))
+    assert data["absent_location"] == [{"id": "forest", "name": "Лес"}]
+
+
+def test_no_absent_location_when_previous_turn_is_of_other_scene(registry, cfg):
+    data = data_of(build(place_ctx(registry, cfg, scene_id="scene_0")))
+    assert "absent_location" not in data
+
+
+def test_no_absent_location_when_the_place_is_the_current_one(registry, cfg):
+    data = data_of(build(place_ctx(registry, cfg, narration="Вы стоите в Вейле.")))
+    assert "absent_location" not in data
+
+
+def test_no_absent_location_when_nothing_is_named(registry, cfg):
+    assert "absent_location" not in data_of(build(place_ctx(registry, cfg, narration="Тихо.")))
+
+
+def test_no_absent_location_after_a_travel_outcome_in_previous_turn(registry, cfg):
+    ctx = place_ctx(registry, cfg, outcomes=["Путь в «Лес»: 60 с"])
+    assert "absent_location" not in data_of(build(ctx))
+
+
+NOTE_INPUT = "(Перед этим герой сам: пришёл в «Лес» (60 с).) Осматриваюсь"
+
+
+def test_no_absent_location_on_the_turn_with_an_arrival_note(registry, cfg):
+    # ход перехода: покинутое место из прозы прошлого хода не сигналит
+    data = data_of(build(place_ctx(registry, cfg), NOTE_INPUT))
+    assert "absent_location" not in data
+
+
+def test_absent_location_stays_for_input_without_an_arrival_note(registry, cfg):
+    data = data_of(build(place_ctx(registry, cfg), "Осматриваюсь"))
+    assert data["absent_location"] == [{"id": "forest", "name": "Лес"}]
+
+
+def test_absent_npcs_stay_on_the_turn_with_an_arrival_note(registry, cfg):
+    data = data_of(build(olgerd_ctx(registry, cfg), NOTE_INPUT))
+    assert [n["id"] for n in data["absent_npcs"]] == ["olgerd"]
+
+
+def test_absent_location_and_absent_npcs_are_both_present(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = place_ctx(registry, cfg, narration="Вы думаете про лес и Ольгерда.")
+    ctx.bundle.world.npcs["olgerd"] = NPC(
+        id="olgerd", name="Ольгерд", named=True, means=["меч"], location_id="forest"
+    )
+    data = data_of(build(ctx))
+    assert data["absent_location"] == [{"id": "forest", "name": "Лес"}]
+    assert [n["id"] for n in data["absent_npcs"]] == ["olgerd"]
+
+
 def test_scene_npcs_have_npc_moved_to_hero_location(registry, cfg):
     from protocol_kit import req
 

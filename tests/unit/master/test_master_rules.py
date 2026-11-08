@@ -76,6 +76,7 @@ def test_rules_mention_only_known_tools():
         "goal_kind", "goal_target", "goal_text", "goal_status",
         "hit_dice", "known_locations", "travel_to", "until_hour", "long_rest",
         "until_s", "heroic_inspiration", "scene_recap", "absent_npcs",
+        "absent_location",
     )
     unknown = [n for n in tools if n not in REQUEST_MODELS and n not in fields]
     assert unknown == []

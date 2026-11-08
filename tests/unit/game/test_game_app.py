@@ -177,13 +177,13 @@ def test_turn_is_not_played_while_error_menu_is_open(registry, tmp_path):
 def test_retry_repeats_the_input_and_closes_menu(registry, tmp_path):
     adapter = scripted(FATAL + [text_step("Дошли.")])
     app = make_app(registry, tmp_path, adapter)
-    app.handle("Иду в лес")
+    app.handle("Осматриваю лес")
     reply = app.choose("retry")
     assert reply.narration == "Дошли."
     assert reply.pending is None
     assert app.pending is None
     assert app.bundle.session.turn_seq == 1
-    assert app.bundle.memory.recent_turns[0].player_input == "Иду в лес"
+    assert app.bundle.memory.recent_turns[0].player_input == "Осматриваю лес"
 
 
 def test_retry_that_fails_again_returns_to_menu(registry, tmp_path):

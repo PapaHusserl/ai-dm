@@ -399,6 +399,84 @@ def test_mentions_name_in_cases(text):
     assert mentions("бранка", text)
 
 
+@pytest.mark.parametrize(("name", "text"), [
+    ("нижние верфи", "у наковальни нижних верфей"),
+    ("старая крипта", "иду в старую крипту"),
+    ("старая крипта", "к старой крипте"),
+    ("серый квартал", "в сером квартале"),
+    ("герой", "подвиг героя"),
+    ("здание", "у здания"),
+])
+def test_mentions_adjective_and_noun_names_in_cases(name, text):
+    assert mentions(name, text)
+
+
+def test_mentions_adjective_name_does_not_match_other_adjective_form():
+    assert not mentions("старая башня", "старый канал")
+
+
+@pytest.mark.parametrize(("name", "text"), [
+    ("дарий", "принёс дар"),
+    ("мирий", "весь мир"),
+    ("виталий", "он витал в облаках"),
+    ("старая", "стар и млад"),
+])
+def test_mentions_bare_stem_of_adjective_like_name_is_not_a_mention(name, text):
+    assert not mentions(name, text)
+
+
+@pytest.mark.parametrize(("name", "text"), [
+    ("нижние", "нижние"), ("старая", "старая"), ("серый", "серый"), ("дарий", "дарий"),
+])
+def test_mentions_adjective_nominative_still_matches(name, text):
+    assert mentions(name, text)
+
+
+@pytest.mark.parametrize(("name", "text"), [
+    ("верфи", "кузница на верфь"), ("топи", "в топь"),
+])
+def test_mentions_name_on_i_matches_soft_sign_form(name, text):
+    assert mentions(name, text)
+
+
+def test_mentions_name_on_a_does_not_match_a_verb_with_soft_sign():
+    assert not mentions("грета", "греть руки")
+
+
+def test_is_noun_word():
+    from ai_dm.rules.knowledge import is_noun_word
+
+    assert is_noun_word("крипта") is True
+    assert is_noun_word("верфи") is True
+    assert is_noun_word("старая") is False
+    assert is_noun_word("серый") is False
+    assert is_noun_word("лес") is False
+
+
+def test_is_noun_word_oblique_adjectives_are_not_nouns():
+    from ai_dm.rules.knowledge import is_noun_word
+
+    assert is_noun_word("каменных") is False
+    assert is_noun_word("затонувшего") is False
+
+
+def test_is_adjective_word():
+    from ai_dm.rules.knowledge import is_adjective_word
+
+    assert is_adjective_word("старая") is True
+    assert is_adjective_word("каменных") is True
+    assert is_adjective_word("крипта") is False
+    assert is_adjective_word("лес") is False
+    assert is_adjective_word("ручей") is False
+
+
+def test_is_noun_word_nouns_ending_like_case_forms():
+    from ai_dm.rules.knowledge import is_noun_word
+
+    assert is_noun_word("разлом") is True
+    assert is_noun_word("ручей") is True
+
+
 @pytest.mark.parametrize("text", ["у матушки греты", "матушка грета здесь", "матушку грету"])
 def test_mentions_two_word_name_in_cases(text):
     assert mentions("матушка грета", text)

@@ -136,12 +136,20 @@ def test_eight_rounds_then_text_is_ok(tmp_path, registry, cfg):
     assert result.texts[-1] == "Конец."
 
 
-def test_ninth_round_fails_with_rounds(tmp_path, registry, cfg):
-    steps = [tools_step(flag_call(f"f{n}", f"c{n}")) for n in range(12)] + [text_step()]
+def test_twelve_rounds_then_text_is_ok(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call(f"f{n}", f"c{n}")) for n in range(12)] + [text_step("Конец.")]
+    adapter, _, _, _, go = run(steps, tmp_path, registry, cfg)
+    result = go()
+    assert result.rounds == 12
+    assert result.texts[-1] == "Конец."
+
+
+def test_thirteenth_round_fails_with_rounds(tmp_path, registry, cfg):
+    steps = [tools_step(flag_call(f"f{n}", f"c{n}")) for n in range(16)] + [text_step()]
     adapter, _, _, _, go = run(steps, tmp_path, registry, cfg)
     error = failure_of(go)
     assert error.reason == "rounds"
-    assert len(adapter.requests) <= 9
+    assert len(adapter.requests) <= 13
 
 
 def test_round_limit_comes_from_config(tmp_path, registry, cfg):

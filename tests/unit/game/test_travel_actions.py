@@ -6,9 +6,16 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ui"))
 
-from game_kit import script_then_react, start_combat_call, tools_step  # noqa: E402
+from game_kit import (  # noqa: E402
+    player_action_input,
+    script_then_react,
+    start_combat_call,
+    tools_step,
+)
 from ui_kit import build_app, state_of, text_app, text_step  # noqa: E402
 
 from ai_dm.game import travel_actions  # noqa: E402
@@ -408,3 +415,225 @@ def test_go_is_refused_in_combat(registry, tmp_path):
     reply = app.handle("/go подвал")
     assert reply.lines == [travel_actions.IN_COMBAT]
     assert location_of(app) == where
+
+
+# Л1 П2: «иду в X» в тексте игрока (go_by_text через app.handle)
+
+def test_text_intent_moves_hero_before_the_narrator_turn(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Вейл шумит.")])
+    start = now_s(app)
+    app.handle("Иду в Вейл")
+    assert location_of(app) == "vale"
+    assert now_s(app) > start
+    request = app.adapter.requests[0]
+    assert state_of(request)["location"]["id"] == "vale"
+    assert state_of(request)["player_input"].startswith(f"({PREFIX}пришёл в «Вейл» (")
+    assert state_of(request)["player_input"].endswith(".) Иду в Вейл")
+
+
+def test_text_intent_shows_the_path_line_before_the_story(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Вейл шумит.")])
+    reply = app.handle("Иду в Вейл")
+    assert reply.lines[0].startswith("Путь в «Вейл»: ")
+    assert reply.narration == "Вейл шумит."
+
+
+def test_text_intent_path_line_names_the_companion(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Вейл шумит.")])
+    app.bundle.world.npcs["bran"] = NPC(
+        id="bran", name="Бран", named=True, means=["m"], location_id="lame_goose",
+        follows=app.bundle.manifest.current_hero_id,
+    )
+    reply = app.handle("Иду в Вейл")
+    assert app.bundle.world.npcs["bran"].location_id == "vale"
+    assert any(line.startswith("С тобой:") and "Бран" in line for line in reply.lines)
+
+
+def test_text_intent_to_the_first_word_of_a_long_name(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Тихо.")])
+    add_place(app, "wharf", "Причал Каменных Гнёзд")
+    app.handle("Иду на причал")
+    assert location_of(app) == "wharf"
+
+
+def test_text_intent_without_a_move_verb_does_not_move(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Тихо.")])
+    reply = app.handle("Расспрашиваю трактирщика о Вейле")
+    assert location_of(app) == "lame_goose"
+    assert app.adapter.requests[0].messages[0].content[0].text.count(PREFIX) == 0
+    assert not any(line.startswith("Путь в") for line in reply.lines)
+
+
+def test_text_intent_with_two_places_does_not_move(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Тихо.")])
+    app.handle("Иду из подвала в Вейл")
+    assert location_of(app) == "lame_goose"
+
+
+def test_text_intent_with_same_first_word_of_two_places_does_not_move(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Тихо.")])
+    add_place(app, "wharf", "Причал Каменных Гнёзд")
+    add_place(app, "wharf_two", "Причал Рыбаков")
+    app.handle("Иду на причал")
+    assert location_of(app) == "lame_goose"
+
+
+def test_text_intent_to_unknown_place_does_not_move(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Тихо.")])
+    app.handle("Иду в замок")
+    assert location_of(app) == "lame_goose"
+    assert app.inv_notes == []
+
+
+def test_text_intent_to_known_far_place_goes_by_the_map(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Мельница.")])
+    add_place(app, "mill", "Мельница", near="cellar", distance=35)
+    visit(app, "mill")
+    reply = app.handle("Иду на мельницу")
+    assert location_of(app) == "mill"
+    assert reply.lines[0].endswith("(через Подвал таверны)")
+
+
+def test_text_intent_to_adjective_name_in_accusative(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Крипта.")])
+    visit(app, "old_crypt")
+    app.handle("Иду в Старую крипту")
+    assert location_of(app) == "old_crypt"
+
+
+def test_text_intent_in_combat_does_not_move(registry, tmp_path):
+    steps = [tools_step(start_combat_call(intent="kill")), text_step("Гоблины бросаются на вас.")]
+    adapter = script_then_react(steps, classify=[player_action_input(["end_turn"])])
+    app = build_app(registry, tmp_path, adapter)
+    assert app.handle("Бью ногой дверь").turn.committed is True
+    assert app.bundle.session.active_combat is not None
+    where = location_of(app)
+    app.handle("Иду в Вейл")
+    assert location_of(app) == where
+    assert app.inv_notes == []
+
+
+def test_narrator_travel_to_the_same_place_after_text_intent_is_rejected(registry, tmp_path):
+    from game_kit import advance_call
+
+    steps = [tools_step(advance_call(travel_to="vale")), text_step("Вы в Вейле.")]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("Иду в Вейл")
+    start = now_s(app)
+    outcomes = app.bundle.memory.recent_turns[-1].outcomes
+    assert location_of(app) == "vale"
+    assert any("advance_time" in o and "уже в «Вейл»" in o for o in outcomes)
+    assert now_s(app) == start
+
+
+# Л1 П2: absent_location в состоянии следующего хода
+
+TAVERN_PROSE = f"{HERE} осталась позади."
+
+
+def test_place_named_without_a_move_is_absent_next_turn(registry, tmp_path):
+    steps = [text_step("Вы вспоминаете Вейл."), text_step("Тихо.")]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("Жду")
+    app.handle("Жду ещё")
+    state = state_of(app.adapter.requests[-1])
+    assert state["absent_location"] == [{"id": "vale", "name": "Вейл"}]
+
+
+def test_narrator_travel_then_old_place_named_is_not_absent_next_turn(registry, tmp_path):
+    from game_kit import advance_call
+
+    steps = [
+        tools_step(advance_call(travel_to="vale")), text_step(TAVERN_PROSE), text_step("Тихо."),
+    ]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("Жду")
+    assert location_of(app) == "vale"
+    app.handle("Жду ещё")
+    assert "absent_location" not in state_of(app.adapter.requests[-1])
+
+
+def test_go_command_then_old_place_named_is_not_absent_next_turn(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step(TAVERN_PROSE), text_step("Тихо.")])
+    app.handle("/go вейл")
+    app.handle("Осматриваюсь")
+    app.handle("Жду ещё")
+    assert "absent_location" not in state_of(app.adapter.requests[-1])
+
+
+def test_text_intent_turn_itself_has_no_absent_location_for_the_old_place(registry, tmp_path):
+    # ход N: прозой N-1 названа таверна, где герой стоял; «иду в Вейл» -- таверна не «отсутствует»
+    steps = [text_step(f"Вы в зале: {HERE}."), text_step("Вейл шумит.")]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("Осматриваюсь")
+    app.handle("Иду в Вейл")
+    assert "absent_location" not in state_of(app.adapter.requests[-1])
+
+
+def test_text_intent_turn_does_not_tag_the_old_place_as_ignored(registry, tmp_path):
+    steps = [text_step(f"Вы в зале: {HERE}."), text_step(f"{HERE} осталась позади.")]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("Осматриваюсь")
+    reply = app.handle("Иду в Вейл")
+    assert "location_absent_ignored" not in reply.turn.report_tags
+
+
+def test_go_by_text_with_hero_outside_known_places_does_nothing(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    hero_of(app.bundle).location_id = "nowhere"
+    assert travel_actions.go_by_text(app, "Иду в Вейл") == []
+    assert app.inv_notes == []
+
+
+def test_there_and_back_in_one_scene_old_place_is_not_absent_next_turn(registry, tmp_path):
+    # герой вернулся в локацию сцены: сцена не закрылась, защищает только moved_last_turn
+    steps = [text_step("Вы вспоминаете Вейл."), text_step("Тихо.")]
+    app = make_app(registry, tmp_path, steps)
+    app.handle("/go вейл")
+    app.handle("/go гусь")
+    assert location_of(app) == "lame_goose"
+    app.handle("Осматриваюсь")
+    app.handle("Жду ещё")
+    scenes = {t.scene_id for t in app.bundle.memory.recent_turns[-2:]}
+    assert len(scenes) == 1
+    assert "absent_location" not in state_of(app.adapter.requests[-1])
+
+
+def test_text_intent_then_old_place_named_is_not_absent_next_turn(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step(TAVERN_PROSE), text_step("Тихо.")])
+    app.handle("Иду в Вейл")
+    app.handle("Жду ещё")
+    assert "absent_location" not in state_of(app.adapter.requests[-1])
+
+
+def test_text_intent_with_an_engine_refusal_adds_no_note_and_no_lines(
+    registry, tmp_path, monkeypatch,
+):
+    app = make_app(registry, tmp_path)
+    refusal = Invalid(code="x", message="нет пути")
+    monkeypatch.setattr(travel_actions, "apply_shop", lambda app, request: refusal)
+    assert travel_actions.go_by_text(app, "Иду в Вейл") == []
+    assert app.inv_notes == []
+
+
+def test_combat_menu_number_keeps_inv_notes_and_reaches_the_runner_as_is(
+    registry, tmp_path, monkeypatch,
+):
+    steps = [tools_step(start_combat_call(intent="kill")), text_step("Гоблины бросаются на вас.")]
+    adapter = script_then_react(steps, classify=[player_action_input(["end_turn"])])
+    app = build_app(registry, tmp_path, adapter)
+    app.handle("Бью ногой дверь")
+    assert app.bundle.session.active_combat is not None
+    app.inv_notes = ["снял «Щит»"]
+    seen = []
+
+    def fake_play(line):
+        seen.append(line)
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(app.runner, "preview_turn", lambda: [1, 2])
+    monkeypatch.setattr(app.runner, "play", fake_play)
+    with pytest.raises(RuntimeError):
+        app.handle("1")
+    assert seen == ["1"]
+    assert app.inv_notes == ["снял «Щит»"]

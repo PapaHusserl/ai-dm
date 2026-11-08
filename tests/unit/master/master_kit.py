@@ -94,8 +94,8 @@
 #           словом «короче»; Invalid от исполнителя -> tool_result is_error=True (бюджет тоже);
 #         бюджет: невалидных (ответов с Invalid / без обязательного / max_tokens) не больше
 #           app_cfg.retry.invalid_retries; сверх -- TurnFailed("invalid"). rejected/clamped
-#           Decision бюджет не тратит. Раундов tool_use не больше retry.max_tool_rounds (8);
-#           девятый -- TurnFailed("rounds") (8 раундов и затем текст -- успех).
+#           Decision бюджет не тратит. Раундов tool_use не больше retry.max_tool_rounds (12, Л1);
+#           тринадцатый -- TurnFailed("rounds") (12 раундов и затем текст -- успех).
 #         refusal -> TurnFailed("refusal", report_tags ["refusal"]); RetriesExhausted ->
 #           TurnFailed("network"); LlmFatal -> TurnFailed("fatal") (без повторов и sleeper).
 #       Обязательные инструменты: combat_classify -- player_action; npc_choice -- npc_action;

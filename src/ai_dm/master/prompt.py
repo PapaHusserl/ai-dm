@@ -15,8 +15,10 @@ from ai_dm.master.context import (
 from ai_dm.master.leaks import cut_leaks
 from ai_dm.master.recap import RECAP_MAX, scene_recap
 from ai_dm.master.relevance import (
+    absent_location_mention,
     absent_mentions,
     known_places,
+    moved,
     nearby_locations,
     npc_reasons,
     previous_narration,
@@ -58,20 +60,25 @@ def dump(data):
     return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
 
-def absent_data(ctx):
+def absent_data(ctx, user_input):
     # {"absent_npcs": [...]} -- NPC, названные в рассказе прошлого хода этой сцены, но не в локации
-    # героя (214); пусто -- {}
+    # героя (214), и {"absent_location": [...]} -- места, названные там же, но не локация героя
+    # (Л1); пусто -- {}
     bundle = ctx.bundle
     world = bundle.world
-    ids = absent_mentions(bundle, previous_narration(bundle))
-    if not ids:
-        return {}
-    return {
-        "absent_npcs": [
+    text = previous_narration(bundle)
+    data = {}
+    ids = absent_mentions(bundle, text)
+    if ids:
+        data["absent_npcs"] = [
             {"id": i, "name": world.npcs[i].name, "location_id": world.npcs[i].location_id}
             for i in ids
         ]
-    }
+    # ход, где герой сам дошёл (пометка во вводе), покинутое место не сигналит
+    places = [] if moved(user_input, []) else absent_location_mention(bundle, text)
+    if places:
+        data["absent_location"] = [{"id": i, "name": world.locations[i].name} for i in places]
+    return data
 
 
 def identity_data(who):
@@ -689,7 +696,7 @@ class PromptBuilder:
         }
         if known_locations:
             data["known_locations"] = known_locations
-        data.update(absent_data(ctx))
+        data.update(absent_data(ctx, user_input))
         kept = {t.turn_seq for t in context_plan.turns}
         recap = scene_recap(ctx.bundle, kept, max_chars=RECAP_MAX)
         if recap:

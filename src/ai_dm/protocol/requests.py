@@ -525,7 +525,9 @@ class NpcCreate(Request):
         "", description="Id локации, где NPC находится; пусто = локация героя."
     )
     trade_kind: str = Field(
-        "none", description="Тип торговца (пресет ассортимента), если NPC торгует; none = нет."
+        "none",
+        description="Тип торговца (alchemist|armorer|fence|general|smith), если NPC торгует; "
+        "none = нет.",
     )
     gender: GenderOrNone = Field(
         "none", description="Пол NPC: male, female, other; none = не известен."

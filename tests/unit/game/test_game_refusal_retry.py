@@ -259,11 +259,10 @@ def test_requests_of_result_come_from_second_attempt_only(registry, cfg, tmp_pat
 
 NETWORK = [{"error": "transient", "message": "сеть"}] * 4
 INVALID = [tools_step(BAD_CHECK)] * 3
-ROUNDS = [tools_step(flag_call(f"f{i}")) for i in range(9)]
+ROUNDS = [tools_step(flag_call(f"f{i}")) for i in range(13)]
 FATAL = [{"error": "fatal", "message": "ключ"}]
-OTHERS = [
-    ("network", NETWORK, 4), ("invalid", INVALID, 3), ("rounds", ROUNDS, 9), ("fatal", FATAL, 1),
-]
+# rounds здесь нет: с Л1 у него свой автоповтор (ROUNDS_NOTE), см. ниже
+OTHERS = [("network", NETWORK, 4), ("invalid", INVALID, 3), ("fatal", FATAL, 1)]
 
 
 @pytest.mark.parametrize(("reason", "steps", "calls"), OTHERS)
@@ -277,6 +276,34 @@ def test_other_failures_do_not_retry_and_have_no_note(
     assert len(adapter.requests) == calls
     assert all(notes_of(r) == [] for r in adapter.requests)
     assert "refusal_retry" not in result.report_tags
+
+
+# rounds (Л1, решение 4): один автоповтор с ROUNDS_NOTE
+
+def test_rounds_failure_retries_once_with_rounds_note(registry, cfg, tmp_path):
+    from ai_dm.game.turn import ROUNDS_NOTE
+
+    adapter = scripted(ROUNDS + [text_step("Рассказ.")])
+    rig = make_rig(registry, cfg, tmp_path, adapter)
+    result = rig.runner.play("Иду")
+    assert result.committed is True
+    assert result.narration == "Рассказ."
+    assert result.report_tags == ["rounds_retry"]
+    assert len(adapter.requests) == 14
+    assert all(notes_of(r) == [] for r in adapter.requests[:13])
+    assert notes_of(adapter.requests[13]) == [ROUNDS_NOTE]
+    assert rig.runner.note is None
+
+
+def test_second_rounds_failure_is_failed_with_error_menu(registry, cfg, tmp_path):
+    adapter = scripted([tools_step(flag_call(f"f{i}")) for i in range(26)] + [text_step("лишний")])
+    rig = make_rig(registry, cfg, tmp_path, adapter)
+    result = rig.runner.play("Иду")
+    assert result.committed is False
+    assert result.failure.reason == "rounds"
+    assert result.menu == ERROR_MENU
+    assert len(adapter.requests) == 26
+    assert rig.runner.note is None
 
 
 # self.note

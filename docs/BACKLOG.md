@@ -1711,3 +1711,12 @@ updated: 2026-11-08
 (mutmut партии Л1 П1, docs/plan-l1.md) На строках вне диффа: `protocol/handlers/world.py npc_create` — 24 выживших,
 `protocol/handlers/resources.py travel` — 3 (44, 45, 104), `ui/screen.py status_line` — 1 segfault (7). Разобрать, какие
 эквивалентны, остальные закрыть тестами.
+
+## 283. Выжившие мутанты старых строк после Л1 П2
+status: idea
+priority: low
+updated: 2026-11-08
+
+(mutmut партии Л1 П2, docs/plan-l1.md) На строках вне диффа, 19 выживших: `game/app.py GameApp.handle` — 17–20, 30–33;
+`GameApp.after_turn` — 16, 20, 26–29, 47–50; `rules/knowledge.py word_pattern` — 1. Разобрать, какие эквивалентны,
+остальные закрыть тестами. TESTS прогона не включал tests/unit/ui: часть может закрываться там.

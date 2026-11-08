@@ -369,6 +369,75 @@ def test_absent_npc_moved_to_hero_writes_no_report(registry, tmp_path):
     assert issues(tmp_path) == []
 
 
+# Л1: место названо в двух ходах подряд, а герой там не оказался
+
+def travel_forest_call():
+    return {
+        "id": "adv-9", "name": "advance_time",
+        "input": {"type": "advance_time", "category": "none", "travel_to": "forest",
+                  "pace": "normal"},
+    }
+
+
+def test_absent_place_named_twice_without_move_writes_report(registry, tmp_path):
+    steps = [text_step("Вы думаете про лес."), text_step("Лес всё не идёт из головы.")]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    first = app.handle("Жду")
+    assert "location_absent_ignored" not in first.turn.report_tags
+    second = app.handle("Жду ещё")
+    assert "location_absent_ignored" in second.turn.report_tags
+    assert len(issues(tmp_path)) == 1
+    assert issues(tmp_path)[0].name.endswith("-t2-location_absent_ignored")
+
+
+def test_absent_place_named_once_writes_no_report(registry, tmp_path):
+    steps = [text_step("Вы думаете про лес."), text_step("Тихо.")]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    app.handle("Жду")
+    second = app.handle("Жду ещё")
+    assert "location_absent_ignored" not in second.turn.report_tags
+    assert issues(tmp_path) == []
+
+
+def test_absent_place_reached_by_travel_writes_no_report(registry, tmp_path):
+    steps = [
+        text_step("Вы думаете про лес."),
+        tools_step(travel_forest_call()), text_step("Вы пришли в лес."),
+    ]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    app.handle("Жду")
+    second = app.handle("Жду ещё")
+    assert app.bundle.heroes[0].location_id == "forest"
+    assert "location_absent_ignored" not in second.turn.report_tags
+    assert issues(tmp_path) == []
+
+
+def test_old_place_named_on_the_turn_of_the_narrator_travel_writes_no_report(registry, tmp_path):
+    # Вейл назван в ходе 1 и в ходе 2, где рассказчик сам вызвал travel_to в лес: герой ушёл, не баг
+    steps = [
+        text_step("Вы вспоминаете Вейл."),
+        tools_step(travel_forest_call()), text_step("Вейл остался позади."),
+    ]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    app.handle("Жду")
+    second = app.handle("Жду ещё")
+    assert app.bundle.heroes[0].location_id == "forest"
+    assert "location_absent_ignored" not in second.turn.report_tags
+    assert issues(tmp_path) == []
+
+
+def test_old_place_named_on_the_turn_with_an_arrival_note_writes_no_report(registry, tmp_path):
+    from ai_dm.game.app import INV_NOTES_PREFIX
+
+    steps = [text_step("Вы вспоминаете Лес."), text_step("Лес остался позади.")]
+    app = make_app(registry, tmp_path, scripted(steps), auto_reports=True)
+    app.handle("Жду")
+    app.inv_notes.append("пришёл в «Вейл» (60 с)")
+    second = app.handle("Жду ещё")
+    assert INV_NOTES_PREFIX in app.bundle.memory.recent_turns[-1].player_input
+    assert "location_absent_ignored" not in second.turn.report_tags
+
+
 def cfg_of(registry):
     return settings().rules
 

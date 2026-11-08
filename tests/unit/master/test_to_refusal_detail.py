@@ -62,7 +62,7 @@ def test_refusal_after_tool_round_keeps_detail(tmp_path, registry, cfg):
         ("network", [{"error": "transient", "message": "сеть"}] * 4),
         ("fatal", [{"error": "fatal", "message": "ключ"}]),
         ("invalid", [tools_step(BAD_CHECK)] * 3),
-        ("rounds", [tools_step(flag_call(f"f{i}", f"c{i}")) for i in range(9)]),
+        ("rounds", [tools_step(flag_call(f"f{i}", f"c{i}")) for i in range(13)]),
     ],
 )
 def test_other_failures_have_no_detail(tmp_path, registry, cfg, reason, steps):

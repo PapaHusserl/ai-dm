@@ -16,7 +16,7 @@
 #         запись кэша (cache_write) = 1.25 x вход у всех трёх: 5_000_000 / 2_500_000 / 1_250_000
 #         (чтение кэша у Haiku в ТЗ не названо -- проверяем только 0 < cache_read < input)
 #     .context_windows: dict[str, int] -- токены: opus и sonnet 1_000_000, haiku 200_000
-#     .retry: delays=[1, 3, 10] (list[int], секунды), invalid_retries=2, max_tool_rounds=8,
+#     .retry: delays=[1, 3, 10] (list[int], секунды), invalid_retries=2, max_tool_rounds=12,
 #         timeout_s=180
 #     .journal: max_mb=50, segment_mb=5
 #     .cost_limits: enabled=False, warn_percent=80
@@ -140,7 +140,7 @@ def test_retry_defaults():
     retry = app().retry
     assert retry.delays == [1, 3, 10]
     assert retry.invalid_retries == 2
-    assert retry.max_tool_rounds == 8
+    assert retry.max_tool_rounds == 12
     assert retry.timeout_s == 180
 
 

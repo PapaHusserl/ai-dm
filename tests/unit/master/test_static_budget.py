@@ -59,7 +59,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # К3 П2: CastSpell.ritual, фраза о книге волшебника (замер 24357; 24300 -> 24380).
 # К3 П3б: CastSpell.variant, фраза об utility (замер 24481: rules 12528, tools 11953;
 # 24380 -> 24500).
-STATIC_MAX = 24500
+# Л1 П2: фраза `absent_location` и пометка «пришёл в» в правилах, перечень `trade_kind` в
+# NpcCreate (замер 24569: rules 12605, tools 11964; 24500 -> 24600).
+STATIC_MAX = 24600
 
 MODES = sorted(MODE_TOOLS)
 
