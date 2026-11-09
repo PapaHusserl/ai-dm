@@ -153,13 +153,13 @@ def test_prompt_has_no_scene_recap_when_all_turns_kept(registry, cfg):
 
 def test_prompt_recap_with_tiny_cap_reports_dropped_seqs(registry, cfg):
     bundle = bundle_with(registry, [record(n) for n in range(1, 9)])
-    request = PromptBuilder(app_with(cap=1)).build(
+    request = PromptBuilder(app_with(cap=1, recent_turns_floor=3)).build(
         make_ctx(registry, cfg, bundle=bundle), "Осматриваюсь.", "explore"
     )
     data = json.loads(request.messages[0].content[0].text)
     kept = [t["turn_seq"] for t in data["recent_turns"]]
-    assert kept == [8]
-    assert data["scene_recap"]["turns"] == "t1–t7 (7 ходов)"
+    assert kept == [6, 7, 8]
+    assert data["scene_recap"]["turns"] == "t1–t5 (5 ходов)"
 
 
 def test_estimate_never_grows_when_turn_is_evicted(registry, cfg):

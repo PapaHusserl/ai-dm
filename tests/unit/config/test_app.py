@@ -20,7 +20,8 @@
 #         timeout_s=180
 #     .journal: max_mb=50, segment_mb=5
 #     .cost_limits: enabled=False, warn_percent=80
-#     .master: recent_turns=8, context_cap=32000, chars_per_token=2.5, recent_turns_floor=1,
+#     .master: recent_turns=8, context_cap=80000, chars_per_token=2.5, recent_turns_floor=3,
+#         recent_scenes_floor=3,
 #         key_npc_consult_hp_percent=50
 #     .llm: refusal_fallback=False (решение проектировщика 1), strict_tools=True
 #   load_settings(toml_text: str | None = None, path: Path | None = None) -> Settings
@@ -160,9 +161,10 @@ def test_master_defaults():
     master = app().master
     assert master.recent_turns == 8
     assert master.key_npc_consult_hp_percent == 50
-    assert master.context_cap == 32000
+    assert master.context_cap == 80000
     assert master.chars_per_token == 2.5
-    assert master.recent_turns_floor == 1
+    assert master.recent_turns_floor == 3
+    assert master.recent_scenes_floor == 3
 
 
 def test_llm_defaults():
@@ -724,6 +726,16 @@ def test_master_context_settings_are_validated(text):
 def test_master_floor_equal_to_recent_turns_is_ok():
     settings = load_settings("[master]\nrecent_turns = 3\nrecent_turns_floor = 3\n")
     assert settings.app.master.recent_turns_floor == 3
+
+
+def test_master_scenes_floor_negative_is_rejected():
+    with pytest.raises(ValidationError):
+        load_settings("[master]\nrecent_scenes_floor = -1\n")
+
+
+def test_master_scenes_floor_can_be_overridden():
+    settings = load_settings("[master]\nrecent_scenes_floor = 5\n")
+    assert settings.app.master.recent_scenes_floor == 5
 
 
 def test_master_floor_zero_is_ok():

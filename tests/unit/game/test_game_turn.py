@@ -608,6 +608,7 @@ def test_turn_with_dropped_turns_replays_without_divergence(registry, cfg, tmp_p
 
     live = make_rig(registry, cfg, tmp_path / "live", scripted([text_step()] * 4))
     live.app_cfg.master.context_cap = 1
+    live.app_cfg.master.recent_turns_floor = 1
     for number in range(4):
         live.runner.play(f"ход {number}")
     assert narrator_records(live)[-1]["meta"]["context"]["dropped"]
@@ -616,6 +617,7 @@ def test_turn_with_dropped_turns_replays_without_divergence(registry, cfg, tmp_p
         registry, cfg, tmp_path / "again", replay, model="claude-opus-5-5",
     )
     again.app_cfg.master.context_cap = 1
+    again.app_cfg.master.recent_turns_floor = 1
     for number in range(4):
         assert again.runner.play(f"ход {number}").committed is True
 

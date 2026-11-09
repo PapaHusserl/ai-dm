@@ -168,7 +168,7 @@ def test_message_hero_block(registry, cfg):
     assert data["gold_cp"] == 345
     assert data["xp"] == 40
     assert data["level"] == 1
-    assert {"item_id": "longsword", "qty": 1, "cost_cp": 1500, "name": "Длинный меч"} in (
+    assert {"item_id": "longsword", "cost_cp": 1500, "name": "Длинный меч"} in (
         data["inventory"]
     )
     assert data["conditions"] == []
@@ -286,7 +286,7 @@ def test_over_budget_drops_oldest_turns_down_to_floor(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.bundle.memory.recent_turns = [turn_record(n) for n in range(1, 9)]
     seqs = [t["turn_seq"] for t in data_of(build(ctx, app=app))["recent_turns"]]
-    assert seqs == [8]
+    assert seqs == [6, 7, 8]
 
 
 def test_within_budget_nothing_is_dropped(registry, cfg):

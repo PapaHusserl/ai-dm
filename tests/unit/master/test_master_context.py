@@ -74,7 +74,7 @@ def test_window_budget_is_80_percent_of_window():
 
 
 def test_budget_of_1m_window_is_capped_by_context_cap():
-    assert budget(app_cfg(), OPUS, 0) == 32_000
+    assert budget(app_cfg(), OPUS, 0) == 80_000
 
 
 def test_budget_of_small_window_is_80_percent():
@@ -98,14 +98,14 @@ def test_budget_equal_cap_and_window_80():
 
 
 def test_budget_adds_static_to_context_cap():
-    assert budget(app_cfg(), OPUS, 20_000) == 52_000
+    assert budget(app_cfg(), OPUS, 20_000) == 100_000
 
 
 def test_budget_depends_on_model():
     app = app_cfg().model_copy(deep=True)
     app.context_windows[HAIKU] = 5_000
     assert budget(app, HAIKU, 0) == 4_000
-    assert budget(app, OPUS, 0) == 32_000
+    assert budget(app, OPUS, 0) == 80_000
 
 
 # оценка токенов
@@ -198,10 +198,11 @@ def scene(n):
     return SceneSummary(id=f"sc{n}", chapter_id="ch", title=f"С{n}", summary=f"Выжимка {n}")
 
 
-def cands(turns=8, scenes=4, npcs=3, floor=1):
+def cands(turns=8, scenes=4, npcs=3, floor=1, scenes_floor=0):
     return Candidates(
         turns=[turn_record(n) for n in range(1, turns + 1)],
         floor=floor,
+        scenes_floor=scenes_floor,
         scenes=[scene(n) for n in range(1, scenes + 1)],
         npcs=[f"npc{n}" for n in range(1, npcs + 1)],
     )
@@ -339,6 +340,33 @@ def test_floor_above_turn_count_never_drops_turns():
     result = run_plan(c, cap=1)
     assert [t.turn_seq for t in result.turns] == [1, 2, 3]
     assert [s for s, _ in result.dropped if s == "turns"] == []
+
+
+def test_scenes_floor_keeps_last_scenes_and_moves_on_to_npcs():
+    c = cands(turns=8, scenes=7, floor=3, scenes_floor=3)
+    result = run_plan(c, cap=size(trimmed(c, turns=5, scenes=4, npcs=3)))
+    assert [t.turn_seq for t in result.turns] == [6, 7, 8]
+    assert [s.id for s in result.scene_summaries] == ["sc5", "sc6", "sc7"]
+    assert result.npc_ids == []
+    assert result.dropped == (
+        [("turns", str(n)) for n in range(1, 6)]
+        + [("scenes", f"sc{n}") for n in range(1, 5)]
+        + [("npcs", f"npc{n}") for n in range(1, 4)]
+    )
+
+
+def test_scenes_floor_zero_can_drop_all_scenes():
+    c = cands(turns=8, scenes=7, floor=3, scenes_floor=0)
+    result = run_plan(c, cap=1)
+    assert result.scene_summaries == []
+
+
+def test_scenes_floor_above_scene_count_never_drops_scenes():
+    c = cands(turns=8, scenes=7, floor=3, scenes_floor=10)
+    result = run_plan(c, cap=1)
+    assert len(result.scene_summaries) == 7
+    assert [s for s, _ in result.dropped if s == "scenes"] == []
+    assert result.npc_ids == []
 
 
 def test_no_turns_no_scenes_is_fine():

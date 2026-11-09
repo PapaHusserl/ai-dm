@@ -137,12 +137,18 @@ def inventory_data(hero, registry):
     result = []
     for i in hero.inventory:
         found = find_item(registry, i.item_id)
-        item = {"item_id": i.item_id, "qty": i.qty, "cost_cp": i.cost_cp}
+        item = {"item_id": i.item_id}
+        # значения по умолчанию (qty 1, cost_cp 0, quest false) опускаем
+        if i.qty != 1:
+            item["qty"] = i.qty
+        if i.cost_cp:
+            item["cost_cp"] = i.cost_cp
         if found is not None:
             item["name"] = found[1].name
             if found[1].source == "world":
                 item["description"] = clip(found[1].description, DESCRIPTION_MAX)
-                item["quest"] = found[1].category == "quest"
+                if found[1].category == "quest":
+                    item["quest"] = True
         if i.quality is not None:
             item["quality"] = i.quality
         result.append(item)
@@ -427,6 +433,7 @@ class PromptBuilder:
         return Candidates(
             turns=recent_window(memory, cfg.recent_turns),
             floor=cfg.recent_turns_floor,
+            scenes_floor=cfg.recent_scenes_floor,
             scenes=[s for s in memory.scenes if s.chapter_id == chapter_id],
             npcs=npcs, chapters=folded,
             fixed_npcs=fixed_npcs, fixed_locations=fixed_locations,

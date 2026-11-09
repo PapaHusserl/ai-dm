@@ -644,7 +644,7 @@ ui ──> game ──> master ──> llm
 
 | Слой | Что делает |
 |---|---|
-| `master.context` | Бюджет `min(80% окна, static + master.context_cap=32000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,7k после Ж1), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`, у OpenAI `input + cache_read + cache_write` (три непересекающихся числа адаптера); вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
+| `master.context` | Бюджет `min(80% окна, static + master.context_cap=80000)` (Ж0: кэшируемая статика в потолок динамики не входит; `static` — оценка `ChatRequest(system=[правила, мир], tools, messages=[])` через `PromptBuilder.static_estimate`, `ContextPlan.cap` = потолок динамики, `ContextPlan.static`, `meta.context.static`); детерминированная оценка токенов по длине запроса (`chars_per_token` с перекрытием по провайдеру роли, `MasterConfig.cpt_for`; по умолчанию перекрытий нет, anthropic 2.2 — Ж0, BACKLOG 77); замер статики правил и схем инструментов — `PromptBuilder.static_tokens(mode)` (схемы через `json.dumps(ensure_ascii=False)`: кириллица не удваивается; explore ≈ 19,7k после Ж1), порог `STATIC_MAX` (20050, Ж3) в `tests/unit/master/test_static_budget.py`, `make prompt-budget`; `meta.context.api_tokens` у Gemini без `cache_write`, у OpenAI `input + cache_read + cache_write` (три непересекающихся числа адаптера); вытеснение по ТЗ 11; `ContextPlan` с `dropped` в журнал. |
 | `master.summarizer` | Выжимка сцены (каждая граница) и свёртка главы + `game_summary` (закрытие главы); служебные инструменты `scene_summary`, `chapter_summary`, `game_summary`. |
 
 | `master.hero` | Создание героя (Б0, Б1а): `HeroPromptBuilder` роли narrator, два режима (`protocol.requests.HERO_MODES`). `hero_background` — один инструмент `background_spec` (свободная предыстория под выбранный класс; остаётся под пошаговый режим Б2); system[0] — `prompts/background_rules.md`, system[1] — справочник id. `hero_sheet` — один strict-инструмент `hero_sheet` (лист героя 1 уровня целиком, предыстория вложена, плоские триггеры `opportunity` 0–2 по одному условию); system[0] — `prompts/hero_sheet_rules.md`, system[1] — `sheet_reference_block` (классы с наборами `kits`, виды, черты origin, таблицы трёх методов характеристик, мир и пределы), оба в кэш; messages[0] — описание, замечание игрока (`feedback`) и прошлый лист (`previous`). Контекст — `protocol.context.CreationContext(registry, cfg, task)` без бандла; задача — `BackgroundTask` или `SheetTask` (`known`, `taken_names`, `feedback`, `previous`). |
@@ -693,10 +693,11 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 
 Никогда не выкидываются: правила, мир/истины, tools, герой и сцена, NPC сцены (с памятью, целями и заметками, E11),
 спутники, NPC с активным триггером, `game_summary` и выжимки глав, ещё не свёрнутые в него (`fixed_chapters`).
-По порядку (`STAGES`): сырые ходы (до 1 последнего) → выжимки сцен текущей главы → неактивные NPC
+По порядку (`STAGES`): сырые ходы (до `recent_turns_floor` = 3 последних) → выжимки сцен текущей главы (до `recent_scenes_floor` = 3
+последних) → неактивные NPC
 (упомянутые → ключевые → соседние → торговцы) → выжимки глав с `number ≤ game_summary_chapter` (пятая ступень,
 Ж0, BACKLOG 15; самые ранние первыми; `Candidates.chapters`, `ContextPlan.chapters`). Не влезло — запрос уходит,
-авто-репорт `context_overflow`. Потолок: `static + context_cap` (32000, динамика без кэшируемой статики), не больше 80%
+авто-репорт `context_overflow`. Потолок: `static + context_cap` (80000, динамика без кэшируемой статики), не больше 80%
 окна; сторож в тестах — `STATIC_MAX + context_cap ≤ window80` для моделей рассказчика (модель с окном < ≈ 25k после
 Ж0 непригодна: одна статика больше 8000 и динамика вытесняется целиком).
 Конспект сцены (ФС П2, BACKLOG 134): ходы текущей сцены (`TurnRecord.scene_id`), которых нет в `recent_turns` запроса

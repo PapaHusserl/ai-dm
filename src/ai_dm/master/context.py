@@ -17,6 +17,8 @@ class Candidates(BaseModel):
     # ходы, которые до ступени 2 не вытесняются
     floor: int = 0
     scenes: list[SceneSummary] = []
+    # последние сцены, которые до ступени 3 не вытесняются
+    scenes_floor: int = 0
     npcs: list[str] = []
     # главы, уже свёрнутые в game_summary (старшие первыми)
     chapters: list[ChapterSummary] = []
@@ -80,9 +82,8 @@ def recent_window(memory: Memory, n: int) -> list[TurnRecord]:
 
 
 def _has_candidates(left, stage) -> bool:
-    if stage == "turns":
-        return len(left.turns) > left.floor
-    return len(getattr(left, stage)) > 0
+    floor = {"turns": left.floor, "scenes": left.scenes_floor}.get(stage, 0)
+    return len(getattr(left, stage)) > floor
 
 
 def _item_id(stage, item) -> str:

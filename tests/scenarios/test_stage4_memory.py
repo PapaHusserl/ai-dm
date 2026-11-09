@@ -129,14 +129,15 @@ def test_scene_50_first_turn_has_chapter_1_and_game_summary(first):
     assert memory["game_summary"].startswith("Игра до главы 4")
 
 
-def test_scene_50_has_all_four_chapter_summaries_and_no_old_scenes(first):
+def test_scene_50_has_all_four_chapter_summaries_and_keeps_scene_49(first):
     request = first.mock.narrator_turns[49 * TURNS_PER_SCENE]
     memory = json.loads(request.system[2].text)
     assert [c["number"] for c in memory["chapters"]] == [1, 2, 3, 4]
-    # выжимка сцены 49 (единственная сцена главы 5) вытеснена, блок сцен пуст
-    assert memory["scenes"] == []
+    # сцена 49 -- единственная сцена главы 5, под floor не вытесняется
+    [scene] = memory["scenes"]
+    assert scene["summary"].startswith("Выжимка сцены 49.")
     record = turn_record(first, 49 * TURNS_PER_SCENE)
-    assert ["scenes", "scene_49"] in record["meta"]["context"]["dropped"]
+    assert "scenes" not in [stage for stage, _ in record["meta"]["context"]["dropped"]]
 
 
 # порядок вытеснения

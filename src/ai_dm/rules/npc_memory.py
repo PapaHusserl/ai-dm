@@ -60,8 +60,8 @@ def memory_data(npc):
     # память для промпта: сцены по времени, в них события
     return [
         {
-            "scene_id": s.scene_id, "at_s": s.at_s, "weight": s.weight,
-            "events": [{"kind": e.kind, "turn_seq": e.turn_seq, "text": e.text} for e in s.events],
+            "weight": s.weight,
+            "events": [{"kind": e.kind, "text": e.text} for e in s.events],
         }
         for s in sorted(npc.memory, key=lambda s: s.at_s)
     ]

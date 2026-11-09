@@ -77,6 +77,9 @@ def app_with(cap=BIG, **master):
     app.master.context_cap = cap
     # ТБ #15: оценка по провайдеру; перекрытия снимаем, чтобы chars_per_token работал для всех
     app.master.chars_per_token_by_provider = {}
+    # полный порядок вытеснения проверяем без защиты: floor ходов 1, floor сцен 0 (умолчания шире)
+    app.master.recent_turns_floor = 1
+    app.master.recent_scenes_floor = 0
     for key, value in master.items():
         setattr(app.master, key, value)
     return app
@@ -223,6 +226,12 @@ def test_floor_turn_stays_when_everything_dropped(registry, cfg):
 def test_floor_from_config_is_respected(registry, cfg):
     request, _ = build(make_scenario(registry, cfg), app=app_with(cap=1, recent_turns_floor=3))
     assert [t["turn_seq"] for t in data_of(request)["recent_turns"]] == [6, 7, 8]
+
+
+def test_scenes_floor_from_config_keeps_last_scenes(registry, cfg):
+    _, builder = build(make_scenario(registry, cfg), app=app_with(cap=1, recent_scenes_floor=3))
+    assert [s.id for s in builder.last_plan.scene_summaries] == ["sc2", "sc3", "sc4"]
+    assert [i for s, i in builder.last_plan.dropped if s == "scenes"] == ["sc1"]
 
 
 def test_floor_zero_allows_dropping_all_turns(registry, cfg):

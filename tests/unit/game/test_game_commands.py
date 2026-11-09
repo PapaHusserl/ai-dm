@@ -563,7 +563,7 @@ def test_model_keeps_big_window_budget_before_switch(registry, tmp_path):
     app.settings.app.context_windows[SONNET] = 10_000
     app.handle("Иду")
     records = [r for r in app.journal.read_records() if r["role"] == "narrator"]
-    assert records[0]["meta"]["context"]["cap"] == 32_000
+    assert records[0]["meta"]["context"]["cap"] == 80_000
     assert records[0]["meta"]["context"]["dropped"] == []
 
 

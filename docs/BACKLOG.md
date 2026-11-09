@@ -1702,3 +1702,59 @@ updated: 2026-11-09
 
 (mutmut партии Л1 П3, docs/plan-l1.md) На строках вне диффа, 18 выживших: `protocol/handlers/world.py npc_create` — 5–15, 82, 86,
 87, 101; `protocol/handlers/trade_pick.py npc_problem` — 1, 2, 6. Разобрать, какие эквивалентны, остальные закрыть тестами.
+
+## 285. Ложные срабатывания npc_absent_ignored
+status: idea
+priority: medium
+updated: 2026-11-09
+
+(разбор ФД2, docs/plan-fd2.md) 13 из 19 репортов dusk без переполнения, упоминания законные: воспоминания, разговор о NPC.
+На t3109 и t3117 тег есть, а сигнала `absent_npcs` в первом вызове нет — причина не установлена. Код: `game/turn.py:509-514`,
+`master/relevance.py`.
+
+## 286. Нет авто-репортов context_overflow за 04.11
+status: idea
+priority: low
+updated: 2026-11-09
+
+(разбор ФД2, docs/plan-fd2.md) В журнале dusk 77 переполненных вызовов за 04.11, репортов нет; причина не установлена.
+Проверить создание репортов или условия подавления (`session.py:258,461`).
+
+## 287. Проданная торговцу неквестовая кастомная вещь не видна рассказчику
+status: idea
+priority: low
+updated: 2026-11-09
+
+(план ФД2, docs/plan-fd2.md) Вещь уходит в `holder` (`custom_items.hand_to_npc`), а не в `stock`; в `trade.stock` и `lost_items`
+её нет, выкуп возможен только по памяти модели.
+
+## 288. Инвентарь растёт без предела
+status: idea
+priority: low
+updated: 2026-11-09
+
+(план ФД2, docs/plan-fd2.md) На t3144 dusk 117 стеков, 104 с описанием, 12110 знаков описаний. Склад/сундук или сворачивание
+описаний старых вещей; при `context_cap` 80000 не срочно.
+
+## 289. Шум в scene_recap от предложенных вариантов
+status: idea
+priority: low
+updated: 2026-11-09
+
+(разбор ФД2, docs/plan-fd2.md) На t3144 dusk 18 из 29 строк конспекта — «Варианты ответа предложены». Отфильтровать outcomes
+`offer_choices`.
+
+## 290. Жалоба t1492: сон не восстанавливает ресурсы
+status: idea
+priority: low
+updated: 2026-11-09
+
+(разбор ФД2, docs/plan-fd2.md) Второй пункт репорта saves/dusk_academy-d3de6c57/issues/20261025T123323-t1492-manual не разбирался.
+
+## 291. Посеребрение оружия: нет механики
+status: idea
+priority: low
+updated: 2026-11-09
+
+(разбор ФД2, docs/plan-fd2.md) Тег `missing-mechanic` на t2109:
+saves/drunk_dragon-00000001/issues/20261104T164308-t2109-limit-exceeded+missing-mechanic.

@@ -18,9 +18,23 @@ def test_inventory_entry_has_cost_and_quality(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_item(ctx.hero, "scimitar", cost_cp=150, quality="worn")
     entry = [e for e in inventory_of(ctx) if e["item_id"] == "scimitar"][0]
-    assert entry["qty"] == 1
+    assert "qty" not in entry
     assert entry["cost_cp"] == 150
     assert entry["quality"] == "worn"
+
+
+def test_inventory_entry_default_values_are_omitted(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_item(ctx.hero, "scimitar", cost_cp=0)
+    entry = [e for e in inventory_of(ctx) if e["item_id"] == "scimitar"][0]
+    assert entry == {"item_id": "scimitar", "name": "Скимитар"}
+
+
+def test_inventory_entry_keeps_qty_above_one(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_item(ctx.hero, "scimitar", 3, cost_cp=150)
+    entry = [e for e in inventory_of(ctx) if e["item_id"] == "scimitar"][0]
+    assert entry["qty"] == 3
 
 
 def test_inventory_entry_without_quality_has_none(registry, cfg):
@@ -35,4 +49,4 @@ def test_two_stacks_of_one_id_are_two_entries(registry, cfg):
     add_item(ctx.hero, "scimitar", 2, cost_cp=150, quality="worn")
     add_item(ctx.hero, "scimitar", cost_cp=2500)
     entries = [e for e in inventory_of(ctx) if e["item_id"] == "scimitar"]
-    assert sorted((e["cost_cp"], e["qty"]) for e in entries) == [(150, 2), (2500, 1)]
+    assert sorted((e["cost_cp"], e.get("qty", 1)) for e in entries) == [(150, 2), (2500, 1)]

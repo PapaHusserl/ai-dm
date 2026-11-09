@@ -8,8 +8,8 @@
 #   evict(npc) -> NpcSceneMemory: убирает и возвращает запись с наименьшим (weight, at_s).
 #   refresh_weight(npc, scene) -> None: weight записи этой сцены = scene.attitude_spent[npc.id];
 #       нет записи -- ничего не делает.
-#   memory_data(npc) -> list[dict]: память для промпта, по порядку at_s; у записи ключи scene_id,
-#       at_s, weight, events (kind, turn_seq, text).
+#   memory_data(npc) -> list[dict]: память для промпта, по порядку at_s; у записи ключи weight,
+#       events (kind, text); scene_id, at_s, turn_seq в промпт не идут.
 import json
 
 import pytest
@@ -481,22 +481,21 @@ def test_memory_data_item_keys():
     npc = make_npc()
     fill(npc, [4])
     item = memory_data(npc)[0]
-    assert (item["scene_id"], item["at_s"], item["weight"]) == ("scene_1", 100, 4)
+    assert set(item) == {"weight", "events"}
+    assert item["weight"] == 4
 
 
 def test_memory_data_lists_events_with_kind_and_text():
     npc = make_npc()
     put(npc, scene(1), event("promise", "обещал вернуть долг", turn_seq=3))
     [stored] = memory_data(npc)[0]["events"]
-    assert (stored["kind"], stored["text"], stored["turn_seq"]) == (
-        "promise", "обещал вернуть долг", 3
-    )
+    assert stored == {"kind": "promise", "text": "обещал вернуть долг"}
 
 
 def test_memory_data_is_ordered_by_at_s():
     npc = make_npc()
-    npc.memory = [entry(3, 1), entry(1, 1), entry(2, 1)]
-    assert [m["scene_id"] for m in memory_data(npc)] == ["scene_1", "scene_2", "scene_3"]
+    npc.memory = [entry(3, 1), entry(1, 3), entry(2, 2)]
+    assert [m["weight"] for m in memory_data(npc)] == [3, 2, 1]
 
 
 def test_memory_data_is_json_serializable():

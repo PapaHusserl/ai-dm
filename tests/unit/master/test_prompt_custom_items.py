@@ -151,7 +151,7 @@ def test_plain_custom_entry_is_not_marked_quest(registry, cfg):
     ctx = make_custom_ctx(registry, cfg, plain=plain)
     entry = entry_of(ctx, "custom_2")
     assert entry["name"] == "Тряпичная кукла"
-    assert not entry.get("quest")
+    assert "quest" not in entry
 
 
 def test_srd_entry_has_name(registry, cfg):
@@ -171,7 +171,7 @@ def test_srd_entry_has_no_description_and_no_quest(registry, cfg):
 def test_custom_entry_keeps_qty_and_cost(registry, cfg):
     ctx = make_custom_ctx(registry, cfg, held=key(cost_cp=300))
     entry = entry_of(ctx, "custom_1")
-    assert (entry["qty"], entry["cost_cp"]) == (1, 300)
+    assert ("qty" not in entry, entry["cost_cp"]) == (True, 300)
 
 
 # item_ids
