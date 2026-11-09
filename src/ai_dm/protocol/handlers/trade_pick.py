@@ -2,7 +2,14 @@ from dataclasses import dataclass
 
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.handlers.world import rejected
-from ai_dm.protocol.hints import allowed, item_ids, merchant_ids, provider_ids, sold_ids
+from ai_dm.protocol.hints import (
+    CREATE_FIRST,
+    allowed,
+    item_ids,
+    merchant_ids,
+    provider_ids,
+    sold_ids,
+)
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.inventory import SLOTS, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
@@ -83,7 +90,8 @@ def npc_problem(ctx, request, npc, mode="trade"):
     here = role_ids(ctx.bundle.world, ctx.hero.location_id, mode)
     if npc is None:
         return Invalid(
-            code="unknown_npc", message=f"нет NPC {request.npc_id!r}" + allowed(here)
+            code="unknown_npc",
+            message=f"нет NPC {request.npc_id!r}" + allowed(here) + CREATE_FIRST,
         )
     if npc.status != "alive" or npc.location_id != ctx.hero.location_id:
         return Invalid(

@@ -620,6 +620,12 @@ def test_defeat_outcome_unknown_creditor_is_invalid(registry, cfg):
     assert dump(ctx) == before
 
 
+def test_defeat_outcome_unknown_creditor_gets_no_create_npc_hint(registry, cfg):
+    ctx = pending_ctx(registry, cfg)
+    d = apply(ctx, req("defeat_outcome", consequences=["debt"], debt_to="nobody"))
+    assert "npc_create" not in d.message
+
+
 def test_defeat_outcome_known_references_are_accepted(registry, cfg):
     ctx = pending_ctx(registry, cfg)
     d = apply(ctx, req(

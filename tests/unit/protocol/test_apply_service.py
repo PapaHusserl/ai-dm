@@ -294,6 +294,13 @@ def test_unknown_npc_is_invalid_with_provider_hint(registry, cfg):
     assert "grok" in d.message
 
 
+def test_unknown_npc_hint_says_to_create_npc_first(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = buy(ctx, npc_id="nobody")
+    assert d.code == "unknown_npc"
+    assert "npc_create" in d.message
+
+
 def test_npc_in_another_location_is_absent(registry, cfg):
     ctx = service_ctx(registry, cfg, location_id="forest")
     before = dump(ctx)

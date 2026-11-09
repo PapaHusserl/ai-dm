@@ -2,6 +2,8 @@ from ai_dm.rules.services import providers_here
 from ai_dm.rules.trade import assortment
 
 LIMIT = 20
+# неизвестный NPC в сцене: чаще всего его назвали в прозе, но не создали
+CREATE_FIRST = "; нового NPC сначала создай npc_create в этом ходу, затем повтори вызов"
 
 
 def allowed(ids, first=()):

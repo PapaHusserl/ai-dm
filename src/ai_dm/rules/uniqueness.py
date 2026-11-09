@@ -33,6 +33,25 @@ def name_conflict(world, heroes, new_name) -> bool:
     return any(norm(other) == name for other in taken)
 
 
+def name_holder(world, heroes, name) -> tuple[str, str]:
+    # кто занял имя (без регистра): (род npc|god|faction|hero, текст) для сигнала мастеру;
+    # порядок как в name_conflict
+    key = norm(name)
+    for npc in world.npcs.values():
+        if npc.named and norm(npc.name) == key:
+            place = world.locations.get(npc.location_id)
+            where = f"в локации «{place.name}»" if place else "(локация неизвестна)"
+            return "npc", f"NPC {npc.id} («{npc.name}») {where}"
+    for god in world.pantheon.values():
+        if norm(god.name) == key:
+            return "god", f"бог {god.name}"
+    for faction in world.factions.values():
+        if norm(faction.name) == key:
+            return "faction", f"фракция {faction.name}"
+    hero = next((hero for hero in heroes if norm(hero.name) == key), None)
+    return ("hero", f"герой {hero.name}") if hero else ("", "")
+
+
 def check_location(world, location, heroes) -> list[str]:
     conflicts = []
     if id_taken(world, heroes, location.id):

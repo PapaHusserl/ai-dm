@@ -374,3 +374,54 @@ def test_check_npc_still_reports_name_conflict_text():
 
 def test_check_npc_unnamed_duplicate_name_is_ok():
     assert check_npc(make_world(), make_npc("g2", "Олдрик", named=False), HEROES) == []
+
+
+# Р9: name_holder(world, heroes, name) -> (kind, text), кто занял имя
+
+def test_name_holder_npc_with_location():
+    from ai_dm.rules.uniqueness import name_holder
+    world = make_world()
+    world.npcs["aldric"].location_id = "vale"
+    assert name_holder(world, HEROES, "Олдрик") == (
+        "npc", "NPC aldric («Олдрик») в локации «Вейл»"
+    )
+
+
+def test_name_holder_npc_without_location():
+    from ai_dm.rules.uniqueness import name_holder
+    world = make_world()
+    assert name_holder(world, HEROES, "Олдрик") == (
+        "npc", "NPC aldric («Олдрик») (локация неизвестна)"
+    )
+
+
+def test_name_holder_god():
+    from ai_dm.rules.uniqueness import name_holder
+    assert name_holder(make_world(), HEROES, "Моррах") == ("god", "бог Моррах")
+
+
+def test_name_holder_faction():
+    from ai_dm.rules.uniqueness import name_holder
+    assert name_holder(make_world(), HEROES, "Гильдия воров") == (
+        "faction", "фракция Гильдия воров"
+    )
+
+
+def test_name_holder_hero():
+    from ai_dm.rules.uniqueness import name_holder
+    assert name_holder(make_world(), HEROES, "Арн") == ("hero", "герой Арн")
+
+
+def test_name_holder_free_name_is_empty_pair():
+    from ai_dm.rules.uniqueness import name_holder
+    assert name_holder(make_world(), HEROES, "Никто") == ("", "")
+
+
+def test_name_holder_ignores_case():
+    from ai_dm.rules.uniqueness import name_holder
+    assert name_holder(make_world(), HEROES, "моррах") == ("god", "бог Моррах")
+
+
+def test_check_npc_id_only_conflict_text_is_unchanged():
+    conflicts = check_npc(make_world(), make_npc("aldric", "Другой"), HEROES)
+    assert conflicts == ["id 'aldric' уже занят (NPC, фракция, бог, локация или герой)"]

@@ -1,5 +1,5 @@
 from ai_dm.protocol.decision import Decision, Invalid
-from ai_dm.protocol.hints import allowed
+from ai_dm.protocol.hints import CREATE_FIRST, allowed
 from ai_dm.rules import divine, goals, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
@@ -8,7 +8,7 @@ from ai_dm.rules.npc_memory import events_full, has_kind, refresh_weight, rememb
 from ai_dm.rules.npc_names import looks_like_kind, shown_name
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.secrets import reveal
-from ai_dm.rules.services import PAID_COMPANY_FLAG
+from ai_dm.rules.services import PAID_COMPANY_FLAG, keeper_hint
 from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
 from ai_dm.state.gender import GENDER_WORDS
@@ -70,9 +70,7 @@ def npc_create(ctx, request):
             code="unknown_location",
             message=f"нет локации {request.location_id!r}" + allowed(world.locations),
         )
-    problem = new_merchant_problem(ctx, request.trade_kind, request.key) or services_problem(
-        ctx, request
-    )
+    problem = create_problem(ctx, request)
     if problem is not None:
         return problem
     npc = NPC(
@@ -82,10 +80,7 @@ def npc_create(ctx, request):
     )
     conflicts = uniqueness.check_npc(world, npc, ctx.bundle.heroes)
     if conflicts:
-        return rejected(
-            "; ".join(conflicts),
-            "NPC не создан: " + "; ".join(conflicts) + ". Придумай другое имя и id.",
-        )
+        return rejected("; ".join(conflicts), conflict_signal(ctx, npc, conflicts))
     world.npcs[npc.id] = npc
     decision = Decision(
         status="accepted", result={"npc_id": npc.id}, log=[f"Новый NPC: {npc.name}"]
@@ -97,6 +92,38 @@ def npc_create(ctx, request):
     if request.services is not None:
         add_services(npc, request.services, decision)
     return decision
+
+
+def create_problem(ctx, request):
+    # Invalid/rejected для npc_create: торговец, услуги, хозяин заведения без услуг; иначе None
+    problem = new_merchant_problem(ctx, request.trade_kind, request.key) or services_problem(
+        ctx, request
+    )
+    if problem is not None:
+        return problem
+    location = ctx.bundle.world.locations.get(request.location_id or ctx.hero.location_id)
+    if location is None or ctx.mode == "world":
+        return None
+    return keeper_problem(
+        location, request.means, request.services, request.trade_kind,
+        ("NPC не создан", request.name),
+    )
+
+
+def conflict_signal(ctx, npc, conflicts):
+    # сигнал мастеру при конфликте имени/id нового NPC; при занятом имени — кто его держит
+    world, heroes = ctx.bundle.world, ctx.bundle.heroes
+    if npc.named and uniqueness.name_conflict(world, heroes, npc.name):
+        kind, text = uniqueness.name_holder(world, heroes, npc.name)
+        both = len(conflicts) > 1
+        id_part = f"; id {npc.id!r} тоже занят" if both else ""
+        advice = "Если это тот же NPC — используй его id, иначе придумай" if kind == "npc" \
+            else "Придумай"
+        return (
+            f"NPC не создан: имя «{npc.name}» занято: {text}{id_part}. "
+            f"{advice} другое имя{' и id' if both else ''}."
+        )
+    return "NPC не создан: " + "; ".join(conflicts) + ". Придумай другое имя и id."
 
 
 def services_problem(ctx, request):
@@ -463,7 +490,7 @@ def merchant_goal_problem(ctx, npc, request):
     # отдельная функция: пятый операнд цепочки в update_problem даёт smell «Complex binary
     # expression»
     return (
-        location_problem(ctx.bundle.world, npc, request)
+        move_problem(ctx, npc, request)
         or merchant_update_problem(ctx, npc, request) or services_problem(ctx, request)
         or goal_problem(ctx, npc, request)
     )
@@ -481,6 +508,38 @@ def location_problem(world, npc, request):
     if npc.status != "alive":
         return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: не перемещается")
     return None
+
+
+def move_problem(ctx, npc, request):
+    # перенос NPC в npc_update: общая проверка локации и хозяин заведения (за кадром — без неё)
+    return location_problem(ctx.bundle.world, npc, request) or keeper_update_problem(
+        ctx.bundle.world, npc, request
+    )
+
+
+def keeper_update_problem(world, npc, request):
+    # хозяин заведения без услуг и торговли не переносится в заведение; иначе None
+    if request.location_id is None or npc.services or npc.trade is not None:
+        return None
+    return keeper_problem(
+        world.locations[request.location_id], npc.means, request.services, request.trade_kind,
+        (f"{npc_label(npc)} не перемещён", npc_label(npc)),
+    )
+
+
+def keeper_problem(location, means, services, trade_kind, who):
+    # rejected, если NPC похож на хозяина заведения, а услуг и торговли у него нет; иначе None;
+    # who -- (начало сигнала, имя NPC)
+    head, name = who
+    hint = None if services or trade_kind is not None else keeper_hint(location.name, means)
+    if hint is None:
+        return None
+    return rejected(
+        "хозяин заведения без услуг и торговли",
+        f"{head}: {name} похож на хозяина «{location.name}», а услуг и торговли у него нет. "
+        f"Укажи services или trade_kind (для «{location.name}» обычно {hint}); "
+        "если он не хозяин — назови его занятие в means точнее.",
+    )
 
 
 def change_location(ctx, npc, request, decision):
@@ -552,7 +611,7 @@ def npc_update(ctx, request):
     if npc is None:
         return Invalid(
             code="unknown_npc",
-            message=f"нет NPC {request.npc_id!r}" + allowed(ctx.bundle.world.npcs),
+            message=f"нет NPC {request.npc_id!r}" + allowed(ctx.bundle.world.npcs) + CREATE_FIRST,
         )
     problem = update_problem(ctx, npc, request)
     if problem is not None:

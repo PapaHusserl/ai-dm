@@ -1,4 +1,27 @@
+import re
+
 from ai_dm.rules import trade as trade_rules
+
+# заведение по имени локации ↔ ремесло хозяина в means ↔ подсказка по услугам (Л1 П3);
+# стемы по casefold
+KEEPER_FAMILIES = (
+    (
+        r"таверн|трактир(?!н)|корчм|постоял|харчевн|кабак",
+        r"трактир|таверн|корчм|постоял|харчевн|кабак|стойк(а|е|и|у|ой)\b",
+        "services (например room_poor, meal_modest, ale)",
+    ),
+    (
+        r"лавк|магазин|аптек(?!ар)",
+        r"лавк|лавочн|торгов|аптек|товар(?!ищ)",
+        "trade_kind (например general)",
+    ),
+    (r"кузниц", r"кузн|ковк|наковальн|горнил", "trade_kind smith"),
+    (
+        r"\bхрам(?!ов)|святилищ",
+        r"жрец|жриц|священ|настоятел|исцел|благослов",
+        "services (например heal_temple, uncurse_temple)",
+    ),
+)
 
 HAGGLE_FLAG = "haggle"
 LODGING_FLAG = "lodging"
@@ -22,6 +45,17 @@ class FlagHaggle:
 
     def save(self):
         self.flags[self.key] = f"{self.haggle_day}:{self.haggle_percent}"
+
+
+def keeper_hint(location_name, means) -> str | None:
+    # NPC похож на хозяина заведения: имя локации и ремесло из одного семейства KEEPER_FAMILIES;
+    # возвращает подсказку семейства по услугам, иначе None
+    place = location_name.casefold()
+    text = " ".join(means).casefold()
+    for spot, craft, hint in KEEPER_FAMILIES:
+        if re.search(spot, place) and re.search(craft, text):
+            return hint
+    return None
 
 
 def haggle_slot(npc, world):

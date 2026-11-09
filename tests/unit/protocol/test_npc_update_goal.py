@@ -872,6 +872,29 @@ def test_basic_problem_none_for_valid_goal_update(registry, cfg):
     assert basic_problem(ctx, aldric(ctx), world_update(goal_kind="revenge")) is None
 
 
+def test_basic_problem_offscreen_keeper_move_into_tavern_is_allowed(registry, cfg):
+    # решение 32: проверка хозяина заведения — только для рассказчика в сцене
+    from ai_dm.protocol.handlers.offscreen import basic_problem
+
+    ctx = world_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].means = ["трактир"]
+    request = world_update(location_id="vale_tavern")
+    assert basic_problem(ctx, aldric(ctx), request) is None
+
+
+def test_world_npc_create_innkeeper_in_tavern_is_accepted(registry, cfg):
+    # решение 32 распространяется и на создание: роль world хозяина не проверяет
+    ctx = world_ctx(registry, cfg)
+    request = parse_request(
+        {
+            "type": "npc_create", "id": "grok", "name": "Грок", "means": ["трактир"],
+            "location_id": "vale_tavern",
+        },
+        "world",
+    )
+    assert apply(ctx, request).status == "accepted"
+
+
 def test_basic_problem_reports_empty_update(registry, cfg):
     from ai_dm.protocol.handlers.offscreen import basic_problem
 

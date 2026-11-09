@@ -326,5 +326,69 @@ def test_lodging_paid_non_int_flag_is_unpaid(cfg, value):
     assert lodging_paid(world, "hero", cfg) is False
 
 
+@pytest.mark.parametrize(
+    ("location", "means", "hint"),
+    [
+        ("Таверна", ["трактир"], "services (например room_poor, meal_modest, ale)"),
+        ("Лавка", ["лавка"], "trade_kind (например general)"),
+        ("Кузница", ["кузница"], "trade_kind smith"),
+        ("Храм", ["жрец"], "services (например heal_temple, uncurse_temple)"),
+    ],
+)
+def test_keeper_hint_each_family(location, means, hint):
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint(location, means) == hint
+
+
+def test_keeper_hint_craft_word_is_separate_from_next_means():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Таверна", ["стойка", "бар"]) is not None
+
+
+def test_keeper_hint_ignores_case():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("ТАВЕРНА «Пьяный Дракон»", ["ТРАКТИР"]) is not None
+
+
+def test_keeper_hint_empty_means_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Таверна", []) is None
+
+
+def test_keeper_hint_location_not_an_establishment_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Лес", ["трактир"]) is None
+
+
+def test_keeper_hint_means_not_a_craft_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Таверна", ["связи"]) is None
+
+
+def test_keeper_hint_orcs_in_forge_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Кузница Пепла", ["горных орков"]) is None
+
+
+def test_keeper_hint_tavern_and_fortitude_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Таверна", ["стойкость"]) is None
+
+
+def test_keeper_hint_shop_and_loyal_comrades_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Лавка", ["верные товарищи"]) is None
+
+
+def test_keeper_hint_temple_square_and_sacred_symbol_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Храмовая площадь", ["священный символ"]) is None
+
+
+def test_keeper_hint_innkeeper_street_is_none():
+    from ai_dm.rules.services import keeper_hint
+    assert keeper_hint("Трактирная улица", ["трактир"]) is None
+
+
 def test_lodging_flag_name():
     assert LODGING_FLAG == "lodging"

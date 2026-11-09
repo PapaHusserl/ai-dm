@@ -201,6 +201,250 @@ def test_npc_create_rejection_is_not_a_limit_mark(registry, cfg):
     assert "limit-exceeded" not in ctx.marks
 
 
+def test_npc_create_name_clash_signal_names_npc_and_location(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].location_id = "forest"
+    d = apply(ctx, new_npc(id="aldric_2", name="Олдрик"))
+    assert d.status == "rejected"
+    assert "Олдрик" in d.signal_to_master
+    assert "Лес" in d.signal_to_master
+
+
+def test_npc_create_name_clash_signal_names_existing_id(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric_2", name="Олдрик"))
+    assert "aldric" in d.signal_to_master
+
+
+# 251: хозяин заведения без услуг и торговли (Р8)
+
+def tavern_ctx(registry, cfg):
+    # заведение — по имени локации: «Таверна» (vale_tavern)
+    return make_ctx(registry, cfg)
+
+
+def keeper(**kwargs):
+    kwargs.setdefault("location_id", "vale_tavern")
+    return new_npc(id="grok", name="Грок", means=["трактир"], **kwargs)
+
+
+def test_npc_create_innkeeper_without_services_is_rejected(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, keeper(services=[], trade_kind="none"))
+    assert d.status == "rejected"
+    assert "services" in d.signal_to_master
+    assert "trade_kind" in d.signal_to_master
+    assert dump(ctx) == before
+
+
+def test_npc_create_innkeeper_with_omitted_fields_is_rejected(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, keeper())
+    assert d.status == "rejected"
+
+
+def test_npc_create_innkeeper_with_services_is_accepted(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, keeper(services=["ale", "meal_modest"]))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["grok"].services == ["ale", "meal_modest"]
+
+
+def test_npc_create_innkeeper_with_trade_kind_is_accepted(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, keeper(trade_kind="general"))
+    assert d.status == "accepted"
+
+
+def test_npc_create_innkeeper_outside_establishment_is_accepted(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, keeper(location_id="vale"))
+    assert d.status == "accepted"
+
+
+def test_npc_create_smith_in_tavern_is_accepted(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="smith", name="Кузнец", means=["кузница"], location_id="vale_tavern"))
+    assert d.status == "accepted"
+
+
+def test_npc_update_keeper_without_location_is_not_checked(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].means = ["трактир"]
+    ctx.bundle.world.npcs["aldric"].location_id = "vale_tavern"
+    d = apply(ctx, req("npc_update", npc_id="aldric", attitude_delta=5))
+    assert d.status != "rejected"
+
+
+def test_npc_create_non_keeper_in_tavern_is_accepted(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="drunk", name="Пьяница", means=["кулаки"], location_id="vale_tavern"))
+    assert d.status == "accepted"
+
+
+def test_npc_update_moving_keeper_into_tavern_without_services_is_rejected(registry, cfg):
+    # трактовка плана: npc_update, как и npc_create, не пускает хозяина в заведение без услуг
+    ctx = tavern_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].means = ["трактир"]
+    d = apply(ctx, req("npc_update", npc_id="aldric", location_id="vale_tavern"))
+    assert d.status == "rejected"
+    assert "services" in d.signal_to_master
+
+
+def test_npc_update_moving_keeper_into_tavern_with_services_is_accepted(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].means = ["трактир"]
+    d = apply(
+        ctx,
+        req("npc_update", npc_id="aldric", location_id="vale_tavern", services=["ale"]),
+    )
+    assert d.status != "rejected"
+    assert ctx.bundle.world.npcs["aldric"].services == ["ale"]
+
+
+def test_npc_create_without_location_in_tavern_hero_location_is_rejected(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    ctx.hero.location_id = "vale_tavern"
+    d = apply(ctx, new_npc(id="grok", name="Грок", means=["трактир"]))
+    assert d.status == "rejected"
+
+
+def move_keeper(ctx, **request_fields):
+    ctx.bundle.world.npcs["aldric"].means = ["трактир"]
+    fields = {"npc_id": "aldric", "location_id": "vale_tavern", **request_fields}
+    return apply(ctx, req("npc_update", **fields))
+
+
+def test_npc_update_keeper_with_npc_services_is_moved(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].services = ["ale"]
+    assert move_keeper(ctx).status != "rejected"
+
+
+def test_npc_update_keeper_with_npc_trade_is_moved(registry, cfg):
+    from ai_dm.state.world import TradeProfile
+    ctx = tavern_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].trade = TradeProfile(kind="general")
+    assert move_keeper(ctx).status != "rejected"
+
+
+def test_npc_update_keeper_with_request_trade_kind_is_moved(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    assert move_keeper(ctx, trade_kind="general").status != "rejected"
+
+
+def test_npc_create_name_and_id_clash_signal_names_both(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric", name="Олдрик"))
+    assert d.status == "rejected"
+    assert "id 'aldric' тоже занят" in d.signal_to_master
+    assert " и id" in d.signal_to_master
+
+
+def test_npc_create_unnamed_id_clash_keeps_old_signal(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric", name="Олдрик", named=False))
+    assert d.status == "rejected"
+    assert "уже занят" in d.signal_to_master
+    assert "занято:" not in d.signal_to_master
+
+
+def test_npc_create_god_name_clash_has_no_id_advice(registry, cfg):
+    from ai_dm.state.world import God
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.pantheon["morrah"] = God(id="morrah", name="Моррах")
+    d = apply(ctx, new_npc(id="morrah_2", name="Моррах"))
+    assert d.status == "rejected"
+    assert "занято: бог Моррах" in d.signal_to_master
+    assert "используй его id" not in d.signal_to_master
+    assert " и id" not in d.signal_to_master
+
+
+def test_npc_create_smith_keeper_signal_hints_trade_kind_smith(registry, cfg):
+    from ai_dm.state.world import Location
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["forge"] = Location(id="forge", name="Кузница")
+    d = apply(ctx, new_npc(id="smith", name="Борин", means=["кузница"], location_id="forge"))
+    assert d.status == "rejected"
+    assert "trade_kind smith" in d.signal_to_master
+
+
+def test_npc_create_innkeeper_signal_hints_room_poor(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, keeper())
+    assert "room_poor" in d.signal_to_master
+
+
+def test_npc_create_keeper_signal_text_is_exact(registry, cfg):
+    ctx = tavern_ctx(registry, cfg)
+    d = apply(ctx, keeper())
+    assert d.reason == "хозяин заведения без услуг и торговли"
+    assert d.signal_to_master == (
+        "NPC не создан: Грок похож на хозяина «Таверна», а услуг и торговли у него нет. "
+        "Укажи services или trade_kind (для «Таверна» обычно "
+        "services (например room_poor, meal_modest, ale)); "
+        "если он не хозяин — назови его занятие в means точнее."
+    )
+
+
+def test_npc_create_name_clash_with_npc_signal_advises_same_npc(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric_2", name="Олдрик", means=["кулаки"]))
+    assert d.signal_to_master.startswith(
+        "NPC не создан: имя «Олдрик» занято: NPC aldric («Олдрик»)"
+    )
+    assert d.signal_to_master.endswith(
+        ". Если это тот же NPC — используй его id, иначе придумай другое имя."
+    )
+
+
+def test_npc_create_name_and_id_clash_signal_is_exact_tail(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric", name="Олдрик", means=["кулаки"]))
+    assert d.signal_to_master.endswith(
+        "; id 'aldric' тоже занят. Если это тот же NPC — используй его id, "
+        "иначе придумай другое имя и id."
+    )
+
+
+def test_npc_create_name_and_id_clash_reason_joins_conflicts(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric", name="Олдрик", means=["кулаки"]))
+    assert d.reason == (
+        "id 'aldric' уже занят (NPC, фракция, бог, локация или герой); "
+        "имя 'Олдрик' уже занято (NPC, бог, фракция или герой)"
+    )
+
+
+def test_npc_create_god_name_clash_signal_is_exact_tail(registry, cfg):
+    from ai_dm.state.world import God
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.pantheon["morrah"] = God(id="morrah", name="Моррах")
+    d = apply(ctx, new_npc(id="morrah_2", name="Моррах", means=["кулаки"]))
+    assert d.signal_to_master == (
+        "NPC не создан: имя «Моррах» занято: бог Моррах. Придумай другое имя."
+    )
+
+
+def test_npc_create_unnamed_id_clash_signal_is_exact(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(id="aldric", name="Олдрик", named=False, means=["кулаки"]))
+    assert d.signal_to_master == (
+        "NPC не создан: id 'aldric' уже занят (NPC, фракция, бог, локация или герой). "
+        "Придумай другое имя и id."
+    )
+
+
+# 252: имя в прозе до npc_create
+
+def test_npc_update_unknown_npc_hint_says_to_create_npc_first(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = attitude(ctx, 5, npc_id="nobody")
+    assert d.code == "unknown_npc"
+    assert "npc_create" in d.message
+
+
 # location_create
 
 def new_location(**kwargs):

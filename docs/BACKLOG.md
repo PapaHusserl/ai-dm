@@ -1720,3 +1720,11 @@ updated: 2026-11-08
 (mutmut партии Л1 П2, docs/plan-l1.md) На строках вне диффа, 19 выживших: `game/app.py GameApp.handle` — 17–20, 30–33;
 `GameApp.after_turn` — 16, 20, 26–29, 47–50; `rules/knowledge.py word_pattern` — 1. Разобрать, какие эквивалентны,
 остальные закрыть тестами. TESTS прогона не включал tests/unit/ui: часть может закрываться там.
+
+## 284. Выжившие мутанты старых строк после Л1 П3
+status: idea
+priority: low
+updated: 2026-11-09
+
+(mutmut партии Л1 П3, docs/plan-l1.md) На строках вне диффа, 18 выживших: `protocol/handlers/world.py npc_create` — 5–15, 82, 86,
+87, 101; `protocol/handlers/trade_pick.py npc_problem` — 1, 2, 6. Разобрать, какие эквивалентны, остальные закрыть тестами.

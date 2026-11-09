@@ -961,6 +961,13 @@ def test_buy_back_is_clamped_by_money(registry, cfg):
     assert holder(ctx).qty == 1
 
 
+def test_unknown_npc_hint_says_to_create_npc_first(registry, cfg):
+    ctx = trade_ctx(registry, cfg)
+    d = buy(ctx, "quiver", npc_id="nobody")
+    assert d.code == "unknown_npc"
+    assert "npc_create" in d.message
+
+
 def test_unknown_npc_message_lists_only_living_merchants_here(registry, cfg):
     ctx = trade_ctx(registry, cfg)
     add_merchant(ctx, "dead_one", status="dead")
