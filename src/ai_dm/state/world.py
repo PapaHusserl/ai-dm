@@ -56,7 +56,8 @@ class TradeProfile(BaseModel):
     # деньги торговца на скупку; пополняются при restock_at_s <= now
     purse_cp: int = Field(default=0, ge=0)
     restock_at_s: int = 0
-    # купленное у героя (перепродаётся по цене экземпляра); сюжетные сюда не кладутся
+    # купленное у героя (перепродаётся по цене экземпляра); сюжетные -- только товар прилавка
+    # на лету (give_custom_item npc_id), проданные героем сюжетные уходят в holder
     stock: list[InventoryEntry] = Field(default_factory=list)
     # торг Убеждением: поправка цены в процентах до конца игрового дня haggle_day
     haggle_percent: int = 0

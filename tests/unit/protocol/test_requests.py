@@ -165,6 +165,16 @@ def test_unknown_type_is_error():
         parse_request({"type": "teleport", "where": "moon"})
 
 
+def test_give_custom_item_npc_id_is_empty_by_default():
+    assert parse_request(example("give_custom_item")).npc_id is None
+    assert REQUEST_MODELS["give_custom_item"].NEUTRAL["npc_id"] == ""
+
+
+def test_give_custom_item_keeps_npc_id():
+    model = parse_request({**example("give_custom_item"), "npc_id": "fabian_spices"})
+    assert model.npc_id == "fabian_spices"
+
+
 def test_union_adapter_rejects_unknown_type():
     with pytest.raises(ValidationError):
         TypeAdapter(MasterRequest).validate_python({"type": "teleport"})

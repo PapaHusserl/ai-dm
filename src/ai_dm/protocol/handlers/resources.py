@@ -5,6 +5,7 @@ from ai_dm.core.clock import DAY
 from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
+from ai_dm.protocol.handlers import trade_pick
 from ai_dm.protocol.handlers.loot_gear import gold_loot
 from ai_dm.protocol.handlers.utility_spells import (
     apply_condition,
@@ -190,7 +191,9 @@ def give_item_problem(ctx, request, found):
         )
     if request.qty < 1:
         return Invalid(code="bad_amount", message="количество должно быть не меньше 1")
-    return None
+    custom = ctx.bundle.world.custom_items.get(request.item_id)
+    seller = None if custom is None else stock_seller(ctx.bundle.world, custom.id)
+    return None if seller is None else stocked_rejected(custom.name, seller)
 
 
 def give_item(ctx, request):
@@ -268,6 +271,10 @@ def custom_item_problem(cfg, request, name):
         (request.qty < 1, "bad_amount", "количество должно быть не меньше 1"),
         (request.cost_cp < 0, "bad_cost", "цена не может быть отрицательной"),
         (
+            bool(request.npc_id) and request.cost_cp < 1, "bad_cost",
+            "цена товара на прилавке: не меньше 1 медной монеты",
+        ),
+        (
             request.weight_lb is not None and request.weight_lb < 0, "bad_weight",
             "вес не может быть отрицательным",
         ),
@@ -324,16 +331,87 @@ def custom_item_refusal(ctx, request, name, existing):
             f"{name!r} уже у героя",
             f"Предмет {name!r} уже у героя: повторно не выдаётся, опиши по факту.",
         )
-    return None
+    return stocked_refusal(ctx, request, name, existing)
+
+
+def stock_seller(world, item_id):
+    # торговец, у которого вещь стоит на прилавке, или None
+    return next((
+        n for n in world.npcs.values()
+        if n.trade is not None and any(e.item_id == item_id for e in n.trade.stock)
+    ), None)
+
+
+def stocked_rejected(name, seller):
+    return rejected(
+        f"{name!r} в продаже у {seller.name}",
+        f"Предмет {name!r} — товар у {seller.name}: герою он достаётся только покупкой "
+        "(trade buy), не выдачей.",
+    )
+
+
+def stocked_refusal(ctx, request, name, existing):
+    # товар прилавка герою по имени не выдаётся: покупка только через trade buy
+    if existing is None or request.npc_id:
+        return None
+    seller = stock_seller(ctx.bundle.world, existing.id)
+    return None if seller is None else stocked_rejected(name, seller)
+
+
+def scene_limit_reached(ctx):
+    return ctx.scene is not None and ctx.scene.custom_created >= ctx.cfg.custom_items.per_scene
+
+
+def scene_limit_clamped(ctx):
+    return clamped(
+        f"лимит новых предметов вне каталога за сцену: {ctx.cfg.custom_items.per_scene}",
+        "В этой сцене больше нельзя создавать новые предметы вне каталога: предмет не выдан, "
+        "опиши по факту.",
+        {"item_id": None, "qty": 0, "created": False}, [],
+    )
+
+
+def custom_item_decision(request, qty, reasons, result, log):
+    if qty < request.qty:
+        reasons.append(f"запрошено {request.qty}, выдано {qty}")
+    if reasons:
+        text = "; ".join(reasons)
+        return clamped(
+            text, f"Предмет выдан с поправками ({text}): опиши по факту.", result, log,
+        )
+    return Decision(status="accepted", result=result, log=log)
+
+
+def stock_custom_item(ctx, request, name, existing):
+    # прилавок на лету: вещь вне каталога появляется в продаже у торговца, герою не выдаётся
+    npc = ctx.bundle.world.npcs.get(request.npc_id)
+    problem = trade_pick.npc_problem(ctx, request, npc)
+    if problem is None:
+        problem = custom_item_refusal(ctx, request, name, existing)
+    if problem is not None:
+        return problem
+    qty = min(request.qty, ctx.cfg.limits.give_item_max_qty)
+    reasons = []
+    if existing is not None:
+        item_id, cost_cp = existing.id, existing.cost_cp or request.cost_cp
+    elif scene_limit_reached(ctx):
+        return scene_limit_clamped(ctx)
+    else:
+        item_id, cost_cp = create_custom_item(ctx, request, name, reasons)
+    trade_rules.put_in_stock(npc.trade, InventoryEntry(item_id=item_id, qty=qty, cost_cp=cost_cp))
+    result = {"item_id": item_id, "qty": qty, "created": existing is None, "npc_id": npc.id}
+    log = [f"Товар у {npc.name}: {name} x{qty}"]
+    return custom_item_decision(request, qty, reasons, result, log)
 
 
 def give_custom_item(ctx, request):
-    cfg = ctx.cfg.custom_items
     world = ctx.bundle.world
     name = request.name.strip()
     existing = next(
         (c for c in world.custom_items.values() if c.name.casefold() == name.casefold()), None
     )
+    if request.npc_id:
+        return stock_custom_item(ctx, request, name, existing)
     refusal = custom_item_refusal(ctx, request, name, existing)
     if refusal is not None:
         return refusal
@@ -346,13 +424,8 @@ def give_custom_item(ctx, request):
         holder = custom_items.recover(world, item_id)
         if holder is not None:
             cost_cp = holder.cost_cp
-    elif ctx.scene is not None and ctx.scene.custom_created >= cfg.per_scene:
-        return clamped(
-            f"лимит новых сюжетных предметов за сцену: {cfg.per_scene}",
-            "В этой сцене больше нельзя создавать сюжетные предметы: предмет не выдан, "
-            "опиши по факту.",
-            {"item_id": None, "qty": 0, "created": False}, [],
-        )
+    elif scene_limit_reached(ctx):
+        return scene_limit_clamped(ctx)
     else:
         item_id, cost_cp = create_custom_item(ctx, request, name, reasons)
     add_item(ctx.hero, item_id, qty, cost_cp=cost_cp)
@@ -362,14 +435,7 @@ def give_custom_item(ctx, request):
     word = "Получен предмет" if holder is None else "Возвращён предмет"
     log = [f"{word}: {name} x{qty}"]
     result = {"item_id": item_id, "qty": qty, "created": existing is None}
-    if qty < request.qty:
-        reasons.append(f"запрошено {request.qty}, выдано {qty}")
-    if reasons:
-        text = "; ".join(reasons)
-        return clamped(
-            text, f"Предмет выдан с поправками ({text}): опиши по факту.", result, log,
-        )
-    return Decision(status="accepted", result=result, log=log)
+    return custom_item_decision(request, qty, reasons, result, log)
 
 
 def use_item(ctx, request):
@@ -1160,6 +1226,14 @@ def until_with_rest_invalid():
     return Invalid(
         code="until_with_rest",
         message="отдых сам двигает время: until вместе с rest не ставь, для сна хватит rest long",
+    )
+
+
+def gold_without_item_rejected():
+    return rejected(
+        "вещь в этом ответе не выдана",
+        "Деньги не списаны: вещь за них в этом ответе не выдана. Опиши по факту; покупку у "
+        "торговца оформи через trade buy.",
     )
 
 

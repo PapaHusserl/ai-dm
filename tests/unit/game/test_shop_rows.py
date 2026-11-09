@@ -85,6 +85,17 @@ def test_held_story_item_row_has_custom_id_and_its_price(registry, tmp_path):
     assert (row[0], row[1], row[2], row[3], row[6]) == (-1, "Ржавый ключ", 400, 2, None)
 
 
+def test_custom_stock_row_has_name_price_and_qty(registry, tmp_path):
+    app = make_shop(registry, tmp_path)
+    app.bundle.world.custom_items["custom_1"] = CustomItem(
+        id="custom_1", name="Флакон духов", description="Пахнет жасмином", created_s=0, cost_cp=180
+    )
+    npc = app.bundle.world.npcs["mara"]
+    npc.trade.stock.append(InventoryEntry(item_id="custom_1", qty=2, cost_cp=180))
+    row = by_id(rows_of(app), "custom_1")[0]
+    assert (row[0], row[1], row[2], row[3], row[6]) == (-1, "Флакон духов", 180, 2, None)
+
+
 def test_story_item_of_another_holder_has_no_row(registry, tmp_path):
     app = make_shop(registry, tmp_path)
     app.bundle.world.custom_items["custom_1"] = CustomItem(

@@ -61,7 +61,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # 24380 -> 24500).
 # Л1 П2: фраза `absent_location` и пометка «пришёл в» в правилах, перечень `trade_kind` в
 # NpcCreate (замер 24569: rules 12605, tools 11964; 24500 -> 24600).
-STATIC_MAX = 24600
+# ФД2 П2: абзац о товаре вне каталога в правилах и поле GiveCustomItem.npc_id (замер 24798:
+# rules 12748, tools 12050; 24600 -> 24830).
+STATIC_MAX = 24830
 
 MODES = sorted(MODE_TOOLS)
 

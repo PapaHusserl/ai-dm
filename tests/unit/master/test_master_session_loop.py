@@ -21,6 +21,7 @@ from ai_dm.master.session import MasterResult
 from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision
 from ai_dm.protocol.render import render_tool_result
+from ai_dm.protocol.requests import parse_request
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "fixtures" / "scripts"
 
@@ -1030,6 +1031,209 @@ def test_round_until_then_rest_in_later_round_rests_with_report_tag(tmp_path, re
     assert has_invalid is False
     assert accepted == {"rest"}
     assert "until_then_rest" in result.report_tags
+
+
+# gold lose explicit идёт после выдач раунда и не списывает деньги за невыданную вещь
+# (ФД2 П2, решение 5)
+
+def give_custom_call(call_id="c1", name="Флакон духов", cost_cp=180, **extra):
+    return ToolCall(id=call_id, name="give_custom_item", input={
+        "type": "give_custom_item", "name": name, "description": "", "qty": 1,
+        "weight_lb": 0, "cost_cp": cost_cp, "quest": False, **extra,
+    })
+
+
+def trade_buy_call(call_id="t1"):
+    return ToolCall(id=call_id, name="trade", input={
+        "type": "trade", "npc_id": "aldric", "direction": "buy", "item_id": "custom_1",
+        "qty": 1, "quality": "any",
+    })
+
+
+def merchant_round(tmp_path, registry, cfg, calls):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.money_cp = 500
+    update = {"type": "npc_update", "npc_id": "aldric", "trade_kind": "general"}
+    npc = apply(ctx, parse_request(update))
+    assert npc.status == "accepted"
+    ctx.bundle.world.npcs["aldric"].location_id = ctx.hero.location_id
+    blocks, _, _ = session.run_round(ctx, calls, apply, MasterResult(), "explore")
+    return ctx, blocks
+
+
+def gold_call(call_id="g1", direction="lose", kind="explicit", amount=180):
+    return ToolCall(id=call_id, name="gold", input={
+        "type": "gold", "direction": direction, "kind": kind, "amount_cp": amount, "cr": "",
+    })
+
+
+def purse_round(tmp_path, registry, cfg, calls, used=0, executor=apply):
+    session, _, _, _ = make_session(scripted([]), tmp_path)
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.money_cp = 500
+    ctx.scene.custom_created = used
+    blocks, _, _ = session.run_round(ctx, calls, executor, MasterResult(), "explore")
+    return ctx, blocks
+
+
+def recording(order):
+    def execute(ctx, request):
+        order.append(request.type)
+        return Decision(status="accepted", result={"type": request.type})
+
+    return execute
+
+
+def status_of(block):
+    return json.loads(block.content)["status"]
+
+
+def test_round_gold_lose_runs_after_give_custom_item(tmp_path, registry, cfg):
+    order = []
+    purse_round(
+        tmp_path, registry, cfg, [gold_call(), give_custom_call()], executor=recording(order)
+    )
+    assert order == ["give_custom_item", "gold"]
+
+
+def test_round_gold_lose_with_given_item_is_accepted(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(tmp_path, registry, cfg, [gold_call(), give_custom_call()])
+    assert [status_of(b) for b in blocks] == ["accepted", "accepted"]
+    assert ctx.hero.money_cp == 320
+
+
+def test_round_gold_lose_with_item_not_given_by_limit_is_rejected(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [gold_call(), give_custom_call()], used=15
+    )
+    assert status_of(blocks[0]) == "rejected"
+    assert "не списан" in blocks[0].content
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_gold_after_item_gives_the_same_result_in_any_order(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [give_custom_call(), gold_call()], used=15
+    )
+    assert status_of(blocks[1]) == "rejected"
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_tool_results_keep_the_order_of_calls(tmp_path, registry, cfg):
+    _, blocks = purse_round(tmp_path, registry, cfg, [gold_call(), give_custom_call()], used=15)
+    assert [b.call_id for b in blocks] == ["g1", "c1"]
+    assert status_of(blocks[1]) == "clamped"
+
+
+def test_round_gold_lose_with_invalid_give_custom_item_is_rejected(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [give_custom_call(name=""), gold_call()]
+    )
+    assert blocks[0].is_error is True
+    assert status_of(blocks[1]) == "rejected"
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_gold_lose_with_invalid_give_item_is_rejected(tmp_path, registry, cfg):
+    bad = ToolCall(
+        id="i1", name="give_item", input={"type": "give_item", "item_id": "no_such_item", "qty": 1}
+    )
+    ctx, blocks = purse_round(tmp_path, registry, cfg, [bad, gold_call()])
+    assert status_of(blocks[1]) == "rejected"
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_gold_lose_with_given_srd_item_is_accepted(tmp_path, registry, cfg):
+    spear = ToolCall(
+        id="i1", name="give_item", input={"type": "give_item", "item_id": "spear", "qty": 1}
+    )
+    ctx, blocks = purse_round(tmp_path, registry, cfg, [gold_call(), spear])
+    assert [status_of(b) for b in blocks] == ["accepted", "accepted"]
+    assert ctx.hero.money_cp == 320
+
+
+def test_round_gold_lose_alone_is_not_blocked(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(tmp_path, registry, cfg, [gold_call()], used=15)
+    assert status_of(blocks[0]) == "accepted"
+    assert ctx.hero.money_cp == 320
+
+
+def test_round_gold_gain_keeps_its_place_in_the_order(tmp_path, registry, cfg):
+    order = []
+    calls = [gold_call(direction="gain"), give_custom_call()]
+    purse_round(tmp_path, registry, cfg, calls, executor=recording(order))
+    assert order == ["gold", "give_custom_item"]
+
+
+def test_round_gold_gain_is_not_blocked_by_item_not_given(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [gold_call(direction="gain"), give_custom_call()], used=15
+    )
+    assert status_of(blocks[0]) == "accepted"
+    assert ctx.hero.money_cp == 680
+
+
+def test_round_loot_gold_keeps_its_place_in_the_order(tmp_path, registry, cfg):
+    order = []
+    loot = gold_call(direction="lose", kind="loot_individual", amount=0)
+    purse_round(tmp_path, registry, cfg, [loot, give_custom_call()], executor=recording(order))
+    assert order == ["gold", "give_custom_item"]
+
+
+def test_round_gold_lose_with_stock_listing_is_rejected_and_purse_intact(tmp_path, registry, cfg):
+    ctx, blocks = merchant_round(
+        tmp_path, registry, cfg, [give_custom_call(npc_id="aldric"), gold_call()]
+    )
+    assert status_of(blocks[0]) == "accepted"
+    assert status_of(blocks[1]) == "rejected"
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_trade_buy_after_stock_listing_is_not_blocked(tmp_path, registry, cfg):
+    ctx, blocks = merchant_round(
+        tmp_path, registry, cfg, [give_custom_call(npc_id="aldric"), trade_buy_call()]
+    )
+    assert [status_of(b) for b in blocks] == ["accepted", "accepted"]
+    assert ctx.hero.money_cp == 320
+
+
+def test_round_gold_lose_after_a_non_give_call_is_accepted(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [gold_call("g0", direction="gain"), gold_call()]
+    )
+    assert [status_of(b) for b in blocks] == ["accepted", "accepted"]
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_gold_lose_after_rejected_srd_give_is_rejected(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [give_custom_call(name="Лом"), gold_call()]
+    )
+    assert status_of(blocks[0]) == "rejected"
+    assert status_of(blocks[1]) == "rejected"
+    assert ctx.hero.money_cp == 500
+
+
+def test_round_rejected_gold_tells_why_and_to_use_trade_buy(tmp_path, registry, cfg):
+    _, blocks = purse_round(
+        tmp_path, registry, cfg, [gold_call(), give_custom_call()], used=15
+    )
+    data = json.loads(blocks[0].content)
+    assert data["reason"] == "вещь в этом ответе не выдана"
+    assert data["signal_to_master"] == (
+        "Деньги не списаны: вещь за них в этом ответе не выдана. Опиши по факту; покупку у "
+        "торговца оформи через trade buy."
+    )
+
+
+def test_round_gold_lose_after_partial_clamp_is_accepted(tmp_path, registry, cfg):
+    ctx, blocks = purse_round(
+        tmp_path, registry, cfg, [give_custom_call(cost_cp=10**7), gold_call()]
+    )
+    assert status_of(blocks[0]) == "clamped"
+    assert status_of(blocks[1]) == "accepted"
+    assert ctx.hero.money_cp == 320
 
 
 def test_run_without_world_text_has_empty_world_text_in_system(tmp_path, registry, cfg):

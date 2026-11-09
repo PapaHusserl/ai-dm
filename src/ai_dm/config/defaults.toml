@@ -137,7 +137,7 @@ long_rest_wait_max = "8h"
 [custom_items]
 name_max = 40
 description_max = 200
-per_scene = 5
+per_scene = 15
 cost_cap_cp = 5000
 cost_cap_high_cp = 50000
 high_from_level = 5
@@ -151,7 +151,7 @@ attitude_good_buy_factor = 0.9
 attitude_good_sell_factor = 0.6
 attitude_refuse_at = -50
 ops_per_scene = 20
-new_merchants_per_scene = 1
+new_merchants_per_scene = 3
 restock_days = 7
 # торг Убеждением: поправка цены в процентах (успех / сильный успех / провал), потолок суммы с отношением
 haggle_success_percent = -10

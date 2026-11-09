@@ -120,8 +120,8 @@ class CustomItemsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name_max: int = 40
     description_max: int = 200
-    # новых сюжетных предметов за сцену
-    per_scene: int = 5
+    # новых предметов вне каталога за сцену
+    per_scene: int = 15
     # предел цены сюжетного предмета (мм): до уровня high_from_level и с него
     cost_cap_cp: int = 5000
     cost_cap_high_cp: int = 50000
@@ -307,7 +307,7 @@ class TradeConfig(BaseModel):
     # плохое отношение (attitude <= attitude_refuse_at): торговец отказывается
     attitude_refuse_at: int = Field(default=-50, ge=-100, le=100)
     ops_per_scene: int = Field(default=20, ge=1)
-    new_merchants_per_scene: int = Field(default=1, ge=0)
+    new_merchants_per_scene: int = Field(default=3, ge=0)
     restock_days: int = Field(default=7, ge=1)
     # торг Убеждением (партия Т5): поправка цены в процентах по исходу проверки
     haggle_success_percent: int = -10

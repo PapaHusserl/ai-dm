@@ -154,3 +154,12 @@ def restock(profile, now_s, cfg) -> bool:
     profile.purse_cp = cfg.trade.presets[profile.kind].purse_cp
     profile.restock_at_s = now_s + cfg.trade.restock_days * DAY_S
     return True
+
+
+def put_in_stock(profile, given):
+    for entry in profile.stock:
+        same = entry.cost_cp == given.cost_cp and entry.quality == given.quality
+        if same and entry.item_id == given.item_id:
+            entry.qty += given.qty
+            return
+    profile.stock.append(given)

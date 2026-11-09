@@ -111,6 +111,16 @@ def test_rules_send_new_services_to_npc_update_and_create():
 
 # проклятие (У0 П3)
 
+def test_rules_say_stock_then_buy_for_goods_outside_the_catalog():
+    text = rules_text()
+    assert "`give_custom_item` с `npc_id` торговца" in text
+    assert "`item_id` из ответа" in text
+
+
+def test_rules_say_gold_is_not_taken_for_an_item_not_given():
+    assert "`gold` не списывается" in rules_text()
+
+
 def test_rules_say_curse_only_after_a_failed_roll():
     text = rules_text()
     assert "Проклятие (`curse`)" in text

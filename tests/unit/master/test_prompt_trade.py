@@ -183,6 +183,19 @@ def test_stock_keeps_its_order(registry, cfg):
     assert [p["item_id"] for p in stock] == ["longsword", "scimitar"]
 
 
+def test_custom_stock_position_has_its_id_and_price(registry, cfg):
+    from ai_dm.state.world import CustomItem
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.custom_items["custom_1"] = CustomItem(
+        id="custom_1", name="Флакон духов", description="", created_s=0, cost_cp=180
+    )
+    add_merchant(ctx, stock=[entry("custom_1", 180, qty=2)])
+    assert trade_of(ctx)[0]["stock"] == [
+        {"item_id": "custom_1", "name": "Флакон духов", "price_cp": 180}
+    ]
+
+
 def test_stock_over_the_cap_is_cut_to_25(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_merchant(ctx, stock=[entry("longsword", 1500 + i) for i in range(30)])

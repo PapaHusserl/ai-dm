@@ -7,8 +7,13 @@
 #     с подсказкой give_item; имя совпало с кастомным (casefold, trim) -> тот же id, created=false,
 #     seq и счётчик сцены не растут; иначе id custom_<seq+1>, запись в world.custom_items;
 #     qty > give_item_max_qty -> clamped; cost_cp выше капа (5000 мм до 4 уровня, 50000 с 5-го) ->
-#     clamped, цена = кап; новых за сцену не больше [custom_items].per_scene (5): шестой ->
+#     clamped, цена = кап; новых за сцену не больше [custom_items].per_scene (15): 16-й ->
 #     clamped, не выдан. Результат {item_id, qty, created}; запись инвентаря с cost_cp предмета.
+#   Поле npc_id (ФД2 П2, решение 10): id торговца сцены -- вещь не герою, а в его trade.stock
+#       (результат + npc_id; лог «Товар у <имя>: <вещь> xN»); не торговец -> Invalid not_merchant,
+#       NPC не здесь -> Invalid npc_absent, нет такого -> Invalid unknown_npc;
+#       лимит per_scene общий; выдача того же имени герою без npc_id ->
+#       rejected «товар у <имя>»; покупка -- trade buy.
 #   Следующий запрос того же хода видит новый предмет (ctx.registry обновлён).
 #   Предмет с держателем (world.custom_items[id].holder): give_item <id> и give_custom_item с тем же
 #       именем -> accepted, holder None, предмет у героя с ценой из holder.cost_cp, лог
@@ -509,9 +514,13 @@ def fill_scene(ctx, count):
         assert d.status == "accepted"
 
 
-def test_sixth_new_item_in_a_scene_is_clamped(registry, cfg):
+def test_default_scene_limit_is_fifteen(cfg):
+    assert cfg.custom_items.per_scene == 15
+
+
+def test_sixteenth_new_item_in_a_scene_is_clamped(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 5)
+    fill_scene(ctx, 15)
     d = give(ctx, "Шестая вещь")
     assert d.status == "clamped"
     assert d.report_tag == "limit-exceeded"
@@ -519,40 +528,40 @@ def test_sixth_new_item_in_a_scene_is_clamped(registry, cfg):
     assert ctx.marks == ["limit-exceeded"]
 
 
-def test_sixth_new_item_result_says_nothing_was_given(registry, cfg):
+def test_sixteenth_new_item_result_says_nothing_was_given(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 5)
+    fill_scene(ctx, 15)
     d = give(ctx, "Шестая вещь")
     assert d.result == {"item_id": None, "qty": 0, "created": False}
     assert d.log == []
-    assert all(e.data["item"] != "custom_6" for e in ctx.events)
+    assert all(e.data["item"] != "custom_16" for e in ctx.events)
 
 
-def test_sixth_new_item_is_not_given_nor_created(registry, cfg):
+def test_sixteenth_new_item_is_not_given_nor_created(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 5)
+    fill_scene(ctx, 15)
     give(ctx, "Шестая вещь")
-    assert len(catalog(ctx)) == 5
-    assert ctx.bundle.world.custom_item_seq == 5
-    assert ctx.scene.custom_created == 5
+    assert len(catalog(ctx)) == 15
+    assert ctx.bundle.world.custom_item_seq == 15
+    assert ctx.scene.custom_created == 15
     assert [e.item_id for e in ctx.hero.inventory if e.item_id.startswith("custom_")] == [
-        f"custom_{n}" for n in range(1, 6)
+        f"custom_{n}" for n in range(1, 16)
     ]
 
 
-def test_fifth_new_item_in_a_scene_is_fine(registry, cfg):
+def test_fifteenth_new_item_in_a_scene_is_fine(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 4)
+    fill_scene(ctx, 14)
     assert give(ctx, "Пятая вещь").status == "accepted"
 
 
 def test_reissue_of_an_existing_item_ignores_the_scene_limit(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 5)
+    fill_scene(ctx, 15)
     d = give(ctx, "Вещь 0")
     assert d.status == "accepted"
     assert d.result == {"item_id": "custom_1", "qty": 1, "created": False}
-    assert ctx.scene.custom_created == 5
+    assert ctx.scene.custom_created == 15
 
 
 def test_scene_limit_comes_from_the_config(registry, cfg):
@@ -563,7 +572,7 @@ def test_scene_limit_comes_from_the_config(registry, cfg):
 
 def test_new_scene_starts_the_count_again(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    fill_scene(ctx, 5)
+    fill_scene(ctx, 15)
     ctx.scene.custom_created = 0
     assert give(ctx, "Шестая вещь").status == "accepted"
 
@@ -757,7 +766,7 @@ def test_same_name_return_logs_the_recovery_and_keeps_the_price(registry, cfg):
 
 def test_same_name_return_works_when_the_scene_limit_is_used_up(registry, cfg):
     ctx = held_key(registry, cfg)
-    ctx.scene.custom_created = 5
+    ctx.scene.custom_created = 15
     d = give(ctx, quest=True)
     assert d.status == "accepted"
     assert key_in(ctx).holder is None
@@ -823,3 +832,254 @@ def test_give_item_of_an_srd_item_is_a_plain_receive(registry, cfg):
     assert d.status == "accepted"
     assert d.log[0].startswith("Получено:")
     assert count_item(ctx.hero, "spear") == before + 1
+
+
+# npc_id: прилавок на лету (ФД2 П2, решение 10)
+
+def make_merchant(ctx, npc_id="aldric"):
+    d = apply(ctx, req("npc_update", npc_id=npc_id, trade_kind="general"))
+    assert d.status == "accepted"
+    ctx.bundle.world.npcs[npc_id].location_id = "vale"
+    return ctx.bundle.world.npcs[npc_id]
+
+
+def stock_give(ctx, name="Флакон духов", npc_id="aldric", **fields):
+    return give(ctx, name, npc_id=npc_id, **fields)
+
+
+def stock_of(ctx, npc_id="aldric"):
+    return [(e.item_id, e.qty, e.cost_cp) for e in ctx.bundle.world.npcs[npc_id].trade.stock]
+
+
+def test_npc_id_of_a_non_merchant_is_invalid_not_merchant(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].location_id = "vale"
+    before = dump(ctx)
+    d = stock_give(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code == "not_merchant"
+    assert "trade_kind" in d.message
+    assert dump(ctx) == before
+
+
+def test_npc_id_of_an_absent_npc_is_invalid_npc_absent(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    ctx.bundle.world.npcs["aldric"].location_id = "goblin_den"
+    before = dump(ctx)
+    d = stock_give(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_absent"
+    assert dump(ctx) == before
+
+
+def test_unknown_npc_id_is_invalid_unknown_npc(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = stock_give(ctx, npc_id="nobody")
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_npc"
+
+
+def test_npc_id_puts_the_item_into_the_merchant_stock(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    d = stock_give(ctx, qty=2, cost_cp=180)
+    assert d.status == "accepted"
+    assert stock_of(ctx) == [("custom_1", 2, 180)]
+    assert d.result == {"item_id": "custom_1", "qty": 2, "created": True, "npc_id": "aldric"}
+
+
+def test_npc_id_does_not_touch_the_hero_inventory(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    before = list(ctx.hero.inventory)
+    stock_give(ctx, cost_cp=180)
+    assert ctx.hero.inventory == before
+
+
+def test_npc_id_creates_the_item_and_counts_it_in_the_scene(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    assert key_in(ctx).name == "Флакон духов"
+    assert ctx.scene.custom_created == 1
+
+
+def test_npc_id_log_names_the_merchant_and_the_item(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    d = stock_give(ctx, qty=2, cost_cp=180)
+    assert d.log == ["Товар у Олдрик: Флакон духов x2"]
+
+
+def test_npc_id_item_counts_toward_the_scene_limit(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    fill_scene(ctx, 15)
+    d = stock_give(ctx, "Шестнадцатая", cost_cp=180)
+    assert d.status == "clamped"
+    assert stock_of(ctx) == []
+
+
+def test_item_in_stock_is_not_given_to_the_hero_by_name(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    d = give(ctx, "Флакон духов", cost_cp=180)
+    assert d.status == "rejected"
+    assert "Олдрик" in d.signal_to_master
+    assert count_item(ctx.hero, "custom_1") == 0
+
+
+def test_trade_buy_moves_the_stock_item_to_the_hero_for_money(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    ctx.hero.money_cp = 1000
+    d = apply(ctx, req(
+        "trade", npc_id="aldric", direction="buy", item_id="custom_1", qty=1, quality="any",
+    ))
+    assert d.status == "accepted"
+    assert count_item(ctx.hero, "custom_1") == 1
+    assert d.result["total_cp"] == 180
+    assert ctx.hero.money_cp == 820
+    assert sum(qty for _, qty, _ in stock_of(ctx)) == 0
+
+
+def test_item_in_stock_is_not_given_to_the_hero_by_item_id(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    ctx.hero.money_cp = 1000
+    d = apply(ctx, req("give_item", item_id="custom_1", qty=1))
+    assert d.status == "rejected"
+    assert "Олдрик" in d.signal_to_master
+    assert count_item(ctx.hero, "custom_1") == 0
+    assert stock_of(ctx) == [("custom_1", 1, 180)]
+    assert ctx.hero.money_cp == 1000
+
+
+def test_catalog_item_in_stock_is_still_given_by_give_item(registry, cfg):
+    from ai_dm.state.world import InventoryEntry
+
+    ctx = make_ctx(registry, cfg)
+    npc = make_merchant(ctx)
+    npc.trade.stock.append(InventoryEntry(item_id="longsword", qty=1, cost_cp=1500))
+    had = count_item(ctx.hero, "longsword")
+    d = apply(ctx, req("give_item", item_id="longsword", qty=1))
+    assert d.status == "accepted"
+    assert count_item(ctx.hero, "longsword") == had + 1
+
+
+def test_stock_item_with_zero_cost_is_invalid_bad_cost(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    before = dump(ctx)
+    d = stock_give(ctx, cost_cp=0)
+    assert isinstance(d, Invalid)
+    assert d.code == "bad_cost"
+    assert stock_of(ctx) == []
+    assert dump(ctx) == before
+
+
+def test_stock_item_with_cost_one_is_accepted(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    d = stock_give(ctx, cost_cp=1)
+    assert d.status == "accepted"
+    assert stock_of(ctx) == [("custom_1", 1, 1)]
+
+
+def test_restock_of_an_existing_zero_cost_item_takes_the_new_price(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    give(ctx, "Флакон духов", cost_cp=0)
+    d = stock_give(ctx, cost_cp=180)
+    assert d.status == "accepted"
+    assert stock_of(ctx) == [("custom_1", 1, 180)]
+
+
+STOCKED_SIGNAL = (
+    "Предмет 'Флакон духов' — товар у Олдрик: герою он достаётся только покупкой "
+    "(trade buy), не выдачей."
+)
+
+
+def test_stocked_refusal_by_name_tells_the_name_and_trade_buy(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    d = give(ctx, "Флакон духов", cost_cp=180)
+    assert d.signal_to_master == STOCKED_SIGNAL
+
+
+def test_stocked_refusal_by_item_id_tells_the_name_and_trade_buy(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    stock_give(ctx, cost_cp=180)
+    d = apply(ctx, req("give_item", item_id="custom_1", qty=1))
+    assert d.signal_to_master == STOCKED_SIGNAL
+
+
+def test_stock_price_below_one_tells_the_minimum(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    d = stock_give(ctx, cost_cp=0)
+    assert d.message == "цена товара на прилавке: не меньше 1 медной монеты"
+
+
+def test_scene_limit_signal_tells_to_describe_by_fact(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    fill_scene(ctx, 15)
+    d = give(ctx, "Шестнадцатая")
+    assert d.signal_to_master == (
+        "В этой сцене больше нельзя создавать новые предметы вне каталога: предмет не выдан, "
+        "опиши по факту."
+    )
+
+
+def test_clamp_reasons_are_joined_with_semicolon(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    cap = cfg.custom_items.cost_cap_cp
+    top = cfg.limits.give_item_max_qty
+    d = give(ctx, cost_cp=cap + 1, qty=top + 1)
+    assert d.reason == (
+        f"цена {cap + 1} выше предела {cap}, взято {cap}; запрошено {top + 1}, выдано {top}"
+    )
+
+
+def test_stock_of_a_quest_item_the_hero_holds_is_rejected(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    give(ctx, "Флакон духов", quest=True, cost_cp=180)
+    d = stock_give(ctx, cost_cp=180)
+    assert d.status == "rejected"
+    assert stock_of(ctx) == []
+
+
+def test_stock_price_over_the_cap_is_clamped_to_the_cap(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    cap = cfg.custom_items.cost_cap_cp
+    d = stock_give(ctx, cost_cp=cap + 1)
+    assert d.status == "clamped"
+    assert stock_of(ctx) == [("custom_1", 1, cap)]
+
+
+def test_stock_qty_over_the_limit_is_clamped(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    make_merchant(ctx)
+    top = cfg.limits.give_item_max_qty
+    d = stock_give(ctx, cost_cp=180, qty=top + 1)
+    assert d.status == "clamped"
+    assert stock_of(ctx) == [("custom_1", top, 180)]
+
+
+def test_npc_with_services_but_no_trade_is_not_merchant_and_not_listed(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].location_id = "vale"
+    ctx.bundle.world.npcs["aldric"].services = ["лечение"]
+    d = stock_give(ctx, cost_cp=180)
+    assert isinstance(d, Invalid)
+    assert d.code == "not_merchant"
+    assert "aldric" not in d.message

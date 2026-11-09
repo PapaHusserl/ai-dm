@@ -177,7 +177,7 @@ def sell(ctx, request, npc):
     if request.item_id in world.custom_items:
         custom_items.hand_to_npc(world, npc, given, world.clock.now_s)
     else:
-        put_in_stock(profile, given)
+        trade_rules.put_in_stock(profile, given)
     event = DomainEvent(type="item_sold", data={"item": request.item_id, "qty": qty})
     apply_events(world, [event])
     ctx.events.append(event)
@@ -191,12 +191,3 @@ def sell(ctx, request, npc):
             result, log,
         )
     return Decision(status="accepted", result=result, log=log)
-
-
-def put_in_stock(profile, given):
-    for entry in profile.stock:
-        same = entry.cost_cp == given.cost_cp and entry.quality == given.quality
-        if same and entry.item_id == given.item_id:
-            entry.qty += given.qty
-            return
-    profile.stock.append(given)

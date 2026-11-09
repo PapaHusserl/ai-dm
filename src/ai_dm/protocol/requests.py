@@ -296,7 +296,8 @@ class GiveItem(Request):
 
 
 class GiveCustomItem(Request):
-    """Создать и дать герою сюжетный предмет, которого нет в реестре (ключ, записка, перстень)."""
+    """Создать и дать герою сюжетный предмет, которого нет в реестре (ключ, записка, перстень);
+    с npc_id торговца -- вещь вне каталога на его прилавок."""
 
     type: Literal["give_custom_item"]
     name: str = Field(description="Короткое название предмета.")
@@ -305,7 +306,12 @@ class GiveCustomItem(Request):
     weight_lb: float = Field(description="Вес в фунтах; 0 = не задан.")
     cost_cp: int = Field(description="Цена в медных монетах; 0 = без цены.")
     quest: bool = Field(description="Важный для сюжета предмет.")
-    NEUTRAL: ClassVar[dict] = {"weight_lb": 0}
+    npc_id: str = Field(
+        "",
+        description="Id торговца сцены: вещь появляется у него в продаже, герою не выдаётся; "
+        "пусто = герой получает вещь.",
+    )
+    NEUTRAL: ClassVar[dict] = {"weight_lb": 0, "npc_id": ""}
 
 
 class UseItem(Request):

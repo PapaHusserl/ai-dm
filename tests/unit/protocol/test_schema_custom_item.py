@@ -4,7 +4,7 @@ import pytest
 
 from ai_dm.protocol.schema import tool_defs, tool_set
 
-FIELDS = ["cost_cp", "description", "name", "qty", "quest", "type", "weight_lb"]
+FIELDS = ["cost_cp", "description", "name", "npc_id", "qty", "quest", "type", "weight_lb"]
 
 
 def tool():
@@ -36,6 +36,7 @@ def test_tool_field_types():
     assert props["weight_lb"]["type"] == "number"
     assert props["quest"]["type"] == "boolean"
     assert props["type"]["enum"] == ["give_custom_item"]
+    assert props["npc_id"]["type"] == "string"
 
 
 def test_tool_has_a_description_in_russian():

@@ -1758,3 +1758,27 @@ updated: 2026-11-09
 
 (разбор ФД2, docs/plan-fd2.md) Тег `missing-mechanic` на t2109:
 saves/drunk_dragon-00000001/issues/20261104T164308-t2109-limit-exceeded+missing-mechanic.
+
+## 292. Выжившие мутанты старых строк выдачи и продажи (ФД2 П2)
+status: idea
+priority: low
+updated: 2026-11-09
+
+(ФД2 П2, docs/plan-fd2.md) 26 выживших на старых строках: `trade.sell` 96, 117, 124, 125; `resources.give_item_problem` 13–20;
+`resources.custom_item_problem` 14, 15, 18–21, 32, 34–37; `resources.custom_item_refusal` 28; `MasterSession.run_round` 6, 74.
+
+## 293. Второй стек одной кастомной вещи у другого торговца
+status: idea
+priority: low
+updated: 2026-11-09
+
+(ФД2 П2, docs/plan-fd2.md) `give_custom_item` с `npc_id` второго торговца для вещи, лежащей в `stock` первого, создаёт второй стек
+того же `item_id`, как у каталожного товара. План не оговаривал.
+
+## 294. Плавающий тест создания героя в TUI
+status: idea
+priority: low
+updated: 2026-11-09
+
+(ФД2 П2) `tests/unit/ui/tui/test_tui_create.py::test_full_picks_then_accept_returns_hero_sheet` упал в `make cov` с
+`textual.worker.WorkerCancelled` (load average > 100), повтор отдельно прошёл. Причина не установлена.

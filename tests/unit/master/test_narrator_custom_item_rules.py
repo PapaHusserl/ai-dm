@@ -88,6 +88,20 @@ def test_use_item_description_mentions_being_given():
     assert "ему его дают" in UseItem.__doc__
 
 
+def test_rules_send_merchant_goods_outside_the_catalog_to_npc_id():
+    text = rules_text()
+    assert "`give_custom_item` с `npc_id` торговца" in text
+    assert "не герою" in text
+
+
+def test_give_custom_item_npc_id_field_describes_the_stall():
+    from ai_dm.protocol.requests import GiveCustomItem
+
+    description = GiveCustomItem.model_fields["npc_id"].description
+    assert "торговца" in description
+    assert "герою не выдаётся" in description
+
+
 def test_take_item_fields_describe_spent_without_holder():
     from ai_dm.protocol.requests import TakeItem
 

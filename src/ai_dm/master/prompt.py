@@ -239,13 +239,17 @@ def last_combat_data(last, registry):
     return {"gear": gear_names(last.gear, registry)}
 
 
-def merchant_data(npc, registry, level, cfg, now_s):
+def merchant_data(npc, ctx, world, level):
     # торговец сцены: кошелёк, коэффициент продажи, до 25 позиций stock и сводка категорий пресета
+    registry, cfg, now_s, customs = ctx.registry, ctx.cfg, world.clock.now_s, world.custom_items
     preset = cfg.trade.presets[npc.trade.kind]
     stock = []
     for entry in npc.trade.stock[:TRADE_STOCK_MAX]:
         price = merchant_buy_quote(entry.cost_cp, npc, now_s, cfg)
         position = {"item_id": entry.item_id, "price_cp": price}
+        # предмет мира (товар прилавка на лету): имени нет больше нигде в запросе
+        if entry.item_id in customs:
+            position["name"] = customs[entry.item_id].name
         if entry.quality:
             position["quality"] = entry.quality
         stock.append(position)
@@ -266,7 +270,7 @@ def merchant_data(npc, registry, level, cfg, now_s):
 def trade_data(world, scene_npcs, ctx, level):
     # ключ trade: торговцы сцены; пусто, если их нет
     merchants = [
-        merchant_data(world.npcs[n["id"]], ctx.registry, level, ctx.cfg, world.clock.now_s)
+        merchant_data(world.npcs[n["id"]], ctx, world, level)
         for n in scene_npcs if "merchant" in n
     ]
     return {"trade": merchants} if merchants else {}

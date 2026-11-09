@@ -155,6 +155,10 @@ def buy_source(ctx, request, npc):
     custom = ctx.bundle.world.custom_items.get(request.item_id)
     if custom is None:
         return catalog_source(ctx, request, npc, found)
+    # товар прилавка на лету: стек торговца, редкость не проверяется
+    source = stock_source(request, npc)
+    if source is not None:
+        return source, None
     # выкуп своего же предмета у держателя: редкость и качество запроса не проверяются
     holder = custom.holder
     if holder is None or holder.kind != "npc" or holder.ref != npc.id:
@@ -162,17 +166,25 @@ def buy_source(ctx, request, npc):
     return Source(holder.cost_cp, None, holder.qty, holder=holder), None
 
 
-def catalog_source(ctx, request, npc, found):
-    profile = npc.trade
+def stock_source(request, npc):
+    # самый дешёвый стек торговца с этим item_id и качеством запроса или None
     stacks = [
-        e for e in profile.stock
+        e for e in npc.trade.stock
         if e.item_id == request.item_id and quality_matches(e, request.quality)
     ]
-    if stacks:
+    if not stacks:
+        return None
+    stack = min(stacks, key=lambda e: e.cost_cp)
+    return Source(stack.cost_cp, stack.quality, stack.qty, stack=stack)
+
+
+def catalog_source(ctx, request, npc, found):
+    profile = npc.trade
+    source = stock_source(request, npc)
+    if source is not None:
         if too_rare(ctx, found):
             return None, too_rare_rejected(found)
-        stack = min(stacks, key=lambda e: e.cost_cp)
-        return Source(stack.cost_cp, stack.quality, stack.qty, stack=stack), None
+        return source, None
     preset = ctx.cfg.trade.presets[profile.kind]
     level = ctx.hero.sheet.level
     if request.quality in (None, "new") and trade_rules.merchant_sells(

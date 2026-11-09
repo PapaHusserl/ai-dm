@@ -1,7 +1,7 @@
 # Торговля, партия Т0 (TRADE-PLAN, разд. 1-3): секция [trade] конфига.
 # Ожидаемый API: RulesConfig.trade: TradeConfig (extra="forbid"):
 #   buy_factor = 1.0, sell_factor = 0.5, full_price_categories = ["valuable"],
-#   ops_per_scene = 20, new_merchants_per_scene = 1,
+#   ops_per_scene = 20, new_merchants_per_scene = 3,
 #   presets: dict[str, TradePreset] -- general, smith, armorer, alchemist, fence;
 #   TradePreset(categories: list[str], magic: bool = False, purse_cp: int, buys: list[str])
 #   Валидатор: инвариант цен (см. ниже) -- ValidationError.
@@ -27,7 +27,7 @@ def test_default_ops_per_scene():
 
 
 def test_default_new_merchants_per_scene():
-    assert trade().new_merchants_per_scene == 1
+    assert trade().new_merchants_per_scene == 3
 
 
 def test_default_preset_kinds():

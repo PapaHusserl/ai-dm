@@ -32,6 +32,7 @@ BACKLOG 274, 275, 224. План пишет папа-кабан.
 Сказано Владу до развилок.
 
 15. 2026-11-09, «окей, кабаним». Кабан Декарта в шаге не вызывается (Влад; смета закладывала 3 вызова, ≈ 5,2 $).
+16. 2026-11-09, окно, Р6 по рекомендации папы. Товар прилавка с ценой 0 — отказ `Invalid bad_cost` (У14). Кто решил: Влад.
 
 ## Суть
 
@@ -51,8 +52,11 @@ BACKLOG 274, 275, 224. План пишет папа-кабан.
   то же при 15;
 - было: `gold lose explicit` исполняется в порядке вызовов ответа (`session.py:327-331`) → станет: исполняется после
   `give_item`/`give_custom_item` того же раунда и отказывается, если в раунде вещь не выдана;
-- новое: `give_custom_item` с `npc_id` торговца кладёт вещь в его `trade.stock`, не герою; покупка — существующим
-  `trade buy` (`trade_pick.catalog_source:167-175`, ветка стеков `stock`).
+- новое: `give_custom_item` с `npc_id` торговца кладёт вещь в его `trade.stock`, не герою; покупка — `trade buy`;
+- было `trade_pick.buy_source:155-162`: вещь из `world.custom_items` → только `custom.holder` этого NPC, иначе `not_sold`
+  (до `catalog_source` и стеков `stock` кастомная вещь не доходит) → станет: кастомная вещь — сначала стек `stock` этого NPC
+  (`stock_source`, новая, вынос из `catalog_source:167-175`), затем `holder`, иначе `not_sold` (поправка 2026-11-09 по красной
+  проверке доебы П2; прежняя строка «существующим `catalog_source`» опровергнута кодом).
 
 **Поведение:** меняется — память рассказчика (больше ходов, сцен, глав в запросе), лента (строка выкладки товара — Р1),
 покупки у лавочника (через движок), отказ `gold` при невыданной вещи.
@@ -90,10 +94,21 @@ BACKLOG 274, 275, 224. План пишет папа-кабан.
 (grep по `src/ai_dm/campaigns` пуст) — созданы рассказчиком в игре, значит «контент пака» случай t3067 не покрывает.
 Единственная форма без нового контента и без полей сейва — прилавок на лету: у `TradeProfile.stock` (`state/world.py:52`)
 уже есть стеки `InventoryEntry` с ценой, `merchant_data` (`prompt.py:236-245`) показывает их рассказчику с `price_cp`,
-`trade buy` покупает из стека (`trade_pick.catalog_source:167-175`, редкость у кастомной вещи не срабатывает —
-`as_item` даёт `magic` по умолчанию, `rules/custom_items.py:5-11`), `/shop` показывает стек игроку
-(`game/shop_text.py:29`). Не хватает одного: положить новую вещь в `stock` вместо инвентаря героя — поле `npc_id` в
-`give_custom_item` (аналог `TakeItem.holder_npc_id`, `requests.py:353`). Что даёт игроку: лавочник, которого рассказчик
+`trade buy` списывает деньги и переносит вещь из стека (`handlers/trade.py:117-120`), `/shop` показывает стек игроку
+(`game/shop_text.py:29`). Не хватает двух вещей. (а) Положить новую вещь в `stock` вместо инвентаря героя — поле `npc_id` в
+`give_custom_item` (аналог `TakeItem.holder_npc_id`, `requests.py:353`). (б) Научить выбор источника покупки брать кастомную
+вещь из `stock` (поправка 2026-11-09 по красной проверке доебы: тест `test_trade_buy_moves_the_stock_item_to_the_hero_for_money`):
+`trade_pick.buy_source:155-162` для вещи из `world.custom_items` смотрит только `custom.holder` этого NPC и даёт `not_sold`,
+ветка стеков `catalog_source:167-175` для неё недостижима — прежнее утверждение «покупает существующий `catalog_source`»
+неверно. Форма (У11): выбор стека `catalog_source:167-175` выносится в `stock_source(request, npc)` (самый дешёвый подходящий
+стек или None), `catalog_source` зовёт его и дальше как сейчас (редкость, пресет), `buy_source` для кастомной вещи — сначала
+`stock_source`, затем `holder`, иначе `not_sold`; редкость для товара прилавка не проверяется (`as_item` даёт `magic = False`,
+`items.py:45`). Отклонено: пустить кастомную вещь через `catalog_source` целиком — ветка пресета `merchant_sells` (`rules/trade.py:22-30`)
+продала бы `valuable` (категория `as_item` неквестовой вещи) у пресета с этой категорией (`defaults.toml:190`) без стека и без
+предела количества; класть товар в `holder` вместо `stock` — его не видят `merchant_data` и `/shop` стеком, а `holder` — учёт
+проданного героем (побочная находка ниже). Комментарий `state/world.py:59` «сюжетные сюда не кладутся» устаревает — поправить.
+`holder` у товара прилавка остаётся `None` («в обороте», `world.py:278`); купленная герою и проданная назад вещь уходит в
+`holder`, как сейчас (`trade.py:177-178`); если у NPC есть и стек, и `holder` одной вещи — сначала стек. Что даёт игроку: лавочник, которого рассказчик
 сделал торговцем (`npc_update trade_kind`, правило `narrator_rules.md:100` уже требует), получает прилавок с настоящими
 позициями и ценой; деньги и вещь — одной операцией движка, без потерь (t3067) и без «извлекаешь фиал, а в инвентаре пусто»
 (t3068); товар живёт в мире, виден в `/shop`, торг через `haggle`. Случай t3067 по шагам: `npc_update fabian_spices
@@ -101,9 +116,12 @@ trade_kind=general` → `give_custom_item name=… npc_id=fabian_spices cost_cp=
 слишком длинное имя (42 > 40) отказывается как сейчас, деньги не уходят. Ограничение: `new_merchants_per_scene = 1`
 (`defaults.toml:154`) — на рынке из 9 NPC второй лавочник за сцену торговцем не станет (Р2). Граница с 254: ФД2 не
 трогает `ShopModal`/`shop_blocks`, товар попадает в окно через существующий `sale_rows`; 254 (серия сделок за открытие) —
-как было. Объём — ≈ 70 строк кода, одно поле запроса, один перенос функции: шаг остаётся M, выносить не нужно; пометка
-свинопаса «новый контент» к этой форме не относится. BACKLOG 284 не наступает: `trade_pick.npc_problem` только вызывается
-для проверки торговца, не правится. Решение 5 при решении 6: путь покупки через `trade` атомарен, догадка не нужна;
+как было. Объём — ≈ 80 строк кода (из них `trade_pick.py` ≈ 10), одно поле запроса, один перенос функции: шаг остаётся M,
+выносить не нужно; пометка свинопаса «новый контент» к этой форме не относится. BACKLOG 284 (выжившие мутанты старых строк
+`trade_pick.npc_problem` 1, 2, 6) не наступает и после поправки (б): `trade_pick.py` правится в `buy_source`/`catalog_source` +
+новая `stock_source`, `npc_problem` только вызывается; mutmut П2 идёт по `FUNCS`, мутанты `npc_problem` не генерируются,
+выжившие на нетронутых строках `buy_source` (ветка `holder`) — «старые строки» `make mutate-diff` → в BACKLOG по правилу 4
+AGENTS.md. Прежняя формулировка «`trade_pick.py` не правится» опровергнута, вывод по 284 остаётся. Решение 5 при решении 6: путь покупки через `trade` атомарен, догадка не нужна;
 решение 5 остаётся страховкой старого пути (`gold` + `give_custom_item`, подарок и плата в одном ответе). Его ограничения
 снимаются отложенным исполнением: `gold lose explicit` идёт после выдач раунда и отказывается, если выдача не удалась
 (t3067: `gold` шёл последним — отказ без возврата); обратный порядок вызовов больше не важен.
@@ -163,7 +181,7 @@ trade_kind=general` → `give_custom_item name=… npc_id=fabian_spices cost_cp=
 (`test_prompt_custom_items.py`, `test_prompt_item_cost.py`, `test_master_prompt.py`, `test_master_rules.py`), править только
 те, что утверждают отсутствующие теперь ключи (grep при реализации). Объём правок тестов — ≈ 15 строк (ожидание).
 
-**5. BACKLOG 284** — не наступает (п. 1).
+**5. BACKLOG 284** — не наступает (п. 1; уточнено 2026-11-09: `trade_pick.py` в П2 правится, но не `npc_problem`).
 
 Концепция (ОВ/ДГ): без решения 3 (floor сцен): −≈ 15 строк кода и ≈ 40 строк тестов, теряем нить главы при нехватке
 места (на t3144 ушли все 7 сцен главы 26). Без решения 5 (отложенный `gold`): −≈ 35 строк кода и ≈ 50 тестов, теряем
@@ -210,6 +228,15 @@ trade_kind=general` → `give_custom_item name=… npc_id=fabian_spices cost_cp=
   `:349-355` текст отказа лимита (У4); новая `gold_without_item_rejected()` рядом с `until_with_rest_invalid` `:1159`.
 - `src/ai_dm/rules/trade.py` — `put_in_stock` переезжает из `protocol/handlers/trade.py:196-202` (`handlers/trade.py`
   импортирует `resources.clamped` — обратный импорт дал бы цикл); `handlers/trade.py:180` импорт из нового места.
+- `src/ai_dm/protocol/handlers/trade_pick.py` (добавлено 2026-11-09 по красной проверке доебы, разбор п. 1 (б), У11):
+  `:167-175` выбор стека из `catalog_source` → новая `stock_source(request, npc)` (стеки `npc.trade.stock` по `item_id` и
+  `quality_matches`, самый дешёвый → `Source(stack.cost_cp, stack.quality, stack.qty, stack=stack)`, иначе None);
+  `catalog_source:165-175` — зовёт `stock_source`, при стеке проверка `too_rare` и возврат как сейчас; `buy_source:155-162` —
+  для вещи из `world.custom_items` сначала `stock_source`, затем ветка `holder`, иначе `not_sold`; комментарий `:158`.
+  `handlers/trade.py:buy:117-120` не меняется (стек уменьшается и чистится как у обычного товара). ≈ 10 строк (ожидание);
+  `make smells` — вынос укорачивает `catalog_source`, `buy_source` +3 строки, баланс проверить прогоном.
+- `src/ai_dm/state/world.py:59` — комментарий `TradeProfile.stock` «сюжетные сюда не кладутся» → «…; сюжетные — только товар
+  прилавка на лету (`give_custom_item npc_id`), проданные героем сюжетные — в `holder`».
 - `src/ai_dm/master/session.py:320-345` `MasterSession.run_round` — порядок исполнения: сначала не-`gold`, потом `gold`
   с `direction lose` и `kind explicit` (новая `gold_after_items(calls)` рядом с `until_with_rest` `:35`); если в раунде
   была выдача без вещи (новая `item_not_given(outcome)`: `Invalid`, `rejected`, или `clamped` с `qty == 0`) — для
@@ -227,9 +254,11 @@ trade_kind=general` → `give_custom_item name=… npc_id=fabian_spices cost_cp=
   `gold lose` после `give_custom_item`; отказ при невыданной вещи; проходит при выданной; `gold gain` и `loot_individual`
   не откладываются; порядок `ToolResult` = порядок вызовов); `tests/unit/master/test_narrator_trade_rules.py`,
   `test_narrator_custom_item_rules.py` (фразы правил); `tests/unit/game/test_shop_rows.py` (товар в строках `/shop`);
-  `tests/unit/master/test_prompt_trade.py` (кастомный стек в `trade.stock` с `price_cp`).
-- Объём: код ≈ 70 строк, правила ≈ 6, тесты ≈ 150 (ожидание). Весь шаг ≈ 350 строк — две партии по границе файлов
-  (память: `context`/`prompt`/`npc_memory`; покупки: `resources`/`requests`/`session`/`trade`), П1 отдаётся игроку сразу.
+  `tests/unit/master/test_prompt_trade.py` (кастомный стек в `trade.stock` с `price_cp`). Тесты `buy_source` по имени не
+  зовут (grep пуст) — покрытие через `trade buy`: `tests/unit/protocol/test_apply_trade.py:862-950` (выкуп у `holder`,
+  регресс ветки), `test_apply_haggle.py`, `test_give_custom_item.py:932`.
+- Объём: код ≈ 80 строк, правила ≈ 6, тесты ≈ 150 (ожидание). Весь шаг ≈ 360 строк — две партии по границе файлов
+  (память: `context`/`prompt`/`npc_memory`; покупки: `resources`/`requests`/`session`/`trade`/`trade_pick`), П1 отдаётся игроку сразу.
 
 ## Партии
 
@@ -240,9 +269,11 @@ trade_kind=general` → `give_custom_item name=… npc_id=fabian_spices cost_cp=
    переходит к `npcs`. Сверка на данных: скрипт в scratchpad применяет `memory_data` к состоянию t3144 — 28866 знаков.
 2. **П2 Покупки** — `settings.py`/`defaults.toml` 15, `requests.py:GiveCustomItem`, `resources.py:give_custom_item`/
    `stock_custom_item`/`custom_item_refusal`/`gold_without_item_rejected`, `rules/trade.py:put_in_stock`,
+   `trade_pick.py:buy_source`/`catalog_source`/`stock_source` (добавлено 2026-11-09, разбор п. 1 (б)), `world.py:59` комментарий,
    `session.py:run_round`/`gold_after_items`/`item_not_given`, `narrator_rules.md`, `STATIC_MAX`. Порядок: тесты → код →
    правила → `make prompt-budget` → порог. На выходе: сценарий t3067 на моке — `npc_update trade_kind`, `give_custom_item
-   npc_id`, `trade buy` — деньги и вещь согласованы; `gold` после неудачной выдачи отказан.
+   npc_id`, `trade buy` — деньги и вещь согласованы (`test_give_custom_item.py:932` зелёный, `test_apply_trade.py:862-950`
+   выкуп у `holder` без регресса); `gold` после неудачной выдачи отказан.
 3. Перед коммитом каждой партии — по AGENTS.md: `make cov` ≥ 94 %, `make smells` ≤ 200 (сейчас 200 — новые функции
    выносить короткими), `make dead`, `uv run ruff check src tests`, mutmut (ниже).
 
@@ -251,9 +282,12 @@ ai_dm.master.prompt:inventory_data ai_dm.rules.npc_memory:memory_data" TESTS="te
 П2 — `FUNCS="ai_dm.protocol.handlers.resources:give_custom_item ai_dm.protocol.handlers.resources:stock_custom_item
 ai_dm.protocol.handlers.resources:custom_item_refusal ai_dm.protocol.handlers.resources:gold_without_item_rejected
 ai_dm.rules.trade:put_in_stock ai_dm.master.session:MasterSession.run_round ai_dm.master.session:gold_after_items
-ai_dm.master.session:item_not_given" TESTS="tests/unit/protocol tests/unit/master"` (каталоги целиком — правило AGENTS.md
-«узкий TESTS даёт ложных выживших»; время не измерено). Новые функции: `stock_custom_item`, `gold_without_item_rejected`,
-`gold_after_items`, `item_not_given`; остальные найдены grep.
+ai_dm.master.session:item_not_given ai_dm.protocol.handlers.trade_pick:buy_source ai_dm.protocol.handlers.trade_pick:catalog_source
+ai_dm.protocol.handlers.trade_pick:stock_source" TESTS="tests/unit/protocol tests/unit/master"` (каталоги целиком — правило
+AGENTS.md «узкий TESTS даёт ложных выживших»; время не измерено; 11 функций вместо 8 — смета П2 по mutmut растёт, не пересчитана).
+Новые функции: `stock_custom_item`, `gold_without_item_rejected`, `gold_after_items`, `item_not_given`, `stock_source`
+(добавлена 2026-11-09); остальные найдены grep. Выжившие на нетронутых строках `buy_source` (ветка `holder`) — «старые строки»,
+в BACKLOG 284 или новым пунктом (правило 4 AGENTS.md).
 
 ## Тесты
 
@@ -308,6 +342,12 @@ ai_dm.master.session:item_not_given" TESTS="tests/unit/protocol tests/unit/maste
 (2) `trade buy` с описанием новой вещи одним вызовом — атомарнее, но расширяет схему `trade` и правит
 `trade_pick.buy_source`; (3) товар в данных пака — не покрывает dusk, NPC созданы в игре. Решает Влад.
 
+Р6 (видимое; 2026-11-09, по ревью П2, мама п. 3). Товар прилавка с `cost_cp = 0` (`give_custom_item npc_id`): сейчас выкладка
+принимается и `trade buy` отдаёт вещь за 0 (проверено мамой на моке). (1) отказ `Invalid bad_cost` «товар на прилавке — с ценой,
+`cost_cp` не меньше 1» — модель повторит вызов с ценой (рекомендую: прилавок по решениям 6 и 10 — позиции с ценой; бесплатный
+товар — ошибка модели, не замысел); (2) оставить — торговец может выложить вещь даром, игрок увидит «Куплено: … за 0».
+Решает Влад; до ответа П2 без этой правки (одна строка кода, У14).
+
 Риски: цена входа — до +48000 некэшируемых токенов на вызов в заполненном мире (≈ +0,04 $/ход при +21000 по свинопасу;
 верх — оценка); `STATIC_MAX` растёт (поле схемы + фразы правил) — измерить; модель может по привычке звать `give_custom_item`
 герою без `npc_id` — страхует решение 5 и отказ «товар у X»; `TRADE_STOCK_MAX` 25 (`prompt.py:49`) — у лавочника с большим
@@ -321,22 +361,40 @@ ai_dm.master.session:item_not_given" TESTS="tests/unit/protocol tests/unit/maste
 - У3 Инвентарь — вариант Е (ключи по умолчанию опускаются), правила не правятся; таблица Д (−3081 токенов) — отклонена из-за
   правки `narrator_rules.md:100` и риска чтения; при желании Влада — отдельным решением.
 - У4 Текст отказа лимита: «лимит новых предметов вне каталога за сцену: 15» (вместо «сюжетных» — лимит считает все кастомные,
-  аудит свекрови); сигнал тот же.
+  аудит свекрови); сигнал модели согласован с причиной («новые предметы вне каталога»), статус `clamped` и `result` те же
+  (уточнено 2026-11-09 по ревью П2: прежнее «сигнал тот же» — о статусе и результате, не о тексте).
 - У5 `MasterConfig.recent_scenes_floor` без default (как `recent_turns_floor`), значение из `app_defaults.toml`.
 - У6 `put_in_stock` в `rules/trade.py`, сигнатура прежняя.
 - У7 `STATIC_MAX` — по замеру, с запасом в десятки токенов (как У1 П2).
 - У8 При Р5 = (1): торговцем лавочника делает рассказчик `npc_update trade_kind` (пресеты `general`, `smith`, `armorer`,
   `alchemist`, `fence`); при Р2 = (1) значение 3.
-- У9 `item_not_given` считает невыданной: `Invalid`, `Decision rejected`, `clamped` с `result.qty == 0`; только
+- У9 `item_not_given` считает невыданной: `Invalid`, `Decision rejected`, `clamped` с `result.qty == 0`, а также любую
+  `give_custom_item` с `npc_id` (выкладка на прилавок — не выдача герою; дополнено 2026-11-09 по ревью П2); только
   `give_item`/`give_custom_item` (`trade` деньги считает сам).
+- У12 (2026-11-09, по ревью П2) Товар прилавка по `item_id` через `give_item` не выдаётся — тот же отказ, что по имени
+  (`stocked_refusal`): продавец ищется по стекам `trade.stock` всех NPC; каталожные стеки не проверяются (каталожная вещь у
+  торговца не уникальна, `give_item` её как находку выдавать можно).
+- У13 (2026-11-09, по ревью П2) `merchant_data`: у стека, чей предмет из мира (`entry.item_id in world.custom_items` — уточнено
+  по отступлению кабана: `source == "world"` в реестре ставит только `custom_items.as_item` из `world.custom_items`, множества
+  совпадают), в позиции добавляется `name`; каталожные позиции без имени, как сейчас. Сигнатура `merchant_data(npc, ctx, world,
+  level)` (единственный вызов — `trade_data`). Данные запроса, не статика — `STATIC_MAX` не трогает.
+- У14 (при Р6 = (1)) Проверка цены товара — строка в `checks` `custom_item_problem` (`request.npc_id and request.cost_cp < 1`,
+  код `bad_cost`); описание поля `cost_cp` в схеме не правится (`STATIC_MAX` запас 32 токена), модели хватает текста Invalid;
+  у существующей вещи с ценой 0 стек получает `request.cost_cp` (`existing.cost_cp or request.cost_cp`), без потолка — потолок
+  цены бережёт героя от дарёного богатства, а здесь герой платит.
 - У10 (2026-11-09, по ревью П1) Сценарий этапа 4 — на умолчаниях продукта (floor 3/3), `MEMORY_CONTEXT_CAP = 3320`,
   проверка сцены 50 «сцена 49 остаётся под floor»; текст приёмки TZ:764 не меняется (разбор п. 2).
+- У11 (2026-11-09, по красной проверке доебы П2) Источник покупки кастомной вещи в `trade_pick.buy_source`: стек `stock`
+  этого NPC (`stock_source`, вынос из `catalog_source`) → `holder` → `not_sold`; `holder` товара прилавка — `None`; редкость
+  товара прилавка не проверяется. Видимого игроку не меняет (решение 10 — покупка `trade buy`, строка «Куплено: …» та же),
+  развилки Владу нет; разбор п. 1 (б).
 
 ## Открытые вопросы
 
 1. Р5 — закрыт решением 10.
 2. Р1–Р4 — закрыты решениями 11–14.
 3. Решение 7 вне кода: кто и когда скажет игроку о 1 зм 8 см — Влад.
+4. Р6 — закрыт решением 16.
 
 ## Побочные находки (в беклог, оркестратору)
 
@@ -366,6 +424,106 @@ ai_dm.master.session:item_not_given" TESTS="tests/unit/protocol tests/unit/maste
 - «Открытые вопросы» 1 и 2 закрыты ссылками на решения 10–14 (свекровь; правка оркестратора).
 - Красная проверка доебы — 5 из 8 новых тестов (мама), число «9 из 12» в отчёте доебы неверно.
 - Решение 9 записано как следствие ответа 1, отдельным окном не спрашивалось (свекровь, «Решения за пользователя»); вынесено Владу окном; Влад 2026-11-09: оставить в ФД2.
+
+П2, красная проверка доебы (2026-11-09, тесты написаны, кода нет). Хэнд-бэк: `buy_source` для кастомной вещи без `holder` даёт
+`not_sold`, ветка стеков недостижима, `trade_pick.py` в плане не назван. По коду верно (`trade_pick.py:155-162`): утверждение
+плана «покупка существующим `catalog_source`» опровергнуто. Решил папа (У11): `trade_pick.py` в П2 — `stock_source` (новая, вынос
+`:167-175`), `buy_source` стек → `holder`; «Правило», разбор п. 1 (б), «Файлы» П2, «Партии» п. 2, mutmut П2 (+3 функции) правлены.
+BACKLOG 284 не наступает (`npc_problem` не правится). Развилки Владу нет — видимое и решение 10 не меняются.
+
+П2, отступления кабана и 9 красных доебы (папа, 2026-11-09, по `git diff HEAD`; прогон `test_give_custom_item.py` +
+`test_requests.py`: 9 failed / 422 passed; `test_static_budget.py` 60 passed). Граница партии не сдвинулась.
+- Приняты все 4 отступления: `stocked_refusal` отдельной функцией, вызывается из `custom_item_refusal`, не срабатывает при
+  `npc_id` (повторная выкладка того же товара — `put_in_stock` сливает стеки); `record_outcome` и `item_not_given(call, outcome)`
+  (имя вызова нужно по У9); `new_merchants_per_scene` default 3 и в `settings.py:310` (второй источник умолчания, иначе
+  `test_default_new_merchants_per_scene` расходится с `defaults.toml`); `STATIC_MAX` 24830 при замере 24798 — У7 (запас 32
+  токена, рост +198 в ожидании плана «+100–200»), сторож 24830 + 80000 ≤ 160000.
+- mutmut П2: к `FUNCS` добавить функции, появившиеся в диффе (правило 1 AGENTS.md): `ai_dm.protocol.handlers.resources:stocked_refusal`,
+  `…resources:scene_limit_reached`, `…resources:scene_limit_clamped`, `…resources:custom_item_decision`,
+  `ai_dm.master.session:record_outcome`.
+- 9 красных — тесты, код по плану; правит доеба: (а) 7 тестов `test_give_custom_item.py` — Олдрик в `protocol_kit.make_world:183`
+  без `location_id`, `npc_problem:96` даёт `npc_absent` до проверки роли; в `make_merchant` этого файла `:839` поставить
+  `npc.location_id = "vale"` (образец — `test_apply_trade.add_merchant:34`); общий кит не трогать (20 файлов на `make_world`);
+  (б) `:537` — `custom_6` создан `fill_scene(15)`, проверять `custom_16`; (в) `test_requests.py:169` — `parse_request(...).npc_id is None`
+  (`Request.cut_neutral:32` обнуляет нейтральное, как `stakes`/`holder_npc_id` в том же файле), второй assert про `NEUTRAL` остаётся.
+- Побочная находка (в беклог, не ФД2): `give_custom_item` с `npc_id` другого торговца для вещи, уже лежащей в `stock` первого,
+  создаёт второй стек того же `item_id` — как у каталожного товара, план не оговаривал.
+
+П2, круг 1 (мама, свекровь; вердикт папы 2026-11-09, по `git diff HEAD` и коду). Граница партии не сдвигается: все правки — в
+файлах П2 (`resources.py`, `session.py`, `prompt.py:merchant_data`), ≈ 20 строк кода и ≈ 60 тестов (ожидание, не проверено).
+1. Дыра в решении 5 (свекровь 1, мама 1) — подтверждена по коду: `item_not_given` для принятой выкладки даёт False (`result.qty > 0`),
+   `gold lose explicit` того же ответа списывает деньги, вещь на прилавке — симптом t3067. **Править в П2, кабан:** `session.py:item_not_given`
+   — `give_custom_item` с непустым `call.input.get("npc_id")` → True (У9 дополнено); текст `gold_without_item_rejected` подходит
+   («оформи через trade buy»). **Доеба:** `test_master_session_loop.py` — [`give_custom_item npc_id`, `gold lose explicit`] → `gold`
+   `rejected`, кошель цел, выкладка принята; [`give_custom_item npc_id`, `trade buy`] — `trade` не откладывается и не блокируется.
+   Развилки Владу нет — следует из решения 5.
+2. У4 «сигнал тот же» (свекровь 2) — отступление принято как пятое: сигнал согласован с причиной, статус и `result` не менялись;
+   У4 переписан. Код не правится.
+3. Условие 284 (свекровь 3) — расхождение ROADMAP:184 и :199 есть; верна строка :184 (условие «фикс 275 через `trade.py`/`trade_pick`»
+   выполнено диффом). Запись «не наступает» (plan-fd2, блок красной проверки) опровергнута: наступает часть 284 по `trade_pick.npc_problem`
+   (мутанты 1, 2, 6); часть `npc_create` остаётся в 284. **В П2, доеба:** в `FUNCS` mutmut добавить
+   `ai_dm.protocol.handlers.trade_pick:npc_problem`, выжившие на нём разобрать как «в диффе» (новые тесты `not_merchant`/`npc_absent`
+   через `stock_custom_item` уже бьют по этим строкам — ожидание, не проверено). ROADMAP:199 привести к :184 — папа при закрытии шага;
+   карточка 284 при закрытии — «часть `trade_pick` закрыта ФД2 П2, `npc_create` — открыта».
+4. Объём (свекровь 4) — измерено: `git diff --numstat src/` +172/−55 валовых; без пустых строк и комментариев +138/−51, чистыми +87,
+   из них 9 — перенос `put_in_stock` → ≈ 78 строк нового кода против ожидания «≈ 80». Вал — выносы под нулевой баланс smells
+   (`scene_limit_reached`, `scene_limit_clamped`, `custom_item_decision`, `record_outcome`), поведения не добавляют. Условие S/M решения 8
+   подтверждено; одно поле запроса. Оставить.
+5. `give_item custom_1` после выкладки (мама 2) — проверено по коду: `give_item:225-231` — у товара прилавка `holder` None →
+   `add_catalog_item`, вещь герою бесплатно, стек цел. Та же дыра, что закрыл `stocked_refusal` по имени, только по `item_id`, который модель
+   получает в ответе выкладки и в `trade.stock` — регресс в области плана (правило 9) → **П2, кабан:** продавец по `item_id` выносится из
+   `stocked_refusal` (`stock_seller(world, item_id)` → NPC или None, новая), `give_item` после `give_item_problem` для `request.item_id in
+   world.custom_items` с продавцом → тот же `rejected` «товар у <npc>: только trade buy» (У12); форма — кабана, лишь бы `give_item` не
+   рос (smells 200/200). **Доеба:** тест в `test_give_custom_item.py` — после выкладки `give_item item_id=custom_1` → `rejected`, инвентарь
+   героя пуст, стек и деньги не тронуты; каталожный `give_item longsword` при `longsword` в `stock` торговца — принимается (граница У12).
+6. `cost_cp = 0` на прилавке (мама 3) — видимое игроку («Куплено за 0»), решениями не покрыто → **Р6 Владу** (раздел «Развилки»),
+   рекомендация (1) отказ `bad_cost`; код — одна строка в `checks` `custom_item_problem` + `existing.cost_cp or request.cost_cp` в
+   `stock_custom_item` (У14), тест доебы — выкладка с 0 → `Invalid bad_cost`, стек пуст; с 1 — принимается. До слова Влада не делать.
+7. `name` кастомного товара в `merchant_data` (мама 4) — подтверждено: `trade list` отдаёт только модели категории пресета
+   (`handlers/trade.py:category_list:81-87`), стеки не перечисляет; `item_ids` запроса исключает `source == "world"` (`prompt.py:451`) —
+   на следующем ходу имени `custom_1` у модели нет, покупка «флакона» по слову игрока невозможна. Нужно для работы решения 10 за
+   пределами одного хода → **П2, кабан:** `prompt.py:merchant_data:246-251` — `name` у позиции с предметом мира (У13), ≈ 3 строки;
+   `STATIC_MAX` и бюджет не затрагиваются (данные запроса, ≈ +25 знаков на кастомный стек — оценка). **Доеба:**
+   `test_prompt_trade.py:186-194` — ожидание с `"name": "Флакон духов"`; `:154` каталожный стек без `name` остаётся.
+8. Мама 5–7 (частичный `clamped` не блокирует `gold`; `loot_individual` с `direction lose`; точные `total_cp == 180` и
+   `money_cp == 820`) — доебе, без возражений.
+mutmut П2 — к `FUNCS` добавить: `ai_dm.master.session:item_not_given` (уже в списке, строки меняются), `ai_dm.protocol.handlers.resources:give_item`,
+`ai_dm.protocol.handlers.resources:stock_seller` (новая), `ai_dm.protocol.handlers.resources:stocked_refusal`, `ai_dm.master.prompt:merchant_data`,
+`ai_dm.protocol.handlers.trade_pick:npc_problem` (п. 3); при Р6 = (1) — `ai_dm.protocol.handlers.resources:custom_item_problem`,
+`…resources:stock_custom_item`. Найдены grep: `give_item`, `stocked_refusal`, `merchant_data`, `npc_problem`, `custom_item_problem`,
+`stock_custom_item`, `item_not_given`; новая — `stock_seller`.
+
+П2, круг 1 — отступления кабана от У13 (вердикт папы 2026-11-09, по `git diff HEAD` и коду). Граница партии не сдвинулась.
+1. Принято: имя позиции из `world.custom_items`, не через `find_item(registry, …)[1].source == "world"`. По коду эквивалентно:
+   `source="world"` в реестре даёт только `custom_items.as_item` (`rules/custom_items.py:10`), которым `world_registry` накрывает
+   базовый реестр ровно из `world.custom_items`; id внутри `custom_items` — только `custom_{seq}` (`create_custom_item`,
+   `resources.py:303`), каталожные туда не попадают; в игре `ctx.registry` — `world_registry(base, world)` (`turn.py:146`), так что
+   реестр и `custom_items` синхронны всегда. Тест без обновления `ctx.registry` отражает прод. У13 уточнено.
+2. Принято: `merchant_data(npc, ctx, world, level)` вместо `registry, cfg, now_s` — внутреннее, единственный вызов `trade_data`;
+   причина — smells 201 (по замеру кабана, не перепроверялось). У13 уточнено.
+3. `stocked_rejected(name, seller)` (новая, общий текст отказа для `stocked_refusal` и `give_item_problem`) и отказ по `item_id` в
+   `give_item_problem`, а не в `give_item` — принято (п. 5 круга 1 оставлял форму кабану; `give_item` в диффе не менялся — из
+   `FUNCS` убран по правилу 1 AGENTS.md, вместо него `give_item_problem`). Текст отказа тот же, что по имени — видимое не меняется,
+   развилки Владу нет.
+4. mutmut П2, итоговая строка (все функции — по `git diff HEAD`; `trade:sell` и `prompt:trade_data` менялись лишь строкой вызова,
+   в списке по правилу 1): `FUNCS="ai_dm.protocol.handlers.resources:give_custom_item ai_dm.protocol.handlers.resources:stock_custom_item
+   ai_dm.protocol.handlers.resources:custom_item_refusal ai_dm.protocol.handlers.resources:custom_item_problem
+   ai_dm.protocol.handlers.resources:give_item_problem ai_dm.protocol.handlers.resources:stock_seller
+   ai_dm.protocol.handlers.resources:stocked_rejected ai_dm.protocol.handlers.resources:stocked_refusal
+   ai_dm.protocol.handlers.resources:scene_limit_reached ai_dm.protocol.handlers.resources:scene_limit_clamped
+   ai_dm.protocol.handlers.resources:custom_item_decision ai_dm.protocol.handlers.resources:gold_without_item_rejected
+   ai_dm.rules.trade:put_in_stock ai_dm.protocol.handlers.trade:sell ai_dm.master.session:MasterSession.run_round
+   ai_dm.master.session:gold_after_items ai_dm.master.session:item_not_given ai_dm.master.session:record_outcome
+   ai_dm.master.prompt:merchant_data ai_dm.master.prompt:trade_data ai_dm.protocol.handlers.trade_pick:buy_source
+   ai_dm.protocol.handlers.trade_pick:catalog_source ai_dm.protocol.handlers.trade_pick:stock_source
+   ai_dm.protocol.handlers.trade_pick:npc_problem" TESTS="tests/unit/protocol tests/unit/master tests/unit/rules"` — 24 функции;
+   `tests/unit/rules` добавлен под `rules.trade:put_in_stock` (каталог модуля целиком — правило AGENTS.md, шаг 202 решение 16);
+   время не измерено. Все функции найдены grep в `src`; `stocked_rejected`, `stock_seller` — новые в диффе.
+
+П2, проверки перед коммитом (2026-11-09). Круг 2 мамы и свекрови — чисто. `make cov` 98,38 %, 24897 passed, 1 failed в TUI
+(`WorkerCancelled` под нагрузкой, повтор отдельно прошёл, причина не установлена — BACKLOG 294). mutmut 24 функции: в диффе 27 +
+`npc_problem` 1, 2, 6 разобраны доебой тестами; повтор — в диффе остался `run_round_13` (эквивалент: `None`/`False` при проверке
+истинности), старые 26 — BACKLOG 292; `npc_problem` 1, 2, 6 убиты. Вторые стеки — BACKLOG 293.
 
 ## Смета (кабан-тесть, режим 1)
 

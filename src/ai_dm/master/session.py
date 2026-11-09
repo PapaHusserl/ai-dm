@@ -11,7 +11,10 @@ from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolCall, T
 from ai_dm.master.leaks import MARKED_LINE, cut_choice_head, cut_leaks, looks_like_plan
 from ai_dm.master.prompt import PromptBuilder
 from ai_dm.protocol.decision import Invalid
-from ai_dm.protocol.handlers.resources import until_with_rest_invalid
+from ai_dm.protocol.handlers.resources import (
+    gold_without_item_rejected,
+    until_with_rest_invalid,
+)
 from ai_dm.protocol.render import render_tool_result
 from ai_dm.protocol.requests import IMPORT_MODE, parse_request
 from ai_dm.protocol.schema import tool_set
@@ -40,6 +43,40 @@ def until_with_rest(calls):
         c.id for c in calls
         if c.name == "advance_time" and c.input.get("until") not in (None, "", "none")
     }
+
+
+def gold_after_items(calls):
+    # id вызовов gold lose explicit: идут после выдач раунда, порядок вызовов не важен
+    return {
+        c.id for c in calls
+        if c.name == "gold" and c.input.get("direction") == "lose"
+        and c.input.get("kind") == "explicit"
+    }
+
+
+def item_not_given(call, outcome):
+    # выдача give_item/give_custom_item не состоялась: отказ, ошибка или qty 0
+    if call.name not in ("give_item", "give_custom_item"):
+        return False
+    if call.name == "give_custom_item" and call.input.get("npc_id"):
+        # выкладка на прилавок не выдача герою
+        return True
+    if isinstance(outcome, Invalid) or outcome.status == "rejected":
+        return True
+    return outcome.status == "clamped" and (outcome.result or {}).get("qty") == 0
+
+
+def record_outcome(result, call, outcome):
+    # решение раунда в результат хода; True, если инструмент принят
+    if isinstance(outcome, Invalid):
+        return False
+    result.decisions.append(outcome)
+    if outcome.report_tag is not None:
+        result.report_tags.append(outcome.report_tag)
+    if outcome.status not in ("accepted", "clamped"):
+        return False
+    result.accepted.add(call.name)
+    return True
 
 
 def api_tokens(usage, provider):
@@ -320,28 +357,29 @@ class MasterSession:
     def run_round(self, ctx, calls, executor, result, mode):
         # раунд вызовов -> (ответы инструментов, есть ли отклонённые, имена принятых инструментов)
         allowed = {d["name"] for d in tool_set(mode)}
-        blocks = []
+        by_call = {}
         has_invalid = False
         accepted_names = set()
         blocked = until_with_rest(calls)
-        for call in calls:
+        late = gold_after_items(calls)
+        not_given = False
+        # gold lose explicit исполняется после выдач; ответы возвращаются в порядке вызовов
+        for call in sorted(calls, key=lambda c: c.id in late):
             if call.id in blocked:
                 outcome = until_with_rest_invalid()
+            elif call.id in late and not_given:
+                outcome = gold_without_item_rejected()
             else:
                 outcome = self.run_call(ctx, call, executor, result, mode)
-            if isinstance(outcome, Invalid):
-                has_invalid = True
-            else:
-                result.decisions.append(outcome)
-                if outcome.status in ("accepted", "clamped"):
-                    accepted_names.add(call.name)
-                    result.accepted.add(call.name)
-                if outcome.report_tag is not None:
-                    result.report_tags.append(outcome.report_tag)
+            not_given = not_given or item_not_given(call, outcome)
+            has_invalid = has_invalid or isinstance(outcome, Invalid)
+            if record_outcome(result, call, outcome):
+                accepted_names.add(call.name)
             rendered = render_tool_result(outcome)
-            blocks.append(ToolResult(
+            by_call[call.id] = ToolResult(
                 call_id=call.id, content=rendered["content"], is_error=rendered["is_error"],
-            ))
+            )
+        blocks = [by_call[c.id] for c in calls]
         if mode == "summarize_chapter" and accepted_names != set(allowed):
             # свёртка главы: оба инструмента в одном ответе; хендлеры пишут в ctx и в
             # отклонённом раунде, но повтор их перезаписывает -- к успеху в ctx значения

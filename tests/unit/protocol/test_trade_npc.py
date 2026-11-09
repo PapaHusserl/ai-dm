@@ -1,7 +1,7 @@
 # Торговля, партия Т2 (TRADE-PLAN, разд. 1): мастер назначает торговцев через trade_kind.
 #   npc_create / npc_update получают trade_kind: пресет из [trade.presets]; "none" = не торговец /
 #       не менять. Новый торговец получает TradeProfile(kind, purse_cp = пресет, stock []).
-#   Лимит [trade].new_merchants_per_scene (1), счётчик SceneState.merchants_created;
+#   Лимит [trade].new_merchants_per_scene (3), счётчик SceneState.merchants_created;
 #       сверх -> rejected.
 #   Ключевого NPC мастер в торговцы не превращает -> rejected (NPC при npc_create не создаётся).
 #   Неизвестный пресет -> Invalid unknown_trade_kind. npc_update только с trade_kind -- не пустой.
@@ -79,8 +79,29 @@ def test_create_with_unknown_kind_is_invalid_and_changes_nothing(registry, cfg):
     assert dump(ctx) == before
 
 
-def test_second_new_merchant_in_a_scene_is_rejected(registry, cfg):
+def one_merchant(cfg):
+    changed = cfg.model_copy(deep=True)
+    changed.trade.new_merchants_per_scene = 1
+    return changed
+
+
+def test_third_new_merchant_in_a_scene_is_fine_by_default(registry, cfg):
     ctx = make_ctx(registry, cfg)
+    for n in range(1, 4):
+        d = create(ctx, f"smith_{n}", name=f"Кузнец {n}", trade_kind="smith")
+        assert d.status == "accepted"
+
+
+def test_fourth_new_merchant_in_a_scene_is_rejected_by_default(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    for n in range(1, 4):
+        create(ctx, f"smith_{n}", name=f"Кузнец {n}", trade_kind="smith")
+    d = create(ctx, "smith_4", name="Кузнец 4", trade_kind="smith")
+    assert d.status == "rejected"
+
+
+def test_second_new_merchant_in_a_scene_is_rejected(registry, cfg):
+    ctx = make_ctx(registry, one_merchant(cfg))
     create(ctx, "smith_1", trade_kind="smith")
     before = dump(ctx)
     d = create(ctx, "smith_2", name="Кузнец Торин", trade_kind="smith")
@@ -90,7 +111,7 @@ def test_second_new_merchant_in_a_scene_is_rejected(registry, cfg):
 
 
 def test_new_scene_allows_a_new_merchant_again(registry, cfg):
-    ctx = make_ctx(registry, cfg)
+    ctx = make_ctx(registry, one_merchant(cfg))
     create(ctx, "smith_1", trade_kind="smith")
     ctx.scene.merchants_created = 0
     d = create(ctx, "smith_2", name="Кузнец Торин", trade_kind="smith")
@@ -98,7 +119,7 @@ def test_new_scene_allows_a_new_merchant_again(registry, cfg):
 
 
 def test_plain_npc_after_the_limit_is_still_created(registry, cfg):
-    ctx = make_ctx(registry, cfg)
+    ctx = make_ctx(registry, one_merchant(cfg))
     create(ctx, "smith_1", trade_kind="smith")
     d = create(ctx, "cook_1", name="Повар Ганс")
     assert d.status == "accepted"
@@ -181,7 +202,7 @@ def test_update_unknown_kind_is_invalid(registry, cfg):
 
 
 def test_update_second_merchant_in_a_scene_is_rejected(registry, cfg):
-    ctx = make_ctx(registry, cfg)
+    ctx = make_ctx(registry, one_merchant(cfg))
     create(ctx, "smith_1", trade_kind="smith")
     before = dump(ctx)
     d = update(ctx, trade_kind="general")
