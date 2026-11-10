@@ -81,6 +81,7 @@ def test_unknown_verb_gives_usage_and_changes_nothing(registry, tmp_path):
     before = app.bundle.model_dump_json()
     assert app.handle("/shop чепуха").lines == [USAGE]
     assert app.bundle.model_dump_json() == before
+    assert app.deals == {}
 
 
 def test_verb_without_an_item_gives_usage(registry, tmp_path):
@@ -247,6 +248,7 @@ def test_refusing_npc_gives_the_reason_without_note_or_charge(registry, tmp_path
     assert reply.lines == ["Грок отказывается торговать"]
     assert money(app) == 1400
     assert app.inv_notes == []
+    assert app.deals == {}
 
 
 def test_refusal_does_not_save(registry, tmp_path):
@@ -260,7 +262,7 @@ def test_scene_trade_limit_is_a_refusal(registry, tmp_path):
     app = make_inn(registry, tmp_path)
     app.bundle.session.current_scene.trades = app.runner.cfg.trade.ops_per_scene
     reply = app.handle("/shop услуга grok ale")
-    assert reply.lines == ["лимит сделок за сцену: 20"]
+    assert reply.lines == ["лимит сделок за сцену: 50"]
     assert app.inv_notes == []
     assert money(app) == 1400
 
@@ -305,6 +307,7 @@ def test_zero_quantity_is_an_invalid_message_without_note_or_save(registry, tmp_
     reply = app.handle("/shop услуга grok ale 0")
     assert reply.lines == ["количество должно быть не меньше 1"]
     assert app.inv_notes == []
+    assert app.deals == {}
     assert money(app) == 1400
     with pytest.raises(FileNotFoundError):
         load_slot(tmp_path, "vale-ui", "auto")
@@ -433,3 +436,104 @@ def test_refused_deal_leaves_no_prefix(registry, tmp_path):
     app.handle("/shop услуга grok ale")
     app.handle("Пью")
     assert state_of(adapter.requests[0])["player_input"] == "Пью"
+
+
+# склейка одинаковых сделок (шаг 254, решения 9, 14)
+
+def test_same_service_twice_gives_one_summed_note(registry, tmp_path):
+    app = make_inn(registry, tmp_path)
+    app.handle("/shop услуга grok ale 2")
+    app.handle("/shop услуга grok ale 2")
+    assert app.inv_notes == ["оплатил услугу «эль (кружка)» x4 у Грок (1 см 6 мм)"]
+
+
+def test_same_buy_twice_gives_one_summed_note(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    app.handle("/shop купить mara quiver")
+    app.handle("/shop купить mara quiver")
+    assert app.inv_notes == ["купил «Колчан» x2 у Мара (2 зм)"]
+
+
+def test_merging_replaces_the_note_in_place_and_keeps_the_order(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    add_item(hero_of(app.bundle), "dagger", cost_cp=200)
+    app.handle("/shop купить mara quiver")
+    app.handle("/shop продать mara dagger")
+    app.handle("/shop купить mara quiver")
+    assert len(app.inv_notes) == 2
+    assert app.inv_notes[0] == "купил «Колчан» x2 у Мара (2 зм)"
+    assert app.inv_notes[1].startswith("продал «Кинжал» x1 Мара (")
+
+
+def test_buy_and_sell_of_the_same_item_are_two_notes(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    add_item(hero_of(app.bundle), "quiver", cost_cp=100)
+    app.handle("/shop купить mara quiver")
+    app.handle("/shop продать mara quiver")
+    assert len(app.inv_notes) == 2
+    assert app.inv_notes[0].startswith("купил «Колчан» x1")
+    assert app.inv_notes[1].startswith("продал «Колчан» x1")
+
+
+def test_different_items_are_two_notes(registry, tmp_path):
+    app = make_inn(registry, tmp_path)
+    app.handle("/shop услуга grok ale")
+    app.handle("/shop услуга grok bath")
+    assert len(app.inv_notes) == 2
+
+
+def test_different_npcs_are_two_notes(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    app.bundle.world.npcs["lena"] = NPC(
+        id="lena", name="Лена", means=["товары"], location_id=hero_of(app.bundle).location_id,
+        trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=FAR),
+    )
+    app.handle("/shop купить mara quiver")
+    app.handle("/shop купить lena quiver")
+    assert len(app.inv_notes) == 2
+
+
+def test_merged_deal_is_remembered_with_totals(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    app.handle("/shop купить mara quiver")
+    app.handle("/shop купить mara quiver")
+    assert list(app.deals.values()) == [(2, 200, "купил «Колчан» x2 у Мара (2 зм)")]
+
+
+def test_word_turn_between_two_buys_does_not_merge_them(registry, tmp_path):
+    adapter = ReactiveAdapter()
+    app = build_app(registry, tmp_path, adapter)
+    make_inn(registry, tmp_path, app=app)
+    app.handle("/shop услуга grok ale")
+    app.handle("Пью")
+    assert app.deals == {}
+    app.handle("/shop услуга grok ale")
+    assert app.inv_notes == ["оплатил услугу «эль (кружка)» x1 у Грок (4 мм)"]
+
+
+def test_load_clears_the_deals_with_the_notes(registry, tmp_path):
+    app = make_inn(registry, tmp_path)
+    app.handle("/shop услуга grok ale")
+    assert app.deals
+    app.load("auto")
+    assert app.deals == {}
+    assert app.inv_notes == []
+
+
+def test_refused_deal_does_not_touch_notes_or_deals_after_a_merge(registry, tmp_path):
+    app = make_inn(registry, tmp_path)
+    app.handle("/shop услуга grok room_modest")
+    notes, deals = list(app.inv_notes), dict(app.deals)
+    app.handle("/shop услуга grok room_modest")
+    assert app.inv_notes == notes
+    assert app.deals == deals
+
+
+def test_equal_deals_merge_by_npc_id_even_after_a_rename(registry, tmp_path):
+    app = merchant_app(registry, tmp_path)
+    app.handle("/shop купить mara quiver")
+    app.bundle.world.npcs["mara"].name = "Марта"
+    app.handle("/shop купить mara quiver")
+    assert app.inv_notes == ["купил «Колчан» x2 у Марта (2 зм)"]
+    app.handle("/shop купить mara quiver")
+    assert app.inv_notes == ["купил «Колчан» x3 у Марта (3 зм)"]

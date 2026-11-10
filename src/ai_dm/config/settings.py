@@ -306,7 +306,7 @@ class TradeConfig(BaseModel):
     attitude_good_sell_factor: float = Field(default=0.6, ge=0)
     # плохое отношение (attitude <= attitude_refuse_at): торговец отказывается
     attitude_refuse_at: int = Field(default=-50, ge=-100, le=100)
-    ops_per_scene: int = Field(default=20, ge=1)
+    ops_per_scene: int = Field(default=50, ge=1)
     new_merchants_per_scene: int = Field(default=3, ge=0)
     restock_days: int = Field(default=7, ge=1)
     # торг Убеждением (партия Т5): поправка цены в процентах по исходу проверки

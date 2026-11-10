@@ -72,6 +72,7 @@ action_prev_target  # unused method
 action_toggle_nonlethal  # unused method
 action_menu_back  # unused method
 on_combat_menu_picked  # unused method
+on_shop_modal_picked  # unused method (254: сделка из окна /shop)
 on_combat_menu_target_picked  # unused method
 on_option_list_option_selected  # unused method
 # Кастомные предметы, партия А: поля читаются в партиях Б/В (убрать, когда начнут читаться).

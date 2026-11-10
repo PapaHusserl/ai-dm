@@ -2,6 +2,7 @@ from rich.text import Text
 from textual.app import App
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, OptionList, RichLog, Static, Tab, Tabs
 from textual.widgets.option_list import Option
@@ -163,12 +164,16 @@ class InvModal(ModalScreen):
 
     def compose(self):
         with Vertical(id="modal"):
+            yield from self.head_widgets()
             yield Static(Text(self.PICK), id="inv-title")
             names = enumerate(name for name, _ in self.tabs)
             yield Tabs(*(Tab(name, id=f"inv-tab-{index}") for index, name in names), id="inv-tabs")
             yield OptionList(id="inv-list")
             with VerticalScroll(id="inv-body"):
                 yield Static(id="inv-description")
+
+    def head_widgets(self):
+        return ()
 
     def on_mount(self):
         self.query_one("#modal").border_title = self.title_text
@@ -223,13 +228,48 @@ class InvModal(ModalScreen):
 
 class ShopModal(InvModal):
     # торговля: те же вкладки и список, что у инвентаря; у строки одно действие -- Enter;
-    # результат -- действие (клавиша, подсказка, команда с {qty}, эхо, потолок количества) или None
+    # результат -- None (Esc); выбор строки -- сообщение Picked с действием (клавиша, подсказка,
+    # команда с {qty}, эхо, потолок количества), окно остаётся открытым
     BINDINGS = [
         Binding("escape", "close", strings.KEY_CLOSE, show=False),
         Binding("left", "tab(-1)", show=False),
         Binding("right", "tab(1)", show=False),
     ]
     PICK = strings.SHOP_PICK
+
+    class Picked(Message):
+        # Enter на строке: окно остаётся открытым, сделку ведёт приложение
+        def __init__(self, action):
+            super().__init__()
+            self.action = action
+
+    def __init__(self, title, tabs, npc_id, head):
+        super().__init__(title, tabs)
+        self.npc_id = npc_id
+        self.head = list(head)
+
+    def head_widgets(self):
+        yield Static(Text("\n".join(self.head)), id="shop-head")
+
+    def on_option_list_option_selected(self, event):
+        # Textual зовёт обработчики всех классов цепочки: базовый dismiss гасим
+        event.prevent_default()
+        # у каждой строки окна торговли ровно одно действие
+        self.post_message(self.Picked(self.rows[event.option_index][2][0]))
+
+    def update(self, rows, head):
+        # после сделки: те же вкладки (пустые остаются), строки заново, курсор на месте
+        self.tabs = [(name, [row for row in rows if row[3] == name]) for name, _ in self.tabs]
+        active = self.query_one("#inv-tabs", Tabs).active
+        menu = self.query_one("#inv-list", OptionList)
+        old = menu.highlighted or 0
+        self.fill(int(active.removeprefix("inv-tab-")))
+        if self.rows:
+            menu.highlighted = min(old, len(self.rows) - 1)
+            self.show_description(menu.highlighted)
+        else:
+            self.query_one("#inv-description", Static).update("")
+        self.query_one("#shop-head", Static).update(Text("\n".join(head)))
 
 
 class NpcModal(ModalScreen):

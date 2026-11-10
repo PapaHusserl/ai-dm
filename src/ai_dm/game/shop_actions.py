@@ -72,15 +72,31 @@ def title_of(app, request):
     return find_item(app.registry, request.item_id)[1].name
 
 
-def note_of(request, npc, decision, title):
-    result = decision.result
-    deal = f"«{title}» x{result['qty']}"
-    cost = format_cp(result["total_cp"])
+def note_of(request, npc, title, qty, total_cp):
+    deal = f"«{title}» x{qty}"
+    cost = format_cp(total_cp)
     if request.type == "service":
         return f"оплатил услугу {deal} у {npc.name} ({cost})"
     if request.direction == "buy":
         return f"купил {deal} у {npc.name} ({cost})"
     return f"продал {deal} {npc.name} ({cost})"
+
+
+def remember(app, request, npc, decision, title):
+    # заметка мастеру; такая же сделка (тот же NPC, вид, товар) склеивается с прежней заметкой.
+    # Возвращает список новых заметок для finish (пусто, если заменили на месте)
+    key = (request.type, request.direction, npc.id,
+           getattr(request, "item_id", None) or request.service_id)
+    qty, total = decision.result["qty"], decision.result["total_cp"]
+    old = app.deals.get(key)
+    if old is not None:
+        qty, total = qty + old[0], total + old[1]
+    note = note_of(request, npc, title, qty, total)
+    app.deals[key] = (qty, total, note)
+    if old is None:
+        return [note]
+    app.inv_notes[app.inv_notes.index(old[2])] = note
+    return []
 
 
 def run(app, arg):
@@ -96,5 +112,5 @@ def run(app, arg):
     if outcome.status == "rejected":
         return app.reply([outcome.reason])
     npc = app.bundle.world.npcs[request.npc_id]
-    note = note_of(request, npc, outcome, title_of(app, request))
-    return finish(app, lines_of(outcome), [note])
+    notes = remember(app, request, npc, outcome, title_of(app, request))
+    return finish(app, lines_of(outcome), notes)

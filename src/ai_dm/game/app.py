@@ -156,6 +156,9 @@ class GameApp:
         self.tone_change = None
         # действия героя из окна inv, о которых рассказчик узнает в следующем ходе (не в сейве)
         self.inv_notes = []
+        # {(вид, направление, NPC, товар или услуга): (кол-во, медь, текст заметки)} сделок /shop,
+        # склеенных в inv_notes (не в сейве)
+        self.deals = {}
         # звук: cli подменяет на настоящий контроллер только в TUI
         self.audio = SilentSound(SIMPLE_REASON)
 
@@ -224,7 +227,7 @@ class GameApp:
         # номер варианта боя остаётся числом, заметки ждут словесного хода
         if not self.inv_notes or (in_combat and line.isdigit()):
             return line
-        notes, self.inv_notes = self.inv_notes, []
+        notes, self.inv_notes, self.deals = self.inv_notes, [], {}
         return f"({INV_NOTES_PREFIX}{'; '.join(notes)}.) {line}"
 
     def after_turn(self, turn, lead=()) -> Reply:
@@ -485,6 +488,7 @@ class GameApp:
         self.reported = None
         self.failed_reason = None
         self.inv_notes = []
+        self.deals = {}
         scene = bundle.session.current_scene
         pending_boundary = bundle.session.boundary_pending and hero_of(bundle).status != "dead"
         if not pending_boundary and (scene is None or scene.closed_reason is not None):

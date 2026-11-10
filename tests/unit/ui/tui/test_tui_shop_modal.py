@@ -93,12 +93,24 @@ async def choose(app, pilot, prefix):
         await pilot.press("right")
         await pilot.pause()
     index = next(i for i, row in enumerate(app.screen.rows) if row[0].startswith(prefix))
-    for _ in range(index):
+    current = app.screen.query_one("#inv-list").highlighted or 0
+    for _ in range(max(0, index - current)):
         await pilot.press("down")
+        await pilot.pause()
+    for _ in range(max(0, current - index)):
+        await pilot.press("up")
         await pilot.pause()
     await pilot.press("enter")
     await app.workers.wait_for_complete()
     await pilot.pause()
+
+
+def shop_head(app):
+    return tui_flat(str(app.screen.query_one("#shop-head").render()))
+
+
+def tui_flat(text):
+    return " ".join(text.split())
 
 
 async def open_shop(tui, app, pilot):
@@ -406,10 +418,13 @@ def test_room_has_no_quantity_question_and_is_paid(registry, tmp_path, tui):
     async def steps(app, pilot):
         await open_shop(tui, app, pilot)
         await choose(app, pilot, "комната")
-        return len(app.screen_stack), feed(tui, app), tui.flat(tui.text_of(app.query_one("#gains")))
+        return (
+            (len(app.screen_stack), isinstance(app.screen, ShopModal)), feed(tui, app),
+            tui.flat(tui.text_of(app.query_one("#gains"))),
+        )
 
     depth, text, gains = run(new_app(game), steps)
-    assert depth == 1
+    assert depth == (2, True)
     assert "▸ Ты: Оплатить: комната (скромная) (Грок)" in text
     assert "x1" not in text
     assert "Ночлег оплачен: комната (скромная)" in text
@@ -424,10 +439,10 @@ def test_unaffordable_item_goes_straight_to_the_engine_refusal(registry, tmp_pat
     async def steps(app, pilot):
         await open_shop(tui, app, pilot)
         await choose(app, pilot, "эль")
-        return len(app.screen_stack), feed(tui, app)
+        return (len(app.screen_stack), isinstance(app.screen, ShopModal)), feed(tui, app)
 
     depth, text = run(new_app(game), steps)
-    assert depth == 1
+    assert depth == (2, True)
     assert "▸ Ты: Оплатить: эль (кружка) (Грок)" in text
     assert "не хватает денег" in text
     assert money(game) == 0
@@ -439,10 +454,10 @@ def test_purchase_of_one_item_without_quantity_question(registry, tmp_path, tui)
     async def steps(app, pilot):
         await open_shop(tui, app, pilot)
         await choose(app, pilot, "Колчан")
-        return len(app.screen_stack), feed(tui, app)
+        return (len(app.screen_stack), isinstance(app.screen, ShopModal)), feed(tui, app)
 
     depth, text = run(new_app(game), steps)
-    assert depth == 1
+    assert depth == (2, True)
     assert "▸ Ты: Купить: Колчан (Мара)" in text
     assert money(game) == 0
     assert [e.item_id for e in hero_of(game.bundle).inventory] == ["quiver"]
@@ -506,13 +521,18 @@ def test_quantity_three_pays_three_units_with_echo(registry, tmp_path, tui):
         await open_shop(tui, app, pilot)
         await choose(app, pilot, "эль")
         await enter_qty(app, pilot, "3")
-        return len(app.screen_stack), feed(tui, app), tui.flat(tui.text_of(app.query_one("#gains")))
+        return (
+            (len(app.screen_stack), isinstance(app.screen, ShopModal)), feed(tui, app),
+            tui.flat(tui.text_of(app.query_one("#gains"))), shop_head(app),
+        )
 
-    depth, text, gains = run(new_app(game), steps)
-    assert depth == 1
+    depth, text, gains, head = run(new_app(game), steps)
+    assert depth == (2, True)
     assert "▸ Ты: Оплатить: эль (кружка) (Грок) x3" in text
     assert "Заказано: эль (кружка) x3" in text
     assert f"Потрачено: {MINUS}1 см 2 мм" in gains
+    assert f"Деньги: {format_cp(1400 - 12)}" in head
+    assert "Заказано: эль (кружка) x3" in head
     assert money(game) == 1400 - 12
     assert game.adapter.requests == []
 
@@ -526,9 +546,9 @@ def test_default_quantity_is_one(registry, tmp_path, tui):
         await pilot.press("enter")
         await app.workers.wait_for_complete()
         await pilot.pause()
-        return len(app.screen_stack)
+        return len(app.screen_stack), isinstance(app.screen, ShopModal)
 
-    assert run(new_app(game), steps) == 1
+    assert run(new_app(game), steps) == (2, True)
     assert money(game) == 1400 - 4
 
 
@@ -539,9 +559,9 @@ def test_quantity_equal_to_cap_is_accepted(registry, tmp_path, tui):
         await open_shop(tui, app, pilot)
         await choose(app, pilot, "эль")
         await enter_qty(app, pilot, "2")
-        return len(app.screen_stack)
+        return len(app.screen_stack), isinstance(app.screen, ShopModal)
 
-    assert run(new_app(game), steps) == 1
+    assert run(new_app(game), steps) == (2, True)
     assert money(game) == 2
 
 
@@ -669,6 +689,228 @@ def test_escape_twice_after_quantity_closes_everything(registry, tmp_path, tui):
     assert run(new_app(game), steps) == (1, "input")
 
 
+# серия сделок за одно открытие (шаг 254)
+
+def shop_screen(app):
+    # окно торговли может лежать под окном количества
+    return next(s for s in reversed(app.screen_stack) if isinstance(s, ShopModal))
+
+
+def active_tab(app):
+    return str(shop_screen(app).query_one("#inv-tabs").active_tab.label)
+
+
+def highlighted(app):
+    return shop_screen(app).query_one("#inv-list").highlighted
+
+
+async def choose_sell(app, pilot, prefix):
+    # строка продажи (вкладка «Продать»): метка может совпадать с товаром прилавка
+    while active_tab(app) != strings.SHOP_SELL_TAB:
+        await pilot.press("right")
+        await pilot.pause()
+    sell = [row for row in app.screen.rows if row[3] == strings.SHOP_SELL_TAB]
+    for _ in range(next(i for i, row in enumerate(sell) if row[0].startswith(prefix))):
+        await pilot.press("down")
+        await pilot.pause()
+    await pilot.press("enter")
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+def test_head_of_services_npc_is_only_money_and_second_line_is_empty(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return shop_head(app)
+
+    assert run(new_app(game), steps) == "Деньги: 14 зм"
+
+
+def test_head_of_merchant_has_money_and_purse(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path, inn=False, mara=True)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return shop_head(app)
+
+    assert run(new_app(game), steps) == "Деньги: 14 зм · Кошелёк торговца: 50 зм"
+
+
+def test_purchase_updates_head_and_keeps_tab_and_cursor(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path, inn=False, mara=True)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "Колчан")
+        before = (active_tab(app), highlighted(app))
+        await enter_qty(app, pilot, "2")
+        quiver = next(row for row in app.screen.rows if row[0].startswith("Колчан"))
+        return (
+            before, (active_tab(app), highlighted(app)), shop_head(app), quiver[2][0][4],
+            isinstance(app.screen, ShopModal),
+        )
+
+    before, after, head, cap, window = run(new_app(game), steps)
+    assert window is True
+    assert after == before
+    # покупка кошелёк торговца не меняет (он тратится только на скупку)
+    assert head.startswith("Деньги: 12 зм · Кошелёк торговца: 50 зм")
+    assert cap == 12
+
+
+def test_refusal_is_shown_in_the_head_and_window_stays(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path, money=0)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "эль")
+        return shop_head(app), isinstance(app.screen, ShopModal)
+
+    head, window = run(new_app(game), steps)
+    assert window is True
+    assert "Деньги: 0" in head
+    assert "не хватает денег" in head
+
+
+def test_second_room_is_refused_in_the_head(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "комната")
+        await choose(app, pilot, "комната")
+        return shop_head(app), len(app.screen_stack)
+
+    head, depth = run(new_app(game), steps)
+    assert depth == 2
+    assert "ночлег уже оплачен" in head
+    assert money(game) == 1400 - 50
+
+
+def test_partial_sale_keeps_the_row_on_the_same_position(registry, tmp_path, tui):
+    from ai_dm.rules.inventory import add_item
+
+    game = shop_game(registry, tmp_path, inn=False, mara=True)
+    add_item(hero_of(game.bundle), "dagger", cost_cp=200)
+    add_item(hero_of(game.bundle), "quiver", 3, cost_cp=100)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "Колчан x3")
+        before = (active_tab(app), highlighted(app))
+        await enter_qty(app, pilot, "2")
+        return before, (active_tab(app), highlighted(app)), option_texts(app)
+
+    before, after, texts = run(new_app(game), steps)
+    assert after == before
+    assert not any("Колчан x3" in text for text in texts)
+    # остаток 1 — метка без «x1»
+    assert texts[after[1]].split(". ", 1)[1] == "Колчан — 5 см"
+
+
+def test_selling_the_last_item_removes_the_row_and_moves_the_cursor(registry, tmp_path, tui):
+    from ai_dm.rules.inventory import add_item
+
+    game = shop_game(registry, tmp_path, inn=False, mara=True)
+    add_item(hero_of(game.bundle), "dagger", cost_cp=200)
+    add_item(hero_of(game.bundle), "quiver", 1, cost_cp=100)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose_sell(app, pilot, "Колчан")
+        texts = option_texts(app)
+        return texts, highlighted(app), active_tab(app), len(app.screen_stack)
+
+    texts, cursor, tab, depth = run(new_app(game), steps)
+    assert depth == 2
+    assert tab == strings.SHOP_SELL_TAB
+    assert not any("Колчан" in text for text in texts)
+    assert texts
+    assert cursor is not None and 0 <= cursor < len(texts)
+
+
+def test_selling_the_only_item_leaves_an_empty_tab_with_empty_description(registry, tmp_path, tui):
+    from ai_dm.rules.inventory import add_item
+
+    game = shop_game(registry, tmp_path, inn=False, mara=True)
+    add_item(hero_of(game.bundle), "quiver", 1, cost_cp=100)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose_sell(app, pilot, "Колчан")
+        desc = tui.flat(str(app.screen.query_one("#inv-description").render()))
+        return option_texts(app), active_tab(app), desc, isinstance(app.screen, ShopModal)
+
+    texts, tab, desc, window = run(new_app(game), steps)
+    assert window is True
+    assert tab == strings.SHOP_SELL_TAB
+    assert texts == []
+    assert desc == ""
+
+
+def test_services_tab_stays_active_after_a_deal(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path, inn=False, mara=True, services=["room_modest"])
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "комната")
+        return active_tab(app)
+
+    assert run(new_app(game), steps) == strings.SHOP_SERVICE_TAB
+
+
+def test_escape_after_two_deals_closes_the_window_without_a_turn(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        for _ in range(2):
+            await choose(app, pilot, "эль")
+            await enter_qty(app, pilot, "1")
+        assert isinstance(app.screen, ShopModal)
+        await pilot.press("escape")
+        await pilot.pause()
+        return len(app.screen_stack), app.focused.id
+
+    assert run(new_app(game), steps) == (1, "input")
+    assert money(game) == 1400 - 8
+    assert game.adapter.requests == []
+
+
+def test_feed_has_every_deal_of_the_series(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        for _ in range(3):
+            await choose(app, pilot, "эль")
+            await enter_qty(app, pilot, "1")
+        return feed(tui, app)
+
+    text = run(new_app(game), steps)
+    assert text.count("▸ Ты: Оплатить: эль (кружка) (Грок) x1") == 3
+    assert text.count("Заказано: эль (кружка) x1") == 3
+
+
+def test_picked_while_busy_does_not_start_a_deal(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+    sent = []
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        app.start_turn = sent.append
+        app.busy = True
+        action = app.screen.rows[0][2][0]
+        app.on_shop_modal_picked(ShopModal.Picked(action))
+        await pilot.pause()
+        return len(app.screen_stack)
+
+    assert run(new_app(game), steps) == 2
+    assert sent == []
+
+
 # ввод строкой с аргументами и сама модалка
 
 def test_typed_shop_command_with_arguments_goes_to_the_feed_without_window(registry, tmp_path, tui):
@@ -724,7 +966,7 @@ def test_description_joins_several_action_hints_with_a_dot(registry, tmp_path, t
     tabs = [("Товары", [("Лот", "Описание", actions, "Товары")])]
 
     async def steps(app, pilot):
-        app.push_screen(ShopModal("Торговля", tabs))
+        app.push_screen(ShopModal("Торговля", tabs, "grok", []))
         await pilot.pause()
         return tui.flat(str(app.screen.query_one("#inv-description").render()))
 
@@ -842,3 +1084,77 @@ def test_npc_window_digit_gives_id_of_that_row(registry, tmp_path, tui):
 
     run(new_app(game), steps)
     assert results == ["liss"]
+
+
+# выжившие мутанты шага 254 (разбор)
+
+def test_deal_on_the_first_row_keeps_the_cursor_on_the_first_row(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await choose(app, pilot, "эль")
+        await enter_qty(app, pilot, "1")
+        return highlighted(app), len(shop_screen(app).rows), isinstance(app.screen, ShopModal)
+
+    cursor, rows, window = run(new_app(game), steps)
+    assert window is True
+    assert rows > 1
+    assert cursor == 0
+
+
+def test_update_replaces_head_with_all_lines_one_under_another(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        app.screen.update(app.screen.rows, ["первая", "вторая"])
+        await pilot.pause()
+        return str(app.screen.query_one("#shop-head").render())
+
+    assert run(new_app(game), steps) == "первая\nвторая"
+
+
+def test_modal_head_lines_are_joined_by_a_line_break(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        app.push_screen(ShopModal("Торговля", [("Услуги", [])], "grok", ["первая", "вторая"]))
+        await pilot.pause()
+        return str(app.screen.query_one("#shop-head").render())
+
+    assert run(new_app(game), steps) == "первая\nвторая"
+
+
+class FakeStep:
+    blocks = ()
+
+
+def test_refresh_shop_updates_the_open_window_for_a_two_word_shop_command(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        hero_of(game.bundle).money_cp = 700
+        done = app.refresh_shop(FakeStep(), "/shop", ["/shop", "x"])
+        await pilot.pause()
+        return done, shop_head(app)
+
+    done, head = run(new_app(game), steps)
+    assert done is True
+    assert head == "Деньги: 7 зм"
+
+
+def test_refresh_shop_ignores_other_commands_while_the_window_is_open(registry, tmp_path, tui):
+    game = shop_game(registry, tmp_path)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        hero_of(game.bundle).money_cp = 700
+        done = app.refresh_shop(FakeStep(), "/model", ["/model", "x"])
+        await pilot.pause()
+        return done, shop_head(app)
+
+    done, head = run(new_app(game), steps)
+    assert done is False
+    assert head == "Деньги: 14 зм"

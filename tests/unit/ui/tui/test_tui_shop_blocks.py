@@ -27,6 +27,7 @@ from ai_dm.ui.tui.shop_blocks import (  # noqa: E402
     description_of,
     priced,
     shop_action,
+    shop_money,
     shop_rows,
 )
 
@@ -287,7 +288,31 @@ def test_merchant_with_services_gets_goods_sell_and_services_in_order(registry, 
     assert tabs.count(strings.SHOP_SERVICE_TAB) == 1
 
 
+# строка денег (шаг 254, решения 2, 11)
+
+def test_shop_money_of_a_merchant_has_money_and_purse(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    assert shop_money(game, add_mara(game)) == "Деньги: 14 зм · Кошелёк торговца: 50 зм"
+
+
+def test_shop_money_of_a_merchant_follows_the_hero_money(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=1388)
+    line = shop_money(game, add_mara(game))
+    assert line == f"Деньги: {format_cp(1388)} · Кошелёк торговца: 50 зм"
+
+
+def test_shop_money_of_npc_without_trade_is_only_money(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    assert shop_money(game, add_inn(game)) == "Деньги: 14 зм"
+
+
+def test_shop_money_strings():
+    assert strings.SHOP_MONEY == "Деньги: {money} · Кошелёк торговца: {purse}"
+    assert strings.SHOP_MONEY_PLAIN == "Деньги: {money}"
+
+
 # описание
+
 
 def test_description_of_prefers_the_description():
     effects = [EffectSpec(type="ac_bonus", value=1)]
@@ -413,3 +438,12 @@ def test_one_copper_item_is_capped_by_money(registry, tmp_path):
     rows = rows_for(game, add_mara(game, stock=stock))
     row = [r for r in rows if r[0].startswith("Колчан x30")][0]
     assert cap(row) == 5
+
+
+def test_shop_money_of_a_merchant_with_due_restock_shows_the_preset_purse(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    mara = add_mara(game)
+    mara.trade.restock_at_s = 0
+    mara.trade.purse_cp = 100
+    preset = game.settings.rules.trade.presets["general"].purse_cp
+    assert shop_money(game, mara) == f"Деньги: 14 зм · Кошелёк торговца: {format_cp(preset)}"

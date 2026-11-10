@@ -150,7 +150,7 @@ attitude_good_from = 50
 attitude_good_buy_factor = 0.9
 attitude_good_sell_factor = 0.6
 attitude_refuse_at = -50
-ops_per_scene = 20
+ops_per_scene = 50
 new_merchants_per_scene = 3
 restock_days = 7
 # торг Убеждением: поправка цены в процентах (успех / сильный успех / провал), потолок суммы с отношением

@@ -38,7 +38,7 @@ from ai_dm.ui.tui.modals import (
     SpellModal,
     TextModal,
 )
-from ai_dm.ui.tui.shop_blocks import shop_rows
+from ai_dm.ui.tui.shop_blocks import shop_money, shop_rows
 from ai_dm.ui.tui.widgets import (
     Choices,
     CombatLog,
@@ -472,7 +472,8 @@ class AiDmApp(App):
         self.query_one("#status", StatusBar).set_busy(False)
         entry = self.query_one("#input", Input)
         entry.disabled = False
-        entry.focus()
+        if not self.refresh_shop(step, command, words):
+            entry.focus()
         lore = self.lore_modal(title, words) if modal_text and command == "/lore" else None
         # отчёт /cost считаем повторно сознательно: так не трогаем Reply
         if step.request == "key":
@@ -568,13 +569,28 @@ class AiDmApp(App):
 
     def show_shop(self, npc_id):
         npc = self.game.bundle.world.npcs[npc_id]
-        modal = ShopModal(strings.MODAL_TITLES["/shop"], shop_tabs(shop_rows(self.game, npc)))
-        self.push_screen(modal, lambda action: self.shop_chosen(npc_id, action))
+        tabs = shop_tabs(shop_rows(self.game, npc))
+        modal = ShopModal(strings.MODAL_TITLES["/shop"], tabs, npc_id, [shop_money(self.game, npc)])
+        self.push_screen(modal, self.shop_closed)
 
-    def shop_chosen(self, npc_id, action):
-        if action is None:
-            self.query_one("#input", Input).focus()
-            return
+    def shop_closed(self, _result):
+        # окно живёт до Esc; сделки идут через ShopModal.Picked
+        self.query_one("#input", Input).focus()
+
+    def on_shop_modal_picked(self, event):
+        if not self.busy:
+            self.shop_chosen(event.action)
+
+    def refresh_shop(self, step, command, words):
+        # сделка из открытого окна: строки, деньги и итог обновляются на месте; True -- окно занято
+        if command != "/shop" or len(words) < 2 or not isinstance(self.screen, ShopModal):
+            return False
+        npc = self.game.bundle.world.npcs[self.screen.npc_id]
+        head = [shop_money(self.game, npc), *modal_lines(step.blocks)]
+        self.screen.update(shop_rows(self.game, npc), head)
+        return True
+
+    def shop_chosen(self, action):
         _key, _hint, template, echo, cap = action
         if cap <= 1:
             # одну штуку (или отказ движка при cap 0) количество не спрашиваем
@@ -582,11 +598,10 @@ class AiDmApp(App):
             self.start_turn(template.format(qty=1))
             return
         modal = QtyModal(strings.MODAL_TITLES["/shop"], echo, cap)
-        self.push_screen(modal, lambda qty: self.qty_chosen(npc_id, action, qty))
+        self.push_screen(modal, lambda qty: self.qty_chosen(action, qty))
 
-    def qty_chosen(self, npc_id, action, qty):
+    def qty_chosen(self, action, qty):
         if qty is None:
-            self.show_shop(npc_id)
             return
         self.write_echo(f"{action[3]} x{qty}")
         self.start_turn(action[2].format(qty=qty))

@@ -1,6 +1,7 @@
 from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import effect_texts
 from ai_dm.game.shop_text import UNIT_WORDS, sale_rows, sell_rows
+from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.inventory import find_item
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
@@ -89,3 +90,13 @@ def shop_rows(game, npc):
     if npc.trade is not None:
         rows = goods_rows(game, npc, cap_of) + sell_tab_rows(game, npc)
     return rows + service_rows(game, npc, cap_of)
+
+
+def shop_money(game, npc):
+    # верхняя строка окна /shop: деньги героя и кошелёк торговца (у NPC без trade -- только деньги)
+    money = format_cp(hero_of(game.bundle).money_cp)
+    if npc.trade is None:
+        return strings.SHOP_MONEY_PLAIN.format(money=money)
+    now_s = game.bundle.world.clock.now_s
+    purse = format_cp(trade_rules.purse_now(npc.trade, now_s, game.settings.rules))
+    return strings.SHOP_MONEY.format(money=money, purse=purse)

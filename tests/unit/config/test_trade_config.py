@@ -1,7 +1,7 @@
 # Торговля, партия Т0 (TRADE-PLAN, разд. 1-3): секция [trade] конфига.
 # Ожидаемый API: RulesConfig.trade: TradeConfig (extra="forbid"):
 #   buy_factor = 1.0, sell_factor = 0.5, full_price_categories = ["valuable"],
-#   ops_per_scene = 20, new_merchants_per_scene = 3,
+#   ops_per_scene = 50, new_merchants_per_scene = 3,
 #   presets: dict[str, TradePreset] -- general, smith, armorer, alchemist, fence;
 #   TradePreset(categories: list[str], magic: bool = False, purse_cp: int, buys: list[str])
 #   Валидатор: инвариант цен (см. ниже) -- ValidationError.
@@ -23,7 +23,7 @@ def test_default_factors():
 
 
 def test_default_ops_per_scene():
-    assert trade().ops_per_scene == 20
+    assert trade().ops_per_scene == 50
 
 
 def test_default_new_merchants_per_scene():
@@ -66,7 +66,7 @@ def test_magic_defaults_to_false_for_a_new_preset():
 
 def test_override_sell_factor_keeps_the_rest():
     cfg = load_rules_config(toml_text="[trade]\nsell_factor = 0.4\n").trade
-    assert (cfg.sell_factor, cfg.buy_factor, cfg.ops_per_scene) == (0.4, 1.0, 20)
+    assert (cfg.sell_factor, cfg.buy_factor, cfg.ops_per_scene) == (0.4, 1.0, 50)
 
 
 def test_override_ops_per_scene():
