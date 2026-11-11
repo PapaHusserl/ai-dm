@@ -79,7 +79,7 @@ def test_turn_menu_cost_group_title_is_printed_once_per_group():
 
 
 def test_inert_line_indent_and_wrap_indent():
-    lines = turn_menu_lines(OPTIONS, TURN, 24, inert=("Очень длинное название",))
+    lines = turn_menu_lines(OPTIONS, TURN, 24, inert=(f"Очень длинное название — {INERT_NOTE}",))
     first = next(x for x in lines if "Очень" in x)
     at = lines.index(first)
     assert first.startswith("    ") and not first.startswith("     ")

@@ -10,6 +10,7 @@ from ai_dm.combat import (
     sneak,
     stealth,
     summons,
+    zone_effects,
 )
 from ai_dm.combat.actions import (
     attack,
@@ -418,6 +419,7 @@ class CombatEngine:
             stealth.search(self, ref)
         if p.status == "active":
             stand_up(self, ref)
+            zone_effects.sleet_prone(self, ref)
             return events + move.hazard_check(self, ref)
         return events + downed.death_save(self, ref)
 
@@ -436,6 +438,7 @@ class CombatEngine:
                 "vulnerabilities": monster.damage_vulnerabilities,
                 "immunities": monster.damage_immunities,
             }
+        lists["immunities"] = lists["immunities"] + zone_effects.extra_immunities(self, ref)
         return apply_damage(
             self.actor(ref), amount, damage_type, self.registry,
             now_s=self.world.clock.now_s, **lists,

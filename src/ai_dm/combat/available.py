@@ -4,6 +4,7 @@ from ai_dm.combat import ammo, disarm, offhand, shove, sneak, summons
 from ai_dm.combat.actions import cast, cleric, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
+from ai_dm.combat.zone_effects import barred, silenced
 from ai_dm.rules.death_saves import is_dying
 from ai_dm.rules.derived import clock_text, free_cast_pool
 from ai_dm.rules.inventory import (
@@ -141,7 +142,8 @@ def multiattack_options(engine, ref) -> list[ActionOption]:
 
 
 def cast_options(engine, ref) -> list[ActionOption]:
-    if not engine.is_hero(ref):
+    # в зоне Тишины заклинаний нет
+    if not engine.is_hero(ref) or silenced(engine, ref):
         return []
     result = []
     turn = engine.part(ref).turn
@@ -249,7 +251,7 @@ def move_options(engine, ref) -> list[ActionOption]:
             id=f"move:{z.id}", kind="move", label=f"Идти: {z.name}", params={"zone": z.id},
             cost="move",
         )
-        for z in engine.state.zones if z.id in own.adjacent
+        for z in engine.state.zones if z.id in own.adjacent and not barred(engine, ref, z.id)
     ]
 
 

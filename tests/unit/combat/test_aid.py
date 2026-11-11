@@ -57,8 +57,10 @@ def test_aid_is_not_inert_for_a_caster(registry, cfg):
     assert "aid" not in [s.id for s in inert_spells(engine, "wiz")]
 
 
-def test_cleric_full_list_has_eleven_inert_spells_after_p4(registry, cfg):
-    # только 11 К3б: aid (П3б), spiritual_weapon и spirit_guardians (П4) -- с механикой
+def test_cleric_full_list_has_four_inert_spells_after_k3b_p1(registry, cfg):
+    # К3б П1 дала механику 7 из 11 (Свет, Вечный огонь, Дневной свет, Тишина, Магический круг,
+    # Святилище, Узы); без неё остались Оживление мертвецов, Успокоение эмоций, Развеивание магии,
+    # Воскрешение (П3, П4)
     cleric = [
         s for s in registry.all("spell") if "cleric" in s.classes and s.level <= 3
     ]
@@ -68,7 +70,7 @@ def test_cleric_full_list_has_eleven_inert_spells_after_p4(registry, cfg):
     engine = engine_of(registry, cfg, hero)
     inert = [s.id for s in inert_spells(engine, "wiz")]
     assert "aid" not in inert
-    assert len(inert) == 11
+    assert sorted(inert) == ["animate_dead", "calm_emotions", "dispel_magic", "revivify"]
 
 
 def test_aid_has_the_max_hp_kind(registry):

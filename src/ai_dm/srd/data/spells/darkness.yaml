@@ -11,3 +11,6 @@ duration: 10m
 concentration: true
 classes:
 - wizard
+effects:
+- type: zone
+  mode: darkness

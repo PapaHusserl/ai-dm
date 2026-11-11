@@ -1,7 +1,7 @@
 from itertools import combinations
 
-from ai_dm.combat import downed, summons
-from ai_dm.combat.actions import cast_conditions, cast_effects
+from ai_dm.combat import downed, sanctuary, summons, zone_effects
+from ai_dm.combat.actions import cast_conditions, cast_effects, cast_guards, cast_zones
 from ai_dm.combat.actions.attack import attack_event, reveal, roll_damage, split_dice
 from ai_dm.combat.actions.cast_effects import push_zone
 from ai_dm.combat.actions.cast_support import (
@@ -45,6 +45,9 @@ from ai_dm.state.creature import ActiveEffect, Expiry
 HOSTILE_KINDS = ("attack", "darts", "mark", "save", "rays", "condition", "summon")
 # Доспехи мага: только на существо без доспеха
 UNARMORED_ONLY = ("mage_armor",)
+# подвал меню боя: заклинание без механики и герой в зоне Тишины
+INERT_NOTE = "пока недоступно в бою"
+SILENCE_NOTE = "Тишина — заклинания недоступны"
 
 
 def castable_spells(engine, ref) -> list:
@@ -80,6 +83,13 @@ def inert_spells(engine, ref) -> list:
         if spell_kind(spell) is None and spell not in result:
             result.append(spell)
     return result
+
+
+def foot_notes(engine, ref) -> list[str]:
+    # готовые строки подвала меню: под Тишиной одна, иначе заклинания без механики
+    if zone_effects.silenced(engine, ref):
+        return [SILENCE_NOTE]
+    return [f"{spell.name} — {INERT_NOTE}" for spell in inert_spells(engine, ref)]
 
 
 def free_cast_left(engine, hero, spell) -> bool:
@@ -222,6 +232,8 @@ TARGETERS = {
     **dict.fromkeys(("temp_hp", "utility", "create_item", "retreat"), lambda e, r, s, c: [""]),
     "cure": lambda e, r, s, c: cure_refs(e, r, s),
     "defense": defense_refs,
+    **dict.fromkeys(("sanctuary", "bond", "see_invisible"), defense_refs),
+    "zone": lambda e, r, s, c: ranged_zones(e, r, s),
     "max_hp": lambda e, r, s, c: groups_of(ally_refs(e, r, s), targets_limit(s, c, "max_hp")),
     "ward": lambda e, r, s, c: ally_refs(e, r, s),
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
@@ -451,6 +463,8 @@ CASTERS = {
     "create_item": cast_effects.cast_create_item, "utility": cast_effects.cast_utility,
     "ward": cast_effects.cast_ward, "retreat": cast_effects.cast_retreat,
     "max_hp": cast_effects.cast_max_hp, "summon": summons.summon, "aura": cast_effects.cast_aura,
+    "zone": cast_zones.cast_zone_spell, "sanctuary": cast_guards.cast_sanctuary,
+    "bond": cast_guards.cast_guard, "see_invisible": cast_guards.cast_guard,
 }
 
 
@@ -492,4 +506,7 @@ def perform(engine, ref, option) -> list[DomainEvent]:
         spell = with_variant(spell, option.params["variant"])
     # скрытность кончается с заклинанием; до него, чтобы Невидимость не сняла сама себя
     reveal(engine, ref)
-    return CASTERS[spell_kind(spell)](engine, ref, spell, option.params["target"], circle)
+    kind = spell_kind(spell)
+    if kind in HOSTILE_KINDS:
+        sanctuary.drop(engine, ref)
+    return CASTERS[kind](engine, ref, spell, option.params["target"], circle)

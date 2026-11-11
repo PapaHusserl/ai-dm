@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from ai_dm.rules.creatures import D20_KINDS, creature_of
+from ai_dm.rules.creatures import D20_KINDS, creature_of, live_effects
 from ai_dm.rules.exhaustion import exhaustion_penalty
 from ai_dm.rules.modifiers.base import Modifier
 from ai_dm.state.creature import AppliedCondition
@@ -84,8 +84,16 @@ CONDITION_RULES = {
 }
 
 
+def sees_invisible(request) -> bool:
+    # Видение невидимого у бросающего: невидимая цель помехи атаке не даёт
+    effects = live_effects(creature_of(request.actor), request.now_s)
+    return any(e.kind == "see_invisible" for e in effects)
+
+
 def rule_matches(rule: Rule, request, applied) -> bool:
     if request.kind not in rule.kinds:
+        return False
+    if rule.who == "target" and applied.id == "invisible" and sees_invisible(request):
         return False
     if rule.other_than_source and applied.source == request.target_id is not None:
         return False

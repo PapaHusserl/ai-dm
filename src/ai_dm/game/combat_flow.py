@@ -107,14 +107,14 @@ def preview_turn(bundle, registry, cfg):
 def preview_screen(bundle, registry, cfg):
     # варианты, остаток хода и недоступные заклинания героя -- одним preview-движком
     engine, hero = preview_engine(bundle, registry, cfg)
-    inert = [spell.name for spell in cast.inert_spells(engine, hero.id)]
-    return engine.available_actions(hero.id), engine.part(hero.id).turn, inert
+    foot = cast.foot_notes(engine, hero.id)
+    return engine.available_actions(hero.id), engine.part(hero.id).turn, foot
 
 
 def inert_spell_names(bundle, registry, cfg) -> list[str]:
-    # названия заклинаний героя без механики в бою; в нумерацию меню не входят
+    # строки подвала меню (заклинания без механики, Тишина); в нумерацию меню не входят
     engine, hero = preview_engine(bundle, registry, cfg)
-    return [spell.name for spell in cast.inert_spells(engine, hero.id)]
+    return cast.foot_notes(engine, hero.id)
 
 
 def concentration_line(bundle, registry, cfg) -> str:

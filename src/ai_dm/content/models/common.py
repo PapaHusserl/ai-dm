@@ -106,6 +106,11 @@ EffectType = Literal[
     "teleport",
     "stabilize",
     "fog",
+    # зоны и защита (К3б): mode зоны -- EffectMode, conditions -- теги Магического круга
+    "zone",
+    "sanctuary",
+    "bond",
+    "see_invisible",
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
@@ -134,6 +139,8 @@ EffectWhen = Literal[
 EffectMode = Literal[
     "advantage", "resistance", "half", "floor", "expertise", "attack_roll", "penalty",
     "disadvantage",
+    # вид зоны (type zone)
+    "darkness", "light", "silence", "sleet", "circle",
 ]
 EffectShape = Literal["cone", "sphere", "cube", "line", "emanation"]
 

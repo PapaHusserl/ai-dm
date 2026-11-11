@@ -1,4 +1,4 @@
-from ai_dm.combat import available
+from ai_dm.combat import available, sanctuary
 from ai_dm.combat.actions import attack
 from ai_dm.combat.controllers import EngineTactics
 from ai_dm.core.events import DomainEvent
@@ -25,5 +25,7 @@ def perform(engine, ref, option) -> list[DomainEvent]:
             if chosen is None:
                 break
             target = [o for o in options if o.id == chosen][0].params["target"]
+            if sanctuary.blocks(engine, ref, target):
+                continue
             events += attack.attack(engine, ref, target, info)
     return events

@@ -9,3 +9,5 @@ range_kind: self
 duration: 1h
 classes:
 - wizard
+effects:
+- type: see_invisible

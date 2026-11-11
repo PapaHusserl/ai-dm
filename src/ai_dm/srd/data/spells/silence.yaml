@@ -12,3 +12,6 @@ concentration: true
 ritual: true
 classes:
 - cleric
+effects:
+- type: zone
+  mode: silence

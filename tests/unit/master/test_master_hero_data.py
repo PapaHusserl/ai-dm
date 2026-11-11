@@ -374,6 +374,31 @@ def test_hero_data_lists_aid_with_hp_bonus(registry, cfg):
     ]
 
 
+def test_hero_data_lists_a_magic_circle_placed_outside_combat(registry, cfg):
+    # К3б П1: круг вне боя -- эффект zone на срок; рассказчик видит его как действующее заклинание
+    from ai_dm.combat.zone_effects import place_circle
+
+    ctx = make_ctx(registry, cfg)
+    now = clock_now(ctx)
+    place_circle(ctx.hero, registry.get("spell", "magic_circle"), now)
+    assert hero_data(ctx)["active_spells"] == [
+        {"id": "magic_circle", "name": "Магический круг", "until_s": now + 3600},
+    ]
+
+
+def test_hero_data_skips_a_combat_zone_held_by_concentration(registry, cfg):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects.append(
+        ActiveEffect(
+            id="darkness", source="hero", kind="zone", params={"zone": "hall", "kind": "darkness"},
+            expires=Expiry(kind="concentration", owner="hero"),
+        )
+    )
+    assert "active_spells" not in hero_data(ctx)
+
+
 def test_hero_data_spell_without_hp_bonus_has_no_such_key(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.hero.creature.active_effects.append(
@@ -479,6 +504,18 @@ def test_sheet_data_companion_is_a_json_dict(registry, cfg):
     ctx = grey_ctx(registry, cfg)
     data = PromptBuilder(app_cfg()).sheet_data(ctx.hero, registry)
     assert data["companion"] == {"name": "Акела", "kind": "волк", "notes": "доверен Йоргеном"}
+
+
+def test_spells_data_skips_foreign_effects_and_keeps_the_ones_after_them(registry, cfg):
+    from ai_dm.master.prompt import spells_data
+    from ai_dm.state.creature import ActiveEffect
+
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.creature.active_effects += [
+        ActiveEffect(id="x", source="hero", kind="resist", params={"damage_type": "fire"}),
+        spell_effect("tongues", "spell", 99999),
+    ]
+    assert [s["id"] for s in spells_data(ctx.hero, registry, 0)] == ["tongues"]
 
 
 def test_sheet_data_with_now_has_active_spells(registry, cfg):

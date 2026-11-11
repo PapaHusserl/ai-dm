@@ -10,3 +10,6 @@ duration: 1h
 classes:
 - cleric
 - wizard
+effect_text: "Предмет светится час: ярко на 20 фт. и тускло ещё на 20; враг может сорвать свет спасброском."
+effects:
+- type: utility

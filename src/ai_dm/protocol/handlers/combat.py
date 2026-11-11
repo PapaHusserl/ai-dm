@@ -4,6 +4,7 @@ from ai_dm.combat.actions.improvise import EFFECTS, spec_problem
 from ai_dm.combat.defeat import DefeatParams, apply_defeat_outcome
 from ai_dm.combat.engine import CombatEngine
 from ai_dm.combat.setup import validate_start
+from ai_dm.combat.zone_effects import bind_circle
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed
@@ -198,6 +199,7 @@ def start_combat(ctx, request):
         # засада: герой скрыт, первая атака с преимуществом
         hero.creature.conditions.append(AppliedCondition(id="invisible", source="hidden", dc=15))
     session.active_combat = state
+    bind_circle(hero, request.hero_zone, ctx.bundle.world.clock.now_s)
     if request.initiated_by == "hero" and ctx.scene is not None:
         ctx.scene.hero_initiated_combat = True
     result = {"combat_id": state.id}

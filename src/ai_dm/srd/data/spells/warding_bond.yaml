@@ -9,3 +9,6 @@ range_kind: touch
 duration: 1h
 classes:
 - cleric
+effects:
+- type: bond
+  value: 1

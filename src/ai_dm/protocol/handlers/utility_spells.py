@@ -1,4 +1,5 @@
 from ai_dm.combat.actions.cast_conditions import STAGED
+from ai_dm.combat.actions.cast_guards import guard_kinds
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules.derived import spell_save_dc
@@ -38,6 +39,11 @@ def apply_defense(ctx, spell, who, now_s) -> None:
         if built is None:
             continue
         kind, params = built
+        creature.active_effects.append(
+            ActiveEffect(id=spell.id, source=hero.id, kind=kind, params=params, expires=expires)
+        )
+    # Защитные узы и Видение невидимого
+    for kind, params in guard_kinds(spell).items():
         creature.active_effects.append(
             ActiveEffect(id=spell.id, source=hero.id, kind=kind, params=params, expires=expires)
         )

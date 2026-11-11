@@ -11,3 +11,6 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effect_text: "До четырёх огоньков светят как факелы минуту; бонусным действием их можно двигать."
+effects:
+- type: utility

@@ -18,7 +18,9 @@ def test_inert_spells_empty_when_hero_knows_only_mechanical_spells(registry, cfg
 def test_inert_spells_lists_known_spell_without_battle_mechanics(registry, cfg, tmp_path):
     rig = grey_rig(registry, cfg, tmp_path, SEED)
     rig.runner.bundle.heroes[0].sheet.known_of().append("speak_with_animals")
-    assert rig.runner.inert_spells() == [registry.get("spell", "speak_with_animals").name]
+    # К3б П1: готовые строки подвала (cast.foot_notes)
+    name = registry.get("spell", "speak_with_animals").name
+    assert rig.runner.inert_spells() == [f"{name} — пока недоступно в бою"]
 
 
 def test_inert_spells_have_no_duplicates(registry, cfg, tmp_path):

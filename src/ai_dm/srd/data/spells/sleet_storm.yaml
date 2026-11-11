@@ -11,3 +11,6 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effects:
+- type: zone
+  mode: sleet

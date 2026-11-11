@@ -1,4 +1,4 @@
-from ai_dm.combat import death_burst, monster_traits
+from ai_dm.combat import bond, death_burst, monster_traits
 from ai_dm.combat.actions import parley
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules import death_saves
@@ -77,11 +77,12 @@ def after_damage(
     # вызывается после apply_damage: сон, 0 HP, смерть, концентрация
     wake_sleeping(engine, target_ref, dealt)
     release_until_damage(engine, target_ref, dealt)
+    events = bond.share(engine, target_ref, dealt, attacker_ref)
     if target_ref in engine.heroes:
-        return hero_damaged(engine, target_ref, dealt, attacker_ref, crit)
+        return events + hero_damaged(engine, target_ref, dealt, attacker_ref, crit)
     if monster_traits.endures(engine, target_ref, dealt, crit):
-        return []
-    return monster_damaged(engine, target_ref, dealt, attacker_ref, nonlethal)
+        return events
+    return events + monster_damaged(engine, target_ref, dealt, attacker_ref, nonlethal)
 
 
 # монстры и NPC

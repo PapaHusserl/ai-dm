@@ -170,6 +170,41 @@ def test_resistance_to_other_type_does_not_apply(registry):
     assert result.final == 7
 
 
+def test_resistance_to_all_halves_any_damage_type(registry):
+    # К3б П1: Защитные узы -- сопротивление всему
+    result = apply_damage(make_creature(), 9, "slashing", registry, resistances=["all"])
+    assert result.final == 4
+
+
+def test_resist_effect_with_type_all_halves_any_damage_type(registry):
+    target = make_creature()
+    target.active_effects.append(
+        ActiveEffect(id="warding_bond", source="h2", kind="resist", params={"damage_type": "all"})
+    )
+    result = apply_damage(target, 10, "fire", registry)
+    assert result.final == 5
+
+
+def test_resist_all_effect_names_its_source_in_the_note(registry):
+    from ai_dm.rules.damage import source_name
+
+    name = source_name(registry, "item", "stoneskin_elixir")
+    assert name
+    target = make_creature()
+    target.active_effects.append(
+        ActiveEffect(
+            id="stoneskin_elixir", source="h2", kind="resist", params={"damage_type": "all"}
+        )
+    )
+    result = apply_damage(target, 10, "fire", registry)
+    assert result.notes == [f"Сопротивление ({name}): 10 → 5 огненный"]
+
+
+def test_resist_all_given_explicitly_has_no_source_in_the_note(registry):
+    result = apply_damage(make_creature(), 10, "fire", registry, resistances=["all"])
+    assert result.notes == ["Сопротивление: 10 → 5 огненный"]
+
+
 def test_dwarf_hero_resists_poison(registry):
     hero = make_hero("dwarf")
     result = apply_damage(hero, 9, "poison", registry)

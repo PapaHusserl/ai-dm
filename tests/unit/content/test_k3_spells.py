@@ -57,7 +57,7 @@ def test_rituals(registry):
 
 def test_utility_spells_have_a_short_effect_text(registry):
     utility = [s for s in spells(registry) if any(e.type == "utility" for e in s.effects)]
-    assert len(utility) == 49
+    assert len(utility) == 52  # К3б П1: + Свет, Пляшущие огоньки, Вечный огонь (решение 10)
     for spell in utility:
         assert 0 < len(spell.effect_text) <= 120, spell.id
 
@@ -239,3 +239,51 @@ def test_variant_spells(registry):
     assert (orb.type, len(orb.variants)) == ("damage", 6)
     assert (energy.type, len(energy.variants)) == ("resist", 5)
     assert (ability.type, len(ability.variants)) == ("modifier", 6)
+
+
+# К3б П1: зоны и защита -- у 11 заклинаний есть данные и вид (решения 10, 15 plan-k3b)
+K3B_P1 = (
+    "darkness", "silence", "sleet_storm", "magic_circle", "daylight", "light", "dancing_lights",
+    "continual_flame", "sanctuary", "warding_bond", "see_invisibility",
+)
+
+
+@pytest.mark.parametrize("spell_id", K3B_P1)
+def test_k3b_p1_spell_has_effects_and_a_combat_kind(registry, spell_id):
+    from ai_dm.rules.spellcasting import spell_kind
+
+    spell = registry.get("spell", spell_id)
+    assert spell.effects
+    assert spell_kind(spell) is not None
+
+
+@pytest.mark.parametrize("spell_id", ["light", "dancing_lights", "continual_flame"])
+def test_k3b_light_spells_are_utility_with_effect_text(registry, spell_id):
+    # решение 10: свет -- utility, Тьма гасит его, отдельной зоны света у заклинаний нет
+    from ai_dm.rules.spellcasting import spell_kind
+
+    spell = registry.get("spell", spell_id)
+    assert spell_kind(spell) == "utility"
+    assert 0 < len(spell.effect_text) <= 120
+
+
+@pytest.mark.parametrize(
+    "spell_id, effect_type, mode",
+    [
+        ("darkness", "zone", "darkness"), ("silence", "zone", "silence"),
+        ("sleet_storm", "zone", "sleet"), ("magic_circle", "zone", "circle"),
+        ("daylight", "zone", "light"), ("sanctuary", "sanctuary", None),
+        ("warding_bond", "bond", None), ("see_invisibility", "see_invisible", None),
+    ],
+)
+def test_k3b_p1_spell_effect_type_and_mode(registry, spell_id, effect_type, mode):
+    found = [e for e in registry.get("spell", spell_id).effects if e.type == effect_type]
+    assert len(found) == 1
+    assert found[0].mode == mode
+
+
+def test_k3b_magic_circle_lists_srd_creature_types_without_aberration(registry):
+    spell = registry.get("spell", "magic_circle")
+    zone = next(e for e in spell.effects if e.type == "zone")
+    assert set(zone.conditions) == {"celestial", "elemental", "fey", "fiend", "undead"}
+    assert "аберрац" not in spell.description.lower()

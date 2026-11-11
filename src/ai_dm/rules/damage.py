@@ -79,11 +79,11 @@ def apply_damage(
         final = 0
         notes.append(adjust_note("Иммунитет", "", amount, 0, damage_type))
     else:
-        if damage_type in resistances:
+        # "all" -- сопротивление всему урону (Защитные узы)
+        if damage_type in resistances or "all" in resistances:
             half = final // 2
-            notes.append(adjust_note(
-                "Сопротивление", sources.get(damage_type, ""), final, half, damage_type
-            ))
+            source = sources.get(damage_type, sources.get("all", ""))
+            notes.append(adjust_note("Сопротивление", source, final, half, damage_type))
             final = half
         if damage_type in vulnerabilities:
             notes.append(adjust_note("Уязвимость", "", final, final * 2, damage_type))

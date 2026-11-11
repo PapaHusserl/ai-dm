@@ -1,5 +1,6 @@
 import textwrap
 
+from ai_dm.combat.actions.cast import INERT_NOTE  # noqa: F401  (путь импорта для ui/tui/blocks)
 from ai_dm.combat.available import HIDDEN_KINDS
 
 WIDTH = 80
@@ -70,14 +71,11 @@ def resources_line(turn, ac=""):
     )
 
 
-INERT_NOTE = "пока недоступно в бою"
-
-
 def inert_lines(inert, width=WIDTH):
-    # без номера: в выборе не участвует
+    # подвал меню: готовые строки (cast.foot_notes), без номера: в выборе не участвуют
     lines = []
-    for name in inert:
-        lines += wrap_block(f"{name} — {INERT_NOTE}", width, "    ", "      ")
+    for line in inert:
+        lines += wrap_block(line, width, "    ", "      ")
     return lines
 
 

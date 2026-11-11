@@ -1,8 +1,8 @@
-from ai_dm.combat import downed, mastery, monster_traits, sneak, thrown
+from ai_dm.combat import downed, mastery, monster_traits, sanctuary, sneak, thrown
 from ai_dm.combat.actions import features, rogue, shield
 from ai_dm.combat.ammo import spend as spend_ammo
 from ai_dm.combat.controllers import is_quarreling, quarrel_targets
-from ai_dm.combat.zone_effects import obscured
+from ai_dm.combat.zone_effects import zone_notes
 from ai_dm.combat.zones import cover_dc_bonus, distance, range_band_ft
 from ai_dm.core.dice import parse_dice, roll_dice
 from ai_dm.core.events import DomainEvent
@@ -268,12 +268,9 @@ def attack_tags(engine, ref, target_ref) -> dict:
 
 
 def spell_disadvantage(engine, ref, target_ref) -> list[str]:
-    # помеха от заклинаний: туман в зоне цели или атакующего (Р18), защита цели от существ
-    # с тегами атакующего (Защита от зла и добра)
-    notes = []
-    zones = {engine.part(ref).zone_id, engine.part(target_ref).zone_id}
-    if any(obscured(engine, zone_id) for zone_id in zones):
-        notes.append("туман")
+    # помеха от заклинаний: туман, Тьма, Ледяной шторм в зоне цели или атакующего (Р18), Магический
+    # круг вокруг цели, защита цели от существ с тегами атакующего (Защита от зла и добра)
+    notes = zone_notes(engine, ref, target_ref)
     tags = engine.tags(ref)
     for effect in engine.creature(target_ref).active_effects:
         if effect.kind == "ward" and tags & set(effect.params["tags"].split(",")):
@@ -631,6 +628,8 @@ def spend_attack(engine, ref) -> None:
 
 def perform(engine, ref, option) -> list[DomainEvent]:
     spend_attack(engine, ref)
+    if sanctuary.blocks(engine, ref, option.params["target"]):
+        return []
     info = [i for i in attacks_of(engine, ref) if i.id == option.params["weapon"]][0]
     holds_other = engine.is_hero(ref) and engine.heroes[ref].equipped.main_hand != info.weapon_id
     if holds_other and info.weapon_id is not None:
@@ -640,6 +639,7 @@ def perform(engine, ref, option) -> list[DomainEvent]:
         engine, ref, option.params["target"], info, option.params["nonlethal"],
         ammo=option.params.get("ammo"),
     )
+    sanctuary.drop(engine, ref)
     if info.grip == "thrown":
         thrown.drop(engine, ref, info, option.params["target"])
     features.light_mark(engine, ref, info)

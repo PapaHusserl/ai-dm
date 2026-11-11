@@ -10,3 +10,6 @@ duration: 8h
 classes:
 - cleric
 - wizard
+effect_text: "Предмет светит холодным пламенем восемь часов: ярко на 20 фт. и тускло ещё на 20."
+effects:
+- type: utility

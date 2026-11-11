@@ -78,5 +78,6 @@ ignore_decorators = ["@field_validator", "@model_validator"]
 
 [tool.mutmut]
 source_paths = ["src/"]
+timeout_constant = 30
 pytest_add_cli_args_test_selection = ["tests/"]
 also_copy = ["campaigns/", "content/", "devtools/", "pyproject.toml", "README.md", "Makefile", "scripts/"]

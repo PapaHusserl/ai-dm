@@ -427,7 +427,8 @@ def test_inert_spell_is_shown_in_actions_without_number(registry, tmp_path, tui)
     app, _ = tui.app(registry, tmp_path)
 
     async def steps(app, pilot):
-        app.show_blocks(actions_blocks(("Сигнал тревоги",)), refresh=True)
+        # К3б П1: в подвал приходят готовые строки (cast.foot_notes)
+        app.show_blocks(actions_blocks(("Сигнал тревоги — пока недоступно в бою",)), refresh=True)
         await pilot.pause()
         return tui.text_of(app.query_one("#actions"))
 

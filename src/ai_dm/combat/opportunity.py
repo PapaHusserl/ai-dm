@@ -1,3 +1,4 @@
+from ai_dm.combat import sanctuary
 from ai_dm.combat.actions import attack
 
 
@@ -32,5 +33,15 @@ def provoke(engine, mover_ref, from_zone_id) -> list:
             continue
         p.turn.reaction = False
         engine.log(f"{engine.name(p.ref)}: провоцированная атака")
-        events += attack.attack(engine, p.ref, mover_ref, info, provoked=True)
+        events += strike(engine, p.ref, mover_ref, info)
+    return events
+
+
+def strike(engine, ref, mover_ref, info) -> list:
+    # провоцированная атака с учётом Святилища: уходящий под охраной бросает Мудрость у бьющего,
+    # а бьющий герой теряет своё Святилище
+    if sanctuary.blocks(engine, ref, mover_ref):
+        return []
+    events = attack.attack(engine, ref, mover_ref, info, provoked=True)
+    sanctuary.drop(engine, ref)
     return events

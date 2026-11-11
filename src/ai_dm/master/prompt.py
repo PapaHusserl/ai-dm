@@ -197,7 +197,10 @@ def spells_data(hero, registry, now_s):
     # [{id, name, until_s}]
     result = []
     for effect in live_effects(hero.creature, now_s):
-        if effect.kind not in ("spell", "max_hp"):
+        if effect.kind not in ("spell", "max_hp", "zone"):
+            continue
+        # зона на концентрации (боевая Тьма) срока по часам не имеет, круг вне боя -- имеет
+        if effect.expires.kind != "seconds":
             continue
         item = {
             "id": effect.id, "name": registry.get("spell", effect.id).name,

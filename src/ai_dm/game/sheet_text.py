@@ -370,7 +370,7 @@ def spell_lines(hero, registry, now_s):
     # действующие заклинания со сроком по часам мира: «Языки (до 14:30)», «Помощь (+5 HP, до 22:30)»
     lines = []
     for effect in live_effects(hero.creature, now_s):
-        if effect.kind not in ("spell", "max_hp") or effect.expires.kind != "seconds":
+        if effect.kind not in ("spell", "max_hp", "zone") or effect.expires.kind != "seconds":
             continue
         name = registry.get("spell", effect.id).name
         when = until_text(effect.expires.value, now_s)

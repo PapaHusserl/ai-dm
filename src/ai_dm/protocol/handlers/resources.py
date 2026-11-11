@@ -1,6 +1,7 @@
 from ai_dm.combat.actions.cast import UNARMORED_ONLY
 from ai_dm.combat.actions.cast_support import with_variant
 from ai_dm.combat.available import variants_of
+from ai_dm.combat.zone_effects import place_circle
 from ai_dm.core.clock import DAY
 from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
@@ -62,6 +63,8 @@ PREY_FEATURE = "hunters_prey"
 RITUAL_SECONDS = 600
 CURSED = "cursed"
 USE_EFFECTS = ("heal", "ac_bonus", "resist")
+# виды защиты на одну цель; вне боя Узы и Видение невидимого действуют на час
+DEFENSE_KINDS = ("defense", "bond", "see_invisible")
 # строки лога, по которым защиты от повтора находят прошлые начисления в outcomes
 XP_LOG = "Опыт: +"
 TIME_LOG = "Время идёт: {} с"
@@ -533,7 +536,7 @@ def spell_target(ctx, spell, kind, target):
             )
     if (kind == "mark" or single) and npc is None:
         return None, Invalid(code="bad_target", message=f"{spell.name} нужна цель: NPC в локации")
-    needs_creature = kind in ("heal", "buff", "max_hp", "defense") or single
+    needs_creature = kind in ("heal", "buff", "max_hp", *DEFENSE_KINDS) or single
     if needs_creature and npc is not None and npc.creature is None:
         return None, Invalid(
             code="bad_target", message=f"у {npc.name} нет состояния здоровья: цель не подходит"
@@ -545,6 +548,13 @@ def spell_target(ctx, spell, kind, target):
             code="bad_target", message=f"{spell.name}: действует только на существо без доспеха"
         )
     return hero, None
+
+
+def combat_ready(spell, kind) -> bool:
+    # Святилище и зоны (кроме Магического круга) читаются только в бою
+    if kind == "zone":
+        return effect_of(spell, "zone").mode == "circle"
+    return kind != "sanctuary"
 
 
 def cast_spell(ctx, request):
@@ -570,7 +580,9 @@ def cast_spell(ctx, request):
     kind = spell_kind(spell)
     if kind == "rider":
         return Invalid(code="combat_only", message=f"{spell.name} заряжается только в бою")
-    one_target = kind in ("buff", "max_hp", "defense")
+    if not combat_ready(spell, kind):
+        return Invalid(code="combat_only", message=f"{spell.name} читается только в бою")
+    one_target = kind in ("buff", "max_hp", *DEFENSE_KINDS)
     one_target = one_target or (kind == "condition" and not has_effect(spell, "area"))
     if one_target and request.circle > spell.level:
         return Invalid(
@@ -650,7 +662,10 @@ def cast_spell(ctx, request):
         result["target"] = who.name
     elif kind == "utility":
         log += cast_utility(ctx, spell, who, request, result)
-    elif kind == "defense":
+    elif kind == "zone":
+        place_circle(hero, spell, now_s)
+        log.append(f"  {spell.name}: вокруг {hero.name}")
+    elif kind in DEFENSE_KINDS:
         if spell.concentration:
             start_concentration(hero, world, spell, request.circle, now_s)
             result["concentration"] = spell.id
@@ -680,8 +695,8 @@ def cast_spell(ctx, request):
                     )
             result["target"] = who.name
             log.append(f"  {spell.name}: на {who.name}")
-    if kind != "max_hp":
-        # у Помощи срок виден по самому эффекту
+    if kind not in ("max_hp", "zone"):
+        # у Помощи и Магического круга срок виден по самому эффекту
         add_spell_duration(hero, spell, now_s)
     if spell.duration_s is not None:
         result["until"] = clock_text(now_s + spell.duration_s)

@@ -11,3 +11,5 @@ casting_time: bonus_action
 duration: 1m
 classes:
 - cleric
+effects:
+- type: sanctuary

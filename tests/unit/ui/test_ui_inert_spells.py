@@ -14,8 +14,20 @@ OPTIONS = [
 ]
 
 
+# К3б П1: подвал меню -- готовые строки (cast.foot_notes), format их не дополняет
+ALARM = f"Сигнал тревоги — {INERT_NOTE}"
+BERRIES = f"Лечебные ягоды — {INERT_NOTE}"
+
+
+def test_footer_line_is_printed_as_given():
+    lines = turn_menu_lines(OPTIONS, TURN, 80, inert=("Тишина — заклинания недоступны",))
+    footer = [x for x in lines if "Тишина" in x]
+    assert [x.strip() for x in footer] == ["Тишина — заклинания недоступны"]
+    assert not any(INERT_NOTE in x for x in lines)
+
+
 def test_inert_spell_line_has_no_number():
-    lines = turn_menu_lines(OPTIONS, TURN, 80, inert=("Сигнал тревоги",))
+    lines = turn_menu_lines(OPTIONS, TURN, 80, inert=(ALARM,))
     line = next(x for x in lines if "Сигнал тревоги" in x)
     assert INERT_NOTE in line
     assert not line.strip()[0].isdigit()
@@ -23,7 +35,7 @@ def test_inert_spell_line_has_no_number():
 
 def test_numbering_is_the_same_with_and_without_inert():
     plain = turn_menu_lines(OPTIONS, TURN, 80)
-    with_inert = turn_menu_lines(OPTIONS, TURN, 80, inert=("Сигнал тревоги", "Лечебные ягоды"))
+    with_inert = turn_menu_lines(OPTIONS, TURN, 80, inert=(ALARM, BERRIES))
     numbered = [x for x in with_inert if x.strip()[:2] in ("1.", "2.", "3.", "4.")]
     assert numbered == [x for x in plain if x in numbered]
     assert len(numbered) == 3
@@ -31,7 +43,7 @@ def test_numbering_is_the_same_with_and_without_inert():
 
 
 def test_each_inert_spell_gets_its_own_line():
-    lines = turn_menu_lines(OPTIONS, TURN, 80, inert=("Сигнал тревоги", "Лечебные ягоды"))
+    lines = turn_menu_lines(OPTIONS, TURN, 80, inert=(ALARM, BERRIES))
     assert len([x for x in lines if INERT_NOTE in x]) == 2
 
 
@@ -40,14 +52,15 @@ def test_no_inert_lines_without_inert_spells():
 
 
 def test_long_inert_name_wraps_within_width():
-    lines = turn_menu_lines(OPTIONS, TURN, 30, inert=("Очень длинное название заклинания",))
+    long_line = f"Очень длинное название заклинания — {INERT_NOTE}"
+    lines = turn_menu_lines(OPTIONS, TURN, 30, inert=(long_line,))
     assert all(len(x) <= 30 for x in lines)
     assert INERT_NOTE.split()[-1] in " ".join(lines)
 
 
 def test_simple_mode_renders_inert_spell_without_number():
     block = Block(
-        "turn_menu", items=tuple(OPTIONS), args=(TURN, "", "КД 15", "", ("Сигнал тревоги",))
+        "turn_menu", items=tuple(OPTIONS), args=(TURN, "", "КД 15", "", (ALARM,))
     )
     lines = render(block, 80)
     line = next(x for x in lines if "Сигнал тревоги" in x)
