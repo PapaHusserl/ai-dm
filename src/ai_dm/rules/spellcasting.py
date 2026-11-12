@@ -58,7 +58,9 @@ def defense_effect(effect, spell) -> tuple[str, dict] | None:
 # первый подходящий эффект даёт вид (после rider, mark и area)
 KIND_BY_EFFECT = (
     ("zone", "zone"), ("sanctuary", "sanctuary"), ("bond", "bond"),
-    ("see_invisible", "see_invisible"), ("heal", "heal"), ("remove_condition", "cure"),
+    ("see_invisible", "see_invisible"), ("tempo", "tempo"), ("mirror_image", "mirror_image"),
+    ("blink", "blink"), ("feather_fall", "feather_fall"), ("flight", "flight"), ("size", "size"),
+    ("heal", "heal"), ("remove_condition", "cure"),
     ("temp_hp", "temp_hp"), ("ac_bonus", "defense"), ("resist", "defense"),
     ("invisible", "defense"), ("blur", "defense"), ("summon", "summon"), ("aura", "aura"),
     ("ward", "ward"), ("teleport", "teleport"), ("hazard", "hazard"),

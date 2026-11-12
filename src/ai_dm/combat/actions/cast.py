@@ -1,7 +1,13 @@
 from itertools import combinations
 
-from ai_dm.combat import downed, sanctuary, summons, zone_effects
-from ai_dm.combat.actions import cast_conditions, cast_effects, cast_guards, cast_zones
+from ai_dm.combat import downed, sanctuary, summons, tempo, zone_effects
+from ai_dm.combat.actions import (
+    cast_conditions,
+    cast_effects,
+    cast_guards,
+    cast_motion,
+    cast_zones,
+)
 from ai_dm.combat.actions.attack import attack_event, reveal, roll_damage, split_dice
 from ai_dm.combat.actions.cast_effects import push_zone
 from ai_dm.combat.actions.cast_support import (
@@ -213,6 +219,20 @@ def condition_refs(engine, ref, spell, circle) -> list[str]:
     return groups_of(enemy_refs(engine, ref, spell), limit)
 
 
+def tempo_refs(engine, ref, spell, circle) -> list[str]:
+    # Замедление -- зоны (спасбросок), Ускорение -- союзники и сам
+    if effect_of(spell, "tempo").mode == "slow":
+        return condition_refs(engine, ref, spell, circle)
+    return ally_refs(engine, ref, spell)
+
+
+def flight_refs(engine, ref, spell, circle) -> list[str]:
+    # Левитация -- только враг (Тел), Полёт и Газообразная форма -- союзники и сам
+    if effect_of(spell, "flight").mode == "levitate":
+        return condition_refs(engine, ref, spell, circle)
+    return ally_refs(engine, ref, spell)
+
+
 def heal_refs(engine, ref, spell, circle) -> list[str]:
     refs = ally_refs(engine, ref, spell, ("active", "down"))
     return groups_of(refs, targets_limit(spell, circle, "heal"))
@@ -234,6 +254,9 @@ TARGETERS = {
     "defense": defense_refs,
     **dict.fromkeys(("sanctuary", "bond", "see_invisible"), defense_refs),
     "zone": lambda e, r, s, c: ranged_zones(e, r, s),
+    "tempo": tempo_refs, "flight": flight_refs,
+    "size": lambda e, r, s, c: ally_refs(e, r, s) + enemy_refs(e, r, s),
+    **dict.fromkeys(("mirror_image", "blink"), lambda e, r, s, c: [r]),
     "max_hp": lambda e, r, s, c: groups_of(ally_refs(e, r, s), targets_limit(s, c, "max_hp")),
     "ward": lambda e, r, s, c: ally_refs(e, r, s),
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
@@ -465,6 +488,9 @@ CASTERS = {
     "max_hp": cast_effects.cast_max_hp, "summon": summons.summon, "aura": cast_effects.cast_aura,
     "zone": cast_zones.cast_zone_spell, "sanctuary": cast_guards.cast_sanctuary,
     "bond": cast_guards.cast_guard, "see_invisible": cast_guards.cast_guard,
+    "tempo": tempo.cast_tempo, "mirror_image": cast_motion.cast_mirror_image,
+    "blink": cast_motion.cast_blink, "flight": cast_motion.cast_flight,
+    "size": cast_motion.cast_size,
 }
 
 

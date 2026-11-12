@@ -29,7 +29,7 @@ def hero_lines(game):
         ac_summary(hero, registry, now_s),
         f"Деньги: {format_cp(hero.money_cp)}",
     ]
-    effects = effects_line(hero, registry, now_s)
+    effects = effects_line(hero, registry, now_s, spells=False)
     if effects:
         lines.append(effects)
     concentration = game.runner.concentration_line()

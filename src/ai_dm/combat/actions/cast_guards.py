@@ -7,9 +7,14 @@ from ai_dm.state.creature import ActiveEffect
 
 def place(engine, ref, spell, target_ref, kinds) -> None:
     # эффекты заклинания на цель: {вид: параметры}; прежние того же заклинания заменяются
+    place_pairs(engine, ref, spell, target_ref, list(kinds.items()))
+
+
+def place_pairs(engine, ref, spell, target_ref, pairs) -> None:
+    # то же, что place, но [(вид, параметры)]: вид может повторяться (Газообразная форма)
     creature = engine.creature(target_ref)
     creature.active_effects = [e for e in creature.active_effects if e.id != spell.id]
-    for kind, params in kinds.items():
+    for kind, params in pairs:
         creature.active_effects.append(
             ActiveEffect(
                 id=spell.id, source=ref, kind=kind, params=params,

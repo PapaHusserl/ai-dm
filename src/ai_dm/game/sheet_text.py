@@ -1,13 +1,11 @@
 import textwrap
 
 from ai_dm.content.models.common import ABILITIES, SKILLS
-from ai_dm.core.clock import DAY
 from ai_dm.rules.boons import BOONS
 from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.derived import (
     ability_mod,
     always_prepared,
-    clock_text,
     free_cast_pool,
     hero_effects,
     passive_perception,
@@ -17,8 +15,15 @@ from ai_dm.rules.derived import (
     saving_throw_bonus,
     skill_bonus,
     spell_slots,
+    until_text,
 )
-from ai_dm.rules.inventory import RESIST_WORDS, dearest_cost, entry_name, find_item
+from ai_dm.rules.inventory import (
+    RESIST_WORDS,
+    combat_spell_lines,
+    dearest_cost,
+    entry_name,
+    find_item,
+)
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.names import ABILITY_SHORT, SKILL_NAMES
 from ai_dm.rules.progression import max_level, xp_for_level
@@ -355,17 +360,6 @@ def boon_effects(hero, now_s):
     return result
 
 
-def until_text(until, now_s):
-    # «до 07:00», «до 07:00, завтра», «до 07:00, через 3 дн.»
-    when = f"до {clock_text(until)}"
-    days = until // DAY - now_s // DAY
-    if days == 1:
-        when += ", завтра"
-    elif days > 1:
-        when += f", через {days} дн."
-    return when
-
-
 def spell_lines(hero, registry, now_s):
     # действующие заклинания со сроком по часам мира: «Языки (до 14:30)», «Помощь (+5 HP, до 22:30)»
     lines = []
@@ -391,6 +385,7 @@ def effect_lines(hero, now_s, registry=None):
             lines.append(f"{name} ({until_text(until, now_s)})")
     if registry is not None:
         lines += spell_lines(hero, registry, now_s)
+        lines += combat_spell_lines(hero.creature, registry, now_s)
     return lines
 
 

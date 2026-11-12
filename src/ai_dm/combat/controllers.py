@@ -157,7 +157,7 @@ class EngineTactics:
         for p in engine.state.participants:
             if p.side == side:
                 continue
-            if status == "active" and engine.is_capable(p.ref):
+            if status == "active" and engine.is_capable(p.ref) and engine.targetable(p.ref):
                 result.append(p.ref)
             if status == "down" and p.status == "down":
                 result.append(p.ref)

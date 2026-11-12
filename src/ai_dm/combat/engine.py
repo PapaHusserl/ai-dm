@@ -1,5 +1,6 @@
 from ai_dm.combat import (
     aura,
+    blink,
     disarm,
     downed,
     end,
@@ -10,6 +11,7 @@ from ai_dm.combat import (
     sneak,
     stealth,
     summons,
+    tempo,
     zone_effects,
 )
 from ai_dm.combat.actions import (
@@ -28,6 +30,7 @@ from ai_dm.combat.actions import (
     standard,
 )
 from ai_dm.combat.actions.attack import roll_damage, split_dice
+from ai_dm.combat.actions.cast_support import TARGETABLE
 from ai_dm.combat.available import ActionOption, list_options
 from ai_dm.combat.controllers import AutoHeroController, EngineTactics
 from ai_dm.combat.monster_traits import PackTacticsSource
@@ -216,6 +219,10 @@ class CombatEngine:
 
     def is_capable(self, ref) -> bool:
         return self.part(ref).status == "active" and self.creature(ref).hp_current > 0
+
+    def targetable(self, ref) -> bool:
+        # цель атак и заклинаний: боеспособный, лежащий или сдавшийся, не в Эфире (Мерцание)
+        return self.part(ref).status in TARGETABLE and not blink.blinked(self, ref)
 
     def enemy_nearby(self, ref) -> bool:
         # боеспособный враг в зоне участника
@@ -413,12 +420,14 @@ class CombatEngine:
         sneak.reset(self)
         self.state.savage_used = []
         events = self.burn(ref)
+        blink.start_turn(self, ref)
         self.expire("start_of_turn", ref)
         asleep = "incapacitated" in {c.id for c in with_implied(self.creature(ref))}
         if p.status == "active" and p.side == "enemies" and self.monster_of(ref) and not asleep:
             stealth.search(self, ref)
         if p.status == "active":
             stand_up(self, ref)
+            tempo.start_turn(self, ref)
             zone_effects.sleet_prone(self, ref)
             return events + move.hazard_check(self, ref)
         return events + downed.death_save(self, ref)
@@ -510,8 +519,10 @@ class CombatEngine:
         return events
 
     def next_turn(self) -> None:
-        # конец хода: повторные спасброски удержанного (Удержание личности, Паутина)
-        cast_conditions.repeat_saves(self, self.state.initiative_order[self.state.turn_index])
+        # конец хода: повторные спасброски удержанного (Удержание личности, Паутина), Мерцание
+        ref = self.state.initiative_order[self.state.turn_index]
+        cast_conditions.repeat_saves(self, ref)
+        blink.end_turn(self, ref)
         self.state.turn_index += 1
         if self.state.turn_index >= len(self.state.initiative_order):
             self.state.turn_index = 0

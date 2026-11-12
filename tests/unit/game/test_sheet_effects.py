@@ -367,3 +367,64 @@ def test_sheet_drops_the_aid_line_after_it_ends(app):
     grant_max_hp(hero.creature, "aid", hero.id, 5, now(app) + 8 * HOUR)
     app.bundle.world.clock.advance(8 * HOUR)
     assert effects_row(app) == []
+
+
+# К3б П2: заклинания боя (Ускорение, концентрация) -- «Действует:» шапки боя и «Эффекты:» /sheet
+
+def give_haste(hero):
+    # как cast_tempo: КД с подписью и tempo, оба с id заклинания, срок -- концентрация
+    expires = Expiry(kind="concentration", owner=hero.id)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="haste", source=hero.id, kind="ac",
+        params={"amount": 2, "label": "Ускорение", "magic": True}, expires=expires,
+    ))
+    hero.creature.active_effects.append(ActiveEffect(
+        id="haste", source=hero.id, kind="tempo", params={"mode": "haste"}, expires=expires,
+    ))
+
+
+def test_combat_header_effects_line_shows_haste(app):
+    from ai_dm.game.combat_flow import hero_effects_line
+
+    hero = give(app)
+    give_haste(hero)
+    line = hero_effects_line(app.bundle, app.registry)
+    assert line.startswith("Действует:")
+    assert "Ускорение" in line
+    assert "+2 КД" in line
+
+
+def test_combat_header_effects_line_is_empty_without_effects(app):
+    from ai_dm.game.combat_flow import hero_effects_line
+
+    give(app)
+    assert hero_effects_line(app.bundle, app.registry) == ""
+
+
+def test_effects_line_joins_an_item_and_a_spell_with_a_semicolon(app, dragon_registry):
+    hero = give(app)
+    hero.creature.active_effects.append(stoneskin(now(app) + HOUR))
+    give_haste(hero)
+    line = effects_line(hero, dragon_registry, now(app))
+    assert line.startswith("Действует: Каменная Кожа (+2 КД) до 01:00; ")
+    assert "Ускорение" in line
+
+
+def test_sheet_effects_row_shows_haste(app):
+    hero = give(app)
+    give_haste(hero)
+    [row] = effects_row(app)
+    assert row.startswith("Эффекты: ")
+    assert "Ускорение" in row
+    assert "+2 КД" in row
+
+
+def test_ac_effect_with_a_label_but_without_a_combat_kind_is_not_shown(app):
+    # решение 24: Доспехи мага (ac с подписью, без вида из COMBAT_KINDS) в строку не попадают
+    hero = give(app)
+    hero.creature.active_effects.append(ActiveEffect(
+        id="mage_armor", source=hero.id, kind="ac",
+        params={"amount": 3, "label": "Доспехи мага"},
+        expires=Expiry(kind="seconds", value=now(app) + 8 * HOUR),
+    ))
+    assert effects_row(app) == []

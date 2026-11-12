@@ -1,4 +1,5 @@
-from ai_dm.combat import aura, downed
+from ai_dm.combat import aura, downed, flight
+from ai_dm.combat.actions import feather_fall
 from ai_dm.combat.actions.attack import roll_damage
 from ai_dm.combat.zones import drop_steps
 from ai_dm.core.events import DomainEvent
@@ -18,8 +19,12 @@ def fall_dice(steps, cfg) -> str | None:
 
 
 def hovers(engine, ref) -> bool:
-    # летающий монстр, пока не лежит и дееспособен, парит и не падает
-    if not engine.monster_of(ref) or engine.monster(ref).fly_ft <= 0:
+    # Газообразная форма и Левитация парят всегда; летающий монстр или герой под Полётом --
+    # пока не лежит и дееспособен; парящий не падает
+    if flight.has(engine, ref, "gaseous") or flight.has(engine, ref, "levitating"):
+        return True
+    flies = engine.monster_of(ref) and engine.monster(ref).fly_ft > 0
+    if not flies and not flight.has(engine, ref, "flying"):
         return False
     conditions = {c.id for c in with_implied(engine.creature(ref))}
     return engine.is_capable(ref) and not conditions & {"prone", "incapacitated"}
@@ -32,6 +37,8 @@ def fall(engine, target, from_zone_id, by_ref) -> list[DomainEvent]:
         return []
     if hovers(engine, target):
         engine.log(f"  {engine.name(target)} парит")
+        return []
+    if feather_fall.react(engine, target, from_zone_id):
         return []
     feet = steps * engine.cfg.combat.fall_step_ft
     engine.log(f"  {engine.name(target)} падает с высоты {feet} фт")

@@ -1,6 +1,6 @@
 from ai_dm.core.dice import roll_dice
 from ai_dm.rules.creatures import live_effects
-from ai_dm.rules.derived import armor_allowed, clock_text, effect_amount
+from ai_dm.rules.derived import armor_allowed, clock_text, effect_amount, until_text
 from ai_dm.rules.healing import heal
 from ai_dm.state.creature import ActiveEffect, Expiry
 from ai_dm.state.hero import InventoryEntry
@@ -216,8 +216,54 @@ def active_item_until(hero, item_id: str, now_s: int):
     return max(ends) if ends else None
 
 
-def effects_line(hero, registry, now_s: int) -> str:
-    # «Действует: Каменная Кожа (+2 КД, сопр. рубящему/дробящему) до 03:12»; пусто, если нет
+# виды эффектов заклинаний К3б, которые видны игроку строкой («Действует:», «Эффекты:»)
+COMBAT_KINDS = (
+    "tempo", "mirror_image", "blink", "size", "flying", "levitating", "gaseous", "bond",
+    "sanctuary", "see_invisible",
+)
+
+
+def spell_detail(effect) -> str:
+    # деталь эффекта заклинания боя для строки: «+2 КД», «сопр. всему», «образов 3», «увеличен»
+    params = effect.params
+    if effect.kind == "ac":
+        return f"{'+' if params['amount'] > 0 else '−'}{abs(params['amount'])} КД"
+    if effect.kind == "resist" and params["damage_type"] == "all":
+        return "сопр. всему"
+    if effect.kind == "mirror_image":
+        return f"образов {params['images']}"
+    if effect.kind == "size":
+        return "увеличен" if params["step"] > 0 else "уменьшен"
+    return ""
+
+
+def combat_spell_lines(creature, registry, now_s: int) -> list[str]:
+    # заклинания боя на существе: «Ускорение (+2 КД, концентрация)», «Отражения (образов 3, до
+    # 14:31)»; одна строка на заклинание, у которого есть эффект вида COMBAT_KINDS или КД с
+    # подписью (label); сопротивления, метки spell, max_hp и зоны здесь не показываются
+    live = live_effects(creature, now_s)
+    ids = []
+    for effect in live:
+        shown = effect.kind in COMBAT_KINDS and registry.has("spell", effect.id)
+        if shown and effect.id not in ids:
+            ids.append(effect.id)
+    lines = []
+    for spell_id in ids:
+        found = [e for e in live if e.id == spell_id]
+        parts = [spell_detail(e) for e in found if spell_detail(e)]
+        expires = next((e.expires for e in found if e.expires is not None), None)
+        if expires is not None and expires.kind == "seconds":
+            parts.append(until_text(expires.value, now_s))
+        if expires is not None and expires.kind == "concentration":
+            parts.append("концентрация")
+        name = registry.get("spell", spell_id).name
+        lines.append(f"{name} ({', '.join(parts)})" if parts else name)
+    return lines
+
+
+def effects_line(hero, registry, now_s: int, spells: bool = True) -> str:
+    # «Действует: Каменная Кожа (+2 КД, сопр. рубящему/дробящему) до 03:12; Ускорение (+2 КД,
+    # концентрация)»: предметы, затем заклинания боя (spells); пусто, если нет
     order = []
     for effect in live_effects(hero.creature, now_s):
         if effect.expires is None or effect.expires.kind != "seconds":
@@ -244,6 +290,8 @@ def effects_line(hero, registry, now_s: int) -> str:
             plus.append("сопр. " + "/".join(resists))
         until = clock_text(active_item_until(hero, item_id, now_s))
         texts.append(f"{item.short_name or item.name} ({', '.join(plus)}) до {until}")
+    if spells:
+        texts += combat_spell_lines(hero.creature, registry, now_s)
     if not texts:
         return ""
     return "Действует: " + "; ".join(texts)

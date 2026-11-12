@@ -11,3 +11,7 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effects:
+- type: tempo
+  mode: haste
+  value: 2

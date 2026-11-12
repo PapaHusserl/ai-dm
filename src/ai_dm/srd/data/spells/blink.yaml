@@ -9,3 +9,5 @@ range_kind: self
 duration: 1m
 classes:
 - wizard
+effects:
+- type: blink

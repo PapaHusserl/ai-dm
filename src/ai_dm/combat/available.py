@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import ammo, disarm, offhand, shove, sneak, summons
+from ai_dm.combat import ammo, disarm, flight, offhand, shove, sneak, summons, tempo
 from ai_dm.combat.actions import cast, cleric, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
@@ -21,7 +21,8 @@ from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES
 # значения variants по-русски: тип урона (Цветной шар, Защита от энергии) и характеристика
 VARIANT_WORDS = {
     "acid": "кислота", "cold": "холод", "fire": "огонь", "lightning": "молния", "poison": "яд",
-    "thunder": "гром", **{key: name.lower() for key, name in ABILITY_NAMES.items()},
+    "thunder": "гром", "enlarge": "увеличить", "reduce": "уменьшить",
+    **{key: name.lower() for key, name in ABILITY_NAMES.items()},
 }
 
 
@@ -57,6 +58,9 @@ def menu_targets(engine, ref) -> list[str]:
 
 
 def attack_options(engine, ref) -> list[ActionOption]:
+    # Газообразная форма не атакует
+    if flight.has(engine, ref, "gaseous"):
+        return []
     result = []
     for info in [i for i in attacks_of(engine, ref) if ammo.can_shoot(engine, ref, i)]:
         stock = ammo.stock_text(engine, ref, info)
@@ -131,8 +135,9 @@ def ammo_options(engine, ref) -> list[ActionOption]:
 
 
 def multiattack_options(engine, ref) -> list[ActionOption]:
-    # Мультиатака монстра: одно действие, предлагается, если хоть у одного шага есть цель
-    if engine.is_hero(ref):
+    # Мультиатака монстра: одно действие, предлагается, если хоть у одного шага есть цель;
+    # замедленный её не делает
+    if engine.is_hero(ref) or tempo.active(engine, ref, "slow"):
         return []
     steps = engine.monster(ref).multiattack
     weapons = [o.params["weapon"] for o in attack_options(engine, ref)]
@@ -142,8 +147,8 @@ def multiattack_options(engine, ref) -> list[ActionOption]:
 
 
 def cast_options(engine, ref) -> list[ActionOption]:
-    # в зоне Тишины заклинаний нет
-    if not engine.is_hero(ref) or silenced(engine, ref):
+    # в зоне Тишины и в Газообразной форме заклинаний нет
+    if not engine.is_hero(ref) or silenced(engine, ref) or flight.has(engine, ref, "gaseous"):
         return []
     result = []
     turn = engine.part(ref).turn
@@ -242,8 +247,10 @@ def move_options(engine, ref) -> list[ActionOption]:
     p = engine.part(ref)
     if p.turn.move <= 0:
         return []
-    # опутанный стоит на месте: скорость 0
+    # опутанный и поднятый Левитацией стоят на месте: скорость 0
     if any(c.id == "restrained" for c in engine.creature(ref).conditions):
+        return []
+    if flight.levitating(engine, ref):
         return []
     own = [z for z in engine.state.zones if z.id == p.zone_id][0]
     return [

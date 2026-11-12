@@ -122,6 +122,17 @@ def clock_text(seconds: int) -> str:
     return f"{seconds % DAY // 3600:02d}:{seconds % 3600 // 60:02d}"
 
 
+def until_text(until, now_s):
+    # «до 07:00», «до 07:00, завтра», «до 07:00, через 3 дн.»
+    when = f"до {clock_text(until)}"
+    days = until // DAY - now_s // DAY
+    if days == 1:
+        when += ", завтра"
+    elif days > 1:
+        when += f", через {days} дн."
+    return when
+
+
 def ac_summary(hero, registry, now_s=None) -> str:
     # «КД 17 (Каменная Кожа до 03:12)»; в скобках только эффекты со сроком
     parts = armor_class_parts(hero, registry, now_s)

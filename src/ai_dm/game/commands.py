@@ -189,7 +189,7 @@ def cmd_sheet(app, arg):
     equipment = equipment_text(hero, app.registry)
     lines += rows("Экипировка:", equipment[len("Экипировка: "):].split("; "), width, "; ")
     lines += sheet_stat_lines(hero, app.registry, width)
-    effects = effects_line(hero, app.registry, now_s)
+    effects = effects_line(hero, app.registry, now_s, spells=False)
     if effects:
         lines.append(effects)
     conditions = condition_names(hero, app.registry)

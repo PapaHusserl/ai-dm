@@ -11,3 +11,5 @@ casting_time: reaction
 duration: 1m
 classes:
 - wizard
+effects:
+- type: feather_fall

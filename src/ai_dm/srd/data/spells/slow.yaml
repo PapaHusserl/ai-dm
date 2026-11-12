@@ -11,3 +11,17 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effects:
+- type: area
+  shape: cube
+  size_ft: 40
+- type: save_effect
+  ability: wis
+  repeat: true
+- type: modifier
+  target: saving_throw
+  ability: dex
+  value: -2
+- type: tempo
+  mode: slow
+  value: 2

@@ -11,3 +11,11 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effects:
+- type: save_effect
+  ability: con
+- type: size
+  dice: 1d4
+  variants:
+  - enlarge
+  - reduce

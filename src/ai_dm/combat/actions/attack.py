@@ -1,4 +1,14 @@
-from ai_dm.combat import downed, mastery, monster_traits, sanctuary, sneak, thrown
+from ai_dm.combat import (
+    downed,
+    flight,
+    mastery,
+    mirror,
+    monster_traits,
+    sanctuary,
+    size,
+    sneak,
+    thrown,
+)
 from ai_dm.combat.actions import features, rogue, shield
 from ai_dm.combat.ammo import spend as spend_ammo
 from ai_dm.combat.controllers import is_quarreling, quarrel_targets
@@ -191,17 +201,15 @@ def attack_targets(engine, ref) -> list[str]:
     if is_quarreling(engine, ref):
         return quarrel_targets(engine, ref)
     side = engine.part(ref).side
-    return [
-        p.ref for p in engine.state.participants
-        if p.side != side and p.status in ("active", "down", "surrendered")
-    ]
+    return [p.ref for p in engine.state.participants if p.side != side and engine.targetable(p.ref)]
 
 
 def base_advantage(engine, ref, target_ref, info) -> str | None:
     # None -- атаковать нельзя; иначе "normal" или "disadvantage"
     steps = distance(engine.state.zones, engine.part(ref).zone_id, engine.part(target_ref).zone_id)
     if info.kind == "melee":
-        if steps == 0:
+        # поднятого Левитацией в ближнем бою не достать (и он не достанет)
+        if steps == 0 and not flight.levitating(engine, ref, target_ref):
             return "normal"
         return None
     band = range_band_ft(steps)
@@ -425,10 +433,14 @@ SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"]
 
 
 def target_size(engine, target_ref) -> str:
+    # размер из вида героя или статблока монстра, сдвинутый Увеличением и Уменьшением
     if engine.is_hero(target_ref):
         species_id = engine.heroes[target_ref].sheet.species_id
-        return engine.registry.get("species", species_id).size
-    return engine.monster(target_ref).size
+        base = engine.registry.get("species", species_id).size
+    else:
+        base = engine.monster(target_ref).size
+    shifted = SIZES.index(base) + size.step(engine, target_ref)
+    return SIZES[max(0, min(shifted, len(SIZES) - 1))]
 
 
 def weapon_rider(engine, ref, target_ref, info) -> None:
@@ -566,6 +578,8 @@ def attack(
         engine, ref, target_ref, info.bonus, base_adv, info.name, info.bonus_parts, ac,
         ", ".join(notes), base_label(engine, ref, target_ref, info),
     )
+    if mirror.deflect(engine, target_ref, result):
+        result.outcome = "miss"
     events = []
     if result.outcome in ("hit", "crit"):
         crit = result.outcome == "crit"

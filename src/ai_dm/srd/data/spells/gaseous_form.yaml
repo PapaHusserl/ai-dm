@@ -10,3 +10,6 @@ duration: 1h
 concentration: true
 classes:
 - wizard
+effects:
+- type: flight
+  mode: gaseous

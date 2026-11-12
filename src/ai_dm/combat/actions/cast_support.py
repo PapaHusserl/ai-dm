@@ -22,7 +22,7 @@ def with_variant(spell, variant):
     effects = []
     for effect in spell.effects:
         if effect.variants:
-            field = "ability" if effect.type == "modifier" else "damage_type"
+            field = {"modifier": "ability", "size": "mode"}.get(effect.type, "damage_type")
             effect = effect.model_copy(update={field: variant, "variants": []})
         effects.append(effect)
     return spell.model_copy(update={"effects": effects})

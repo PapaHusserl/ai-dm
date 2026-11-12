@@ -155,11 +155,11 @@ def conclude(engine) -> list[DomainEvent]:
     engine.world.clock.advance(rounds_to_seconds(engine.state.round, engine.cfg))
     release_concentration(engine)
     settle_ground(engine)
-    # скрытность не переживает бой
+    # скрытность и Эфир Мерцания не переживают бой
     for hero in engine.heroes.values():
         hero.creature.conditions = [
             c for c in hero.creature.conditions
-            if not (c.id == "invisible" and c.source == "hidden")
+            if not (c.id == "invisible" and c.source == "hidden") and c.id != "blinked"
         ]
     event = DomainEvent(type="combat_ended", data={"id": engine.state.id})
     apply_events(engine.world, [event])

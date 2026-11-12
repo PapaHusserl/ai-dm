@@ -111,6 +111,13 @@ EffectType = Literal[
     "sanctuary",
     "bond",
     "see_invisible",
+    # темп, образы, движение (К3б П2): mode темпа и полёта -- EffectMode, variants у size
+    "tempo",
+    "mirror_image",
+    "blink",
+    "feather_fall",
+    "flight",
+    "size",
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
@@ -141,6 +148,8 @@ EffectMode = Literal[
     "disadvantage",
     # вид зоны (type zone)
     "darkness", "light", "silence", "sleet", "circle",
+    # вид темпа (tempo), полёта (flight) и размера (size)
+    "haste", "slow", "fly", "levitate", "gaseous", "enlarge", "reduce",
 ]
 EffectShape = Literal["cone", "sphere", "cube", "line", "emanation"]
 
@@ -227,8 +236,8 @@ class EffectSpec(ContentModel):
 
     @model_validator(mode="after")
     def check_variants(self):
-        if self.variants and self.type not in ("damage", "resist", "modifier"):
-            raise ValueError("variants: только для damage, resist, modifier")
+        if self.variants and self.type not in ("damage", "resist", "modifier", "size"):
+            raise ValueError("variants: только для damage, resist, modifier, size")
         return self
 
     @model_validator(mode="after")

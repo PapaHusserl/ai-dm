@@ -9,3 +9,6 @@ range_kind: self
 duration: 1m
 classes:
 - wizard
+effects:
+- type: mirror_image
+  value: 3

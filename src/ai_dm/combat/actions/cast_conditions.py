@@ -1,9 +1,4 @@
-from ai_dm.combat.actions.cast_support import (
-    TARGETABLE,
-    condition_expiry,
-    hold_concentration,
-    spell_expiry,
-)
+from ai_dm.combat.actions.cast_support import condition_expiry, hold_concentration, spell_expiry
 from ai_dm.combat.area import affected_zones
 from ai_dm.combat.zones import cover_dc_bonus
 from ai_dm.core.events import DomainEvent
@@ -30,7 +25,7 @@ def condition_targets(engine, ref, spell, target) -> list[str]:
     )
     return [
         q.ref for q in engine.state.participants
-        if q.ref != ref and q.zone_id in covered and q.status in TARGETABLE
+        if q.ref != ref and q.zone_id in covered and engine.targetable(q.ref)
     ]
 
 
@@ -88,12 +83,13 @@ def cast_condition(engine, ref, spell, target, circle) -> list[DomainEvent]:
 
 
 def release_held(engine, target_ref, effect) -> None:
-    # заклинание с повтором спасброска кончилось на цели: состояния, штрафы и сам held
+    # заклинание с повтором спасброска кончилось на цели: состояния и все его эффекты (held,
+    # штрафы, КД и метка Замедления)
     creature = engine.creature(target_ref)
     creature.conditions = [c for c in creature.conditions if c.source != effect.id]
     creature.active_effects = [
         e for e in creature.active_effects
-        if not (e.id == effect.id and e.kind in ("held", "modifier") and e.source == effect.source)
+        if not (e.id == effect.id and e.source == effect.source)
     ]
 
 
