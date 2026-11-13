@@ -11,3 +11,9 @@ duration: 1m
 concentration: true
 classes:
 - wizard
+effects:
+- type: save_effect
+  ability: int
+- type: burn
+  dice: 1d6
+  damage_type: psychic

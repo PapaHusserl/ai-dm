@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from ai_dm.combat import ammo, disarm, flight, offhand, shove, sneak, summons, tempo
-from ai_dm.combat.actions import cast, cleric, parley, rogue
+from ai_dm.combat.actions import breath, cast, cleric, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
 from ai_dm.combat.zone_effects import barred, silenced
@@ -738,7 +738,7 @@ def list_options(engine, ref) -> list[ActionOption]:
         options += disarm_options(engine, ref) + shove_options(engine, ref)
     if p.turn.action:
         options += multiattack_options(engine, ref)
-    options += cast_options(engine, ref)
+    options += cast_options(engine, ref) + breath.breath_options(engine, ref)
     options += move_options(engine, ref)
     options += bonus_actions(engine, ref) + strike_options(engine, ref)
     options += summons.summon_options(engine, ref)

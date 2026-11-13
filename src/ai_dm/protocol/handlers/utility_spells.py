@@ -3,11 +3,13 @@ from ai_dm.combat.actions.cast_guards import guard_kinds
 from ai_dm.protocol.decision import Invalid
 from ai_dm.protocol.hints import allowed
 from ai_dm.rules.derived import spell_save_dc
+from ai_dm.rules.dispel import caster_env, dispel, report
 from ai_dm.rules.healing import grant_max_hp
 from ai_dm.rules.inventory import count_item, find_item
 from ai_dm.rules.roll_pipeline import RollRequest, roll
 from ai_dm.rules.spellcasting import (
     defense_effect,
+    drop_concentration,
     effect_line,
     effect_of,
     start_concentration,
@@ -77,10 +79,28 @@ def apply_condition(ctx, spell, who, now_s) -> list[str]:
     expires = expiry_of(spell, ctx.hero, now_s, ctx.cfg.time.round_s)
     for condition in conditions:
         who.creature.conditions.append(
-            AppliedCondition(id=condition, source=ctx.hero.id, expires=expires)
+            AppliedCondition(id=condition, source=spell.id, expires=expires)
         )
     lines.append(f"  {who.name}: {', '.join(conditions)}")
     return lines
+
+
+def dispel_npc(ctx, spell, who, circle, now_s) -> list[str]:
+    # Рассеивание вне боя: заклинания на NPC; снято заклинание концентрации героя -- она кончается
+    hero = ctx.hero
+
+    def level_of(spell_id, owner) -> int:
+        held = hero.creature.concentration
+        if owner == hero.id and held is not None and held.spell_id == spell_id:
+            return held.circle
+        return ctx.registry.get("spell", spell_id).level
+
+    env = caster_env(hero, ctx.registry, (ctx.rng, None), (now_s, circle, level_of))
+    found = [dispel(who.creature, env, lambda thing: True)]
+    held = hero.creature.concentration
+    if held is not None and (held.spell_id, hero.id) in found[0][0]:
+        drop_concentration(hero, ctx.bundle.world)
+    return report(env, spell.name, who.name, found)
 
 
 def utility_target(ctx, spell, target):

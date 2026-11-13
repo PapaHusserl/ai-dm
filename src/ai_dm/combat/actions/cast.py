@@ -2,11 +2,14 @@ from itertools import combinations
 
 from ai_dm.combat import downed, sanctuary, summons, tempo, zone_effects
 from ai_dm.combat.actions import (
+    breath,
     cast_conditions,
     cast_effects,
     cast_guards,
     cast_motion,
     cast_zones,
+    dispel,
+    true_strike,
 )
 from ai_dm.combat.actions.attack import attack_event, reveal, roll_damage, split_dice
 from ai_dm.combat.actions.cast_effects import push_zone
@@ -48,7 +51,9 @@ from ai_dm.rules.spellcasting import free_cast_left as rules_free_cast_left
 from ai_dm.state.creature import ActiveEffect, Expiry
 
 # виды с враждебной одиночной целью: лежащего врага по ним в меню героя нет (решение 55)
-HOSTILE_KINDS = ("attack", "darts", "mark", "save", "rays", "condition", "summon")
+HOSTILE_KINDS = (
+    "attack", "darts", "mark", "save", "rays", "condition", "summon", "true_strike",
+)
 # Доспехи мага: только на существо без доспеха
 UNARMORED_ONLY = ("mage_armor",)
 # подвал меню боя: заклинание без механики и герой в зоне Тишины
@@ -219,6 +224,16 @@ def condition_refs(engine, ref, spell, circle) -> list[str]:
     return groups_of(enemy_refs(engine, ref, spell), limit)
 
 
+def dispel_refs(engine, ref, spell) -> list[str]:
+    # Рассеивание магии: существо или зона в дальности
+    p = engine.part(ref)
+    near = [
+        q.ref for q in engine.state.participants
+        if engine.targetable(q.ref) and in_reach(engine, p, q, spell)
+    ]
+    return near + ranged_zones(engine, ref, spell)
+
+
 def tempo_refs(engine, ref, spell, circle) -> list[str]:
     # Замедление -- зоны (спасбросок), Ускорение -- союзники и сам
     if effect_of(spell, "tempo").mode == "slow":
@@ -257,6 +272,10 @@ TARGETERS = {
     "tempo": tempo_refs, "flight": flight_refs,
     "size": lambda e, r, s, c: ally_refs(e, r, s) + enemy_refs(e, r, s),
     **dict.fromkeys(("mirror_image", "blink"), lambda e, r, s, c: [r]),
+    "calm": lambda e, r, s, c: area_zones(e, r, s),
+    "breath": lambda e, r, s, c: ally_refs(e, r, s),
+    "true_strike": lambda e, r, s, c: true_strike.strike_refs(e, r),
+    "dispel": lambda e, r, s, c: dispel_refs(e, r, s),
     "max_hp": lambda e, r, s, c: groups_of(ally_refs(e, r, s), targets_limit(s, c, "max_hp")),
     "ward": lambda e, r, s, c: ally_refs(e, r, s),
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
@@ -490,7 +509,9 @@ CASTERS = {
     "bond": cast_guards.cast_guard, "see_invisible": cast_guards.cast_guard,
     "tempo": tempo.cast_tempo, "mirror_image": cast_motion.cast_mirror_image,
     "blink": cast_motion.cast_blink, "flight": cast_motion.cast_flight,
-    "size": cast_motion.cast_size,
+    "size": cast_motion.cast_size, "calm": cast_conditions.cast_calm,
+    "breath": breath.cast_breath, "true_strike": true_strike.cast_true_strike,
+    "dispel": dispel.cast_dispel,
 }
 
 

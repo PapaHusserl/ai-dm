@@ -10,3 +10,5 @@ range_ft: 120
 classes:
 - cleric
 - wizard
+effects:
+- type: dispel

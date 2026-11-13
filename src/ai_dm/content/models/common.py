@@ -118,6 +118,11 @@ EffectType = Literal[
     "feather_fall",
     "flight",
     "size",
+    # состояния, дыхание, развеивание (К3б П3): variants у breath
+    "breath",
+    "true_strike",
+    "dispel",
+    "calm",
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
@@ -236,8 +241,8 @@ class EffectSpec(ContentModel):
 
     @model_validator(mode="after")
     def check_variants(self):
-        if self.variants and self.type not in ("damage", "resist", "modifier", "size"):
-            raise ValueError("variants: только для damage, resist, modifier, size")
+        if self.variants and self.type not in ("damage", "resist", "modifier", "size", "breath"):
+            raise ValueError("variants: только для damage, resist, modifier, size, breath")
         return self
 
     @model_validator(mode="after")

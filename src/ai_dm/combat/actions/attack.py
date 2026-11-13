@@ -62,6 +62,8 @@ class AttackInfo:
         # только у героя: хват оружия -- two_handed (двумя руками), off_hand (вторая рука),
         # thrown (бросок); None -- обычная атака одной рукой
         self.grip = grip
+        # доп. урон этой атаки от заклинания (Верный удар): [(название, эффект extra_damage)]
+        self.extra = []
 
 
 def split_dice(expr: str) -> tuple[str, int]:
@@ -404,7 +406,7 @@ def merge_damage(dealt, extra) -> DamageResult:
 
 def special_effects(engine, info, ammo) -> list[tuple[str, object]]:
     # эффекты оружия героя и выбранной стрелы: (название источника, эффект)
-    result = []
+    result = list(info.extra)
     if info.weapon_id is not None and engine.registry.has("weapon", info.weapon_id):
         weapon = engine.registry.get("weapon", info.weapon_id)
         result += [(weapon.name, e) for e in weapon.effects]

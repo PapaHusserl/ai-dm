@@ -9,6 +9,8 @@ from ai_dm.state.creature import ActiveEffect, AppliedCondition
 # вторая стадия двухстадийного заклинания (Усыпление): «недееспособен» сразу, «без сознания»
 # при провале повтора
 STAGED = "unconscious"
+# Усмирение чувств: состояния врага, проигравшего спасбросок
+CALMED = ("charmed", "incapacitated")
 
 
 def condition_names(engine, ids) -> str:
@@ -52,6 +54,15 @@ def impose_effects(engine, ref, spell, target_ref, dc) -> None:
             )
         )
         engine.log(f"  {name}: {spell.name}")
+    burn = effect_of(spell, "burn")
+    if burn is not None:
+        params = {"dice": burn.dice, "damage_type": burn.damage_type}
+        creature.active_effects.append(
+            ActiveEffect(
+                id=spell.id, source=ref, kind="burn", params=params,
+                expires=condition_expiry(engine, ref, spell),
+            )
+        )
     save = effect_of(spell, "save_effect")
     if save.repeat:
         params = {"ability": save.ability, "dc": dc, "condition": ",".join(now)}
@@ -110,6 +121,35 @@ def repeat_saves(engine, ref) -> None:
             engine.impose(ref, following)
             engine.creature(ref).active_effects.remove(effect)
             engine.log(f"  {engine.name(ref)}: {condition_names(engine, [following.id])}")
+
+
+def cast_calm(engine, ref, spell, zone_id, circle) -> list[DomainEvent]:
+    # Усмирение чувств: союзникам в зоне (и заклинателю) снимаются очарование и страх, каждый враг
+    # бросает Харизму, провал -- очарован и недееспособен до урона (downed.UNTIL_DAMAGE)
+    calm = effect_of(spell, "calm")
+    hold_concentration(engine, ref, spell, circle)
+    side = engine.part(ref).side
+    inside = condition_targets(engine, ref, spell, zone_id)
+    area = effect_of(spell, "area")
+    covered = affected_zones(
+        engine.state.zones, engine.part(ref).zone_id, area.shape, area.size_ft, zone_id
+    )
+    own = [ref] if engine.part(ref).zone_id in covered else []
+    for one in own + [q for q in inside if engine.part(q).side == side]:
+        creature = engine.creature(one)
+        gone = [c.id for c in creature.conditions if c.id in calm.conditions]
+        creature.conditions = [c for c in creature.conditions if c.id not in calm.conditions]
+        if gone:
+            engine.log(f"{engine.name(ref)}: {spell.name} снимает с {engine.name(one)}: "
+                       f"{condition_names(engine, gone)}")
+    dc = spell_save_dc(engine.heroes[ref], engine.registry)
+    for one in [q for q in inside if engine.part(q).side != side]:
+        if engine.save(one, calm.ability, dc).outcome != "success":
+            for condition in CALMED:
+                expires = condition_expiry(engine, ref, spell)
+                engine.impose(one, AppliedCondition(id=condition, source=spell.id, expires=expires))
+            engine.log(f"  {engine.name(one)}: {condition_names(engine, CALMED)}")
+    return []
 
 
 def cast_cure(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:

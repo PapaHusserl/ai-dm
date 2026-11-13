@@ -13,6 +13,7 @@ from ai_dm.protocol.handlers.utility_spells import (
     apply_defense,
     apply_max_hp,
     cast_utility,
+    dispel_npc,
     steed_seconds,
     utility_target,
 )
@@ -513,6 +514,11 @@ def drink_once(hero, item, registry, now_s):
     return f"{hero.name}: {item.name} — {', '.join(parts)} до {until}", until, False
 
 
+def single_npc(spell, kind) -> bool:
+    # цель -- один NPC: одиночное состояние и Рассеивание магии
+    return kind == "dispel" or (kind == "condition" and not has_effect(spell, "area"))
+
+
 def spell_target(ctx, spell, kind, target):
     # цель заклинания: (герой или NPC или None, Invalid или None); None без Invalid -- предмет
     # инвентаря (Опознание)
@@ -521,7 +527,7 @@ def spell_target(ctx, spell, kind, target):
         special = utility_target(ctx, spell, target)
         if special is not None:
             return special
-    single = kind == "condition" and not has_effect(spell, "area")
+    single = single_npc(spell, kind)
     npc = None
     if target is not None and target != "hero":
         npc = ctx.bundle.world.npcs.get(target)
@@ -665,6 +671,9 @@ def cast_spell(ctx, request):
     elif kind == "zone":
         place_circle(hero, spell, now_s)
         log.append(f"  {spell.name}: вокруг {hero.name}")
+    elif kind == "dispel":
+        log += dispel_npc(ctx, spell, who, request.circle, now_s)
+        result["target"] = who.name
     elif kind in DEFENSE_KINDS:
         if spell.concentration:
             start_concentration(hero, world, spell, request.circle, now_s)

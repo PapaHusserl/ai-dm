@@ -16,6 +16,7 @@ from ai_dm.combat import (
 )
 from ai_dm.combat.actions import (
     attack,
+    breath,
     cast,
     cast_conditions,
     cleric,
@@ -93,6 +94,7 @@ PERFORM = {
     "summon_attack": summons.summon_attack,
     "summon_move": summons.summon_move,
     "escape": standard.escape,
+    "breath": breath.perform,
     "end_turn": lambda engine, ref, option: [],
 }
 
@@ -481,10 +483,10 @@ class CombatEngine:
         # опутанная лозами цель получает урон Опутывающего удара
         events = []
         for effect in list(self.creature(ref).active_effects):
-            if effect.kind not in ("burning", "ensnared") or not self.is_capable(ref):
+            if effect.kind not in ("burning", "ensnared", "burn") or not self.is_capable(ref):
                 continue
             label = "Горение"
-            if effect.kind == "ensnared":
+            if effect.kind != "burning":
                 label = self.registry.get("spell", effect.id).name
             dice, bonus = split_dice(effect.params["dice"])
             rolled = roll_damage(

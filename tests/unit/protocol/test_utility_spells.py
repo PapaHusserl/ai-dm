@@ -545,7 +545,7 @@ def test_charm_person_on_a_failed_save_charms_for_an_hour(registry, cfg):
     ctx = make_ctx(registry, cfg, rng=ScriptedRng(d20=[1, 1]), bundle=bundle)
     apply(ctx, req("cast_spell", spell_id="charm_person", circle=1, target="orc"))
     condition = [c for c in npc.creature.conditions if c.id == "charmed"][0]
-    assert condition.source == hero_of(bundle).id
+    assert condition.source == "charm_person"
     assert (condition.expires.kind, condition.expires.value) == ("seconds", start + HOUR)
 
 

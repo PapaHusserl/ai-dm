@@ -57,6 +57,7 @@ def defense_effect(effect, spell) -> tuple[str, dict] | None:
 
 # первый подходящий эффект даёт вид (после rider, mark и area)
 KIND_BY_EFFECT = (
+    ("breath", "breath"), ("true_strike", "true_strike"), ("dispel", "dispel"), ("calm", "calm"),
     ("zone", "zone"), ("sanctuary", "sanctuary"), ("bond", "bond"),
     ("see_invisible", "see_invisible"), ("tempo", "tempo"), ("mirror_image", "mirror_image"),
     ("blink", "blink"), ("feather_fall", "feather_fall"), ("flight", "flight"), ("size", "size"),
@@ -83,7 +84,7 @@ def spell_kind(spell) -> str | None:
         if has_effect(spell, effect_type):
             return kind
     save = has_effect(spell, "save_effect")
-    if save and damage is None and has_effect(spell, "apply_condition", "modifier"):
+    if save and damage is None and has_effect(spell, "apply_condition", "modifier", "burn"):
         return "condition"
     if save and damage is not None and not has_effect(spell, "apply_condition", "area"):
         return "save"

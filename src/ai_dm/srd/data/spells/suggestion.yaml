@@ -11,3 +11,10 @@ duration: 8h
 concentration: true
 classes:
 - wizard
+effects:
+- type: save_effect
+  ability: wis
+- type: apply_condition
+  condition: charmed
+- type: apply_condition
+  condition: incapacitated

@@ -17,7 +17,7 @@ INTENT_WORDS = {
 }
 INTENT_OPTIONS = ["keep"] + [f"intent:{name}" for name in INTENTS]
 # заклинания, чьи состояния снимает урон по цели
-UNTIL_DAMAGE = ("sleep", "hypnotic_pattern", "turn_undead")
+UNTIL_DAMAGE = ("sleep", "hypnotic_pattern", "turn_undead", "suggestion", "calm_emotions")
 
 
 def hero_died_event(hero) -> DomainEvent:

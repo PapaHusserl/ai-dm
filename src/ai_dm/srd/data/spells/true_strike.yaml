@@ -8,3 +8,5 @@ school: divination
 range_kind: self
 classes:
 - wizard
+effects:
+- type: true_strike

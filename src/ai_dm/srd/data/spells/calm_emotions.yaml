@@ -11,3 +11,12 @@ duration: 1m
 concentration: true
 classes:
 - cleric
+effects:
+- type: calm
+  ability: cha
+  conditions:
+  - charmed
+  - frightened
+- type: area
+  shape: sphere
+  size_ft: 20
