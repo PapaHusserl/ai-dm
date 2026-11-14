@@ -7,8 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 SCRIPT = Path(__file__).parents[3] / "scripts" / "migrate_dusk_18plus.py"
 WORLD_ID = "dusk_academy-d3de6c57"  # id мира зашит в скрипте; каталог -- синтетический, во tmp_path
 WORLD_TEXT = (
@@ -177,13 +175,16 @@ def test_v12_save_is_accepted_and_patched(tmp_path):
     assert "18+" in world_of(slot)["tone"]["notes"]
 
 
-@pytest.mark.parametrize("version", [8, 15])
-def test_refuses_unsupported_version_without_writing(tmp_path, version):
-    slot = make_slot(tmp_path, version=version)
+def test_refuses_unsupported_version_without_writing(tmp_path):
+    slot = make_slot(tmp_path, version=8)
     state = snapshot(tmp_path)
     result = run(slot)
     assert result.returncode != 0
     assert snapshot(tmp_path) == state
+
+
+def test_version_15_is_accepted(tmp_path):
+    assert run(make_slot(tmp_path, version=15)).returncode == 0
 
 
 def test_refuses_foreign_world_without_writing(tmp_path):

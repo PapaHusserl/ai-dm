@@ -117,6 +117,7 @@ ui ──> game ──> master ──> llm
 | `creature_removed` | `id, status, cause, by` | `rules/mortality_guard` (герой и NPC) | нет |
 | `hero_died` | `id, cause, by` | `mortality_guard`, `combat/downed` | `hero_dead:<id>` |
 | `npc_died` | `id, cause, by` | `mortality_guard.remove_creature` | `npc_dead:<id>` |
+| `creature_revived` | `id` | `rules/revive` через `protocol/handlers/resources.revive_npc` и `combat/actions/revive.cast_revive` | нет |
 | `monster_died` | `id, monster_id, by` | `combat/downed` (безымянный монстр) | нет |
 | `secret_revealed` | `npc, secret` | `rules/secrets` | нет |
 | `combat_ended` | `id` | `combat/end` | `combat_ended:<id>` |

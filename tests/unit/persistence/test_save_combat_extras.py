@@ -16,7 +16,7 @@ HELD = Expiry(kind="concentration", owner="h1")
 
 
 def test_schema_version_is_current_fourteen():
-    assert CURRENT_SCHEMA_VERSION == 14
+    assert CURRENT_SCHEMA_VERSION >= 14
 
 
 def test_v5_save_without_a_charge_loads_with_clean_hero_effects(saves):

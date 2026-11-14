@@ -57,9 +57,9 @@ def remove_hero(
 
 def remove_creature(
     state, creature_id: str, status: str, cause: str | None, *, by: str | None = None,
-    text: str = "",
+    text: str = "", at_s: int | None = None,
 ) -> list[DomainEvent] | Rejected:
-    # неизвестный creature_id -- KeyError
+    # неизвестный creature_id -- KeyError; at_s -- момент смерти, если не «сейчас» (раунд боя)
     if status not in STATUSES:
         raise ValueError(f"неизвестный статус: {status!r}")
     npc = state.npcs[creature_id]
@@ -73,7 +73,8 @@ def remove_creature(
     npc.status = status
     npc.follows = None
     npc.death = DeathRecord(
-        cause=cause, by=by, at_s=state.clock.now_s, location_id=npc.location_id, text=text
+        cause=cause, by=by, at_s=state.clock.now_s if at_s is None else at_s,
+        location_id=npc.location_id, text=text,
     )
     events = [
         DomainEvent(

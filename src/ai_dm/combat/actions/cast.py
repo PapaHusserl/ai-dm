@@ -9,6 +9,7 @@ from ai_dm.combat.actions import (
     cast_motion,
     cast_zones,
     dispel,
+    revive,
     true_strike,
 )
 from ai_dm.combat.actions.attack import attack_event, reveal, roll_damage, split_dice
@@ -276,6 +277,7 @@ TARGETERS = {
     "breath": lambda e, r, s, c: ally_refs(e, r, s),
     "true_strike": lambda e, r, s, c: true_strike.strike_refs(e, r),
     "dispel": lambda e, r, s, c: dispel_refs(e, r, s),
+    "revive": lambda e, r, s, c: revive.revive_refs(e, r, s),
     "max_hp": lambda e, r, s, c: groups_of(ally_refs(e, r, s), targets_limit(s, c, "max_hp")),
     "ward": lambda e, r, s, c: ally_refs(e, r, s),
     "stabilize": lambda e, r, s, c: dying_refs(e, r, s),
@@ -511,7 +513,7 @@ CASTERS = {
     "blink": cast_motion.cast_blink, "flight": cast_motion.cast_flight,
     "size": cast_motion.cast_size, "calm": cast_conditions.cast_calm,
     "breath": breath.cast_breath, "true_strike": true_strike.cast_true_strike,
-    "dispel": dispel.cast_dispel,
+    "dispel": dispel.cast_dispel, "revive": revive.cast_revive,
 }
 
 

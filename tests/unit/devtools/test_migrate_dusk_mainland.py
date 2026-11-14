@@ -293,8 +293,8 @@ def test_version_8_is_refused(tmp_path):
     refused(tmp_path, version=8)
 
 
-def test_version_15_is_refused(tmp_path):
-    refused(tmp_path, version=15)
+def test_version_15_is_accepted(tmp_path):
+    assert run(make_slot(tmp_path, version=15)).returncode == 0
 
 
 def test_missing_npc_is_refused(tmp_path):

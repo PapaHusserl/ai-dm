@@ -8,3 +8,5 @@ school: necromancy
 range_kind: touch
 classes:
 - cleric
+effects:
+- type: revive

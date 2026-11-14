@@ -11,3 +11,6 @@ casting_time: 1h
 ritual: true
 classes:
 - wizard
+effects:
+- type: conjure
+  resource: hawk

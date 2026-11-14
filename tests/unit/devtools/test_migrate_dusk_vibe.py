@@ -164,7 +164,7 @@ def test_no_argument_exits_two():
     assert result.returncode == 2
 
 
-@pytest.mark.parametrize("kwargs", [{"world_id": "other_world-1"}, {"version": 8}, {"version": 15}])
+@pytest.mark.parametrize("kwargs", [{"world_id": "other_world-1"}, {"version": 8}])
 def test_refusal_writes_nothing(tmp_path, kwargs):
     slot = make_slot(tmp_path, **kwargs)
     before = snapshot(tmp_path)
@@ -172,6 +172,10 @@ def test_refusal_writes_nothing(tmp_path, kwargs):
     assert result.returncode == 1
     assert "Отказ" in result.stdout
     assert snapshot(tmp_path) == before
+
+
+def test_version_15_is_accepted(tmp_path):
+    assert run(make_slot(tmp_path, version=15)).returncode == 0
 
 
 def test_missing_manifest_is_refused(tmp_path):

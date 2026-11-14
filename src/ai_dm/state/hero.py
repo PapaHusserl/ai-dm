@@ -175,6 +175,15 @@ class DivineState(BaseModel):
     curse_day_used: int | None = None
 
 
+class Minion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    monster_id: str
+    spell_id: str
+    hp_current: int
+    # игровое время (с) конца службы; None -- бессрочно (фамильяр)
+    until_s: int | None = None
+
+
 class HeroState(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
@@ -204,6 +213,8 @@ class HeroState(BaseModel):
     legacy_links: list[str] = Field(default_factory=list)
     # звери-спутники (Повелитель зверей)
     companions: list[Companion] = Field(default_factory=list)
+    # призванные заклинаниями существа (Оживление мертвецов, Поиск фамильяра); не combat/summons.py
+    minions: list[Minion] = Field(default_factory=list)
     attuned: list[str] = Field(default_factory=list)
     pending_level: PendingLevel | None = None
     # игровое время (с) конца последнего длинного отдыха: кулдаун повторного отдыха

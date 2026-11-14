@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 WORLD_ID = "dusk_academy-d3de6c57"
-SCHEMA_VERSIONS = (9, 10, 11, 12, 13, 14)
+MIN_SCHEMA_VERSION = 9
 DAYS = 1
 RUMOR_BEFORE_DAYS = 1
 DAY_S = 86400
@@ -57,8 +57,8 @@ def main():
     manifest = json.loads((slot / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("world_id") != WORLD_ID:
         fail(f"это мир {manifest.get('world_id')!r}, нужен {WORLD_ID!r}")
-    if manifest.get("schema_version") not in SCHEMA_VERSIONS:
-        fail(f"версия сейва {manifest.get('schema_version')}, нужна одна из {SCHEMA_VERSIONS}")
+    if (manifest.get("schema_version") or 0) < MIN_SCHEMA_VERSION:
+        fail(f"версия сейва {manifest.get('schema_version')}, нужна {MIN_SCHEMA_VERSION} или новее")
     world_path = slot / "world" / "world.json"
     world = json.loads(world_path.read_text(encoding="utf-8"))
     faction = world["factions"].get(OWNER_ID)

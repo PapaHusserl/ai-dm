@@ -18,11 +18,16 @@ import time
 from pathlib import Path
 
 NAME = "Нокс"
+MIN_SCHEMA_VERSION = 9
 
 world_dir = Path(sys.argv[1].rstrip("/"))
 requests = sys.argv[2:]
 slot = world_dir / "slots" / "auto"
 world_path = slot / "world" / "world.json"
+
+version = json.loads((slot / "manifest.json").read_text(encoding="utf-8")).get("schema_version")
+if (version or 0) < MIN_SCHEMA_VERSION:
+    sys.exit(f"версия сейва {version}, нужна {MIN_SCHEMA_VERSION} или новее")
 
 backup = Path(f"{world_dir}.bak-{time.strftime('%Y%m%d-%H%M%S')}")
 shutil.copytree(world_dir, backup)

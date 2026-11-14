@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ai_dm.combat import ammo, disarm, flight, offhand, shove, sneak, summons, tempo
+from ai_dm.combat import ammo, disarm, flight, minions, offhand, shove, sneak, summons, tempo
 from ai_dm.combat.actions import breath, cast, cleric, parley, rogue
 from ai_dm.combat.actions.attack import action_id, attack_targets, attacks_of, base_advantage
 from ai_dm.combat.stealth import HIDE_DC, can_hide
@@ -60,6 +60,9 @@ def menu_targets(engine, ref) -> list[str]:
 def attack_options(engine, ref) -> list[ActionOption]:
     # Газообразная форма не атакует
     if flight.has(engine, ref, "gaseous"):
+        return []
+    # фамильяр не атакует (решение 9)
+    if minions.is_familiar(engine, ref):
         return []
     result = []
     for info in [i for i in attacks_of(engine, ref) if ammo.can_shoot(engine, ref, i)]:

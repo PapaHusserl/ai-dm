@@ -1,4 +1,4 @@
-from ai_dm.combat import ammo, disarm, downed, trophies
+from ai_dm.combat import ammo, disarm, downed, minions, trophies
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.creatures import end_concentration
@@ -155,6 +155,7 @@ def conclude(engine) -> list[DomainEvent]:
     engine.world.clock.advance(rounds_to_seconds(engine.state.round, engine.cfg))
     release_concentration(engine)
     settle_ground(engine)
+    minions.after_combat(engine)
     # скрытность и Эфир Мерцания не переживают бой
     for hero in engine.heroes.values():
         hero.creature.conditions = [

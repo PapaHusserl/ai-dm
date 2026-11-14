@@ -6,6 +6,7 @@ from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.damage import concentration_check
 from ai_dm.rules.mortality_guard import remove_creature
 from ai_dm.rules.results import Rejected
+from ai_dm.rules.time_ops import rounds_to_seconds
 from ai_dm.state.combat import DecisionPoint
 from ai_dm.state.creature import AppliedCondition, DeathSaves
 
@@ -113,7 +114,9 @@ def kill_monster(engine, ref, attacker_ref) -> list[DomainEvent]:
     cause = death_cause(attacker_ref)
     if ref in engine.world.npcs:
         # именованный NPC: смерть только через страж причин
-        events = remove_creature(engine.world, ref, "dead", cause, by=attacker_ref)
+        # часы мира в бою стоят: момент смерти — проекция по раундам (окно Воскрешения, решение 2)
+        at_s = engine.world.clock.now_s + rounds_to_seconds(engine.state.round, engine.cfg)
+        events = remove_creature(engine.world, ref, "dead", cause, by=attacker_ref, at_s=at_s)
         if isinstance(events, Rejected):
             raise ValueError(f"смерть NPC {ref!r} отклонена: {events.reason}")
         return events + death_burst.explode(engine, ref)

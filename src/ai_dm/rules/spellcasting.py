@@ -57,6 +57,7 @@ def defense_effect(effect, spell) -> tuple[str, dict] | None:
 
 # первый подходящий эффект даёт вид (после rider, mark и area)
 KIND_BY_EFFECT = (
+    ("conjure", "conjure"), ("revive", "revive"),
     ("breath", "breath"), ("true_strike", "true_strike"), ("dispel", "dispel"), ("calm", "calm"),
     ("zone", "zone"), ("sanctuary", "sanctuary"), ("bond", "bond"),
     ("see_invisible", "see_invisible"), ("tempo", "tempo"), ("mirror_image", "mirror_image"),

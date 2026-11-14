@@ -1,6 +1,7 @@
 import json
 from importlib import resources
 
+from ai_dm.combat import minions
 from ai_dm.llm.types import ChatRequest, Message, SystemBlock, Text, ToolSpec
 from ai_dm.master.context import (
     Candidates,
@@ -546,6 +547,9 @@ class PromptBuilder:
             data["companion"] = hero.companions[0].model_dump(mode="json")
         if companion_due(hero, registry):
             data["companion_due"] = True
+        summoned = minions.texts(hero, registry, now_s) if now_s is not None else []
+        if summoned:
+            data["minions"] = summoned
         return data
 
     def nudge_signal(self, world):

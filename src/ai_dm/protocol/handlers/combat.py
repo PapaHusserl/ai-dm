@@ -1,5 +1,6 @@
 from pydantic import ValidationError
 
+from ai_dm.combat import minions
 from ai_dm.combat.actions.improvise import EFFECTS, spec_problem
 from ai_dm.combat.defeat import DefeatParams, apply_defeat_outcome
 from ai_dm.combat.engine import CombatEngine
@@ -176,6 +177,7 @@ def start_combat(ctx, request):
         )
     ]
     participants += [make_enemy(ctx, spec) for spec in enemies]
+    participants += minions.participants(hero, ctx.registry, request.hero_zone, world.clock.now_s)
     groups = {"party": Group(leader_id=hero.id)}
     for spec in request.groups:
         members = [e.ref for e in enemies if e.group == spec.id]
@@ -206,6 +208,8 @@ def start_combat(ctx, request):
     log = [f"Бой: врагов {len(enemies)}, зон {len(zones)}"]
     if request.hero_hidden:
         log.append(f"{hero.name} скрыт: первая атака с преимуществом")
+    log += [f"{p.name} вступает в бой на стороне {hero.name}" for p in state.participants
+            if p.ref.startswith(minions.PREFIX)]
     log.append(encounter.budget_text(hero.sheet.level, budget, enemies, ctx.registry, tier))
     if reason is not None:
         log.append(f"Бой сверх бюджета: {encounter.REASON_WORDS[reason]}")

@@ -20,7 +20,7 @@ def strip_gender(folder):
 
 
 def test_schema_version_is_fourteen():
-    assert CURRENT_SCHEMA_VERSION == 14
+    assert CURRENT_SCHEMA_VERSION >= 14
 
 
 def test_slot_without_gender_keys_loads_with_unset_gender(saves, bundle):

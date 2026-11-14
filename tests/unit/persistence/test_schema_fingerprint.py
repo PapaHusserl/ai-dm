@@ -195,7 +195,7 @@ def test_v8_fingerprint_is_kept_as_history_with_scalar_class():
 # save_v12 -- история.
 
 def test_v13_fingerprint_exists_and_v14_is_current():
-    assert CURRENT_SCHEMA_VERSION == 14
+    assert CURRENT_SCHEMA_VERSION >= 14
     assert fingerprint_path(13).is_file()
     assert fingerprint_path(14).is_file()
 

@@ -355,8 +355,8 @@ def test_version_8_is_refused(tmp_path):
     assert "Отказ" in result.stdout
 
 
-def test_version_15_is_refused(tmp_path):
-    assert refused(tmp_path, version=15).returncode == 1
+def test_version_15_is_accepted(tmp_path):
+    assert run(make_slot(tmp_path, version=15)).returncode == 0
 
 
 def test_missing_faction_is_refused_with_hint(tmp_path):

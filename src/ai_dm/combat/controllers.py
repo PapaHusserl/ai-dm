@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from ai_dm.combat import auto_cleric
+from ai_dm.combat import auto_cleric, minions
 from ai_dm.combat.zones import distance, drop_steps
 from ai_dm.state.combat import DecisionPoint
 
@@ -85,11 +85,14 @@ class EngineTactics:
 
     def pick_early(self, options, ref):
         # что делается раньше атаки: особое, толчок вниз, шаг к своему оружию
-        for pick in (self.pick_special, self.pick_shove, self.step_to_weapon):
+        for pick in (self.pick_help, self.pick_special, self.pick_shove, self.step_to_weapon):
             chosen = pick(options, ref)
             if chosen is not None:
                 return chosen
         return None
+
+    def pick_help(self, options, ref):
+        return minions.pick_help(self.engine, options, ref)
 
     def pick_special(self, options, ref):
         # опутанный первым делом вырывается: атаковать с помехой и стоять на месте хуже;

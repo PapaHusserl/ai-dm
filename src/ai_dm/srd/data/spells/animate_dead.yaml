@@ -12,3 +12,8 @@ duration: 1d
 classes:
 - cleric
 - wizard
+effects:
+- type: conjure
+  variants:
+  - skeleton
+  - zombie

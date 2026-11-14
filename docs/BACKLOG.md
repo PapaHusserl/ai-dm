@@ -1897,3 +1897,13 @@ updated: 2026-11-13
 (Шаг К3б, партия П3, docs/plan-k3b.md) `make mutate` по FUNCS П3 → `make mutate-diff`: 17 выживших на старых строках изменённых
 функций — `cast_conditions:impose_effects` 1 (`_63`), `attack:special_effects` 2 (`_3`, `_28`), `utility_spells:apply_condition`
 14; разбор — отдельным шагом качества.
+
+## 314. Выжившие мутанты старых строк после К3б П4
+status: idea
+priority: low
+updated: 2026-11-14
+
+(Шаг К3б, партия П4, docs/plan-k3b.md) `make mutate` по FUNCS П4 (27) → `make mutate-diff`: 144 выживших на старых строках
+изменённых функций — `resources:cast_spell` 69, `combat:start_combat` 47, `end:conclude` 17, `sheet_text:sheet_stat_lines` 6,
+`mortality_guard:remove_creature` 3, `available:attack_options` 1, `downed:kill_monster` 1; разбор — отдельным шагом качества
+(`cast_spell` — вместе с BACKLOG 257).

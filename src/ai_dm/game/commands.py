@@ -1,3 +1,4 @@
+from ai_dm.combat import minions
 from ai_dm.game import difficulty, inv_actions, shop_actions, tone, travel_actions
 from ai_dm.game.battle_map import battle_map_lines
 from ai_dm.game.fight_debug import HELP_TEXT, cmd_fight
@@ -189,6 +190,9 @@ def cmd_sheet(app, arg):
     equipment = equipment_text(hero, app.registry)
     lines += rows("Экипировка:", equipment[len("Экипировка: "):].split("; "), width, "; ")
     lines += sheet_stat_lines(hero, app.registry, width)
+    summoned = minions.texts(hero, app.registry, now_s)
+    if summoned:
+        lines.append("Призванные: " + "; ".join(summoned))
     effects = effects_line(hero, app.registry, now_s, spells=False)
     if effects:
         lines.append(effects)

@@ -123,6 +123,9 @@ EffectType = Literal[
     "true_strike",
     "dispel",
     "calm",
+    # существа и воскрешение (К3б П4): resource у conjure -- id монстра, variants -- на выбор
+    "conjure",
+    "revive",
 ]
 
 # Закрытые значения полей эффектов: то, что читает движок. Новое значение = правка Literal.
@@ -241,8 +244,9 @@ class EffectSpec(ContentModel):
 
     @model_validator(mode="after")
     def check_variants(self):
-        if self.variants and self.type not in ("damage", "resist", "modifier", "size", "breath"):
-            raise ValueError("variants: только для damage, resist, modifier, size, breath")
+        kinds = ("damage", "resist", "modifier", "size", "breath", "conjure")
+        if self.variants and self.type not in kinds:
+            raise ValueError("variants: только для " + ", ".join(kinds))
         return self
 
     @model_validator(mode="after")

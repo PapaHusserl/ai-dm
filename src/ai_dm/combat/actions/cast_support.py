@@ -22,7 +22,8 @@ def with_variant(spell, variant):
     effects = []
     for effect in spell.effects:
         if effect.variants:
-            field = {"modifier": "ability", "size": "mode"}.get(effect.type, "damage_type")
+            fields = {"modifier": "ability", "size": "mode", "conjure": "resource"}
+            field = fields.get(effect.type, "damage_type")
             effect = effect.model_copy(update={field: variant, "variants": []})
         effects.append(effect)
     return spell.model_copy(update={"effects": effects})

@@ -15,8 +15,9 @@ from ai_dm.persistence.migrations.m0011_v10_to_v11 import migrate_v10_to_v11
 from ai_dm.persistence.migrations.m0012_v11_to_v12 import migrate_v11_to_v12
 from ai_dm.persistence.migrations.m0013_v12_to_v13 import migrate_v12_to_v13
 from ai_dm.persistence.migrations.m0014_v13_to_v14 import migrate_v13_to_v14
+from ai_dm.persistence.migrations.m0015_v14_to_v15 import migrate_v14_to_v15
 
-CURRENT_SCHEMA_VERSION = 14
+CURRENT_SCHEMA_VERSION = 15
 
 # {from_version: fn(bundle_dict, context) -> bundle_dict}
 MIGRATIONS = {
@@ -34,6 +35,7 @@ MIGRATIONS = {
     11: migrate_v11_to_v12,
     12: migrate_v12_to_v13,
     13: migrate_v13_to_v14,
+    14: migrate_v14_to_v15,
 }
 
 @dataclass

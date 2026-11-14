@@ -363,6 +363,20 @@ def test_remove_dead_hero_again_is_rejected_and_keeps_record():
     assert (hero.death.cause, hero.death.at_s) == ("goal", 500)
 
 
+# К3б-П4: kwarg at_s -- момент смерти, если он не «сейчас» (бой: раунд смерти, часы ещё не сдвинуты)
+
+def test_remove_creature_at_s_overrides_the_death_time():
+    world = make_world(now_s=1000)
+    remove_creature(world, "oldrik", "dead", "goal", at_s=1012)
+    assert world.npcs["oldrik"].death.at_s == 1012
+
+
+def test_remove_creature_without_at_s_uses_the_clock():
+    world = make_world(now_s=1000)
+    remove_creature(world, "oldrik", "dead", "goal")
+    assert world.npcs["oldrik"].death.at_s == 1000
+
+
 def test_remove_hero_ends_concentration():
     hero = make_hero()
     hero.creature.concentration = Concentration(spell_id="bless", circle=1)
@@ -373,3 +387,40 @@ def test_remove_hero_ends_concentration():
 def test_hero_status_gone_is_valid():
     hero = make_hero(status="gone")
     assert hero.status == "gone"
+
+
+def test_removal_without_text_leaves_the_death_text_empty():
+    world = make_world()
+    remove_creature(world, "oldrik", "dead", "goal")
+    assert world.npcs["oldrik"].death.text == ""
+
+
+# revivable: истёкший Покой окно не продлевает
+
+def dead_under_repose(ago_s, repose_until_s):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    npc = NPC(
+        id="o", name="О", means=["клинок"], status="dead",
+        creature=CreatureState(hp_current=0, hp_max=5),
+        death=DeathRecord(cause="chance", at_s=10_000 - ago_s, location_id="tavern"),
+    )
+    npc.creature.active_effects.append(
+        ActiveEffect(
+            id="gentle_repose", source="h", kind="gentle_repose",
+            expires=Expiry(kind="seconds", value=repose_until_s),
+        )
+    )
+    return npc
+
+
+def test_revivable_ignores_an_expired_gentle_repose():
+    from ai_dm.rules.revive import revivable
+
+    assert not revivable(dead_under_repose(3600, repose_until_s=9_000), 10_000)
+
+
+def test_revivable_counts_a_live_gentle_repose():
+    from ai_dm.rules.revive import revivable
+
+    assert revivable(dead_under_repose(3600, repose_until_s=20_000), 10_000)

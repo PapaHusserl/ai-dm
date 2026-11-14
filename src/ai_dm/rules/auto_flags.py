@@ -18,6 +18,9 @@ RESERVED_FLAG_PREFIXES = [prefix for prefix, _ in FLAG_BY_EVENT.values()] + [
 
 def apply_events(world, events) -> None:
     for event in events:
+        if event.type == "creature_revived":
+            # воскрешённый больше не мёртв: флаг смерти снимается
+            world.flags.pop(f"npc_dead:{event.data['id']}", None)
         if event.type in FLAG_BY_EVENT:
             prefix, field = FLAG_BY_EVENT[event.type]
             world.flags[f"{prefix}:{event.data[field]}"] = True

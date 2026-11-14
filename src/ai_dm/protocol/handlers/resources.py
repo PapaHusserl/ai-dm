@@ -1,3 +1,4 @@
+from ai_dm.combat import minions
 from ai_dm.combat.actions.cast import UNARMORED_ONLY
 from ai_dm.combat.actions.cast_support import with_variant
 from ai_dm.combat.available import variants_of
@@ -20,6 +21,7 @@ from ai_dm.protocol.handlers.utility_spells import (
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed, item_ids, reachable_ids
 from ai_dm.rules import arcane_recovery, custom_items, divine, loot, money, rests, time_ops, xp
+from ai_dm.rules import revive as revive_rules
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
@@ -556,6 +558,34 @@ def spell_target(ctx, spell, kind, target):
     return hero, None
 
 
+def revive_target(ctx, target):
+    # цель Оживления: тело мёртвого NPC рядом с героем, не позже окна от смерти (Покой удлиняет)
+    npc = ctx.bundle.world.npcs.get(target)
+    if npc is None:
+        return None, Invalid(
+            code="unknown_npc",
+            message=f"нет NPC {target!r}" + allowed(ctx.bundle.world.npcs),
+        )
+    now_s = ctx.bundle.world.clock.now_s
+    if npc.location_id != ctx.hero.location_id or not revive_rules.revivable(npc, now_s):
+        return None, Invalid(
+            code="bad_target",
+            message=(
+                f"{npc.name}: нужно тело NPC рядом с героем, умершего не более минуты назад "
+                "(под Покоем — до 10 дней)"
+            ),
+        )
+    return npc, None
+
+
+def revive_npc(ctx, spell, npc) -> list[str]:
+    revive_rules.raise_npc(npc)
+    event = DomainEvent(type="creature_revived", data={"id": npc.id})
+    apply_events(ctx.bundle.world, [event])
+    ctx.events.append(event)
+    return [f"  {spell.name}: {npc.name} жив, 1 HP"]
+
+
 def combat_ready(spell, kind) -> bool:
     # Святилище и зоны (кроме Магического круга) читаются только в бою
     if kind == "zone":
@@ -603,7 +633,10 @@ def cast_spell(ctx, request):
                 message=f"{spell.name}: нужен variant" + allowed(variants),
             )
         spell = with_variant(spell, request.variant)
-    who, invalid = spell_target(ctx, spell, kind, request.target)
+    if kind == "revive":
+        who, invalid = revive_target(ctx, request.target)
+    else:
+        who, invalid = spell_target(ctx, spell, kind, request.target)
     if invalid is not None:
         return invalid
     world = ctx.bundle.world
@@ -674,6 +707,14 @@ def cast_spell(ctx, request):
     elif kind == "dispel":
         log += dispel_npc(ctx, spell, who, request.circle, now_s)
         result["target"] = who.name
+    elif kind == "revive":
+        log += revive_npc(ctx, spell, who)
+        result["target"] = who.name
+    elif kind == "conjure":
+        minions.add(hero, spell, ctx.registry, now_s)
+        monster = ctx.registry.get("monster", hero.minions[-1].monster_id)
+        verb = "" if spell.id == minions.FAMILIAR else " поднимается"
+        log.append(f"  {spell.name}: {monster.name}{verb}")
     elif kind in DEFENSE_KINDS:
         if spell.concentration:
             start_concentration(hero, world, spell, request.circle, now_s)
@@ -704,8 +745,8 @@ def cast_spell(ctx, request):
                     )
             result["target"] = who.name
             log.append(f"  {spell.name}: на {who.name}")
-    if kind not in ("max_hp", "zone"):
-        # у Помощи и Магического круга срок виден по самому эффекту
+    if kind not in ("max_hp", "zone", "conjure"):
+        # у Помощи, Магического круга и призванных срок виден по самому эффекту или существу
         add_spell_duration(hero, spell, now_s)
     if spell.duration_s is not None:
         result["until"] = clock_text(now_s + spell.duration_s)
