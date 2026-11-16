@@ -1,0 +1,9 @@
+id: roving
+name: Странствие
+description: Ваша скорость выше на 10 фт., пока вы не в тяжёлом доспехе. Вы лазаете и плаваете с той же скоростью.
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: modifier
+  target: speed
+  value: 10

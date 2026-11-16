@@ -403,6 +403,18 @@ def hero_feature_ids(hero, registry) -> list[str]:
     return feature_ids
 
 
+def hero_speed(hero, registry) -> int:
+    # скорость вида + эффекты modifier/speed (Странствие); прибавка не действует в тяжёлом доспехе
+    speed = registry.get("species", hero.sheet.species_id).speed_ft
+    armor_id = hero.equipped.armor
+    if armor_id is not None and registry.get("armor", armor_id).category == "heavy":
+        return speed
+    for effect in hero_effects(hero, registry):
+        if effect.type == "modifier" and effect.target == "speed":
+            speed += effect.value or 0
+    return speed
+
+
 def proficiency_extras(hero, registry) -> set[str]:
     # владения оружием и доспехами от умений героя (Защитник): martial_weapons, heavy_armor
     targets = ("martial_weapons", "heavy_armor")
@@ -517,6 +529,8 @@ def resource_maxes(hero, registry) -> dict[str, int]:
             result[effect.pool] = (effect.max or 0) + add_amount(
                 hero, registry, effect.max_add, effect.class_id
             )
+            if effect.max_add is not None:
+                result[effect.pool] = max(1, result[effect.pool])
             if effect.max_by_level is not None:
                 result[effect.pool] = by_level(effect.max_by_level, hero.sheet.level)
     for circle, count in spell_slots(hero, registry).items():

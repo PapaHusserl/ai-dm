@@ -12,6 +12,7 @@ from ai_dm.game.sheet_text import (
     effect_lines,
     fit,
     hooks_lines,
+    hp_text,
     inv_lines,
     rows,
     sheet_stat_lines,
@@ -183,7 +184,7 @@ def cmd_sheet(app, arg):
     now_s = app.bundle.world.clock.now_s
     lines = [
         title_line(hero, app.registry),
-        f"HP {creature.hp_current}/{creature.hp_max}, КД {armor_class(hero, app.registry, now_s)}",
+        f"{hp_text(creature)}, КД {armor_class(hero, app.registry, now_s)}",
         ac_text(hero, app.registry, now_s),
     ]
     width = app.settings.app.ui.width

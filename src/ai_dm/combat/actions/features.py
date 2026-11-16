@@ -22,6 +22,20 @@ def second_wind(engine, ref, option) -> list[DomainEvent]:
     return []
 
 
+def tireless(engine, ref, option) -> list[DomainEvent]:
+    hero = engine.heroes[ref]
+    engine.part(ref).turn.action = False
+    hero.creature.resources["tireless"].current -= 1
+    # кубики и добавка берутся из данных умения; меньше 1 временного HP не бывает
+    effects = engine.registry.get("feature", "tireless").effects
+    effect = [e for e in effects if e.type == "temp_hp"][0]
+    amount = roll_dice(effect.dice, engine.rng).total
+    amount = max(1, amount + effect_amount(effect, hero, engine.registry))
+    hero.creature.hp_temp = max(hero.creature.hp_temp, amount)
+    engine.log(f"{engine.name(ref)}: Неутомимость, временные HP {hero.creature.hp_temp}")
+    return []
+
+
 def athlete_crit(engine, ref, crit) -> None:
     # Выдающийся атлет: после критического попадания ход не провоцирует атаки
     if not crit or not engine.is_hero(ref):

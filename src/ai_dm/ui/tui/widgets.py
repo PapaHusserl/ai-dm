@@ -6,7 +6,7 @@ from textual.message import Message
 from textual.widgets import Input, RichLog, Static
 
 from ai_dm.game.scene import hero_of
-from ai_dm.game.sheet_text import slots_lines, title_line
+from ai_dm.game.sheet_text import hp_text, slots_lines, title_line
 from ai_dm.rules.derived import ac_summary
 from ai_dm.rules.inventory import effects_line
 from ai_dm.rules.money import format_cp
@@ -25,7 +25,7 @@ def hero_lines(game):
     now_s = game.bundle.world.clock.now_s
     lines = [
         title_line(hero, registry),
-        f"HP {hero.creature.hp_current}/{hero.creature.hp_max}",
+        hp_text(hero.creature),
         ac_summary(hero, registry, now_s),
         f"Деньги: {format_cp(hero.money_cp)}",
     ]

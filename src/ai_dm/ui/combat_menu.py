@@ -34,7 +34,7 @@ CATEGORY_BY_KIND = {
     "move": "move",
     **dict.fromkeys(("dash", "disengage", "dodge", "second_wind", "stabilize"), "free"),
     "hide_bonus": "free",
-    **dict.fromkeys(("action_surge", "steady_aim"), "free"),
+    **dict.fromkeys(("action_surge", "steady_aim", "tireless"), "free"),
     **dict.fromkeys(("multiattack", "end_turn", "escape"), "free"),
 }
 SPECIAL_FREE = ("end_turn", "escape")

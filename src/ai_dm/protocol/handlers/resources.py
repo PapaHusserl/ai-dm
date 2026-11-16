@@ -1126,10 +1126,13 @@ def rest_apply(ctx, request):
             cut = True
     try:
         if request.kind == "short":
+            tired = hero.creature.exhaustion
             healed = rests.short_rest(
                 hero, ctx.registry, ctx.rng, world.clock, ctx.cfg, hit_dice=hit_dice
             )
             log = [f"Короткий отдых: восстановлено {healed} HP"]
+            if hero.creature.exhaustion < tired:
+                log.append(f"Неутомимость: истощение снижено до {hero.creature.exhaustion}")
             log += arcane_recovery.recover(hero, ctx.registry)
         else:
             rests.long_rest(hero, ctx.registry, world.clock, ctx.cfg)

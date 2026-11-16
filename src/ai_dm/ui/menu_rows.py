@@ -11,7 +11,7 @@ RANK_BY_KIND = {
     **dict.fromkeys(("offhand_attack", "horde_breaker", "cleave"), 0),
     **dict.fromkeys(("summon_attack", "summon_move"), 0),
     "move": 1,
-    **dict.fromkeys(("dodge", "second_wind", "action_surge", "steady_aim"), 2),
+    **dict.fromkeys(("dodge", "second_wind", "action_surge", "steady_aim", "tireless"), 2),
     **dict.fromkeys(("dash", "disengage", "hide_bonus", "cast", "transfer_mark"), 3),
     **dict.fromkeys(("parley", "disarm"), 5),
 }

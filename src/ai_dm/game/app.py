@@ -39,12 +39,17 @@ from ai_dm.rules.level_up import (
     step_options,
 )
 from ai_dm.rules.names import ABILITY_NAMES, SKILL_NAMES  # noqa: F401
-from ai_dm.rules.progression import can_level_up
+from ai_dm.rules.progression import (
+    can_level_up,
+    choice_options,
+    expertise_owed,
+)
 from ai_dm.rules.spellbook import PICK_KEYS
 
 LOADED_PREFIX = "Загружено: "
 SIMPLE_REASON = "звук только в TUI"
 INV_NOTES_PREFIX = "Перед этим герой сам: "
+EXPERTISE_LINE = "Экспертиза: выберите навык для экспертизы."
 LEVEL_MENU = ["average", "roll"]
 DEAD_MENU = ["load_last_save", "quit"]
 CHOICE_TITLES = {
@@ -145,9 +150,9 @@ class GameApp:
             world_model=world_model, summarizer_adapter=summarizer_adapter,
             summarizer_model=summarizer_model, summarizer_backup=summarizer_backup,
         )
-        self.pending = None
-        if hero_of(bundle).pending_level is not None:
-            self.pending = "level_up"
+        self.pending = self.start_pending()
+        if self.pending == "expertise":
+            self.startup_lines.append(EXPERTISE_LINE)
         # роль, чью модель меняет меню 2.2 ("narrator", "summarizer" или "both")
         self.switch_role = "narrator"
         # причина сбоя последнего хода ("network", "refusal", ...) или None
@@ -176,7 +181,19 @@ class GameApp:
 
     # ответы
 
+    def start_pending(self):
+        # меню при старте и /load: выбор уровня, затем догон экспертизы (в сейв не пишется)
+        hero = hero_of(self.bundle)
+        self.expertise_picks = []
+        if hero.pending_level is not None:
+            return "level_up"
+        if expertise_owed(hero, self.registry) > 0:
+            return "expertise"
+        return None
+
     def menu_for(self, pending):
+        if pending == "expertise":
+            return choice_options(hero_of(self.bundle), self.registry, "expertise")
         if pending == "level_up":
             if hero_of(self.bundle).pending_level is not None:
                 return step_options(hero_of(self.bundle), self.registry)
@@ -316,6 +333,8 @@ class GameApp:
             return self.reply(["Нет такого варианта."])
         if self.pending == "level_up":
             return self.choose_level_up(key)
+        if self.pending == "expertise":
+            return self.choose_expertise(key)
         if self.pending == "error_menu":
             return self.choose_error(key)
         if self.pending == "model_choice":
@@ -377,6 +396,16 @@ class GameApp:
             return self.finish_level_up(hero)
         level = hero.sheet.level + 1
         return self.reply([f"Опыта хватает на уровень {level}: выберите {self.step_title(step)}."])
+
+    def choose_expertise(self, key) -> Reply:
+        # догон экспертизы: выбор сразу пишется в лист
+        hero = hero_of(self.bundle)
+        hero.sheet.skill_expertise.append(key)
+        self.expertise_picks.append(SKILL_NAMES[key])
+        if expertise_owed(hero, self.registry) > 0:
+            return self.reply([f"Выберите: {CHOICE_TITLES['expertise']}."])
+        self.pending = None
+        return self.reply([f"Экспертиза: {', '.join(self.expertise_picks)}."])
 
     def step_title(self, step) -> str:
         if step in CHOICE_TITLES:
@@ -495,12 +524,12 @@ class GameApp:
             start_scene(bundle)
         ensure_journal(bundle, self.settings.rules.knowledge)
         self.runner.bundle = bundle
-        self.pending = None
-        if hero_of(bundle).pending_level is not None:
-            self.pending = "level_up"
+        self.pending = self.start_pending()
         lines = [f"{LOADED_PREFIX}{slot}."]
         if context.report:
             lines.append(context.warning())
+        if self.pending == "expertise":
+            lines.append(EXPERTISE_LINE)
         if pending_boundary:
             # граница сцены не была завершена: достраиваем до первого хода
             result = TurnResult("")

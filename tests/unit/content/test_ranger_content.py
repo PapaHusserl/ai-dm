@@ -69,7 +69,7 @@ def test_ranger_prepared_by_level(registry):
 def test_favored_enemy_pool_by_level(registry):
     effects = registry.get("feature", "favored_enemy").effects
     pool = [e for e in effects if e.type == "resource" and e.pool == "favored_enemy"][0]
-    assert pool.max_by_level == {1: 2, 2: 2, 3: 2, 4: 2, 5: 3}
+    assert pool.max_by_level == {1: 2, 5: 3, 9: 4, 13: 5, 17: 6}
 
 
 def test_archery_is_a_fighting_style_with_ranged_attack_bonus(registry):

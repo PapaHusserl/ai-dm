@@ -8,6 +8,7 @@ from ai_dm.rules.derived import (
     always_prepared,
     free_cast_pool,
     hero_effects,
+    hero_speed,
     passive_perception,
     prepared_limit,
     proficiency,
@@ -292,6 +293,14 @@ def hooks_lines(hero) -> list[str]:
     return lines
 
 
+def hp_text(creature) -> str:
+    # «HP 40/52» или «HP 40/52 +7 врем.» с временными HP
+    text = f"HP {creature.hp_current}/{creature.hp_max}"
+    if creature.hp_temp > 0:
+        text += f" +{creature.hp_temp} врем."
+    return text
+
+
 def sheet_stat_lines(hero, registry, width):
     sheet = hero.sheet
     lines = []
@@ -329,7 +338,7 @@ def sheet_stat_lines(hero, registry, width):
         lines.append("Черты: " + ", ".join(feats))
     if styles:
         lines.append("Боевой стиль: " + ", ".join(styles))
-    speed = registry.get("species", sheet.species_id).speed_ft
+    speed = hero_speed(hero, registry)
     passive = passive_perception(hero, registry)
     lines.append(f"Скорость {speed} фт. · Пассивная Внимательность {passive}")
     for companion in hero.companions:

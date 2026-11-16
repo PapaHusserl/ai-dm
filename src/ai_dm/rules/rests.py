@@ -1,5 +1,5 @@
 from ai_dm.rules import divine
-from ai_dm.rules.derived import LONG_REST_FULL, ability_mod, hero_effects
+from ai_dm.rules.derived import LONG_REST_FULL, ability_mod, hero_effects, hero_feature_ids
 from ai_dm.rules.exhaustion import remove_exhaustion
 from ai_dm.rules.healing import heal
 from ai_dm.rules.time_ops import long_rest_seconds, short_rest_seconds
@@ -52,6 +52,8 @@ def short_rest(hero, registry, rng, clock, cfg, *, hit_dice: int = 0) -> int:
         healed += heal(hero, amount)
         pool.current -= 1
     recover_pools(hero, registry, "short_rest")
+    if "tireless" in hero_feature_ids(hero, registry):
+        remove_exhaustion(hero.creature)
     clock.advance(short_rest_seconds(cfg))
     return healed
 
@@ -72,6 +74,7 @@ def long_rest(hero, registry, clock, cfg) -> None:
             pool.current = pool.max
     recover_pools(hero, registry, "long_rest")
     remove_exhaustion(creature)
+    creature.hp_temp = 0
     for effect in hero_effects(hero, registry):
         is_inspiration = effect.resource == "heroic_inspiration" and effect.when == "long_rest"
         if effect.type == "resource" and is_inspiration:

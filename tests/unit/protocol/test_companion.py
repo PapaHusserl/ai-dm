@@ -33,6 +33,8 @@ def ranger_bundle(registry, subclass="beast_master", level=3, companions=()):
     hero.sheet.level_history = ["ranger"] * level
     hero.sheet.primary.subclass_id = subclass
     sync_resources(hero, registry)
+    # экспертиза Ловкого исследователя уже выбрана (иначе догон при старте, К8с)
+    hero.sheet.skill_expertise = ["stealth"]
     hero.companions = list(companions)
     bundle.heroes[0] = hero
     return bundle

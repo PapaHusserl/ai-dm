@@ -144,6 +144,15 @@ def expertise_due(hero, registry, level: int) -> int:
     return max(new, now - len(hero.sheet.skill_expertise))
 
 
+def expertise_owed(hero, registry) -> int:
+    # недобор экспертизы по умениям класса до уровня героя; 0, если выбирать не из чего
+    char_class = registry.get("class", hero.sheet.class_id)
+    owed = expertise_total(registry, char_class, hero.sheet.level) - len(hero.sheet.skill_expertise)
+    if owed <= 0 or not choice_options(hero, registry, "expertise"):
+        return 0
+    return owed
+
+
 def expertise_skills(hero, registry, level: int) -> list[str] | None:
     # навыки, из которых экспертиза выбирается на этом уровне (Учёный); None = любые освоенные
     char_class = registry.get("class", hero.sheet.class_id)

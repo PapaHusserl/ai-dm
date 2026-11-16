@@ -69,8 +69,14 @@ features:
   feature: ability_score_improvement
 - level: 5
   feature: extra_attack
+- level: 6
+  feature: roving
 - level: 8
   feature: ability_score_improvement
+- level: 9
+  feature: expertise
+- level: 10
+  feature: tireless
 - level: 12
   feature: ability_score_improvement
 - level: 16

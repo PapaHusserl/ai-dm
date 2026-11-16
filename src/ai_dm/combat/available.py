@@ -678,6 +678,16 @@ def strike_options(engine, ref) -> list[ActionOption]:
     ]
 
 
+def tireless_options(engine, ref) -> list[ActionOption]:
+    # Неутомимость (следопыт 10): временные HP действием, пока есть заряд пула
+    if not engine.is_hero(ref):
+        return []
+    pool = engine.creature(ref).resources.get("tireless")
+    if pool is None or pool.current <= 0:
+        return []
+    return [ActionOption(id="tireless", kind="tireless", label="Неутомимость", cost="action")]
+
+
 def standard_actions(engine, ref, conditions) -> list[ActionOption]:
     # пункты, которые стоят действие: рывок, отход, уклонение, помощь, стабилизация, бегство
     p = engine.part(ref)
@@ -695,6 +705,7 @@ def standard_actions(engine, ref, conditions) -> list[ActionOption]:
     options += stabilize_options(engine, ref)
     options += escape_options(engine, ref)
     options += cleric.channel_options(engine, ref)
+    options += tireless_options(engine, ref)
     zone = [z for z in engine.state.zones if z.id == p.zone_id][0]
     if zone.exit and "restrained" not in conditions:
         options.append(ActionOption(id="flee", kind="flee", label="Бежать"))

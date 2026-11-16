@@ -1,0 +1,18 @@
+id: tireless
+name: Неутомимость
+description: 'Действием вы получаете временные хит-пойнты: 1d8 + модификатор Мудрости (не меньше 1). Использований — по
+  модификатору Мудрости (не меньше одного), все возвращаются после продолжительного отдыха. После короткого отдыха
+  уровень истощения снижается на 1.'
+source: srd-5.2
+license: CC-BY-4.0
+effects:
+- type: resource
+  pool: tireless
+  max_add: spellcasting_modifier
+  recover:
+  - "on": long_rest
+    amount: all
+- type: temp_hp
+  dice: 1d8
+  add: spellcasting_modifier
+activation: action

@@ -58,6 +58,18 @@ def test_sheet_without_armor_uses_plain_dex(dragon_app):
     assert "КД 13 = Без доспеха 10 + Лов 3" in text
 
 
+def test_sheet_hp_line_ignores_expired_ac_effect(dragon_app):
+    hero = dragon_app.bundle.heroes[0]
+    end = dragon_app.bundle.world.clock.now_s - 1
+    hero.creature.active_effects.append(
+        ActiveEffect(
+            id="stoneskin_elixir", source="hero", kind="ac", params=PARAMS,
+            expires=Expiry(kind="seconds", value=end),
+        )
+    )
+    assert re.search(r"HP \d+/\d+, КД 17\b", sheet(dragon_app))
+
+
 def test_sheet_ac_effect_is_a_separate_term(dragon_app):
     hero = dragon_app.bundle.heroes[0]
     end = dragon_app.bundle.world.clock.now_s + 3600

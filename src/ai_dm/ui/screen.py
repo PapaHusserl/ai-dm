@@ -5,7 +5,7 @@ from ai_dm.audio import SoundState
 from ai_dm.game.battle_map import battle_map_lines, part_hp, part_name
 from ai_dm.game.boundary import boundary_lines
 from ai_dm.game.scene import hero_of
-from ai_dm.game.sheet_text import boon_effects, condition_names
+from ai_dm.game.sheet_text import boon_effects, condition_names, hp_text
 from ai_dm.llm.cost import check_limit
 from ai_dm.rules.derived import ac_summary, clock_text
 from ai_dm.rules.inventory import entry_name
@@ -53,7 +53,7 @@ def status_line(app):
     conditions = "".join(f" · {name}" for name in names)
     place = app.bundle.world.locations[hero.location_id]
     return (
-        f"HP {hero.creature.hp_current}/{hero.creature.hp_max}{conditions} · "
+        f"{hp_text(hero.creature)}{conditions} · "
         f"{ac_summary(hero, app.registry, clock.now_s)} · {place.name} · "
         f"{clock.to_date()} {clock_text(clock.now_s)} "
         f"{day_part(clock.now_s, app.settings.rules)} · сессия ${spent:.4f}"

@@ -146,6 +146,7 @@ EffectTarget = Literal[
     "heavy_armor",
     "cantrips",
     "ability_check",
+    "speed",
 ]
 EffectWhen = Literal[
     "natural_1", "once_per_turn", "wearing_armor", "long_rest", "ranged_weapon", "target_wounded",

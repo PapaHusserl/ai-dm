@@ -86,6 +86,7 @@ PERFORM = {
     "cunning_strike": rogue.cunning_strike,
     "offhand_attack": offhand.perform,
     "second_wind": features.second_wind,
+    "tireless": features.tireless,
     "use_item": item.use,
     "equip": item.swap,
     "unequip": item.swap,
