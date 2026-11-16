@@ -1,4 +1,6 @@
+from ai_dm.content.models.spells import UpcastStep
 from ai_dm.core.dice import format_expr, parse_dice, roll_dice
+from ai_dm.core.duration import Duration
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.derived import (
     ability_mod,
@@ -123,11 +125,25 @@ def free_cast_left(hero, registry, spell) -> bool:
     return pool is not None and pool.current > 0
 
 
+def timed_circles(spell) -> list[int] | None:
+    # круги-ключи таблицы сроков, если усиление -- только она (Метка охотника), иначе None
+    upcast = spell.upcast
+    if upcast is None or upcast.per_slot_level != UpcastStep():
+        return None
+    if upcast.duration_by_circle is None:
+        return None
+    return list(upcast.duration_by_circle)
+
+
 def circle_allowed(spell, circle, free) -> bool:
-    # круг заклинания, либо выше у заклинаний с усилением (не для бесплатного применения)
+    # круг заклинания, либо выше у заклинаний с усилением (не для бесплатного применения);
+    # у усиления «только срок» -- лишь круги таблицы
     if circle == spell.level:
         return True
-    return spell.upcast is not None and not free and circle > spell.level
+    if spell.upcast is None or free or circle < spell.level:
+        return False
+    keys = timed_circles(spell)
+    return keys is None or circle in keys
 
 
 def upcast_steps(spell, circle) -> int:
@@ -160,6 +176,9 @@ def usable_circles(hero, spell) -> list[int]:
             result.append(circle)
     if spell.upcast is None:
         return [c for c in result if c == spell.level]
+    keys = timed_circles(spell)
+    if keys is not None:
+        return [c for c in result if c == spell.level or c in keys]
     return result
 
 
@@ -295,8 +314,9 @@ def start_concentration(hero, world, spell, circle, now_s=None) -> None:
     if hero.creature.concentration is not None:
         drop_concentration(hero, world)
     until_s = None
-    if now_s is not None and spell.duration_s is not None:
-        until_s = now_s + spell.duration_s
+    seconds = spell_seconds(spell, circle)
+    if now_s is not None and seconds is not None:
+        until_s = now_s + seconds
     hero.creature.concentration = Concentration(spell_id=spell.id, circle=circle, until_s=until_s)
 
 
@@ -311,14 +331,24 @@ def expire_concentration(hero, world) -> str | None:
     return concentration.spell_id
 
 
-def add_spell_duration(hero, spell, now_s) -> None:
-    # длительность заклинания по часам мира: метка на герое до now_s + duration_s
-    if spell.duration_s is None:
+def spell_seconds(spell, circle) -> int | None:
+    # срок по кругу ячейки: ближайший ключ таблицы не выше круга, иначе свой duration_s
+    table = spell.upcast.duration_by_circle if spell.upcast is not None else None
+    keys = [k for k in table or {} if circle is not None and k <= circle]
+    if keys:
+        return Duration.parse(table[max(keys)]).seconds
+    return spell.duration_s
+
+
+def add_spell_duration(hero, spell, now_s, circle=None) -> None:
+    # длительность заклинания по часам мира: метка на герое до now_s + срок круга
+    seconds = spell_seconds(spell, circle)
+    if seconds is None:
         return
     hero.creature.active_effects.append(
         ActiveEffect(
             id=spell.id, source=hero.id, kind="spell",
-            expires=Expiry(kind="seconds", value=now_s + spell.duration_s),
+            expires=Expiry(kind="seconds", value=now_s + seconds),
         )
     )
 

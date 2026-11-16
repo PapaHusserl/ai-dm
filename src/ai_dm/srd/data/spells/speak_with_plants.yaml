@@ -1,0 +1,14 @@
+id: speak_with_plants
+name: Разговор с растениями
+description: "В течение 10 минут вы в пределах 30 фт. общаетесь с растениями: они отвечают на вопросы о событиях последних суток (погода, кто проходил, что росло рядом) и слушаются простых просьб."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: self
+duration: 10m
+classes:
+- ranger
+effect_text: "Растения в 30 фт. десять минут отвечают на вопросы о последних сутках и слушаются простых просьб."
+effects:
+- type: utility

@@ -10,6 +10,7 @@ range_ft: 30
 duration: 1d
 ritual: true
 classes:
+- ranger
 - wizard
 effect_text: До десяти спутников сутки дышат под водой.
 effects:

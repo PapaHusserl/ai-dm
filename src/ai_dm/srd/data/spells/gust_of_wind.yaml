@@ -9,6 +9,7 @@ range_kind: self
 duration: 1m
 concentration: true
 classes:
+- ranger
 - wizard
 effects:
 - type: area

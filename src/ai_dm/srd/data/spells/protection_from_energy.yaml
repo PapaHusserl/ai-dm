@@ -10,6 +10,7 @@ duration: 1h
 concentration: true
 classes:
 - cleric
+- ranger
 - wizard
 effects:
 - type: resist

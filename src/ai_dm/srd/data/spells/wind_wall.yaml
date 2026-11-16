@@ -1,0 +1,23 @@
+id: wind_wall
+name: Стена ветра
+description: "В выбранном месте в пределах 120 фт. встаёт стена сильного ветра длиной 50 фт. и высотой 15 фт. (концентрация, до 1 минуты). Существа в этой области совершают спасбросок Силы и при провале получают 4d8 дробящего урона, при успехе — половину. Стена останавливает стрелы, газы и туман."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: evocation
+range_kind: ranged
+range_ft: 120
+duration: 1m
+concentration: true
+classes:
+- ranger
+effects:
+- type: area
+  shape: cube
+  size_ft: 20
+- type: save_effect
+  ability: str
+  mode: half
+- type: damage
+  dice: 4d8
+  damage_type: bludgeoning

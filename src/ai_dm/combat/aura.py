@@ -79,7 +79,10 @@ def hit_by_aura(engine, pair, effect) -> list[DomainEvent]:
     )
     dc = spell_save_dc(engine.heroes[caster_ref], engine.registry)
     saved = engine.save(ref, params["ability"], dc).outcome == "success"
-    amount = rolled.total // 2 if saved else rolled.total
+    amount = rolled.total
+    if saved:
+        # по умолчанию половина; mode "none" (Призыв животных) -- ничего
+        amount = 0 if params.get("mode") == "none" else amount // 2
     dealt = engine.damage(ref, amount, params["damage_type"])
     engine.log_notes(dealt)
     engine.log(f"  {engine.name(ref)}: {engine.hp_text(ref)}")

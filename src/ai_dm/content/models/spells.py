@@ -18,7 +18,15 @@ class UpcastStep(ContentModel):
 
 
 class Upcast(ContentModel):
-    per_slot_level: UpcastStep
+    per_slot_level: UpcastStep = UpcastStep()
+    # срок по кругу ячейки: ключ -- круг «не ниже» ("8h" с 3 круга, Метка охотника)
+    duration_by_circle: dict[int, str] | None = None
+
+    @model_validator(mode="after")
+    def check_durations(self):
+        for text in (self.duration_by_circle or {}).values():
+            Duration.parse(text)
+        return self
 
 
 class Spell(Behavior):

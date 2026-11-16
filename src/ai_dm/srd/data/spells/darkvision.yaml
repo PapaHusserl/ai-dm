@@ -8,6 +8,7 @@ school: transmutation
 range_kind: touch
 duration: 8h
 classes:
+- ranger
 - wizard
 effect_text: Цель видит в темноте на 60 фт. восемь часов.
 effects:

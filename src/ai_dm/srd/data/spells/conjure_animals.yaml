@@ -1,0 +1,21 @@
+id: conjure_animals
+name: Призыв животных
+description: "Вокруг вас до 10 минут (концентрация) кружится стая призрачных зверей. Враг, который входит в вашу зону или заканчивает в ней ход, совершает спасбросок Ловкости: при провале получает 3d10 рубящего урона, при успехе урона не получает. На каждый уровень ячейки выше 3-го — +1d10."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: conjuration
+range_kind: self
+duration: 10m
+concentration: true
+classes:
+- ranger
+effects:
+- type: aura
+  dice: 3d10
+  ability: dex
+  damage_type: slashing
+  mode: none
+upcast:
+  per_slot_level:
+    dice: 1d10

@@ -9,6 +9,7 @@ range_kind: ranged
 range_ft: 120
 classes:
 - cleric
-effect_text: Жрец чует ловушки в 120 фт. в зоне видимости, но не знает, где они и как сработают.
+- ranger
+effect_text: Заклинатель чует ловушки в 120 фт. в зоне видимости, но не знает, где они и как сработают.
 effects:
 - type: utility

@@ -10,6 +10,7 @@ range_ft: 60
 duration: 1h
 classes:
 - cleric
+- ranger
 effects:
 - type: zone
   mode: light

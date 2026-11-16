@@ -1,0 +1,14 @@
+id: plant_growth
+name: Рост растений
+description: "Растения в выбранном месте буйно разрастаются: идти там вчетверо труднее. Если творить заклинание 8 часов, оно вместо этого обогащает землю на полмили вокруг: год урожай вдвое больше."
+source: srd-5.2
+license: CC-BY-4.0
+level: 3
+school: transmutation
+range_kind: ranged
+range_ft: 150
+classes:
+- ranger
+effect_text: "Растения в выбранном месте буйно разрастаются: идти там вчетверо труднее."
+effects:
+- type: utility

@@ -11,7 +11,8 @@ concentration: true
 ritual: true
 classes:
 - cleric
+- ranger
 - wizard
-effect_text: Маг чувствует магию в 30 фт.; видимую ауру он может разглядеть и узнать её школу.
+effect_text: Заклинатель чувствует магию в 30 фт.; видимую ауру он может разглядеть и узнать её школу.
 effects:
 - type: utility

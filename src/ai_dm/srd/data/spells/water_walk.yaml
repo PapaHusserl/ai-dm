@@ -11,6 +11,7 @@ duration: 1h
 ritual: true
 classes:
 - cleric
+- ranger
 effect_text: До десяти спутников идут по воде как по суше целый час.
 effects:
 - type: utility

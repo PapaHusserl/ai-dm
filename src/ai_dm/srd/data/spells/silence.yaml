@@ -12,6 +12,7 @@ concentration: true
 ritual: true
 classes:
 - cleric
+- ranger
 effects:
 - type: zone
   mode: silence

@@ -9,7 +9,7 @@ from ai_dm.combat.actions.attack import (
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.derived import hero_feature_ids, spell_attack_bonus, spell_attack_parts
-from ai_dm.rules.spellcasting import effect_of, upcast_dice, upcast_steps
+from ai_dm.rules.spellcasting import effect_of, spell_seconds, upcast_dice, upcast_steps
 from ai_dm.state.creature import Concentration, Expiry
 
 # по кому бьют: боеспособные, лежащие и сдавшиеся (лежачего бить можно)
@@ -49,8 +49,9 @@ def hold_concentration(engine, ref, spell, circle) -> None:
         end_concentration(caster)
         engine.drop_concentration_effects(ref)
     until_s = None
-    if spell.duration_s is not None:
-        until_s = engine.world.clock.now_s + spell.duration_s
+    seconds = spell_seconds(spell, circle)
+    if seconds is not None:
+        until_s = engine.world.clock.now_s + seconds
     caster.concentration = Concentration(spell_id=spell.id, circle=circle, until_s=until_s)
 
 

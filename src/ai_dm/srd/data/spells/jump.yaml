@@ -9,6 +9,7 @@ range_kind: touch
 casting_time: bonus_action
 duration: 1m
 classes:
+- ranger
 - wizard
 effect_text: Цель прыгает втрое дальше обычного целую минуту.
 effects:

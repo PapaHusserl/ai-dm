@@ -10,7 +10,8 @@ duration: 10m
 concentration: true
 classes:
 - cleric
+- ranger
 - wizard
-effect_text: Маг чует направление к названному предмету, если тот в пределах 1000 фт.
+effect_text: Заклинатель чует направление к названному предмету, если тот в пределах 1000 фт.
 effects:
 - type: utility

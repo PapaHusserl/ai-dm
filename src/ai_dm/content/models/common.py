@@ -154,7 +154,7 @@ EffectWhen = Literal[
 ]
 EffectMode = Literal[
     "advantage", "resistance", "half", "floor", "expertise", "attack_roll", "penalty",
-    "disadvantage",
+    "disadvantage", "none",
     # вид зоны (type zone)
     "darkness", "light", "silence", "sleet", "circle",
     # вид темпа (tempo), полёта (flight) и размера (size)

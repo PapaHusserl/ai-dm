@@ -32,8 +32,11 @@
       "step": "spells",
       "options": [
         "alarm",
+        "detect_magic",
+        "detect_poison_and_disease",
         "entangle",
         "goodberry",
+        "jump",
         "longstrider"
       ]
     }

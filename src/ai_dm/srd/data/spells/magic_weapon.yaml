@@ -9,6 +9,7 @@ range_kind: touch
 casting_time: bonus_action
 duration: 1h
 classes:
+- ranger
 - wizard
 effects:
 - type: modifier

@@ -8,6 +8,7 @@ school: abjuration
 range_kind: touch
 duration: 8h
 classes:
+- ranger
 - wizard
 effect_text: Цель восемь часов скрыта от прорицаний и магических сенсоров.
 effects:

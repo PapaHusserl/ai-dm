@@ -213,6 +213,7 @@ def cast_aura(engine, ref, spell, target_ref, circle) -> list[DomainEvent]:
             params={
                 "spell": spell.id, "dice": scaled_dice(spell, engine.heroes[ref], effect, circle),
                 "ability": effect.ability, "damage_type": effect.damage_type,
+                "mode": effect.mode or "half",
             },
             expires=Expiry(kind="concentration", owner=ref),
         )

@@ -51,6 +51,7 @@ from ai_dm.rules.spellcasting import (
     roll_cast_checks,
     roll_heal,
     spell_kind,
+    spell_seconds,
     spend_cast,
     start_concentration,
     swap_prepared,
@@ -747,9 +748,10 @@ def cast_spell(ctx, request):
             log.append(f"  {spell.name}: на {who.name}")
     if kind not in ("max_hp", "zone", "conjure"):
         # у Помощи, Магического круга и призванных срок виден по самому эффекту или существу
-        add_spell_duration(hero, spell, now_s)
-    if spell.duration_s is not None:
-        result["until"] = clock_text(now_s + spell.duration_s)
+        add_spell_duration(hero, spell, now_s, request.circle)
+    seconds = spell_seconds(spell, request.circle)
+    if seconds is not None:
+        result["until"] = clock_text(now_s + seconds)
     return Decision(status="accepted", result=result, log=log)
 
 

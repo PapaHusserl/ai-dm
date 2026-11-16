@@ -9,6 +9,7 @@ range_kind: touch
 duration: 1h
 classes:
 - cleric
+- ranger
 effects:
 - type: remove_condition
   conditions:

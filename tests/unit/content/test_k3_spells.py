@@ -27,8 +27,8 @@ def by_class(registry, class_id):
     return [s for s in spells(registry) if class_id in s.classes]
 
 
-def test_there_are_154_spells(registry):
-    assert len(spells(registry)) == 154
+def test_there_are_158_spells(registry):
+    assert len(spells(registry)) == 158  # К8с П2: + 4 заклинания 3 круга следопыта
 
 
 @pytest.mark.parametrize("class_id, expected", [
@@ -57,7 +57,8 @@ def test_rituals(registry):
 
 def test_utility_spells_have_a_short_effect_text(registry):
     utility = [s for s in spells(registry) if any(e.type == "utility" for e in s.effects)]
-    assert len(utility) == 52  # К3б П1: + Свет, Пляшущие огоньки, Вечный огонь (решение 10)
+    # К3б П1: + Свет, Пляшущие огоньки, Вечный огонь (решение 10); К8с П2: + два «растительных»
+    assert len(utility) == 54
     for spell in utility:
         assert 0 < len(spell.effect_text) <= 120, spell.id
 

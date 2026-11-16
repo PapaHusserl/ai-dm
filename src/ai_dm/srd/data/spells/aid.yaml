@@ -10,6 +10,7 @@ range_ft: 30
 duration: 8h
 classes:
 - cleric
+- ranger
 effects:
 - type: max_hp
   value: 5

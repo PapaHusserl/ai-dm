@@ -11,6 +11,7 @@ concentration: true
 ritual: true
 classes:
 - cleric
-effect_text: Жрец чует яды, отравленные вещи и заразных существ в 30 фт. и узнаёт их вид.
+- ranger
+effect_text: Заклинатель чует яды, отравленные вещи и заразных существ в 30 фт. и узнаёт их вид.
 effects:
 - type: utility

@@ -10,6 +10,7 @@ duration: 8h
 ritual: true
 classes:
 - cleric
-effect_text: Жрец слился с камнем и укрыт в нём до восьми часов, но слышит и видит снаружи.
+- ranger
+effect_text: Заклинатель слился с камнем и укрыт в нём до восьми часов, но слышит и видит снаружи.
 effects:
 - type: utility

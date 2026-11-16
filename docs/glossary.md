@@ -142,6 +142,7 @@
 | Color Spray | Цветная пыль | `color_spray` | К3 |
 | Command | Приказ | `command` | К3 |
 | Comprehend Languages | Понимание языков | `comprehend_languages` | ритуал, К3 |
+| Conjure Animals | Призыв животных | `conjure_animals` | К8с |
 | Continual Flame | Вечный огонь | `continual_flame` | К3 |
 | Counterspell | Контрзаклинание | `counterspell` | К3 |
 | Create Food and Water | Сотворение пищи и воды | `create_food_and_water` | К3 |
@@ -213,6 +214,7 @@
 | Nondetection | Необнаружимость | `nondetection` | К3 |
 | Phantasmal Force | Призрачная сила | `phantasmal_force` | К3 |
 | Phantom Steed | Призрачный скакун | `phantom_steed` | ритуал, К3 |
+| Plant Growth | Рост растений | `plant_growth` | К8с |
 | Poison Spray | Ядовитые брызги | `poison_spray` | заговор, К3 |
 | Prayer of Healing | Молитва исцеления | `prayer_of_healing` | К3 |
 | Prestidigitation | Фокусы | `prestidigitation` | заговор, К3 |
@@ -243,6 +245,7 @@
 | Slow | Замедление | `slow` | К3 |
 | Spare the Dying | Пощада умирающих | `spare_the_dying` | заговор, К3 |
 | Speak with Dead | Разговор с мёртвыми | `speak_with_dead` | К3 |
+| Speak with Plants | Разговор с растениями | `speak_with_plants` | К8с |
 | Spider Climb | Паучье лазание | `spider_climb` | К3 |
 | Spirit Guardians | Духовные стражи | `spirit_guardians` | К3 |
 | Spiritual Weapon | Духовное оружие | `spiritual_weapon` | К3 |
@@ -259,6 +262,7 @@
 | Water Breathing | Водное дыхание | `water_breathing` | ритуал, К3 |
 | Water Walk | Хождение по воде | `water_walk` | ритуал, К3 |
 | Web | Паутина | `web` | К3 |
+| Wind Wall | Стена ветра | `wind_wall` | К8с |
 | Zone of Truth | Зона правды | `zone_of_truth` | К3 |
 
 ## Оружие, доспехи, предметы

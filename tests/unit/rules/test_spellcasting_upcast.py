@@ -77,7 +77,7 @@ def test_upcast_dice_with_different_sides_is_an_error():
 # upcast_steps
 
 def test_steps_without_upcast_is_zero_even_for_a_higher_circle(registry):
-    assert upcast_steps(spell_of(registry, "hunters_mark"), 3) == 0
+    assert upcast_steps(spell_of(registry, "fog_cloud"), 3) == 0
 
 
 def test_steps_at_the_base_circle_is_zero(registry):
