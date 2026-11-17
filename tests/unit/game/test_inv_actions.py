@@ -313,6 +313,28 @@ def test_taking_off_heavy_armor_takes_five_minutes(registry, tmp_path):
     assert "Прошло минут: 5." in flat(reply)
 
 
+def test_shift_clock_purges_effect_and_condition_expired_by_the_shift_t255(registry, tmp_path):
+    from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
+
+    app = bare_armor_app(registry, tmp_path)
+    creature = hero_of_app(app).creature
+    start = clock_s(app)
+    creature.active_effects = [
+        ActiveEffect(id="e_gone", source="x", kind="buff",
+                     expires=Expiry(kind="seconds", value=start + 600)),
+        ActiveEffect(id="e_kept", source="x", kind="buff",
+                     expires=Expiry(kind="seconds", value=start + 601)),
+    ]
+    creature.conditions = [
+        AppliedCondition(id="invisible", source="x",
+                         expires=Expiry(kind="seconds", value=start + 600)),
+    ]
+    app.handle("/inv надеть кольчуга")
+    creature = hero_of_app(app).creature
+    assert [e.id for e in creature.active_effects] == ["e_kept"]
+    assert creature.conditions == []
+
+
 def test_putting_on_medium_armor_takes_five_minutes(registry, tmp_path):
     app = bare_armor_app(registry, tmp_path, "chain_shirt")
     start = clock_s(app)

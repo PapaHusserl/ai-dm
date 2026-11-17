@@ -1,3 +1,4 @@
+from ai_dm.rules.creatures import purge_expired
 from ai_dm.rules.healing import expire_max_hp
 from ai_dm.rules.spellcasting import expire_concentration
 from ai_dm.rules.time_ops import ensure_min_advance
@@ -67,6 +68,7 @@ def close_scene(bundle, reason, cfg) -> None:
     ensure_min_advance(bundle.world.clock, scene.started_at_s, cfg)
     expire_concentration(hero_of(bundle), bundle.world)
     expire_max_hp(hero_of(bundle), bundle.world)
+    purge_expired(bundle)
 
 
 def ensure_chapter(bundle) -> ChapterState:

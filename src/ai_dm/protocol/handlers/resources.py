@@ -26,6 +26,7 @@ from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.cast_checks import default_cast_check_registry
+from ai_dm.rules.creatures import purge_expired
 from ai_dm.rules.damage import roll_hazard
 from ai_dm.rules.death_saves import after_damage, is_stable, resolve_out_of_combat
 from ai_dm.rules.derived import clock_text, hero_feature_ids
@@ -965,6 +966,7 @@ def concentration_note(ctx, log, result) -> None:
         log.append(f"Концентрация: {name} кончилась")
         result["concentration_ended"] = ended
     log += expire_max_hp(ctx.hero, ctx.bundle.world)
+    purge_expired(ctx.bundle)
 
 
 def apply_swap(ctx, request, log, result) -> None:

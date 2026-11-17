@@ -780,3 +780,103 @@ def test_end_scene_turn_gets_tick_before_the_boundary(registry, cfg, tmp_path):
     steps = [tools_step(end_scene_call()), text_step("Конец.")]
     rig, _ = clock_after(registry, cfg, tmp_path, steps)
     assert rig.runner.bundle.world.clock.now_s == TICK
+
+
+# шаг 255: чистка истёкших seconds после сдвига часов в attempt (docs/plan-255.md, «Тесты»)
+
+def expiring_effect(effect_id, value, kind="buff"):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    return ActiveEffect(
+        id=effect_id, source="x", kind=kind, expires=Expiry(kind="seconds", value=value)
+    )
+
+
+def test_tick_turn_purges_effect_and_condition_that_expire_with_the_tick(registry, cfg, tmp_path):
+    from ai_dm.state.creature import AppliedCondition, Expiry
+
+    bundle = make_bundle(registry)
+    creature = bundle.heroes[0].creature
+    creature.active_effects = [expiring_effect("elixir", TICK), expiring_effect("later", TICK + 1)]
+    creature.conditions = [
+        AppliedCondition(id="invisible", source="x", expires=Expiry(kind="seconds", value=TICK))
+    ]
+    rig = make_rig(registry, cfg, tmp_path, scripted([text_step("Тихо.")]), bundle=bundle)
+    rig.runner.play("Иду")
+    hero = rig.runner.bundle.heroes[0]
+    assert ([e.id for e in hero.creature.active_effects], hero.creature.conditions) == (
+        ["later"], [],
+    )
+
+
+def test_tick_turn_aid_reverts_with_log_and_elixir_is_purged(registry, cfg, tmp_path):
+    from ai_dm.rules.healing import grant_max_hp
+
+    bundle = make_bundle(registry)
+    creature = bundle.heroes[0].creature
+    base = creature.hp_max
+    creature.hp_current = base
+    grant_max_hp(creature, "aid", "hero", 5, TICK)
+    creature.active_effects.append(expiring_effect("elixir", TICK))
+    rig = make_rig(registry, cfg, tmp_path, scripted([text_step("Тихо.")]), bundle=bundle)
+    result = rig.runner.play("Иду")
+    hero = rig.runner.bundle.heroes[0]
+    assert any(line.startswith("Помощь кончилась:") for line in result.lines)
+    assert (hero.creature.hp_max, hero.creature.hp_current) == (base, base)
+    assert hero.creature.active_effects == []
+
+
+def test_travel_turn_purges_effect_expired_by_the_trip(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    bundle.heroes[0].creature.active_effects = [expiring_effect("elixir", 3000)]
+    steps = [tools_step(advance_call(travel_to="forest")), text_step("Лес.")]
+    rig = make_rig(registry, cfg, tmp_path, scripted(steps), bundle=bundle)
+    rig.runner.play("Иду")
+    assert rig.runner.bundle.heroes[0].creature.active_effects == []
+
+
+def test_failed_turn_keeps_expired_entries_in_bundle(registry, cfg, tmp_path):
+    bundle = make_bundle(registry)
+    bundle.heroes[0].creature.active_effects = [expiring_effect("elixir", 0)]
+    rig = make_rig(registry, cfg, tmp_path, scripted(FATAL), bundle=bundle)
+    result = rig.runner.play("Иду")
+    assert result.committed is False
+    assert [e.id for e in rig.runner.bundle.heroes[0].creature.active_effects] == ["elixir"]
+
+
+def test_invisibility_without_concentration_ends_by_clock_silently(
+    registry, cfg, tmp_path, monkeypatch
+):
+    from test_utility_spells import wiz
+    from test_wizard_rest_cast import cast
+
+    monkeypatch.setattr(registry.get("spell", "invisibility"), "concentration", False)
+    bundle = wiz(registry, "invisibility")
+    cast(registry, cfg, bundle, "invisibility")
+    hero = bundle.heroes[0]
+    assert [c.id for c in hero.creature.conditions] == ["invisible"]
+    until = hero.creature.conditions[0].expires.value
+    bundle.world.clock.advance(until)
+    rig = make_rig(registry, cfg, tmp_path, scripted([text_step("Тихо.")]), bundle=bundle)
+    result = rig.runner.play("Иду")
+    assert rig.runner.bundle.heroes[0].creature.conditions == []
+    assert not any("евидим" in line for line in result.lines)
+
+
+def test_exploration_turn_with_start_combat_keeps_expired_minion_until_after_fight(
+    registry, cfg, tmp_path
+):
+    from ai_dm.state.hero import Minion
+
+    bundle = make_bundle(registry)
+    bundle.heroes[0].minions = [
+        Minion(monster_id="skeleton", spell_id="animate_dead", hp_current=9, until_s=0)
+    ]
+    steps = [tools_step(start_combat_call()), text_step("Гоблины бросаются на вас.")]
+    rig = make_rig(registry, cfg, tmp_path, script_then_react(steps), bundle=bundle)
+    assert rig.runner.play("Иду").committed is True
+    assert rig.runner.bundle.session.active_combat is not None
+    assert [m.hp_current for m in rig.runner.bundle.heroes[0].minions] == [9]
+    assert not any(
+        p.ref.startswith("minion:") for p in rig.runner.bundle.session.active_combat.participants
+    )

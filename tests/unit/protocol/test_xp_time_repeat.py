@@ -791,3 +791,43 @@ def test_known_limitation_two_hours_in_one_turn_are_not_caught(registry, cfg):
     assert apply(ctx, hour()).status == "accepted"
     assert apply(ctx, hour()).status == "accepted"
     assert ctx.bundle.world.clock.now_s == start + 7200
+
+
+# шаг 255: чистка истёкших seconds после сдвига часов в concentration_note
+
+def expiring(effect_id, value):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    return ActiveEffect(
+        id=effect_id, source="x", kind="buff", expires=Expiry(kind="seconds", value=value)
+    )
+
+
+def test_hour_purges_effect_and_condition_that_expired_by_it_t255(registry, cfg):
+    from ai_dm.state.creature import AppliedCondition, Expiry
+
+    ctx = make_ctx_with(registry, cfg, [])
+    creature = ctx.bundle.heroes[0].creature
+    start = ctx.bundle.world.clock.now_s
+    creature.active_effects = [expiring("gone", start + 3600), expiring("kept", start + 3601)]
+    creature.conditions = [
+        AppliedCondition(id="invisible", source="x",
+                         expires=Expiry(kind="seconds", value=start + 3600)),
+    ]
+    assert apply(ctx, hour()).status == "accepted"
+    assert [e.id for e in creature.active_effects] == ["kept"]
+    assert creature.conditions == []
+
+
+def test_shop_advance_time_purges_expired_effect_t255(registry, cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.game.shop_actions import apply_shop
+
+    ctx = make_ctx_with(registry, cfg, [])
+    bundle = ctx.bundle
+    creature = bundle.heroes[0].creature
+    creature.active_effects = [expiring("gone", bundle.world.clock.now_s + 3600)]
+    runner = SimpleNamespace(registry=registry, cfg=cfg, base_registry=registry)
+    apply_shop(SimpleNamespace(runner=runner, bundle=bundle), hour())
+    assert creature.active_effects == []

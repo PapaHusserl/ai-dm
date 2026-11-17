@@ -210,6 +210,37 @@ def test_travel_drops_mood_with_new_scene(registry, cfg, tmp_path):
     assert scene.scene_mood == ""
 
 
+def test_close_scene_purges_effects_expired_by_the_min_advance_t255(registry, cfg):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.state.creature import ActiveEffect, AppliedCondition, CreatureState, Expiry
+    from ai_dm.state.world import NPC
+
+    bundle = make_bundle(registry)
+    start = bundle.world.clock.now_s
+    until = start + 600
+
+    def effect(effect_id, value):
+        return ActiveEffect(
+            id=effect_id, source="x", kind="buff", expires=Expiry(kind="seconds", value=value)
+        )
+
+    creature = bundle.heroes[0].creature
+    creature.active_effects = [effect("gone", until), effect("kept", until + 1)]
+    creature.conditions = [
+        AppliedCondition(id="invisible", source="x", expires=Expiry(kind="seconds", value=until))
+    ]
+    npc = NPC(
+        id="cat", name="Кот", means=["x"], creature=CreatureState(hp_current=3, hp_max=3)
+    )
+    npc.creature.active_effects = [effect("gone", until)]
+    bundle.world.npcs["cat"] = npc
+    close_scene(bundle, "end_scene", cfg)
+    assert bundle.world.clock.now_s == until
+    assert [e.id for e in creature.active_effects] == ["kept"]
+    assert creature.conditions == []
+    assert npc.creature.active_effects == []
+
+
 def check(bundle, cfg, **kw):
     from ai_dm.game.scene import check_close
 
