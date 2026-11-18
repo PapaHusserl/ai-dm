@@ -46,6 +46,32 @@ GOAL_KINDS  # unused variable (src/ai_dm/state/relations.py:12) -- Ж0 подш�
 ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
+# Задел v16 (М0 П1, решение Влада 2026-11-17): убрать строку, когда поле начнут читать.
+needs_transport  # unused variable (src/ai_dm/state/world.py:221) -- П2
+transport  # unused variable (src/ai_dm/state/hero.py:274, world.py:92) -- П2
+temporary  # unused variable (src/ai_dm/state/world.py:235) -- П3
+journey  # unused variable (src/ai_dm/state/hero.py:275) -- П3
+road_id  # unused variable (src/ai_dm/state/hero.py:228) -- П3
+edge_to  # unused variable (src/ai_dm/state/hero.py:231) -- П3
+edge_done_s  # unused variable (src/ai_dm/state/hero.py:233) -- П3
+hp_temp_expires  # unused variable (src/ai_dm/state/creature.py:73) -- П4
+wake_at_s  # unused variable (src/ai_dm/state/creature.py:75) -- П4
+partner  # unused variable (src/ai_dm/state/world.py:169) -- Ж5/У2
+loot_share_percent  # unused variable (src/ai_dm/state/world.py:100) -- Ж5/У2
+contract  # unused variable (src/ai_dm/state/world.py:101) -- Ж5/У2
+pay_cp_per_day  # unused variable (src/ai_dm/state/world.py:86) -- Ж5/У2
+payer  # unused variable (src/ai_dm/state/world.py:88) -- Ж5/У2
+paid_until_s  # unused variable (src/ai_dm/state/world.py:89) -- Ж5/У2
+leaves_unpaid  # unused variable (src/ai_dm/state/world.py:90) -- Ж5/У2
+owner_npc  # unused variable (src/ai_dm/state/hero.py:214) -- Ж5/У2
+clothing  # unused variable (src/ai_dm/state/hero.py:174) -- М0п/96б/167-168
+neck  # unused variable (src/ai_dm/state/hero.py:175) -- М0п/96б/167-168
+ring_1  # unused variable (src/ai_dm/state/hero.py:176) -- М0п/96б/167-168
+ring_2  # unused variable (src/ai_dm/state/hero.py:177) -- М0п/96б/167-168
+wrists  # unused variable (src/ai_dm/state/hero.py:178) -- М0п/96б/167-168
+ac_bonus  # unused variable (src/ai_dm/state/hero.py:150) -- М0п/96б/167-168
+base_id  # unused variable (src/ai_dm/state/world.py:341) -- М0п/96б/167-168
+scene_weights  # unused variable (src/ai_dm/state/world.py:376) -- 25 (пресеты)
 # API Textual: вызывается фреймворком (src/ai_dm/ui/tui/__init__.py).
 ENABLE_COMMAND_PALETTE  # unused variable
 compose  # unused method

@@ -334,6 +334,42 @@ def test_explicit_preset_id_beats_manifest_preset(tmp_path, registry, cfg):
     assert build(tmp_path, registry, cfg, files, preset_id="fairytale").world.tone.romance == "нет"
 
 
+def test_explicit_preset_id_is_saved_in_world_preset(tmp_path, registry, cfg):
+    files = pack_tone_files()
+    files["campaign.yaml"]["preset"] = "grim"
+    assert build(tmp_path, registry, cfg, files, preset_id="heroic").world.preset == "heroic"
+
+
+def test_explicit_preset_id_tone_is_overlay_of_that_preset(tmp_path, registry, cfg):
+    from ai_dm.campaign.presets import apply_preset, load_presets
+
+    files = pack_tone_files()
+    files["campaign.yaml"]["preset"] = "grim"
+    world = build(tmp_path, registry, cfg, files, preset_id="heroic").world
+    pack = load(write_pack(tmp_path / "again", files), registry)
+    assert world.tone == apply_preset(pack.manifest.tone, load_presets()["heroic"])
+
+
+def test_no_preset_id_saves_manifest_preset_in_world_preset(tmp_path, registry, cfg):
+    files = pack_tone_files()
+    files["campaign.yaml"]["preset"] = "grim"
+    assert build(tmp_path, registry, cfg, files).world.preset == "grim"
+
+
+def test_no_preset_id_and_empty_manifest_preset_give_empty_world_preset(tmp_path, registry, cfg):
+    files = pack_tone_files()
+    files["campaign.yaml"]["preset"] = ""
+    assert build(tmp_path, registry, cfg, files).world.preset == ""
+
+
+def test_pack_preset_id_and_empty_manifest_preset_give_empty_world_preset(
+    tmp_path, registry, cfg
+):
+    world = build(tmp_path, registry, cfg, pack_tone_files(), preset_id="pack").world
+    assert world.preset == ""
+    assert world.tone.notes == "голос пака"
+
+
 def test_manifest_preset_writes_tone_entry(tmp_path, registry, cfg):
     files = pack_tone_files()
     files["campaign.yaml"]["preset"] = "heroic"

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ai_dm.content.models.common import Ability, DcCategory
 from ai_dm.core.clock import GameClock
@@ -9,7 +9,7 @@ from ai_dm.core.rng import RngState
 from ai_dm.state.creature import CreatureState, Equipment
 from ai_dm.state.death import DeathRecord
 from ai_dm.state.gender import Gender
-from ai_dm.state.hero import InventoryEntry
+from ai_dm.state.hero import InventoryEntry, ItemMods
 from ai_dm.state.relations import FamilyLink, NpcGoal, NpcSceneMemory
 from ai_dm.state.triggers import Condition, Secret, Trigger
 
@@ -65,6 +65,59 @@ class TradeProfile(BaseModel):
     haggle_day: int | None = None
 
 
+class WorkHours(BaseModel):
+    # часы работы: [open_hour, close_hour) по часам игрового дня; close < open -- через полночь
+    model_config = ConfigDict(extra="forbid")
+    open_hour: int = Field(ge=0, le=23)
+    close_hour: int = Field(ge=0, le=24)
+
+    @model_validator(mode="after")
+    def check_hours(self):
+        if self.open_hour == self.close_hour:
+            raise ValueError("open_hour == close_hour")
+        if self.close_hour == 24 and self.open_hour != 0:
+            raise ValueError("close_hour 24 только при open_hour 0 (круглосуточно)")
+        return self
+
+
+class Contract(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    until_s: int | None = None
+    pay_cp_per_day: int = Field(default=0, ge=0)
+    # id NPC-плательщика; None -- платит герой
+    payer: str | None = None
+    paid_until_s: int | None = None
+    leaves_unpaid: bool = True
+    # род транспорта, если договор -- корабль с командой
+    transport: str | None = None
+
+
+class Partner(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    level: int = Field(default=1, ge=1)
+    xp: int = Field(default=0, ge=0)
+    # доля добычи в процентах
+    loot_share_percent: int = Field(default=0, ge=0, le=100)
+    contract: Contract | None = None
+
+
+class NpcLink(BaseModel):
+    # связь NPC--NPC с текстом истории (родство -- FamilyLink)
+    model_config = ConfigDict(extra="forbid")
+    npc_id: str
+    text: str = ""
+
+
+class PendingEvent(BaseModel):
+    # отложенное событие мира: когда, кому, что повесить
+    model_config = ConfigDict(extra="forbid")
+    at_s: int
+    target: str
+    kind: str
+    ref: str = ""
+    text: str = ""
+
+
 class NPC(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
@@ -110,6 +163,11 @@ class NPC(BaseModel):
     trade: TradeProfile | None = None
     # None -- не задано, по статблоку
     equipment: Equipment | None = None
+    # часы работы; None -- открыт всегда
+    hours: WorkHours | None = None
+    # напарник героя (с follows); None -- не напарник
+    partner: Partner | None = None
+    links: list[NpcLink] = Field(default_factory=list)
 
     @field_validator("favor")
     @classmethod
@@ -158,6 +216,9 @@ class Connection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     to: str
     distance_m: int = Field(ge=0)
+    # род пути (ключ config time.route_kinds)
+    kind: str = "road"
+    needs_transport: bool = False
 
 
 class Location(BaseModel):
@@ -170,6 +231,8 @@ class Location(BaseModel):
     connections: list[Connection] = Field(default_factory=list)
     visited: bool = False
     origin: str = "pack"
+    # временная локация (дорога): заводит и удаляет движок
+    temporary: bool = False
 
 
 class NaturalEventKind(BaseModel):
@@ -274,6 +337,9 @@ class CustomItem(BaseModel):
     # вес в сотых долях фунта (в сейве нет float): 0.5 фнт = 50
     weight_centilb: int | None = None
     cost_cp: int = 0
+    # основа из пака и поправки поверх неё; None -- предмет сам по себе
+    base_id: str | None = None
+    mods: ItemMods | None = None
     quest: bool = False
     created_s: int
     # None -- предмет у героя или в обороте
@@ -305,6 +371,11 @@ class WorldState(BaseModel):
     fired: list[FiredTrigger] = Field(default_factory=list)
     custom_items: dict[str, CustomItem] = Field(default_factory=dict)
     custom_item_seq: int = 0
+    # пресет мира при создании ("" -- пак без пресета) и веса сцен рядом с tone
+    preset: str = ""
+    scene_weights: dict[str, int] = Field(default_factory=dict)
+    # отложенные события
+    pending: list[PendingEvent] = Field(default_factory=list)
 
     @field_validator("npcs", "factions", "pantheon", "locations", "custom_items")
     @classmethod

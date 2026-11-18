@@ -141,6 +141,18 @@ class Companion(BaseModel):
     notes: str = ""
 
 
+class ItemMods(BaseModel):
+    # закрытый набор поправок экземпляра предмета; None -- поправки нет (в сейве нет float)
+    model_config = ConfigDict(extra="forbid")
+    damage_bonus: int | None = None
+    range_normal_ft: int | None = None
+    range_long_ft: int | None = None
+    ac_bonus: int | None = None
+    weight_centilb: int | None = None
+    cost_cp: int | None = None
+    label: str = ""
+
+
 class InventoryEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
     item_id: str
@@ -148,6 +160,8 @@ class InventoryEntry(BaseModel):
     # цена одной вещи этого стека; стек = одинаковые (item_id, cost_cp, quality)
     cost_cp: int
     quality: Literal["junk", "worn", "used"] | None = None
+    # поправки экземпляра; в ключ стека войдут в шаге, который их создаёт (М0п/М3)
+    mods: ItemMods | None = None
 
 
 class Equipped(BaseModel):
@@ -156,6 +170,13 @@ class Equipped(BaseModel):
     shield: str | None = None
     main_hand: str | None = None
     off_hand: str | None = None
+    # слоты одежды и украшений (в /sheet не показываются до М0п)
+    clothing: str | None = None
+    neck: str | None = None
+    ring_1: str | None = None
+    ring_2: str | None = None
+    wrists: str | None = None
+    head: str | None = None
 
 
 class DivineState(BaseModel):
@@ -182,6 +203,34 @@ class Minion(BaseModel):
     hp_current: int
     # игровое время (с) конца службы; None -- бессрочно (фамильяр)
     until_s: int | None = None
+
+
+class Transport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # род транспорта (water, ...) и название ("ялик")
+    kind: str
+    name: str = ""
+    # NPC-владелец (перевозчик); None -- свой
+    owner_npc: str | None = None
+    # игровое время (с) конца; None -- бессрочно
+    until_s: int | None = None
+
+
+class Journey(BaseModel):
+    # путь героя отрезками (М0 П3)
+    model_config = ConfigDict(extra="forbid")
+    # id цели
+    to: str
+    pace: str
+    # откуда начат путь
+    start_id: str
+    # временная локация пути; пусто до первой остановки между узлами
+    road_id: str = ""
+    # узел, из которого герой вышел на ребро, и дальний конец ребра
+    from_id: str = ""
+    edge_to: str = ""
+    # пройдено по ребру, секунд
+    edge_done_s: int = 0
 
 
 class HeroState(BaseModel):
@@ -222,6 +271,8 @@ class HeroState(BaseModel):
     family: list[FamilyLink] = Field(default_factory=list)
     # журнал знаний героя (наполнение -- Ж3)
     knowledge: list[KnowledgeEntry] = Field(default_factory=list)
+    transport: Transport | None = None
+    journey: Journey | None = None
 
     @field_validator("favor")
     @classmethod

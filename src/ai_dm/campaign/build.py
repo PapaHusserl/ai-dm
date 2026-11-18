@@ -138,6 +138,12 @@ def pick_tone(manifest, preset_id):
     return apply_preset(manifest.tone, preset), f"Пресет мира: {preset.name}"
 
 
+def _preset_name(manifest, preset_id):
+    # id пресета для world.preset; тон пака без наложения -- ""
+    preset_id = preset_id or manifest.preset
+    return "" if preset_id == PACK_TONE else preset_id or ""
+
+
 def build_world(pack, cfg, registry, *, hero_id, seed, world_id, saved_at, preset_id=None):
     # возвращает (бандл без сцены, список конфликтов); отказ старта -- StartRefused
     preset = resolve_hero_preset(pack, hero_id)
@@ -162,6 +168,7 @@ def build_world(pack, cfg, registry, *, hero_id, seed, world_id, saved_at, prese
         clock=clock,
         flags=dict(manifest.flags),
         tone=tone,
+        preset=_preset_name(manifest, preset_id),
         lore=Lore(world_text=pack.world_text, truths=pack.truths),
         mortality_per_day=per_day,
         natural=manifest.natural_events.model_copy(deep=True),

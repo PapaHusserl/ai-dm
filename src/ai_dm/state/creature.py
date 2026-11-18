@@ -69,6 +69,10 @@ class CreatureState(BaseModel):
     hp_current: int
     hp_max: int
     hp_temp: int = 0
+    # срок временных HP; None -- без срока
+    hp_temp_expires: Expiry | None = None
+    # игровое время (с) пробуждения стабильного героя/NPC; None -- нет
+    wake_at_s: int | None = None
     conditions: list[AppliedCondition] = Field(default_factory=list)
     exhaustion: int = 0
     active_effects: list[ActiveEffect] = Field(default_factory=list)

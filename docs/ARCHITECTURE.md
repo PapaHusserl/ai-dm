@@ -78,7 +78,8 @@ ui ──> game ──> master ──> llm
 - **`God`**: `id`, `name`, `domains`, `role`, `motive`, `pleased_by`, `angered_by`, `rivals`, `means`,
   `opportunity`, `realm`, `status`, `origin: pack|ascended`. Пантеон — в мире, изменяем.
 - **`Location`**: `id`, `name`, `parent_id`, `description`, `tags`, `connections: list[Connection]`,
-  `visited`, `origin`. `Connection {to, distance_m: int}` — метры, как в `travel_seconds`.
+  `visited`, `origin`, `temporary`. `Connection {to, distance_m: int, kind, needs_transport}` — метры, как в
+  `travel_seconds`.
 - **`Trigger`**: `id`, `if_` (alias `if`), `then`, `once`, `cooldown`, `key`, `state`, `fired_count`,
   `last_fired_at`. `Condition` — discriminated union: `All/Any/Not`, `Flag`, `HeroHas`, `NpcStatus`,
   `HeroAt`, `NpcAt`, `TimeAfter`, `Attitude`, `Favor`, `EventActive`, `HeroDead`, `Narrative`.
@@ -162,6 +163,10 @@ saves/<world_id>/
 версии = 0 → больше текущей = `SaveTooNew` → меньше = бэкап, цепочка, валидация, перезапись →
 нет звена = `MigrationMissing` (до бэкапа). Тест-отпечаток: `tests/schema/save_v<N>.schema.json` =
 `SaveBundle.model_json_schema()`; изменение модели без подъёма версии ломает тест.
+v16 (М0 П1, `m0016_v15_to_v16`): `Connection.kind/needs_transport`, `Location.temporary`, `NPC.hours/partner/links`,
+`WorldState.preset/scene_weights/pending`, `ItemMods` (`InventoryEntry.mods`, `CustomItem.base_id/mods`), слоты
+одежды и украшений в `Equipped`, `HeroState.transport/journey`, `CreatureState.hp_temp_expires/wake_at_s`; миграция:
+рёбра «дорога», торговцам часы 8–16.
 
 **Принцип:** persistence никогда не читает файлы старой версии текущими моделями — только сырой
 dict до миграции (поэтому ротация слотов правит `manifest.json` как сырой JSON).
@@ -767,7 +772,7 @@ replay и репорты. `game/models.py` — также `check_model`, `read_m
 `CURRENT_SCHEMA_VERSION = 11`, миграция `m0011_v10_to_v11` (чистая `dict -> dict`, `deepcopy`, `setdefault`, контекст не
 нужен). Отпечаток — `tests/schema/save_v11.schema.json`, фикстура `tests/fixtures/saves/v10`, золотой ход
 `tests/golden/zh0_turn.json` (тот же ход на мигрированной фикстуре даёт тот же снимок). Принцип (решение 0): поля под
-Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 в итоге ушла Ж2 — «Цели NPC (Ж2)» ниже; v13 занята ФС; М0 → v14, С0 → v15).
+Ж1–Ж3, У0, Н5 заложены сразу одной миграцией (v12 в итоге ушла Ж2 — «Цели NPC (Ж2)» ниже; v13 занята ФС).
 
 | Где | Поле | Смысл |
 |---|---|---|
@@ -926,7 +931,7 @@ then=текст цели, once=True)` в `npc.opportunity`. Структура: 
 `tests/fixtures/saves/v11`; `scripts/migrate_dusk_18plus.py` принимает сейвы v9–v12. Единственное новое поле —
 `WorldSim.goals_checked_s: int | None` (время последней проверки триггеров целей, смысл — «Редкая проверка» выше).
 `WorldSim.pending_acts` существовало в v11 (Ж0) и получило код в Ж2; поля запросов `goal_*`, смена бога и hazard полей
-сейва не добавляли. Старые триггеры `debt_<hero>` миграцией не переводятся: остаются как есть, без цели. М0 → v14, С0 → v15 (v13 занята ФС).
+сейва не добавляли. Старые триггеры `debt_<hero>` миграцией не переводятся: остаются как есть, без цели (v13 занята ФС).
 
 ### Сейв v13 (ФС П3)
 

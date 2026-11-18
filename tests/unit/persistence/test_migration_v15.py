@@ -97,11 +97,6 @@ def test_v15_fingerprint_file_exists():
     assert (SCHEMA_DIR / "save_v15.schema.json").is_file()
 
 
-def test_v15_fingerprint_equals_current_schema():
-    stored = json.loads((SCHEMA_DIR / "save_v15.schema.json").read_text(encoding="utf-8"))
-    assert stored == json.loads(json.dumps(SaveBundle.model_json_schema()))
-
-
 def test_v15_hero_has_minions():
     defs = SaveBundle.model_json_schema()["$defs"]
     assert "minions" in defs["HeroState"]["properties"]
