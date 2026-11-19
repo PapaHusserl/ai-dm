@@ -1386,6 +1386,7 @@ def travel(ctx, request):
         if npc.follows == hero.id and npc.status == "alive":
             npc.location_id = request.travel_to
             companions.append(npc.name)
+    returned = service_rules.return_ferrymen(world, request.travel_to)
     path = [location_id for location_id, _ in route]
     for location_id in path:
         event = DomainEvent(type="location_visited", data={"id": location_id})
@@ -1404,7 +1405,8 @@ def travel(ctx, request):
         "path": path,
     }
     concentration_note(ctx, log, result)
-    return Decision(status="accepted", result=result, log=log)
+    signal = service_rules.returned_signal(world, returned) or None
+    return Decision(status="accepted", result=result, log=log, signal_to_master=signal)
 
 
 def prey_invalid(ctx, request):

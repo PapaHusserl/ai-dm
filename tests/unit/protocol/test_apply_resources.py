@@ -1399,3 +1399,151 @@ def test_long_rest_log_says_so(registry, cfg):
     ctx = make_ctx(registry, cfg)
     d = apply(ctx, req("rest", kind="long"))
     assert d.log[0] == "Длинный отдых: HP и ресурсы восстановлены"
+
+
+# М0 П2б, решения 96, 98, 100, 102: перевозчик возвращается на свой берег, когда герой без него
+# пришёл туда travel_to. Финн стоит на острове, его берег — vale, герой — в сухом соседе Вейла.
+
+def home_ctx(registry, cfg):
+    ctx = island_ctx(registry, ferry_cfg(cfg))
+    add_ferryman(ctx, location_id="island")
+    ctx.bundle.world.flags["ferry_home:finn"] = "vale"
+    ctx.hero.location_id = "forest"
+    return ctx
+
+
+def go_vale(ctx):
+    return apply(ctx, req("advance_time", travel_to="vale"))
+
+
+def test_travel_to_home_shore_returns_the_ferryman(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    go_vale(ctx)
+    assert ctx.bundle.world.npcs["finn"].location_id == "vale"
+    assert "ferry_home:finn" not in ctx.bundle.world.flags
+
+
+def test_travel_home_signals_the_master_about_the_return(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    assert go_vale(ctx).signal_to_master == "Финн вернулся на свой берег — «Вейл»"
+
+
+def test_travel_home_adds_no_feed_line_about_the_ferryman(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    d = go_vale(ctx)
+    assert len(d.log) == 1
+    assert d.log[0].startswith("Путь в «Вейл»")
+    assert "Финн" not in " ".join(d.log)
+
+
+def test_after_return_no_route_names_the_ferryman_again(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    go_vale(ctx)
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.code == "no_route"
+    assert d.message.endswith("перевозят: Финн")
+
+
+def test_travel_without_records_has_no_signal(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    del ctx.bundle.world.flags["ferry_home:finn"]
+    assert go_vale(ctx).signal_to_master is None
+
+
+def test_ferryman_stays_when_hero_walks_to_a_dry_neighbour_of_the_island(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["cove"] = Location(id="cove", name="Бухта")
+    world.locations["island"].connections.append(Connection(to="cove", distance_m=1000))
+    ctx.hero.location_id = "island"
+    d = apply(ctx, req("advance_time", travel_to="cove"))
+    assert d.status == "accepted"
+    assert d.signal_to_master is None
+    assert world.npcs["finn"].location_id == "island"
+    assert world.flags["ferry_home:finn"] == "vale"
+
+
+def test_ferryman_stays_when_home_shore_is_only_a_waypoint(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["farm"] = Location(id="farm", name="Ферма")
+    world.locations["vale"].connections.append(Connection(to="farm", distance_m=2400))
+    d = apply(ctx, req("advance_time", travel_to="farm"))
+    assert d.result["path"] == ["vale", "farm"]
+    assert d.signal_to_master is None
+    assert world.npcs["finn"].location_id == "island"
+    assert world.flags["ferry_home:finn"] == "vale"
+
+
+def test_ferryman_stays_when_the_move_has_no_path(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    ctx.hero.location_id = "vale"
+    d = apply(ctx, req("advance_time", travel_to="vale"))
+    assert d.status == "rejected"
+    assert ctx.bundle.world.npcs["finn"].location_id == "island"
+    assert ctx.bundle.world.flags["ferry_home:finn"] == "vale"
+
+
+def test_other_home_shore_is_not_read_on_arrival_at_vale(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    ctx.bundle.world.flags["ferry_home:finn"] = "forest"
+    d = go_vale(ctx)
+    assert d.signal_to_master is None
+    assert ctx.bundle.world.npcs["finn"].location_id == "island"
+    assert ctx.bundle.world.flags["ferry_home:finn"] == "forest"
+
+
+@pytest.mark.parametrize("status", ["dead", "gone", "changed"])
+def test_not_alive_ferryman_is_not_moved_and_record_is_dropped(registry, cfg, status):
+    ctx = home_ctx(registry, cfg)
+    ctx.bundle.world.npcs["finn"].status = status
+    d = go_vale(ctx)
+    assert d.status == "accepted"
+    assert d.signal_to_master is None
+    assert ctx.bundle.world.npcs["finn"].location_id == "island"
+    assert "ferry_home:finn" not in ctx.bundle.world.flags
+
+
+def test_removed_ferryman_record_is_dropped_without_error(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    del ctx.bundle.world.npcs["finn"]
+    d = go_vale(ctx)
+    assert d.status == "accepted"
+    assert d.signal_to_master is None
+    assert "ferry_home:finn" not in ctx.bundle.world.flags
+
+
+def test_following_ferryman_arriving_with_the_hero_drops_the_record_silently(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    finn = ctx.bundle.world.npcs["finn"]
+    finn.location_id = "forest"
+    finn.follows = ctx.hero.id
+    d = go_vale(ctx)
+    assert finn.location_id == "vale"
+    assert d.signal_to_master is None
+    assert "ferry_home:finn" not in ctx.bundle.world.flags
+
+
+def test_two_ferrymen_of_one_shore_both_return(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = home_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.npcs["gus"] = NPC(
+        id="gus", name="Гус", named=True, means=["лодка"], services=["ferry"],
+        location_id="island",
+    )
+    world.flags["ferry_home:gus"] = "vale"
+    d = go_vale(ctx)
+    assert world.npcs["finn"].location_id == world.npcs["gus"].location_id == "vale"
+    assert d.signal_to_master == (
+        "Финн вернулся на свой берег — «Вейл»; Гус вернулся на свой берег — «Вейл»"
+    )
+
+
+def test_travel_failure_does_not_return_the_ferryman(registry, cfg):
+    ctx = home_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="atlantis"))
+    assert isinstance(d, Invalid)
+    assert ctx.bundle.world.npcs["finn"].location_id == "island"
+    assert ctx.bundle.world.flags["ferry_home:finn"] == "vale"

@@ -177,6 +177,8 @@ def passage_service(ctx, request, npc, kind, unit):
     if hero.money_cp < unit:
         return short_of_money(ctx, kind.name, unit)
     money.spend_money(hero, unit)
+    service_rules.remember_ferry_home(world, npc)
+    home = world.flags[f"{service_rules.FERRY_HOME_FLAG}:{npc.id}"]
     world.clock.advance(time_ops.edge_seconds(edge.distance_m, edge.kind, "normal", ctx.cfg))
     hero.location_id = request.destination
     companions = []
@@ -185,6 +187,7 @@ def passage_service(ctx, request, npc, kind, unit):
             companion.location_id = request.destination
             companions.append(companion.name)
     npc.location_id = request.destination
+    returned = service_rules.return_ferrymen(world, request.destination)
     event = DomainEvent(type="location_visited", data={"id": request.destination})
     apply_events(world, [event])
     ctx.events.append(event)
@@ -195,7 +198,12 @@ def passage_service(ctx, request, npc, kind, unit):
     if companions:
         log.append("С тобой: " + ", ".join(companions))
     concentration_note(ctx, log, result)
-    signal = f"{npc.name} переправился с героем и ждёт здесь; обратно — ещё одна плата"
+    signal = (
+        f"{npc.name} переправился с героем и ждёт здесь; обратно — ещё одна плата. "
+        f"Его берег — «{world.locations[home].name}»"
+    )
+    if returned:
+        signal += "; " + service_rules.returned_signal(world, returned)
     return Decision(status="accepted", result=result, log=log, signal_to_master=signal)
 
 

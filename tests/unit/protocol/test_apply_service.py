@@ -2189,7 +2189,8 @@ def test_create_ferry_service_with_trade_kind_is_accepted(registry, cfg):
 def test_passage_signals_the_master_about_the_ferryman(registry, cfg):
     ctx = passage_ctx(registry, cfg)
     assert ferry(ctx).signal_to_master == (
-        "Грок переправился с героем и ждёт здесь; обратно — ещё одна плата"
+        "Грок переправился с героем и ждёт здесь; обратно — ещё одна плата. "
+        "Его берег — «Вейл»"
     )
 
 
@@ -2208,4 +2209,138 @@ def test_passage_log_has_only_the_feed_line_and_companions_line(registry, cfg):
     ctx = passage_ctx(registry, cfg)
     add_companion(ctx)
     assert ferry(ctx).log == ["Перевозка: Грок, 5 см — «Остров»", "С тобой: Бран"]
+
+
+# М0 П2б, решения 96, 99–102: берег перевозчика и возврат на него
+
+HOME = "ferry_home:grok"
+TEXT_WAITS = "переправился с героем и ждёт здесь; обратно — ещё одна плата."
+
+
+def add_ferryman_at(ctx, npc_id="gus", name="Гус", location_id="island"):
+    ctx.bundle.world.npcs[npc_id] = NPC(
+        id=npc_id, name=name, named=True, means=["лодка"], services=["ferry"],
+        location_id=location_id,
+    )
+
+
+def walk_to_vale(ctx):
+    # герой без перевозчика приходит на берег пешком: из сухого соседа Вейла
+    ctx.hero.location_id = "forest"
+    return apply(ctx, req("advance_time", travel_to="vale"))
+
+
+def test_first_passage_records_the_home_shore(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    assert ctx.bundle.world.flags[HOME] == "vale"
+
+
+def test_refused_passage_records_no_home_shore(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    ferry(ctx)
+    assert HOME not in ctx.bundle.world.flags
+    ctx = passage_ctx(registry, cfg)
+    assert ferry_to(ctx, "forest").code == "no_passage"
+    assert HOME not in ctx.bundle.world.flags
+
+
+def test_third_shore_keeps_the_first_home(registry, cfg):
+    from ai_dm.state.world import Connection, Location
+
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    world = ctx.bundle.world
+    world.locations["reef"] = Location(id="reef", name="Риф")
+    world.locations["island"].connections.append(
+        Connection(to="reef", distance_m=4800, kind="water", needs_transport=True)
+    )
+    assert ferry_to(ctx, "reef").status == "accepted"
+    assert grok(ctx).location_id == "reef"
+    assert world.flags[HOME] == "vale"
+
+
+def test_set_flag_cannot_forge_ferry_home_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name=HOME, value="island"))
+    assert isinstance(d, Invalid)
+    assert d.code == "reserved_flag"
+    assert HOME not in ctx.bundle.world.flags
+
+
+def test_passage_home_with_the_hero_drops_the_record(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    d = ferry_back(ctx)
+    assert grok(ctx).location_id == "vale"
+    assert HOME not in ctx.bundle.world.flags
+    assert "вернулся" not in d.signal_to_master
+
+
+def test_passage_signal_names_the_home_shore(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert ferry(ctx).signal_to_master == f"Грок {TEXT_WAITS} Его берег — «Вейл»"
+
+
+def test_passage_home_signal_names_the_shore_where_he_stands(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    assert ferry_back(ctx).signal_to_master == f"Грок {TEXT_WAITS} Его берег — «Вейл»"
+
+
+def test_passage_signal_names_the_recorded_home_not_the_current_shore(registry, cfg):
+    from ai_dm.state.world import Connection, Location
+
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    world = ctx.bundle.world
+    world.locations["reef"] = Location(id="reef", name="Риф")
+    world.locations["island"].connections.append(
+        Connection(to="reef", distance_m=4800, kind="water", needs_transport=True)
+    )
+    assert ferry_to(ctx, "reef").signal_to_master == f"Грок {TEXT_WAITS} Его берег — «Вейл»"
+
+
+def test_other_ferryman_brings_hero_home_and_grok_returns(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    add_ferryman_at(ctx)
+    d = apply(ctx, req(
+        "service", npc_id="gus", direction="buy", service_id="ferry", qty=1, destination="vale"
+    ))
+    world = ctx.bundle.world
+    assert d.status == "accepted"
+    assert grok(ctx).location_id == "vale"
+    assert HOME not in world.flags
+    assert world.flags["ferry_home:gus"] == "island"
+    assert d.signal_to_master == (
+        f"Гус {TEXT_WAITS} Его берег — «Остров»; Грок вернулся на свой берег — «Вейл»"
+    )
+
+
+def test_other_ferryman_returning_adds_no_feed_line(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    add_ferryman_at(ctx)
+    d = apply(ctx, req(
+        "service", npc_id="gus", direction="buy", service_id="ferry", qty=1, destination="vale"
+    ))
+    assert d.log == ["Перевозка: Гус, 5 см — «Вейл»"]
+
+
+def test_ferryman_with_a_shop_trades_on_his_shore_after_returning(registry, cfg):
+    from ai_dm.state.hero import InventoryEntry
+
+    ctx = passage_ctx(registry, cfg)
+    grok(ctx).trade = TradeProfile(
+        kind="smith", purse_cp=5000, restock_at_s=FAR,
+        stock=[InventoryEntry(item_id="dagger", qty=2, cost_cp=200)],
+    )
+    ferry(ctx)
+    walk_to_vale(ctx)
+    d = apply(ctx, req(
+        "trade", npc_id="grok", direction="list", item_id="", qty=0, category="weapon"
+    ))
+    assert d.status == "accepted"
+    assert "dagger" in [i["item_id"] for i in d.result["items"]]
 

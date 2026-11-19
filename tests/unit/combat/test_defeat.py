@@ -96,6 +96,36 @@ def test_capture_uses_the_lair_from_params_when_the_group_has_none(registry, cfg
     assert hero.location_id == "goblin_den"
 
 
+# М0 П2б, решения 100, 103: плен на берегу перевозчика возвращает его молча
+
+def ferryman_on_island(engine, home):
+    from ai_dm.state.world import NPC
+
+    engine.world.npcs["finn"] = NPC(
+        id="finn", name="Финн", named=True, means=["лодка"], services=["ferry"],
+        location_id="island",
+    )
+    engine.world.flags["ferry_home:finn"] = home
+
+
+def test_capture_at_the_ferrymans_home_shore_returns_him(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    engine.state.groups["goblins"].lair_location_id = "vale"
+    ferryman_on_island(engine, "vale")
+    apply(engine, hero, registry, cfg, ["capture"])
+    assert hero.location_id == "vale"
+    assert engine.world.npcs["finn"].location_id == "vale"
+    assert "ferry_home:finn" not in engine.world.flags
+
+
+def test_capture_elsewhere_leaves_the_ferryman_and_the_record(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    ferryman_on_island(engine, "vale")
+    apply(engine, hero, registry, cfg, ["capture"])
+    assert engine.world.npcs["finn"].location_id == "island"
+    assert engine.world.flags["ferry_home:finn"] == "vale"
+
+
 # ограбление
 
 def rich_hero(engine, hero):

@@ -164,6 +164,56 @@ def test_round_trip_costs_two_prices_and_an_hour(registry, tmp_path):
     assert app.bundle.world.clock.now_s == start[1] + 3600
 
 
+# М0 П2б, решения 96, 98–101: Финн возвращается на берег, когда герой пришёл туда без него
+
+def returned_app(registry, tmp_path):
+    app = crossed_app(registry, tmp_path)
+    hero_of(app).location_id = "meadow"
+    return app
+
+
+def test_crossing_records_finns_home_shore(registry, tmp_path):
+    app = crossed_app(registry, tmp_path)
+    assert app.bundle.world.flags["ferry_home:finn"] == "shore"
+    assert app.bundle.world.npcs["finn"].location_id == "island"
+
+
+def test_hero_walking_to_the_shore_brings_finn_back(registry, tmp_path):
+    app = returned_app(registry, tmp_path)
+    app.handle("/go Берег")
+    assert hero_of(app).location_id == "shore"
+    assert app.bundle.world.npcs["finn"].location_id == "shore"
+    assert "ferry_home:finn" not in app.bundle.world.flags
+
+
+def test_after_return_go_island_names_finn_again(registry, tmp_path):
+    app = returned_app(registry, tmp_path)
+    app.handle("/go Берег")
+    text = " ".join(app.handle("/go Остров").lines)
+    assert "до «Остров» только по воде — нужен водный транспорт; перевозят: Финн" in text
+
+
+def test_after_return_shop_offers_the_passage_to_the_island(registry, tmp_path):
+    app = returned_app(registry, tmp_path)
+    app.handle("/go Берег")
+    lines = [line for line in app.handle("/shop").lines if "перевозка:" in line]
+    assert len(lines) == 1
+    assert "перевозка: Остров — 5 см / раз" in lines[0]
+
+
+def test_return_of_finn_has_no_feed_line(registry, tmp_path):
+    app = returned_app(registry, tmp_path)
+    lines = app.handle("/go Берег").lines
+    assert not [line for line in lines if "Финн" in line]
+
+
+def test_round_trip_with_finn_leaves_no_home_flag(registry, tmp_path):
+    app = ferry_app(registry, tmp_path)
+    app.handle("/shop услуга finn ferry:island 1")
+    app.handle("/shop услуга finn ferry:shore 1")
+    assert "ferry_home:finn" not in app.bundle.world.flags
+
+
 def test_ferry_back_takes_the_follower_for_one_price(registry, tmp_path):
     app = ferry_app(registry, tmp_path)
     add_follower(app)

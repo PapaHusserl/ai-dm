@@ -26,6 +26,8 @@ KEEPER_FAMILIES = (
 
 HAGGLE_FLAG = "haggle"
 LODGING_FLAG = "lodging"
+# берег перевозчика: ferry_home:<id NPC> = id локации, где он стоял при первом найме героем
+FERRY_HOME_FLAG = "ferry_home"
 # герой платил NPC за близость: romance в памяти пишется только с порога отношения (У1 П2)
 PAID_COMPANY_FLAG = "paid_company"
 
@@ -114,6 +116,32 @@ def passage_targets(world, location_id, transport, cfg) -> dict:
                 fits, key=lambda c: time_ops.edge_seconds(c.distance_m, c.kind, "normal", cfg)
             )
     return result
+
+
+def remember_ferry_home(world, npc) -> None:
+    # перевозка принята: берег -- где перевозчик стоял до неё; уже записанный не меняется
+    world.flags.setdefault(f"{FERRY_HOME_FLAG}:{npc.id}", npc.location_id)
+
+
+def return_ferrymen(world, location_id) -> list:
+    # герой пришёл на берег: записи с этим берегом сняты; живые перевозчики не на берегу вернулись
+    prefix = f"{FERRY_HOME_FLAG}:"
+    ids = {key[len(prefix):] for key, home in world.flags.items()
+           if key.startswith(prefix) and home == location_id}
+    for npc_id in ids:
+        del world.flags[prefix + npc_id]
+    returned = [n for n in world.npcs.values()
+                if n.id in ids and n.status == "alive" and n.location_id != location_id]
+    for npc in returned:
+        npc.location_id = location_id
+    return returned
+
+
+def returned_signal(world, returned) -> str:
+    return "; ".join(
+        f"{n.name} вернулся на свой берег — «{world.locations[n.location_id].name}»"
+        for n in returned
+    )
 
 
 def service_entries(npc, world, cfg) -> list:

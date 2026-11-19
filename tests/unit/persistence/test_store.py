@@ -200,6 +200,13 @@ def test_manual_slot_with_cyrillic_name_roundtrips(saves, bundle):
     assert load_slot(saves, "w1", "manual-перед боссом").world == bundle.world
 
 
+def test_ferry_home_flag_survives_save_and_load(saves, bundle):
+    # М0 П2б, решение 99: берег перевозчика — флаг мира, схема не меняется
+    bundle.world.flags["ferry_home:finn"] = "shore"
+    save_slot(saves, bundle, "auto", saved_at=SAVED_AT)
+    assert load_slot(saves, "w1", "auto").world.flags["ferry_home:finn"] == "shore"
+
+
 def test_manual_and_auto_slots_are_independent(saves, bundle):
     save_slot(saves, bundle, "manual-a", saved_at=SAVED_AT)
     bundle.world.flags["later"] = True

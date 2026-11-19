@@ -2094,3 +2094,11 @@ updated: 2026-11-19
 (М0 П2, docs/plan-m0.md, ревью мамы к4) В `protocol/handlers/resources.py:travel` — `request.pace or "normal"`: поле `pace`
 — `Literal` с умолчанием «normal», ветка `or` недостижима; из-за неё живут эквивалентные мутанты `x_travel__mutmut_18`, `_19`.
 Убрать `or "normal"`. Решение Влада 2026-11-19: в BACKLOG, не в П2.
+
+## 342. Выжившие мутанты М0 П2б на старых строках
+status: idea
+priority: low
+updated: 2026-11-19
+
+(mutmut М0 П2б, docs/plan-m0.md) `make mutate-diff`, «старые строки»: `ai_dm.combat.defeat.x_do_capture__mutmut_` 47, 48;
+`ai_dm.protocol.handlers.resources.x_travel__mutmut_111` (18, 19 — BACKLOG 341). Не разобраны.

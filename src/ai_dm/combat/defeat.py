@@ -12,6 +12,7 @@ from ai_dm.rules.exhaustion import add_exhaustion
 from ai_dm.rules.healing import remove_zero_hp_unconscious
 from ai_dm.rules.inventory import pick_valuables, remove_item
 from ai_dm.rules.results import Rejected
+from ai_dm.rules.services import return_ferrymen
 from ai_dm.state.creature import DeathSaves
 from ai_dm.state.hero import Equipped
 from ai_dm.state.world import ItemHolder
@@ -108,6 +109,7 @@ def do_capture(state, params, world, hero, registry, cfg, rng, notes):
         ))
         notes.append(f"Отобрано: {world.custom_items[item_id].name} — тайник логова")
     hero.location_id = lair
+    return_ferrymen(world, lair)
     hero.inventory = []
     hero.equipped = Equipped()
     return "applied", [DomainEvent(type="location_visited", data={"id": lair})]
