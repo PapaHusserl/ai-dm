@@ -587,7 +587,7 @@ def test_short_rest_log_line_exists(registry, cfg):
 )
 def test_advance_time_by_category(category, seconds, registry, cfg):
     ctx = make_ctx(registry, cfg)
-    d = apply(ctx, req("advance_time", category=category))
+    d = apply(ctx, req("advance_time", category=category, purpose="wait"))
     assert d.status == "accepted"
     assert ctx.bundle.world.clock.now_s == seconds
     assert d.log
@@ -596,13 +596,13 @@ def test_advance_time_by_category(category, seconds, registry, cfg):
 def test_advance_time_month_uses_calendar_month_length(registry, cfg):
     ctx = make_ctx(registry, cfg)
     ctx.bundle.world.clock.calendar.months[0].days = 31
-    apply(ctx, req("advance_time", category="month"))
+    apply(ctx, req("advance_time", category="month", purpose="wait"))
     assert ctx.bundle.world.clock.now_s == 31 * DAY
 
 
 def test_advance_time_does_not_move_hero_by_category(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    apply(ctx, req("advance_time", category="hour"))
+    apply(ctx, req("advance_time", category="hour", purpose="wait"))
     assert ctx.hero.location_id == "vale"
 
 
@@ -678,7 +678,7 @@ def test_travel_to_unknown_location_is_invalid(registry, cfg):
 def test_advance_time_needs_exactly_one_of_category_and_travel(registry, cfg):
     ctx = make_ctx(registry, cfg)
     before = dump(ctx)
-    both = apply(ctx, req("advance_time", category="hour", travel_to="forest"))
+    both = apply(ctx, req("advance_time", category="hour", purpose="wait", travel_to="forest"))
     none = apply(ctx, req("advance_time"))
     assert isinstance(both, Invalid) and both.code == "category_travel_to_or_until"
     assert isinstance(none, Invalid) and none.code == "category_travel_to_or_until"
@@ -973,6 +973,196 @@ def test_travel_to_isolated_place_lists_neighbors(registry, cfg):
     assert d.code == "no_route"
     assert "forest" in d.message
     assert "hill" not in d.message
+
+
+# М0 П2: род пути, закрытые транспортом рёбра, причина в no_route (решения 15, 33, 34, 35)
+# Ожидаемый API (имена — предположение доебы, вопрос к папе): роды пути trail/offroad/water/mine
+# (ключи config time.route_kinds); услуга перевозки — ServiceKind(effect="passage",
+# transport="water"); цель сдвига — поле AdvanceTime.purpose: wait | work | travel (при category
+# обязательно).
+
+def ferry_cfg(cfg):
+    from ai_dm.config.settings import ServiceKind
+
+    ferry = cfg.model_copy(deep=True)
+    ferry.services.kinds["ferry"] = ServiceKind(
+        name="перевозка", price_cp=50, unit="once", effect="passage", transport="water"
+    )
+    return ferry
+
+
+def island_ctx(registry, cfg, needs_transport=True, kind="water"):
+    # Вейл -> Остров (4800 м), ребро записано у Вейла; Остров — сосед Леса не по суше
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["island"] = Location(id="island", name="Остров")
+    world.locations["vale"].connections.append(
+        Connection(to="island", distance_m=4800, kind=kind, needs_transport=needs_transport)
+    )
+    return ctx
+
+
+def add_ferryman(ctx, name="Финн", services=("ferry",), location_id="vale"):
+    from ai_dm.state.world import NPC
+
+    ctx.bundle.world.npcs["finn"] = NPC(
+        id="finn", name=name, named=True, means=["лодка"], services=list(services),
+        location_id=location_id,
+    )
+
+
+def test_travel_trail_edge_takes_longer_than_road(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections[0].kind = "trail"
+    apply(ctx, req("advance_time", travel_to="forest"))
+    assert ctx.bundle.world.clock.now_s == 5400
+
+
+def test_travel_water_edge_without_transport_is_no_route_with_reason(registry, cfg):
+    ctx = island_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert isinstance(d, Invalid)
+    assert d.code == "no_route"
+    assert "только по воде" in d.message
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize(("kind", "only", "need"), [
+    ("water", "только по воде", "нужен водный транспорт"),
+    ("air", "только по воздуху", "нужен воздушный транспорт"),
+    ("mine", "только по шахте", "нужен шахтный транспорт"),
+])
+def test_travel_closed_edge_reason_names_the_transport(registry, cfg, kind, only, need):
+    # М0 П2, решение 87: причины воздуха и шахты
+    ctx = island_ctx(registry, cfg, kind=kind)
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.code == "no_route"
+    assert only in d.message
+    assert need in d.message
+
+
+def test_travel_no_route_with_reason_has_no_list_of_ids(registry, cfg):
+    ctx = island_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert "forest" not in d.message
+
+
+def test_travel_trail_with_fast_pace_takes_4050_s(registry, cfg):
+    ctx = island_ctx(registry, cfg, needs_transport=False, kind="trail")
+    d = apply(ctx, req("advance_time", travel_to="island", pace="fast"))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 4050
+
+
+def test_travel_water_edge_no_route_names_ferrymen_here(registry, cfg):
+    ferry = ferry_cfg(cfg)
+    ctx = island_ctx(registry, ferry)
+    add_ferryman(ctx)
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.code == "no_route"
+    assert "Финн" in d.message
+
+
+def test_travel_water_edge_no_route_lists_ferrymen_comma_separated(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = island_ctx(registry, ferry_cfg(cfg))
+    add_ferryman(ctx)
+    ctx.bundle.world.npcs["gus"] = NPC(
+        id="gus", name="Гус", named=True, means=["лодка"], services=["ferry"], location_id="vale"
+    )
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.message.endswith("; перевозят: Финн, Гус")
+
+
+def test_travel_water_edge_no_route_skips_ferryman_elsewhere(registry, cfg):
+    ferry = ferry_cfg(cfg)
+    ctx = island_ctx(registry, ferry)
+    add_ferryman(ctx, location_id="forest")
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert "Финн" not in d.message
+    assert "только по воде" in d.message
+
+
+def test_travel_water_edge_no_route_skips_npc_with_other_services(registry, cfg):
+    ferry = ferry_cfg(cfg)
+    ctx = island_ctx(registry, ferry)
+    add_ferryman(ctx, services=("meal_modest",))
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert "Финн" not in d.message
+
+
+def test_travel_goes_by_land_when_water_edge_is_closed(registry, cfg):
+    ctx = island_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["forest"].connections.append(Connection(to="island", distance_m=9600))
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.status == "accepted"
+    assert d.result["path"] == ["forest", "island"]
+
+
+def test_travel_water_transport_opens_water_edge(registry, cfg):
+    from ai_dm.state.hero import Transport
+
+    ctx = island_ctx(registry, cfg)
+    ctx.hero.transport = Transport(kind="water", name="ялик")
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "island"
+    # 4800 м водой: 50 % от часа
+    assert ctx.bundle.world.clock.now_s == 1800
+
+
+def test_travel_mine_edge_without_needs_transport_is_open(registry, cfg):
+    ctx = island_ctx(registry, cfg, needs_transport=False, kind="mine")
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 5400
+
+
+def test_travel_steed_still_halves_the_walk_on_a_trail(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections[0].kind = "trail"
+    ctx.hero.creature.active_effects = [ActiveEffect(
+        id="phantom_steed", source="h1", kind="travel_fast", params={},
+        expires=Expiry(kind="seconds", value=3600),
+    )]
+    apply(ctx, req("advance_time", travel_to="forest"))
+    assert ctx.bundle.world.clock.now_s == 2700
+
+
+def test_advance_time_category_with_travel_purpose_is_rejected(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("advance_time", category="hour", purpose="travel"))
+    assert isinstance(d, Decision)
+    assert d.status == "rejected"
+    assert ctx.bundle.world.clock.now_s == 0
+    assert d.reason == "путь категорией времени"
+    assert d.signal_to_master == (
+        "Время не сдвинуто: путь не идёт категорией. Для пути между местами ставь "
+        "travel_to; места нет на карте — сначала location_create."
+    )
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("purpose", ["wait", "work"])
+def test_advance_time_category_with_wait_or_work_purpose_passes(registry, cfg, purpose):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", category="hour", purpose=purpose))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 3600
+
+
+def test_advance_time_category_without_purpose_is_invalid(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("advance_time", category="hour"))
+    assert isinstance(d, Invalid)
+    assert d.code == "purpose_required"
+    assert d.message == "с category нужна цель purpose: wait (ждём) или work (герой занят делом)"
+    assert dump(ctx) == before
 
 
 # B6: damage -- спасброски вне боя при падении и при уроне уже лежащему герою

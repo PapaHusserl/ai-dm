@@ -37,7 +37,7 @@ from ai_dm.rules.npc_names import name_hidden
 from ai_dm.rules.rests import hit_dice_pools
 from ai_dm.rules.secrets import hidden_secrets
 from ai_dm.rules.services import haggle_slot, kinds_of
-from ai_dm.rules.time_ops import day_part
+from ai_dm.rules.time_ops import day_part, hero_transport
 from ai_dm.rules.trade import (
     category_models,
     haggle_state,
@@ -429,7 +429,7 @@ class PromptBuilder:
         nearby = []
         if ctx.hero.location_id is not None:
             place = world.locations[ctx.hero.location_id]
-            nearby = nearby_locations(world, place)[1:]
+            nearby = nearby_locations(world, place, ctx.cfg, hero_transport(ctx.hero))[1:]
             # соседние -- цели travel_to, вытеснять нельзя (129)
             fixed_locations = [place.id, *(x["id"] for x in nearby)]
         reasons = npc_reasons(bundle, {x["id"] for x in nearby})
@@ -626,7 +626,7 @@ class PromptBuilder:
         if hero.location_id is not None:
             place = world.locations[hero.location_id]
             location = {"id": place.id, "name": place.name}
-            near = nearby_locations(world, place)
+            near = nearby_locations(world, place, ctx.cfg, hero_transport(hero))
             locations = [x for x in near if x["id"] in context_plan.location_ids]
             # посещённые не соседние места: цели travel_to по пути карты (132); блок фиксированный
             near_ids = {x["id"] for x in near}
@@ -686,6 +686,8 @@ class PromptBuilder:
             hero_data["boons"] = boons
         if hero.heroic_inspiration:
             hero_data["heroic_inspiration"] = True
+        if hero.transport is not None:
+            hero_data["transport"] = {"kind": hero.transport.kind, "name": hero.transport.name}
         if hero.motive:
             hero_data["motive"] = hero.motive
         if hero.means:

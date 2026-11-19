@@ -86,6 +86,36 @@ def test_service_lines_follow_npc_order(registry, tmp_path):
     assert lines[3].startswith("    комната")
 
 
+def ferry_inn(registry, tmp_path, islands=("island",)):
+    from ai_dm.config.settings import ServiceKind
+    from ai_dm.state.world import Connection, Location
+
+    app = make_inn(registry, tmp_path, services=["ferry"])
+    app.settings.rules.services.kinds["ferry"] = ServiceKind(
+        name="перевозка", price_cp=50, unit="once", effect="passage", transport="water"
+    )
+    world = app.bundle.world
+    here = world.locations[hero_of(app.bundle).location_id]
+    for place_id in islands:
+        world.locations[place_id] = Location(id=place_id, name=place_id.capitalize())
+        here.connections.append(
+            Connection(to=place_id, distance_m=1000, kind="water", needs_transport=True)
+        )
+    return app
+
+
+def test_shop_shows_passage_line_per_destination(registry, tmp_path):
+    lines = shop(ferry_inn(registry, tmp_path, islands=("island", "reef")))
+    assert any("перевозка: Island — 5 см / раз" in line for line in lines)
+    assert any("перевозка: Reef — 5 см / раз" in line for line in lines)
+
+
+def test_shop_passage_skips_neighbour_by_land(registry, tmp_path):
+    # у места героя есть и сухие соседи: строка перевозки одна — на водного
+    lines = shop(ferry_inn(registry, tmp_path))
+    assert len([line for line in lines if "перевозка:" in line]) == 1
+
+
 def test_unit_words_for_hour_and_once(registry, tmp_path):
     lines = shop(make_inn(registry, tmp_path, services=["bed_hour", "heal_barber"]))
     assert "    час в постели — 1 см / час" in lines

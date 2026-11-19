@@ -7,7 +7,12 @@ from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
-from ai_dm.rules.services import haggle_slot, kinds_of, providers_here, quote
+from ai_dm.rules.services import (
+    haggle_slot,
+    providers_here,
+    quote,
+    service_entries,
+)
 
 SHOP_ROWS_MAX = 40
 NO_MERCHANT = "Здесь никто не торгует"
@@ -121,13 +126,13 @@ def shop_head(npc, world, cfg):
 
 def service_lines(npc, world, cfg):
     # блок «Услуги:» NPC; пусто, если услуг нет
-    kinds = kinds_of(npc, cfg)
-    if not kinds:
+    entries = service_entries(npc, world, cfg)
+    if not entries:
         return []
     lines = ["  Услуги:"]
-    for _kind_id, kind in kinds:
+    for name, kind in entries:
         price = format_cp(quote(kind, npc, world, cfg))
-        lines.append(f"    {kind.name} — {price} / {UNIT_WORDS[kind.unit]}")
+        lines.append(f"    {name} — {price} / {UNIT_WORDS[kind.unit]}")
     return lines
 
 

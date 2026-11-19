@@ -52,7 +52,7 @@ def award(scale="minor", reason="цель"):
 
 
 def hour():
-    return req("advance_time", category="hour")
+    return req("advance_time", category="hour", purpose="wait")
 
 
 # xp_awarded_in_scene
@@ -349,7 +349,7 @@ def test_first_hour_is_accepted_with_old_log_text(registry, cfg):
 
 def test_day_after_hour_is_accepted(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [hour_turn(4)])
-    d = apply(ctx, req("advance_time", category="day"))
+    d = apply(ctx, req("advance_time", category="day", purpose="wait"))
     assert d.status == "accepted"
     assert d.log == ["Время идёт: 86400 с"]
 
@@ -408,7 +408,7 @@ def test_sleep_check_goes_before_repeat(registry, cfg):
 
 def test_day_after_two_idle_hours_is_accepted(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [hour_turn(3), hour_turn(4)])
-    assert apply(ctx, req("advance_time", category="day")).status == "accepted"
+    assert apply(ctx, req("advance_time", category="day", purpose="wait")).status == "accepted"
 
 
 def test_until_after_two_idle_hours_is_accepted(registry, cfg):
@@ -427,7 +427,7 @@ def test_travel_is_not_affected_by_hour_record(registry, cfg):
 
 def test_both_category_and_travel_is_invalid(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
-    d = apply(ctx, req("advance_time", category="hour", travel_to="forest"))
+    d = apply(ctx, req("advance_time", category="hour", purpose="wait", travel_to="forest"))
     assert isinstance(d, Invalid)
     assert d.code == "category_travel_to_or_until"
     assert "нужно ровно одно из category, travel_to и until" in d.message
@@ -452,7 +452,7 @@ def test_until_is_not_affected_by_hour_record(registry, cfg):
 # advance_time count (ДН)
 
 def counted(category, count):
-    return req("advance_time", category=category, count=count)
+    return req("advance_time", category=category, count=count, purpose="wait")
 
 
 def test_count_eight_days_moves_clock_eight_days(registry, cfg):
@@ -563,7 +563,8 @@ def test_count_one_gives_old_log_only(registry, cfg):
 
 def test_count_absent_gives_old_log_only(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
-    assert apply(ctx, req("advance_time", category="day")).log == ["Время идёт: 86400 с"]
+    d = apply(ctx, req("advance_time", category="day", purpose="wait"))
+    assert d.log == ["Время идёт: 86400 с"]
 
 
 def test_count_with_travel_to_is_invalid(registry, cfg):
@@ -701,7 +702,7 @@ def test_until_without_rest_still_moves_to_morning(registry, cfg):
 def test_category_after_rest_is_not_blocked(registry, cfg):
     ctx = make_ctx_with(registry, cfg, [])
     assert apply(ctx, req("rest", kind="long")).status == "accepted"
-    assert apply(ctx, req("advance_time", category="hour")).status == "accepted"
+    assert apply(ctx, req("advance_time", category="hour", purpose="wait")).status == "accepted"
 
 
 def test_rest_after_accepted_until_gets_report_tag(registry, cfg):

@@ -1,0 +1,8 @@
+- id: finn
+  name: Финн
+  gender: male
+  named: true
+  location_id: shore
+  species_id: human
+  means: [лодка]
+  services: [ferry]

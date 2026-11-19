@@ -28,7 +28,7 @@ def until_morning():
 
 
 def hours(count):
-    return req("advance_time", category="hour", count=count)
+    return req("advance_time", category="hour", count=count, purpose="wait")
 
 
 def long_req():
@@ -98,7 +98,9 @@ def test_eight_hours_after_idle_hour_record_is_sleep_not_time_repeat(registry, c
 # не затронуто
 
 def test_day_is_accepted(registry, cfg):
-    d = apply(ctx_at(registry, cfg, 12), req("advance_time", category="day", count=1))
+    d = apply(
+        ctx_at(registry, cfg, 12), req("advance_time", category="day", count=1, purpose="wait")
+    )
     assert d.status == "accepted"
 
 

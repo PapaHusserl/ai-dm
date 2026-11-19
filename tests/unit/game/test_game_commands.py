@@ -415,6 +415,19 @@ def test_sheet_shows_hero_name_and_hp(registry, tmp_path):
     assert f"{hero.creature.hp_current}/{hero.creature.hp_max}" in text
 
 
+def test_sheet_shows_transport_line(registry, tmp_path):
+    from ai_dm.state.hero import Transport
+
+    app = new_app(registry, tmp_path)
+    app.bundle.heroes[0].transport = Transport(kind="water", name="ялик")
+    assert "Транспорт: ялик (водный)" in app.handle("/sheet").lines
+
+
+def test_sheet_without_transport_has_no_transport_line(registry, tmp_path):
+    app = new_app(registry, tmp_path)
+    assert not any(line.startswith("Транспорт") for line in app.handle("/sheet").lines)
+
+
 def test_inv_lists_hero_items(registry, tmp_path):
     from ai_dm.rules.inventory import find_item
 

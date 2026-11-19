@@ -1,0 +1,11 @@
+- id: shore
+  name: Берег
+  connections:
+    - {to: meadow, distance_m: 300}
+    - {to: island, distance_m: 4800, kind: water, needs_transport: true}
+- id: meadow
+  name: Луг
+- id: island
+  name: Остров
+  connections:
+    - {to: shore, distance_m: 4800, kind: water, needs_transport: true}

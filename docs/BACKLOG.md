@@ -2072,3 +2072,25 @@ updated: 2026-11-18
 
 (mutmut М0 П1, docs/plan-m0.md) `make mutate-diff`, «старые строки»: 27 выживших `ai_dm.campaign.build.x_build_world__mutmut_`
 71, 72, 81, 82, 84, 85, 87, 88, 90, 91, 93–99, 121, 131–134, 137, 138, 166–168. Не разобраны.
+
+## 340. Выжившие мутанты М0 П2 на старых строках
+status: idea
+priority: low
+updated: 2026-11-19
+
+(mutmut М0 П2, docs/plan-m0.md) `make mutate-diff`, «старые строки», 53 выживших `__mutmut_`:
+- `ai_dm.game.commands.x_cmd_sheet` 19, 31, 38–41, 44, 67, 70, 71, 75, 76, 118, 126, 134–140, 148–150, 154, 163;
+- `ai_dm.protocol.handlers.world.x_location_create` 16–23, 32, 33, 72, 87, 94, 109, 113, 114;
+- `ai_dm.protocol.handlers.resources.x_advance_time` 11, 23, 24; `x_time_by_category` 61, 62; `x_travel` 106;
+- `ai_dm.rules.time_ops.x_route_path` 13, 35; `ai_dm.campaign.loader.x_check_pack_refs` 79;
+- `ai_dm.game.shop_actions.x_shop_request` 35; `ai_dm.master.prompt.xǁPromptBuilderǁstate_data` 7.
+Не разобраны.
+
+## 341. Мёртвое `request.pace or "normal"` в `travel`
+status: idea
+priority: low
+updated: 2026-11-19
+
+(М0 П2, docs/plan-m0.md, ревью мамы к4) В `protocol/handlers/resources.py:travel` — `request.pace or "normal"`: поле `pace`
+— `Literal` с умолчанием «normal», ветка `or` недостижима; из-за неё живут эквивалентные мутанты `x_travel__mutmut_18`, `_19`.
+Убрать `or "normal"`. Решение Влада 2026-11-19: в BACKLOG, не в П2.

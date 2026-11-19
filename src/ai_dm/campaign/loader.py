@@ -203,6 +203,29 @@ def unknown_service_errors(pack, base, kinds) -> list[str]:
     ]
 
 
+def edge_errors(pack, base, time) -> list[str]:
+    # род пути ребра известен, needs_transport не спорит с родом (route_kinds, transports)
+    errors = []
+    for location in pack.locations:
+        for edge in location.connections:
+            where = f"{base / 'locations.yaml'}: location {location.id!r}, ребро в {edge.to!r}"
+            kind = time.route_kinds.get(edge.kind)
+            if kind is None:
+                errors.append(f"{where}, поле kind: неизвестный род пути {edge.kind!r}")
+                continue
+            if not kind.transport:
+                wanted = False
+            elif time.transports[kind.transport].always:
+                wanted = True
+            else:
+                continue
+            if edge.needs_transport != wanted:
+                errors.append(
+                    f"{where}, поле needs_transport: у рода {edge.kind!r} должно быть {wanted}"
+                )
+    return errors
+
+
 def check_pack_refs(pack, registry) -> list[str]:
     known = {
         "npc": {npc.id for npc in pack.npcs},
@@ -235,6 +258,7 @@ def check_pack_refs(pack, registry) -> list[str]:
                 f"неизвестный пресет торговца {npc.trade.kind!r}"
             )
     errors += unknown_service_errors(pack, base, rules.services.kinds)
+    errors += edge_errors(pack, base, rules.time)
     owners = {}
     for npc in pack.npcs:
         owners[npc.id] = npc.opportunity

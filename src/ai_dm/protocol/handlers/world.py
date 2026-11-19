@@ -178,6 +178,25 @@ def make_merchant(ctx, npc, kind):
         ctx.scene.merchants_created += 1
 
 
+def edge_problem(ctx, request, spec, connections):
+    # Invalid: неизвестный род пути или пара уже связана (ребро в запросе выше либо ребро
+    # существующей локации spec.to к новой); иначе None
+    kinds = ctx.cfg.time.route_kinds
+    if spec.kind not in kinds:
+        return Invalid(
+            code="unknown_route_kind",
+            message=f"нет рода пути {spec.kind!r}" + allowed(kinds),
+        )
+    back = ctx.bundle.world.locations[spec.to].connections
+    if any(c.to == spec.to for c in connections) or any(c.to == request.id for c in back):
+        return Invalid(
+            code="edge_exists",
+            message=f"{request.id!r} и {spec.to!r} уже связаны: одно ребро на пару, "
+            "время в обе стороны одно",
+        )
+    return None
+
+
 def location_create(ctx, request):
     world = ctx.bundle.world
     if request.parent_id is not None and request.parent_id not in world.locations:
@@ -194,7 +213,18 @@ def location_create(ctx, request):
             )
         if spec.distance_m < 0:
             return Invalid(code="bad_amount", message="расстояние не может быть отрицательным")
-        connections.append(Connection(to=spec.to, distance_m=spec.distance_m))
+        problem = edge_problem(ctx, request, spec, connections)
+        if problem is not None:
+            return problem
+        route_kind = ctx.cfg.time.route_kinds[spec.kind]
+        needs = bool(route_kind.transport) and (
+            spec.needs_transport or ctx.cfg.time.transports[route_kind.transport].always
+        )
+        connections.append(
+            Connection(
+                to=spec.to, distance_m=spec.distance_m, kind=spec.kind, needs_transport=needs
+            )
+        )
     location = Location(
         id=request.id, name=request.name, parent_id=request.parent_id,
         description=request.description or "", connections=connections, origin="ai",

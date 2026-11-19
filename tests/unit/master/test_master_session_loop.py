@@ -1012,7 +1012,8 @@ def test_round_until_without_rest_works_as_before(tmp_path, registry, cfg):
 
 def test_round_hour_category_with_rest_is_not_blocked(tmp_path, registry, cfg):
     hour = ToolCall(
-        id="h1", name="advance_time", input={"type": "advance_time", "category": "hour"},
+        id="h1", name="advance_time",
+        input={"type": "advance_time", "category": "hour", "purpose": "wait"},
     )
     _, blocks, has_invalid, accepted = night_round(tmp_path, registry, cfg, [hour, rest_call()])
     assert has_invalid is False

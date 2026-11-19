@@ -14,6 +14,25 @@ DEFAULTS_PATH = Path(__file__).parent / "defaults.toml"
 LEVEL_CAP = 20
 
 
+class RouteKind(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    # время пути в процентах от пешего (100 -- как пешком по дороге)
+    percent: int = Field(ge=1)
+    # id рода транспорта, который нужен ребру этого рода; пусто -- транспорт не нужен
+    transport: str = ""
+
+
+class TransportKind(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # имя рода в /sheet
+    name: str
+    # причина мастеру, когда пути нет без этого транспорта
+    only: str
+    # True -- ребро этого рода всегда требует транспорт (needs_transport ставит движок)
+    always: bool = False
+
+
 class TimeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     round_s: int
@@ -28,6 +47,16 @@ class TimeConfig(BaseModel):
     day_parts: dict[str, int]
     advance_categories: dict[str, int]
     travel_pace: dict[str, int]
+    # роды пути и роды транспорта (М0 П2); порядок transports -- порядок перебора причины no_route
+    route_kinds: dict[str, RouteKind]
+    transports: dict[str, TransportKind]
+
+    @model_validator(mode="after")
+    def check_route_kinds(self):
+        for kind_id, kind in self.route_kinds.items():
+            if kind.transport and kind.transport not in self.transports:
+                raise ValueError(f"route_kinds.{kind_id}: неизвестный транспорт {kind.transport!r}")
+        return self
 
     @field_validator("day_parts")
     @classmethod
@@ -359,7 +388,9 @@ class ServiceKind(BaseModel):
     # цена за единицу в меди (до отношения и торга)
     price_cp: int = Field(ge=0)
     unit: Literal["night", "meal", "hour", "once"]
-    effect: Literal["lodging", "meal", "heal", "rest_short", "cure", "plain"]
+    effect: Literal["lodging", "meal", "heal", "rest_short", "cure", "plain", "passage"]
+    # род транспорта (ключ [time.transports]); обязателен при effect = passage
+    transport: str = ""
     # кубики лечения; обязательны при effect = heal
     heal: str = ""
     # id состояний, которые снимает услуга; обязательны при effect = cure
@@ -378,6 +409,8 @@ class ServiceKind(BaseModel):
             raise ValueError("услуга heal требует кубики в поле heal")
         if self.effect == "cure" and not self.cures:
             raise ValueError("услуга cure требует id состояний в поле cures")
+        if self.effect == "passage" and not self.transport:
+            raise ValueError("услуга passage требует род транспорта в поле transport")
         if self.heal:
             parse_dice(self.heal)
         if self.boon and self.boon not in BOON_IDS:
@@ -435,6 +468,15 @@ class RulesConfig(BaseModel):
     trade: TradeConfig = TradeConfig()
     services: ServicesConfig = ServicesConfig()
     world: WorldConfig
+
+    @model_validator(mode="after")
+    def check_passage_transports(self):
+        for kind_id, kind in self.services.kinds.items():
+            if kind.effect == "passage" and kind.transport not in self.time.transports:
+                raise ValueError(
+                    f"services.kinds.{kind_id}: неизвестный транспорт {kind.transport!r}"
+                )
+        return self
 
 
 def deep_merge(base: dict, override: dict) -> dict:

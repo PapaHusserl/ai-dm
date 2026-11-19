@@ -212,7 +212,7 @@ def test_aid_is_taken_back_after_eight_hours(registry, cfg):
     hero.creature.hp_max = hero.creature.hp_current = 10
     cast(registry, cfg, bundle, "aid")
     bundle.world.clock.advance(EIGHT_HOURS)
-    go(registry, cfg, bundle, "advance_time", category="hour")
+    go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert (hero.creature.hp_max, hero.creature.hp_current) == (10, 10)
     assert effects_of(hero.creature, "max_hp") == []
 
@@ -224,7 +224,7 @@ def test_aid_rollback_keeps_current_hp_below_the_old_max(registry, cfg):
     cast(registry, cfg, bundle, "aid")
     hero.creature.hp_current = 8
     bundle.world.clock.advance(EIGHT_HOURS)
-    go(registry, cfg, bundle, "advance_time", category="hour")
+    go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert (hero.creature.hp_max, hero.creature.hp_current) == (10, 8)
 
 
@@ -235,7 +235,7 @@ def test_aid_rollback_is_written_to_the_log(registry, cfg):
     cast(registry, cfg, bundle, "aid")
     hero.creature.hp_current = 8
     bundle.world.clock.advance(EIGHT_HOURS)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert f"Помощь кончилась: {hero.name} HP 8/10" in d.log
 
 
@@ -245,7 +245,7 @@ def test_aid_is_kept_before_the_term(registry, cfg):
     hero.creature.hp_max = hero.creature.hp_current = 10
     cast(registry, cfg, bundle, "aid")
     bundle.world.clock.advance(6 * HOUR)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert hero.creature.hp_max == 15
     assert not any("Помощь кончилась" in line for line in d.log)
 
@@ -257,7 +257,7 @@ def test_aid_rollback_skips_an_npc_without_creature(registry, cfg):
     put_npc(bundle, "ghost", creature=False)
     cast(registry, cfg, bundle, "aid")
     bundle.world.clock.advance(EIGHT_HOURS)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert hero.creature.hp_max == 10
     assert d.log.count(f"Помощь кончилась: {hero.name} HP 10/10") == 1
 
@@ -271,7 +271,7 @@ def test_aid_rollback_takes_back_only_the_expired_one_of_hero_and_npc(registry, 
     bundle.world.clock.advance(HOUR)
     cast(registry, cfg, bundle, "aid", target="orc")
     bundle.world.clock.advance(EIGHT_HOURS - 2 * HOUR)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert (hero.creature.hp_max, npc.creature.hp_max) == (10, 15)
     assert not any(npc.name in line for line in d.log)
 
@@ -281,7 +281,7 @@ def test_aid_on_an_npc_is_taken_back_through_the_world(registry, cfg):
     npc = put_npc(bundle, hp=10)
     cast(registry, cfg, bundle, "aid", target="orc")
     bundle.world.clock.advance(EIGHT_HOURS)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert (npc.creature.hp_max, npc.creature.hp_current) == (10, 10)
     assert f"Помощь кончилась: {npc.name} HP 10/10" in d.log
 
@@ -307,7 +307,7 @@ def test_invisibility_holds_concentration(registry, cfg):
 def test_an_hour_without_combat_ends_invisibility_and_concentration(registry, cfg):
     bundle = wiz(registry, "invisibility")
     cast(registry, cfg, bundle, "invisibility")
-    go(registry, cfg, bundle, "advance_time", category="hour")
+    go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     hero = hero_of(bundle)
     assert hero.creature.concentration is None
     assert [c for c in hero.creature.conditions if c.id == "invisible"] == []
@@ -532,7 +532,7 @@ def test_resist_is_gone_two_hours_later(registry, cfg):
     bundle = wiz(registry, "protection_from_energy")
     cast(registry, cfg, bundle, "protection_from_energy", variant="fire")
     bundle.world.clock.advance(2 * HOUR)
-    go(registry, cfg, bundle, "advance_time", category="hour")
+    go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert fire_damage(registry, cfg, bundle) == plain
 
 
@@ -731,14 +731,14 @@ def trip_seconds(registry, cfg, bundle):
 
 
 def test_phantom_steed_halves_the_next_trip(registry, cfg):
-    full = time_ops.travel_seconds(4800, "normal", cfg)
+    full = time_ops.edge_seconds(4800, "road", "normal", cfg)
     bundle = wiz(registry, "phantom_steed")
     cast(registry, cfg, bundle, "phantom_steed", ritual=True)
     assert trip_seconds(registry, cfg, bundle) == full // 2
 
 
 def test_phantom_steed_is_gone_after_an_hour(registry, cfg):
-    full = time_ops.travel_seconds(4800, "normal", cfg)
+    full = time_ops.edge_seconds(4800, "road", "normal", cfg)
     bundle = wiz(registry, "phantom_steed")
     cast(registry, cfg, bundle, "phantom_steed", ritual=True)
     bundle.world.clock.advance(HOUR + 1)
@@ -746,7 +746,7 @@ def test_phantom_steed_is_gone_after_an_hour(registry, cfg):
 
 
 def test_phantom_steed_with_twenty_minutes_left_speeds_only_that_part(registry, cfg):
-    full = time_ops.travel_seconds(4800, "normal", cfg)
+    full = time_ops.edge_seconds(4800, "road", "normal", cfg)
     assert full >= 2400  # путь не короче ускоренной части (20 мин скакуна = 40 мин пешком)
     bundle = wiz(registry, "phantom_steed")
     cast(registry, cfg, bundle, "phantom_steed", ritual=True)
@@ -817,7 +817,7 @@ def test_travel_fast_left_takes_the_longest_mark(registry):
 
 def test_a_trip_without_the_steed_takes_the_full_time(registry, cfg):
     bundle = wiz(registry)
-    assert trip_seconds(registry, cfg, bundle) == time_ops.travel_seconds(4800, "normal", cfg)
+    assert trip_seconds(registry, cfg, bundle) == time_ops.edge_seconds(4800, "road", "normal", cfg)
 
 
 # запрос

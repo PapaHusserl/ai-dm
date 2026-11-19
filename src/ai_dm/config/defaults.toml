@@ -24,6 +24,53 @@ slow = 3200
 normal = 4800
 fast = 6400
 
+# род пути: время в процентах от пешего, род транспорта, которого требует ребро (пусто -- не нужен)
+[time.route_kinds.tract]
+name = "тракт"
+percent = 80
+
+[time.route_kinds.road]
+name = "дорога"
+percent = 100
+
+[time.route_kinds.trail]
+name = "тропа"
+percent = 150
+
+[time.route_kinds.offroad]
+name = "бездорожье"
+percent = 200
+
+[time.route_kinds.mine]
+name = "шахта"
+percent = 150
+transport = "mine"
+
+[time.route_kinds.water]
+name = "водный путь"
+percent = 50
+transport = "water"
+
+[time.route_kinds.air]
+name = "воздушный путь"
+percent = 25
+transport = "air"
+
+# род транспорта: name -- в /sheet, only -- причина мастеру, always -- needs_transport ставит движок
+[time.transports.water]
+name = "водный"
+only = "только по воде"
+always = true
+
+[time.transports.air]
+name = "воздушный"
+only = "только по воздуху"
+always = true
+
+[time.transports.mine]
+name = "шахтный"
+only = "только по шахте"
+
 [combat]
 max_rounds = 100
 improvise_damage_dice = "1d6"
@@ -358,6 +405,14 @@ unit = "once"
 effect = "plain"
 price_cp = 50
 description = "гадание на картах, костях или воске"
+
+[services.kinds.ferry]
+name = "перевозка"
+unit = "once"
+effect = "passage"
+transport = "water"
+price_cp = 50
+description = "перевезут на лодке до соседнего берега"
 
 [limits.gold_explicit_max_cp_by_level]
 1 = 5000

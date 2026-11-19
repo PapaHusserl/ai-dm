@@ -15,8 +15,20 @@ def secret_data(spec) -> dict:
     return {"id": spec.id, "text": spec.text, "reveal_if": condition_from_spec(spec)}
 
 
+def filled_edge(connection) -> dict:
+    # род пути и «нужен транспорт» -- только если не по умолчанию (дорога, транспорт не нужен)
+    data = {}
+    if connection.kind != "road":
+        data["kind"] = connection.kind
+    if connection.needs_transport:
+        data["needs_transport"] = True
+    return data
+
+
 def location_data(location) -> dict:
-    connections = [{"to": c.to, "distance_m": c.distance_m} for c in location.connections]
+    connections = [
+        {"to": c.to, "distance_m": c.distance_m, **filled_edge(c)} for c in location.connections
+    ]
     return filled({
         "id": location.id, "name": location.name, "parent_id": location.parent_id,
         "description": location.description, "connections": connections,

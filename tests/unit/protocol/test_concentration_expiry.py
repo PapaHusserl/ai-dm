@@ -105,7 +105,7 @@ def test_mark_outside_combat_keeps_mark_pending_with_concentration_expiry(dragon
 def test_advance_an_hour_ends_the_mark_exactly_at_the_limit(dragon, cfg):
     registry, bundle = dragon
     hero = marked(registry, cfg, bundle)
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert hero.creature.concentration is None
     assert d.result["concentration_ended"] == "hunters_mark"
 
@@ -115,7 +115,7 @@ def test_mark_ends_after_a_quarter_hour_and_then_an_hour_and_not_before(dragon, 
     hero = marked(registry, cfg, bundle)
     bundle.world.clock.advance(900)
     assert hero.creature.concentration is not None
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert hero.creature.concentration is None
     assert d.result["concentration_ended"] == "hunters_mark"
 
@@ -123,14 +123,14 @@ def test_mark_ends_after_a_quarter_hour_and_then_an_hour_and_not_before(dragon, 
 def test_expired_mark_log_names_the_spell(dragon, cfg):
     registry, bundle = dragon
     marked(registry, cfg, bundle)
-    d = go(registry, cfg, bundle, "advance_time", category="day")
+    d = go(registry, cfg, bundle, "advance_time", category="day", purpose="wait")
     assert "Концентрация: Метка охотника кончилась" in d.log
 
 
 def test_expired_mark_removes_mark_pending_and_the_spell_effect(dragon, cfg):
     registry, bundle = dragon
     hero = marked(registry, cfg, bundle)
-    go(registry, cfg, bundle, "advance_time", category="day")
+    go(registry, cfg, bundle, "advance_time", category="day", purpose="wait")
     assert "mark_pending" not in kinds(hero)
     assert "spell" not in kinds(hero)
 
@@ -138,8 +138,8 @@ def test_expired_mark_removes_mark_pending_and_the_spell_effect(dragon, cfg):
 def test_second_note_does_not_repeat_after_the_first(dragon, cfg):
     registry, bundle = dragon
     marked(registry, cfg, bundle)
-    go(registry, cfg, bundle, "advance_time", category="day")
-    d = go(registry, cfg, bundle, "advance_time", category="day")
+    go(registry, cfg, bundle, "advance_time", category="day", purpose="wait")
+    d = go(registry, cfg, bundle, "advance_time", category="day", purpose="wait")
     assert "concentration_ended" not in d.result
     assert d.log == [f"Время идёт: {86400} с"]
 
@@ -148,14 +148,14 @@ def test_unlimited_concentration_survives_a_day(dragon, cfg):
     registry, bundle = dragon
     hero = bundle.heroes[0]
     hero.creature.concentration = Concentration(spell_id="fog_cloud", circle=1, until_s=None)
-    d = go(registry, cfg, bundle, "advance_time", category="day")
+    d = go(registry, cfg, bundle, "advance_time", category="day", purpose="wait")
     assert hero.creature.concentration is not None
     assert "concentration_ended" not in d.result
 
 
 def test_advance_without_concentration_has_the_plain_result(dragon, cfg):
     registry, bundle = dragon
-    d = go(registry, cfg, bundle, "advance_time", category="hour")
+    d = go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert set(d.result) == {"seconds", "now_s"}
     assert d.log == ["Время идёт: 3600 с"]
 
@@ -340,6 +340,6 @@ def test_pass_without_trace_cannot_be_cast_at_a_higher_circle_outside_combat(tra
 def test_pass_without_trace_ends_with_its_hour(tracer, cfg):
     registry, bundle = tracer
     cast_trace(registry, cfg, bundle)
-    go(registry, cfg, bundle, "advance_time", category="hour")
+    go(registry, cfg, bundle, "advance_time", category="hour", purpose="wait")
     assert bundle.heroes[0].creature.concentration is None
     assert [e for e in bundle.heroes[0].creature.active_effects if e.kind == "modifier"] == []

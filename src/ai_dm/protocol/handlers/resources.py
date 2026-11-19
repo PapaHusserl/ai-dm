@@ -1323,8 +1323,36 @@ def advance_time(ctx, request):
             return until_with_rest_invalid()
         return until_invalid(request) or time_until(ctx, request)
     if request.category is not None:
+        if request.purpose is None:
+            return Invalid(
+                code="purpose_required",
+                message="с category нужна цель purpose: wait (ждём) или work (герой занят делом)",
+            )
+        if request.purpose == "travel":
+            return rejected(
+                "путь категорией времени",
+                "Время не сдвинуто: путь не идёт категорией. Для пути между местами ставь "
+                "travel_to; места нет на карте — сначала location_create.",
+            )
         return time_by_category(ctx, request)
     return travel(ctx, request)
+
+
+def no_route_message(ctx, target, pace):
+    # пути нет: причина, если его закрывает род транспорта (с именами перевозчиков локации героя),
+    # иначе допустимые id достижимых мест
+    world = ctx.bundle.world
+    here = ctx.hero.location_id
+    closing = time_ops.closing_transport(world, here, target, ctx.cfg, pace)
+    if closing is None:
+        return f"отсюда нет пути в {target!r}" + allowed(reachable_ids(world, here))
+    name = world.locations[target].name
+    kind = ctx.cfg.time.transports[closing]
+    message = f"до «{name}» {kind.only} — нужен {kind.name} транспорт"
+    ferrymen = service_rules.passage_providers(world, here, closing, ctx.cfg)
+    if ferrymen:
+        message += "; перевозят: " + ", ".join(npc.name for npc in ferrymen)
+    return message
 
 
 def travel(ctx, request):
@@ -1336,7 +1364,11 @@ def travel(ctx, request):
             message=f"нет локации {request.travel_to!r}"
             + allowed(reachable_ids(world, hero.location_id)),
         )
-    route = time_ops.route_path(world, hero.location_id, request.travel_to)
+    pace = request.pace or "normal"
+    transport = time_ops.hero_transport(hero)
+    route = time_ops.route_path(
+        world, hero.location_id, request.travel_to, ctx.cfg, transport, pace
+    )
     if route == []:
         name = world.locations[request.travel_to].name
         return rejected(
@@ -1344,13 +1376,8 @@ def travel(ctx, request):
             f"Герой уже в «{name}»: опиши сцену на месте, travel_to не повторяй",
         )
     if not route:
-        return Invalid(
-            code="no_route",
-            message=f"отсюда нет пути в {request.travel_to!r}"
-            + allowed(reachable_ids(world, hero.location_id)),
-        )
-    pace = request.pace or "normal"
-    seconds = sum(time_ops.travel_seconds(d, pace, ctx.cfg) for _, d in route)
+        return Invalid(code="no_route", message=no_route_message(ctx, request.travel_to, pace))
+    seconds = sum(s for _, s in route)
     seconds = steed_seconds(hero, world.clock.now_s, seconds)
     world.clock.advance(seconds)
     hero.location_id = request.travel_to

@@ -129,6 +129,8 @@ class ParleySpec(Request):
 class ConnectionSpec(Request):
     to: str = Field(description="Id локации, с которой есть связь.")
     distance_m: int = Field(description="Расстояние в метрах.")
+    kind: str = Field("road", description="Род пути: tract, road, trail, offroad, mine, water, air")
+    needs_transport: bool = Field(False, description="Нужен транспорт (water, air -- сам).")
 
 
 # запросы мастера (ТЗ 2.1)
@@ -401,6 +403,8 @@ class Service(Request):
     )
     service_id: str = Field(description="Id услуги из services NPC; для list пусто.")
     qty: int = Field(description="Сколько раз (порций, кружек, лечений); для list 0.")
+    destination: str = Field("", description="Id места, куда везти (перевозка); иначе пусто.")
+    NEUTRAL: ClassVar[dict] = {"destination": ""}
 
 
 class Gold(Request):
@@ -451,6 +455,9 @@ class AdvanceTime(Request):
     )
     until_hour: int = Field(-1, description="Час 0-23 для until=hour; иначе -1.")
     pace: Literal["slow", "normal", "fast"] = Field("normal", description="Темп пути.")
+    purpose: Literal["none", "wait", "work", "travel"] = Field(
+        "none", description="Зачем сдвиг по category (с ней обязательно): wait, work, travel."
+    )
     count: int = Field(
         1,
         description=(
@@ -459,6 +466,7 @@ class AdvanceTime(Request):
     )
     NEUTRAL: ClassVar[dict] = {
         "category": "none", "travel_to": "", "until": "none", "until_hour": -1, "count": 1,
+        "purpose": "none",
     }
 
     @field_validator("count")

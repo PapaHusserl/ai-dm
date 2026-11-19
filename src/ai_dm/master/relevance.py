@@ -1,6 +1,6 @@
 import re
 
-from ai_dm.rules import goals
+from ai_dm.rules import goals, time_ops
 from ai_dm.rules.knowledge import current_hero, is_adjective_word, is_noun_word
 from ai_dm.rules.knowledge import mentions as name_mentioned
 from ai_dm.rules.triggers_eval import is_ready
@@ -14,19 +14,23 @@ def mentions(bundle) -> str:
     return "\n".join(parts).lower()
 
 
-def nearby_locations(world, place):
-    # текущая локация и связанные с ней в любую сторону (для travel_to); расстояние в метрах
+def nearby_locations(world, place, cfg, transport=None):
+    # текущая локация и связанные с ней в любую сторону (для travel_to); расстояние в метрах,
+    # время обычным темпом. Из рёбер пары берётся открытое с меньшим временем -- то, что берёт
+    # путь; открытых нет -- закрытое с меньшим временем (closed = True)
     result = [{"id": place.id, "name": place.name, "distance_m": 0}]
-    distances = {c.to: c.distance_m for c in place.connections}
-    for other in world.locations.values():
-        for c in other.connections:
-            if c.to == place.id and other.id not in distances:
-                distances[other.id] = c.distance_m
-    for location_id in sorted(distances):
-        if location_id in world.locations:
-            name = world.locations[location_id].name
-            distance = distances[location_id]
-            result.append({"id": location_id, "name": name, "distance_m": distance})
+    edges = time_ops.linked_edges(world, place)
+    for location_id in sorted(edges):
+        options = [
+            (time_ops.edge_seconds(c.distance_m, c.kind, "normal", cfg),
+             not time_ops.edge_open(c, cfg, transport), c)
+            for c in edges[location_id]
+        ]
+        seconds, closed, c = min(options, key=lambda o: (o[1], o[0]))
+        result.append({
+            "id": location_id, "name": world.locations[location_id].name,
+            "distance_m": c.distance_m, "kind": c.kind, "seconds": seconds, "closed": closed,
+        })
     return result
 
 
@@ -40,8 +44,10 @@ def known_places(world, near_ids):
 
 
 def moved(player_input, outcomes) -> bool:
-    # в ходе был переход: пометка «пришёл в «…» (/go, текст игрока) или travel_to рассказчика
-    return "пришёл в «" in player_input or any(o.startswith("Путь в «") for o in outcomes)
+    # в ходе был переход: пометка «пришёл в «…» (/go, текст игрока), travel_to, перевозка
+    return "пришёл в «" in player_input or any(
+        o.startswith(("Путь в «", "Перевозка: ")) for o in outcomes
+    )
 
 
 def moved_last_turn(bundle) -> bool:
@@ -60,9 +66,9 @@ def absent_location_mention(bundle, text) -> list[str]:
     here = world.locations.get(current_hero(bundle).location_id)
     if here is None or moved_last_turn(bundle):
         return []
-    near = nearby_locations(world, here)
-    places = [world.locations[x["id"]] for x in near[1:]]
-    places += known_places(world, {x["id"] for x in near})
+    near_ids = sorted(time_ops.linked_edges(world, here))
+    places = [world.locations[i] for i in near_ids]
+    places += known_places(world, {here.id, *near_ids})
     return sorted(p.id for p in places if name_mentioned(p.name.lower(), text.lower()))
 
 

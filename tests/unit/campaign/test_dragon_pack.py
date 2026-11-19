@@ -1,5 +1,6 @@
 # Пак campaigns/drunk_dragon (этап 3, П7; STAGE3-PLAN B/П7, решения 1в 2б 3а 4а 7, G5а, G6).
 # Тесты на реальный пак из репо (saves/ в git нет). Старт с главы II, 23:50 дня 5 Листопада.
+import pytest
 from campaign_kit import ROOT, SAVED_AT
 
 DRAGON_DIR = ROOT / "campaigns" / "drunk_dragon"
@@ -411,3 +412,90 @@ def test_dragon_narrator_sees_only_the_list():
     _, registry = campaign_registry("drunk_dragon", ROOT / "campaigns")
     assert registry.narrator_monster_ids() == sorted(DRAGON_MONSTERS)
     assert len(registry.ids("monster")) > len(DRAGON_MONSTERS)
+
+
+# М0 П2 (docs/plan-m0.md, Приложение Б, решения 66–68, 76): рёбра пятнадцати локаций и четыре
+# правки длины. Роды пути — ключи config time.route_kinds (предположение доебы: mine, offroad,
+# trail, road).
+
+def pack_edges():
+    # (откуда, куда) -> Connection; ребро читается в обе стороны, поэтому ключ — как записан
+    return {
+        (place.id, c.to): c for place in dragon_pack().locations for c in place.connections
+    }
+
+
+def linked(edges, a, b):
+    return edges.get((a, b)) or edges.get((b, a))
+
+
+def test_dragon_pack_has_no_location_without_edges():
+    pack = dragon_pack()
+    linked_ids = {p.id for p in pack.locations if p.connections}
+    linked_ids |= {c.to for p in pack.locations for c in p.connections}
+    assert [p.id for p in pack.locations if p.id not in linked_ids] == []
+
+
+def test_dragon_pack_edge_targets_exist():
+    pack = dragon_pack()
+    ids = {p.id for p in pack.locations}
+    missing = [c.to for p in pack.locations for c in p.connections if c.to not in ids]
+    assert missing == []
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "metres", "kind"),
+    [
+        ("city_ratusha", "sanctuary_of_dawn", 650, "road"),
+        ("grey_quarter", "sanctuary_of_dawn", 800, "road"),
+        ("varen_manor", "grey_quarter", 300, "road"),
+        ("olbrecht_manor", "grey_quarter", 300, "road"),
+        ("shop_hunting_horn", "sanctuary_of_dawn", 230, "road"),
+        ("dry_heather", "sanctuary_of_dawn", 700, "road"),
+        ("ash_forge", "east_shaft", 300, "mine"),
+        ("ancient_tomb", "ash_forge", 500, "mine"),
+        ("iron_ridge_foothills_villages", "iron_ridge_foothills", 3000, "road"),
+        ("dead_pine_gorge", "watch_tower_outpost", 30400, "trail"),
+        ("dead_pine_gorge", "ash_forge", 30400, "trail"),
+        ("deep_shaft", "watch_tower_outpost", 43200, "mine"),
+        ("deep_shaft", "ash_forge", 43200, "mine"),
+        ("white_winds_ledge", "watch_tower_outpost", 42000, "offroad"),
+        ("white_winds_ledge", "ash_forge", 42000, "offroad"),
+        ("wolf_teeth_pass", "iron_ridge", 2000, "trail"),
+        ("swamp_topkoe", "old_gat", 1500, "offroad"),
+        ("devils_backwater", "swamp_topkoe", 2500, "offroad"),
+        ("black_bogs", "viper_island", 2000, "trail"),
+    ],
+)
+def test_dragon_pack_has_edge_from_appendix_b(a, b, metres, kind):
+    edge = linked(pack_edges(), a, b)
+    assert edge is not None
+    assert (edge.distance_m, edge.kind, edge.needs_transport) == (metres, kind, False)
+
+
+def test_dragon_pack_old_tower_pair_keeps_only_the_short_edge():
+    edges = pack_edges()
+    assert ("tavern_drunken_dragon", "old_tower") not in edges
+    assert edges[("old_tower", "tavern_drunken_dragon")].distance_m == 3218
+
+
+def test_dragon_pack_abbey_to_tar_works_is_3200_m():
+    edge = pack_edges()[("abbey_scarlet_mist", "old_tar_works")]
+    assert (edge.distance_m, edge.kind) == (3200, "road")
+
+
+def test_dragon_pack_viper_island_to_barrow_is_a_2000_m_trail():
+    edge = pack_edges()[("viper_island", "dead_barrow")]
+    assert (edge.distance_m, edge.kind) == (2000, "trail")
+
+
+def test_dragon_pack_iron_ridge_to_city_is_230400_m():
+    edge = pack_edges()[("iron_ridge", "city")]
+    assert (edge.distance_m, edge.kind) == (230400, "road")
+
+
+def test_dragon_world_builds_with_every_location_linked(cfg):
+    world = dragon_world(cfg).world
+    linked_ids = {p.id for p in world.locations.values() if p.connections}
+    linked_ids |= {c.to for p in world.locations.values() for c in p.connections}
+    assert [i for i in world.locations if i not in linked_ids] == []

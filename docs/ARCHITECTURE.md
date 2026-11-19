@@ -78,8 +78,8 @@ ui ──> game ──> master ──> llm
 - **`God`**: `id`, `name`, `domains`, `role`, `motive`, `pleased_by`, `angered_by`, `rivals`, `means`,
   `opportunity`, `realm`, `status`, `origin: pack|ascended`. Пантеон — в мире, изменяем.
 - **`Location`**: `id`, `name`, `parent_id`, `description`, `tags`, `connections: list[Connection]`,
-  `visited`, `origin`, `temporary`. `Connection {to, distance_m: int, kind, needs_transport}` — метры, как в
-  `travel_seconds`.
+  `visited`, `origin`, `temporary`. `Connection {to, distance_m: int, kind, needs_transport}` — метры
+  (`edge_seconds`).
 - **`Trigger`**: `id`, `if_` (alias `if`), `then`, `once`, `cooldown`, `key`, `state`, `fired_count`,
   `last_fired_at`. `Condition` — discriminated union: `All/Any/Not`, `Flag`, `HeroHas`, `NpcStatus`,
   `HeroAt`, `NpcAt`, `TimeAfter`, `Attitude`, `Favor`, `EventActive`, `HeroDead`, `Narrative`.
@@ -285,11 +285,13 @@ ai-dm/
    - Сдвиг до цели `advance_time.until`: `morning` (час `[time] morning_hour`, 6), `hour` + `until_hour` (0–23;
      час уже прошёл — завтра), `long_rest` (до `next_long_rest_s`; отдых уже можно — rejected); ровно одно из
      `category`, `travel_to`, `until`.
-   - Путешествие: `travel_seconds(distance_m: int, pace: str, cfg) -> int`, темпы SRD в конфиге
-     `[time.travel_pace]` целыми метрами в час: slow = 3200, normal = 4800, fast = 6400
-     (≈ 2 / 3 / 4 мили в час); результат округляется вверх до целой секунды; неизвестный темп — ошибка.
-     Путь `travel_to` — кратчайший по карте (`route_path`: Дейкстра по `distance_m`, связи в обе стороны), время —
-     сумма по переходам, каждая пройденная локация получает `location_visited`; рассказчик видит соседей (`locations`)
+   - Путешествие: темпы SRD в конфиге `[time.travel_pace]` целыми метрами в час: slow = 3200,
+     normal = 4800, fast = 6400 (≈ 2 / 3 / 4 мили в час); время ребра округляется вверх до целой секунды.
+     Путь `travel_to` — быстрейший по карте (`route_path(world, from, to, cfg, transport, pace)`: Дейкстра по
+     секундам ребра `edge_seconds` = метры × процент рода пути из `[time.route_kinds]` (М0 П2), связи в обе
+     стороны; ребро с `needs_transport` открыто только с транспортом героя нужного рода), время —
+     сумма по переходам; нет пути из-за транспорта — `no_route` с причиной и перевозчиками; перевозка — услуга
+     `effect = "passage"` с `Service.destination`; каждая пройденная локация получает `location_visited`; рассказчик видит соседей (`locations`)
      и посещённые дальние места (`known_locations`) (Фикс ЖП4, 132). Игрок идёт сам командой `/go <место|номер>`
      (тот же `travel` движка, пометка «пришёл в …» уходит в ход рассказчика), `/where` — соседи и знакомые места;
      локация героя — в статус-строке; `travel` в текущую локацию — `rejected`; `npc_create` без `location_id` —

@@ -32,7 +32,16 @@ def test_default_kinds_present():
         "uncurse_temple",
         "companion_cheap", "companion_common", "companion_fine",
         "haircut", "shave", "bath", "bard_song", "fortune",
+        "ferry",
     }
+
+
+def test_default_ferry_is_a_water_passage():
+    # М0 П2, решение 85: перевозка 5 см (50 мед.), раз, водный транспорт
+    ferry = services().kinds["ferry"]
+    assert (ferry.effect, ferry.transport) == ("passage", "water")
+    assert (ferry.name, ferry.price_cp, ferry.unit) == ("перевозка", 50, "once")
+    assert ferry.description == "перевезут на лодке до соседнего берега"
 
 
 def test_default_room_prices():
@@ -79,6 +88,25 @@ def test_bad_dice_is_error():
 def test_bad_dice_on_non_heal_effect_is_error():
     with pytest.raises(ValueError):
         kind(heal="lots")
+
+
+def test_passage_without_transport_is_error():
+    # М0 П2: перевозке нужен род транспорта (ключ [time.transports])
+    with pytest.raises(ValidationError):
+        kind(effect="passage", unit="once")
+
+
+def test_passage_with_transport_is_accepted():
+    assert kind(effect="passage", unit="once", transport="water").transport == "water"
+
+
+def test_passage_with_unknown_transport_in_toml_is_load_error():
+    toml = (
+        '[services.kinds.rocket]\nname = "ракета"\nprice_cp = 30\nunit = "once"\n'
+        'effect = "passage"\ntransport = "space"\n'
+    )
+    with pytest.raises(ValueError):
+        load_rules_config(toml_text=toml)
 
 
 def test_heal_not_required_for_meal():

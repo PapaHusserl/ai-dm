@@ -1,13 +1,13 @@
 from ai_dm.core.dice import roll_dice
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
-from ai_dm.protocol.handlers.resources import clamped
+from ai_dm.protocol.handlers.resources import clamped, concentration_note
 from ai_dm.protocol.handlers.service_extras import boon_and_risks, remember_deal
 from ai_dm.protocol.handlers.trade import short_of_money
 from ai_dm.protocol.handlers.trade_pick import refusal_problem, scene_problem
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed
-from ai_dm.rules import money
+from ai_dm.rules import money, time_ops
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.auto_flags import apply_events
@@ -48,7 +48,8 @@ def service(ctx, request):
             "В этой сцене больше нельзя платить за услуги и торговать: опиши по факту.",
         )
     unit = service_rules.quote(kind, npc, world, ctx.cfg)
-    action = {"heal": heal_service, "cure": cure_service}.get(kind.effect, pay_service)
+    actions = {"heal": heal_service, "cure": cure_service, "passage": passage_service}
+    action = actions.get(kind.effect, pay_service)
     decision = action(ctx, request, npc, kind, unit)
     if isinstance(decision, Decision) and decision.status != "rejected":
         if kind.intimate:
@@ -160,6 +161,42 @@ def paid(request, qty, result, log, cause="не хватило денег"):
             result, log,
         )
     return Decision(status="accepted", result=result, log=log)
+
+
+def passage_service(ctx, request, npc, kind, unit):
+    # перевозка: один переход по ребру нужного рода; герой и спутники с follows -- в destination
+    hero = ctx.hero
+    world = ctx.bundle.world
+    targets = service_rules.passage_targets(world, hero.location_id, kind.transport, ctx.cfg)
+    edge = targets.get(request.destination)
+    if edge is None:
+        return Invalid(
+            code="no_passage",
+            message=f"{npc.name} не везёт в это место" + allowed(targets),
+        )
+    if hero.money_cp < unit:
+        return short_of_money(ctx, kind.name, unit)
+    money.spend_money(hero, unit)
+    world.clock.advance(time_ops.edge_seconds(edge.distance_m, edge.kind, "normal", ctx.cfg))
+    hero.location_id = request.destination
+    companions = []
+    for companion in world.npcs.values():
+        if companion.follows == hero.id and companion.status == "alive":
+            companion.location_id = request.destination
+            companions.append(companion.name)
+    npc.location_id = request.destination
+    event = DomainEvent(type="location_visited", data={"id": request.destination})
+    apply_events(world, [event])
+    ctx.events.append(event)
+    result = service_result(ctx, npc, request, unit, 1)
+    result["location_id"] = request.destination
+    name = world.locations[request.destination].name
+    log = [f"Перевозка: {npc.name}, {money.format_cp(unit)} — «{name}»"]
+    if companions:
+        log.append("С тобой: " + ", ".join(companions))
+    concentration_note(ctx, log, result)
+    signal = f"{npc.name} переправился с героем и ждёт здесь; обратно — ещё одна плата"
+    return Decision(status="accepted", result=result, log=log, signal_to_master=signal)
 
 
 def cure_service(ctx, request, npc, kind, unit):

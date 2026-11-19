@@ -368,7 +368,7 @@ def time_config(day_parts):
     return TimeConfig(
         round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
         morning_hour=6, day_parts=day_parts, advance_categories={"hour": 3600},
-        travel_pace={"normal": 4800},
+        travel_pace={"normal": 4800}, route_kinds={}, transports={},
     )
 
 
@@ -386,7 +386,24 @@ def test_turn_s_below_one_is_rejected(turn_s):
             round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=turn_s,
             morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
             advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+            route_kinds={}, transports={},
         )
+
+
+@pytest.mark.parametrize("missing", ["route_kinds", "transports"])
+def test_time_config_without_route_kinds_or_transports_is_rejected(missing):
+    from ai_dm.config.settings import TimeConfig
+
+    fields = dict(
+        round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
+        morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
+        advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+        route_kinds={}, transports={},
+    )
+    del fields[missing]
+    with pytest.raises(ValidationError) as caught:
+        TimeConfig(**fields)
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("missing", (missing,))]
 
 
 def test_day_parts_missing_key_is_rejected():

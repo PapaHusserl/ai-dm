@@ -1,5 +1,6 @@
 import re
 
+from ai_dm.rules import time_ops
 from ai_dm.rules import trade as trade_rules
 
 # заведение по имени локации ↔ ремесло хозяина в means ↔ подсказка по услугам (Л1 П3);
@@ -89,6 +90,43 @@ def providers_here(world, location_id) -> list:
         npc for npc in world.npcs.values()
         if npc.services and npc.status == "alive" and npc.location_id == location_id
     ]
+
+
+def passage_providers(world, location_id, transport, cfg) -> list:
+    # живые NPC локации с услугой перевозки рода transport
+    return [
+        npc for npc in providers_here(world, location_id)
+        if any(
+            kind.effect == "passage" and kind.transport == transport
+            for _, kind in kinds_of(npc, cfg)
+        )
+    ]
+
+
+def passage_targets(world, location_id, transport, cfg) -> dict:
+    # {id соседа: ребро} -- куда везёт перевозка рода transport из локации: сосед в любую сторону
+    # по ребру, чей род пути требует этот транспорт; из рёбер пары -- с меньшим временем
+    result = {}
+    for target, edges in time_ops.linked_edges(world, world.locations[location_id]).items():
+        fits = [c for c in edges if cfg.time.route_kinds[c.kind].transport == transport]
+        if fits:
+            result[target] = min(
+                fits, key=lambda c: time_ops.edge_seconds(c.distance_m, c.kind, "normal", cfg)
+            )
+    return result
+
+
+def service_entries(npc, world, cfg) -> list:
+    # [(подпись строки, ServiceKind)] услуг NPC для /shop; перевозка -- строка на каждое место,
+    # куда везёт
+    entries = []
+    for _kind_id, kind in kinds_of(npc, cfg):
+        if kind.effect != "passage":
+            entries.append((kind.name, kind))
+            continue
+        targets = passage_targets(world, npc.location_id, kind.transport, cfg)
+        entries += [(f"{kind.name}: {world.locations[t].name}", kind) for t in targets]
+    return entries
 
 
 def lodging_here(world, location_id, cfg) -> list:

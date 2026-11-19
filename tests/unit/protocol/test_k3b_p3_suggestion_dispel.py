@@ -66,7 +66,7 @@ def test_suggestion_charm_is_gone_after_eight_hours(registry, cfg):
     bundle, npc = suggested_orc(registry, cfg)
     bundle.world.clock.advance(8 * HOUR + 1)
     ctx = make_ctx(registry, cfg, bundle=bundle)
-    apply(ctx, req("advance_time", category="hour"))
+    apply(ctx, req("advance_time", category="hour", purpose="wait"))
     assert "charmed" not in ids_of(npc)
 
 

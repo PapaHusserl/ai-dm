@@ -128,7 +128,7 @@ def xp_call(call_id="x1"):
 def hour_call(call_id="h1"):
     return {
         "id": call_id, "name": "advance_time",
-        "input": {"type": "advance_time", "category": "hour"},
+        "input": {"type": "advance_time", "category": "hour", "purpose": "wait"},
     }
 
 

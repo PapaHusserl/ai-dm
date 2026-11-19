@@ -16,36 +16,58 @@ def place_of(app):
     return app.bundle.world.locations[hero.location_id]
 
 
-def neighbours(app):
-    # соседи текущей локации: (локация, расстояние в метрах) по id; порядок /where и /go N
+def near_entries(app):
+    # соседи текущей локации: (локация, запись nearby_locations) по id; порядок /where и /go N
     world = app.bundle.world
-    near = nearby_locations(world, place_of(app))[1:]
-    return [(world.locations[x["id"]], x["distance_m"]) for x in near]
+    transport = time_ops.hero_transport(hero_of(app.bundle))
+    near = nearby_locations(world, place_of(app), app.settings.rules, transport)[1:]
+    return [(world.locations[x["id"]], x) for x in near]
+
+
+def neighbours(app):
+    # соседи текущей локации: (локация, расстояние в метрах) по id
+    return [(place, entry["distance_m"]) for place, entry in near_entries(app)]
 
 
 def known(app):
     # посещённые дальние места с путём, по id; номера в /where продолжают соседей
     world = app.bundle.world
     here = place_of(app).id
+    transport = time_ops.hero_transport(hero_of(app.bundle))
     near_ids = {p.id for p, _ in neighbours(app)} | {here}
     return [
         p for p in known_places(world, near_ids)
-        if time_ops.route_path(world, here, p.id) is not None
+        if time_ops.route_path(world, here, p.id, app.settings.rules, transport) is not None
     ]
 
 
-def minutes_text(app, distance_m):
-    seconds = time_ops.travel_seconds(distance_m, "normal", app.settings.rules)
-    return f"{max(1, -(-seconds // 60))} мин"
+def minutes_text(seconds):
+    # до часа -- «41 мин», от часа -- «1 ч 1 мин», ровно часы -- «2 ч»; минуты округляются вверх
+    minutes = max(1, -(-seconds // 60))
+    hours, minutes = divmod(minutes, 60)
+    if not hours:
+        return f"{minutes} мин"
+    return f"{hours} ч" + (f" {minutes} мин" if minutes else "")
+
+
+def neighbour_line(app, number, place, entry):
+    # «1. Лес — 20 м, 1 мин»; род пути словом, кроме дороги; закрытый -- «нужен транспорт»
+    kinds = app.settings.rules.time.route_kinds
+    line = f"  {number}. {place.name} — {entry['distance_m']} м"
+    if entry["closed"]:
+        return f"{line}, {kinds[entry['kind']].name} — нужен транспорт"
+    if entry["kind"] != "road":
+        line += f", {kinds[entry['kind']].name}"
+    return f"{line}, {minutes_text(entry['seconds'])}"
 
 
 def where_lines(app):
-    near = neighbours(app)
+    near = near_entries(app)
     lines = [f"Ты в «{place_of(app).name}»."]
     if near:
         lines.append("Рядом:")
-        for number, (place, distance) in enumerate(near, start=1):
-            lines.append(f"  {number}. {place.name} — {distance} м, {minutes_text(app, distance)}")
+        for number, (place, entry) in enumerate(near, start=1):
+            lines.append(neighbour_line(app, number, place, entry))
     far = known(app)
     if far:
         items = [f"{number}. {place.name}" for number, place in enumerate(far, len(near) + 1)]

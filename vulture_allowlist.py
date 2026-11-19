@@ -47,8 +47,6 @@ ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
 # Задел v16 (М0 П1, решение Влада 2026-11-17): убрать строку, когда поле начнут читать.
-needs_transport  # unused variable (src/ai_dm/state/world.py:221) -- П2
-transport  # unused variable (src/ai_dm/state/hero.py:274, world.py:92) -- П2
 temporary  # unused variable (src/ai_dm/state/world.py:235) -- П3
 journey  # unused variable (src/ai_dm/state/hero.py:275) -- П3
 road_id  # unused variable (src/ai_dm/state/hero.py:228) -- П3

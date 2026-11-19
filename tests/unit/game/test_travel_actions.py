@@ -139,6 +139,87 @@ def test_where_never_prints_the_go_hint(registry, tmp_path):
     assert not any("Идти:" in line or "/go" in line for line in travel_actions.where_lines(app))
 
 
+def add_kinded_place(app, place_id, name, distance, kind, needs_transport=False):
+    # М0 П2: сосед таверны с родом пути; id после «vale», чтобы номера в /where шли по порядку
+    world = app.bundle.world
+    world.locations[place_id] = Location(id=place_id, name=name)
+    world.locations["lame_goose"].connections.append(
+        Connection(to=place_id, distance_m=distance, kind=kind, needs_transport=needs_transport)
+    )
+
+
+def test_where_trail_neighbour_shows_kind_and_time(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_tower", "Старая башня", 3218, "trail")
+    assert "  3. Старая башня — 3218 м, тропа, 1 ч 1 мин" in travel_actions.where_lines(app)
+
+
+def test_where_trail_takes_longer_than_road_at_equal_metres(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_tower", "Старая башня", 3218, "trail")
+    add_kinded_place(app, "zz_mill", "Мельница", 3218, "road")
+    lines = travel_actions.where_lines(app)
+    road = next(line for line in lines if "Мельница" in line)
+    trail = next(line for line in lines if "Старая башня" in line)
+    assert (road.endswith("41 мин"), trail.endswith("1 ч 1 мин")) == (True, True)
+
+
+def test_where_closed_water_neighbour_says_transport_needed(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_isle", "Остров", 1000, "water", needs_transport=True)
+    lines = travel_actions.where_lines(app)
+    assert "  3. Остров — 1000 м, водный путь — нужен транспорт" in lines
+
+
+def test_where_road_neighbour_does_not_print_the_word_road(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_mill", "Мельница", 20, "road")
+    assert "  3. Мельница — 20 м, 1 мин" in travel_actions.where_lines(app)
+
+
+def add_ferry(app, name="Финн"):
+    from ai_dm.config.settings import ServiceKind
+
+    app.settings.rules.services.kinds["ferry"] = ServiceKind(
+        name="перевозка", price_cp=50, unit="once", effect="passage", transport="water"
+    )
+    app.bundle.world.npcs["finn"] = NPC(
+        id="finn", name=name, named=True, means=["лодка"], services=["ferry"],
+        location_id=location_of(app),
+    )
+
+
+def test_go_to_closed_neighbour_shows_the_masters_reason_with_ferryman(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_isle", "Остров", 1000, "water", needs_transport=True)
+    add_ferry(app)
+    before = (location_of(app), now_s(app))
+    text = " ".join(app.handle("/go Остров").lines)
+    assert "только по воде" in text
+    assert "Финн" in text
+    assert (location_of(app), now_s(app)) == before
+
+
+def test_go_to_closed_neighbour_without_ferryman_shows_reason_only(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_isle", "Остров", 1000, "water", needs_transport=True)
+    text = " ".join(app.handle("/go Остров").lines)
+    assert "только по воде" in text
+    assert "перевозят" not in text
+
+
+def test_where_water_neighbour_with_transport_has_no_closed_note(registry, tmp_path):
+    from ai_dm.state.hero import Transport
+
+    app = make_app(registry, tmp_path)
+    add_kinded_place(app, "zz_isle", "Остров", 1000, "water", needs_transport=True)
+    hero_of(app.bundle).transport = Transport(kind="water", name="ялик")
+    line = next(line for line in travel_actions.where_lines(app) if "Остров" in line)
+    # 1000 м водой: 375 с
+    assert "нужен транспорт" not in line
+    assert line.endswith("7 мин")
+
+
 def test_where_known_places_are_one_paragraph_joined_by_semicolons(registry, tmp_path):
     app = make_app(registry, tmp_path)
     add_place(app, "mill", "Мельница", near="cellar")
@@ -164,6 +245,42 @@ def test_known_skips_visited_place_without_route(registry, tmp_path):
     app.bundle.world.locations["island"] = Location(id="island", name="Остров")
     visit(app, "island")
     assert travel_actions.known(app) == []
+
+
+def add_far_isle(app):
+    # дальний остров за соседним Погребом: водное ребро, нужен транспорт; посещён
+    world = app.bundle.world
+    world.locations["far_isle"] = Location(id="far_isle", name="Дальний остров")
+    world.locations["cellar"].connections.append(
+        Connection(to="far_isle", distance_m=1000, kind="water", needs_transport=True)
+    )
+    visit(app, "far_isle")
+
+
+def test_known_skips_far_place_behind_a_closed_water_edge(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    add_far_isle(app)
+    assert travel_actions.known(app) == []
+
+
+def test_known_lists_far_place_behind_water_edge_when_hero_has_the_boat(registry, tmp_path):
+    from ai_dm.state.hero import Transport
+
+    app = make_app(registry, tmp_path)
+    add_far_isle(app)
+    hero_of(app.bundle).transport = Transport(kind="water", name="ялик")
+    assert [p.id for p in travel_actions.known(app)] == ["far_isle"]
+
+
+@pytest.mark.parametrize(
+    ("seconds", "text"),
+    [
+        (60, "1 мин"), (61, "2 мин"), (3600, "1 ч"), (7200, "2 ч"),
+        (3660, "1 ч 1 мин"), (3601, "1 ч 1 мин"),
+    ],
+)
+def test_minutes_text_forms(seconds, text):
+    assert travel_actions.minutes_text(seconds) == text
 
 
 def test_where_command_does_not_spend_time_or_change_state(registry, tmp_path):

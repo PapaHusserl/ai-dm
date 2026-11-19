@@ -36,8 +36,11 @@ def parse(arg):
 
 def shop_request(verb, npc_id, item_id, qty, quality):
     if verb == "service":
+        # у перевозки id услуги идёт с местом через двоеточие: «ferry:island»
+        service_id, _, destination = item_id.partition(":")
         return Service(
-            type="service", npc_id=npc_id, direction="buy", service_id=item_id, qty=qty
+            type="service", npc_id=npc_id, direction="buy", service_id=service_id, qty=qty,
+            destination=destination,
         )
     return Trade(
         type="trade", npc_id=npc_id, direction=verb, item_id=item_id, qty=qty,

@@ -260,7 +260,7 @@ def test_rest_keeps_the_curse(registry, cfg, kind):
 
 def test_new_day_keeps_the_curse(registry, cfg):
     ctx = cursed_ctx(registry, cfg)
-    assert apply(ctx, req("advance_time", category="week")).status == "accepted"
+    assert apply(ctx, req("advance_time", category="week", purpose="wait")).status == "accepted"
     assert ids(ctx) == ["cursed"]
 
 

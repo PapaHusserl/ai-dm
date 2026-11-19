@@ -20,7 +20,14 @@ from ai_dm.game.shop_text import sale_rows  # noqa: E402
 from ai_dm.rules.inventory import add_item, equip  # noqa: E402
 from ai_dm.rules.money import format_cp  # noqa: E402
 from ai_dm.state.hero import InventoryEntry  # noqa: E402
-from ai_dm.state.world import NPC, CustomItem, ItemHolder, TradeProfile  # noqa: E402
+from ai_dm.state.world import (  # noqa: E402
+    NPC,
+    Connection,
+    CustomItem,
+    ItemHolder,
+    Location,
+    TradeProfile,
+)
 from ai_dm.ui.tui import strings  # noqa: E402
 from ai_dm.ui.tui.inv_sections import grouped, inv_tabs, shop_tabs  # noqa: E402
 from ai_dm.ui.tui.shop_blocks import (  # noqa: E402
@@ -153,6 +160,80 @@ def test_cure_service_is_capped_at_one(registry, tmp_path):
     game = make_game(registry, tmp_path, money=10**6)
     rows = rows_for(game, add_inn(game, services=["uncurse_temple"]))
     assert cap(rows[0]) == 1
+
+
+# перевозка: строка на каждое место, куда везёт
+
+def add_water_neighbours(game, *names):
+    # соседи по водному ребру (нужен транспорт) от места героя: id isle0, isle1, ...
+    world = game.bundle.world
+    here = world.locations[hero_of(game.bundle).location_id]
+    for i, name in enumerate(names):
+        world.locations[f"isle{i}"] = Location(id=f"isle{i}", name=name)
+        here.connections.append(
+            Connection(to=f"isle{i}", distance_m=4800, kind="water", needs_transport=True)
+        )
+
+
+def test_passage_row_per_target_has_label_command_echo_tab(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    add_water_neighbours(game, "Остров")
+    rows = rows_for(game, add_inn(game, services=["ferry"]))
+    assert rows == [
+        (
+            "перевозка: Остров — 5 см / раз",
+            game.settings.rules.services.kinds["ferry"].description,
+            [
+                (
+                    "Enter",
+                    "Оплатить",
+                    "/shop услуга grok ferry:isle0 {qty}",
+                    "Оплатить: перевозка: Остров (Грок)",
+                    1,
+                )
+            ],
+            strings.SHOP_SERVICE_TAB,
+        )
+    ]
+
+
+def test_passage_rows_cover_every_target(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    add_water_neighbours(game, "Остров", "Мыс")
+    rows = rows_for(game, add_inn(game, services=["ferry"]))
+    assert sorted(row[0] for row in rows) == [
+        "перевозка: Мыс — 5 см / раз",
+        "перевозка: Остров — 5 см / раз",
+    ]
+
+
+def test_passage_cap_is_zero_without_money(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=49)
+    add_water_neighbours(game, "Остров")
+    rows = rows_for(game, add_inn(game, services=["ferry"]))
+    assert cap(rows[0]) == 0
+
+
+def test_passage_cap_is_one_even_with_much_money(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=10**6)
+    add_water_neighbours(game, "Остров")
+    rows = rows_for(game, add_inn(game, services=["ferry"]))
+    assert cap(rows[0]) == 1
+
+
+def test_passage_rows_sit_between_the_other_services_in_order(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    add_water_neighbours(game, "Остров", "Мыс")
+    rows = rows_for(game, add_inn(game, services=["ale", "ferry", "bath"]))
+    labels = [row[0] for row in rows]
+    assert labels[0] == "эль (кружка) — 4 мм / порция"
+    assert labels[-1] == "баня — 1 см / раз"
+    assert len(labels) == 4
+
+
+def test_ferryman_without_water_neighbour_has_no_passage_rows(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    assert rows_for(game, add_inn(game, services=["ferry"])) == []
 
 
 # товары

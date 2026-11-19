@@ -1,0 +1,10 @@
+id: ferry
+name: Перевоз
+version: "1"
+start:
+  date: "0100-03-01"
+  time: "08:00"
+  hero_location: shore
+  heroes: [arn]
+mortality:
+  preset: calm

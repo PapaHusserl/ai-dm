@@ -501,6 +501,99 @@ def test_location_create_taken_id_is_rejected(registry, cfg):
     assert ctx.bundle.world.locations["forest"].name == "Лес"
 
 
+# М0 П2: род пути в location_create (решения 34, 35). Ожидаемый API (предположение доебы, вопрос
+# к папе): ConnectionSpec.kind (необязательное, по умолчанию road) и ConnectionSpec.needs_transport.
+
+def test_location_create_connection_kind_is_stored(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "vale_tavern", "distance_m": 10, "kind": "trail"}
+    apply(ctx, new_location(connections=[spec]))
+    assert ctx.bundle.world.locations["cellar"].connections[0].kind == "trail"
+
+
+def test_location_create_connection_without_kind_is_road(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_location(connections=[{"to": "vale_tavern", "distance_m": 10}]))
+    assert d.status == "accepted"
+    connection = ctx.bundle.world.locations["cellar"].connections[0]
+    assert (connection.kind, connection.needs_transport) == ("road", False)
+
+
+def test_location_create_needs_transport_is_stored(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "forest", "distance_m": 100, "kind": "water", "needs_transport": True}
+    apply(ctx, new_location(connections=[spec]))
+    assert ctx.bundle.world.locations["cellar"].connections[0].needs_transport is True
+
+
+def test_location_create_water_without_needs_transport_is_set_by_engine(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "forest", "distance_m": 100, "kind": "water"}
+    apply(ctx, new_location(connections=[spec]))
+    assert ctx.bundle.world.locations["cellar"].connections[0].needs_transport is True
+
+
+def test_location_create_mine_without_needs_transport_stays_open(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "forest", "distance_m": 100, "kind": "mine"}
+    apply(ctx, new_location(connections=[spec]))
+    assert ctx.bundle.world.locations["cellar"].connections[0].needs_transport is False
+
+
+def test_location_create_mine_with_needs_transport_is_closed(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "forest", "distance_m": 100, "kind": "mine", "needs_transport": True}
+    apply(ctx, new_location(connections=[spec]))
+    assert ctx.bundle.world.locations["cellar"].connections[0].needs_transport is True
+
+
+@pytest.mark.parametrize("kind", ["road", "trail", "offroad", "tract"])
+def test_location_create_needs_transport_is_dropped_for_a_kind_without_transport(
+    registry, cfg, kind
+):
+    ctx = make_ctx(registry, cfg)
+    spec = {"to": "forest", "distance_m": 100, "kind": kind, "needs_transport": True}
+    d = apply(ctx, new_location(connections=[spec]))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.locations["cellar"].connections[0].needs_transport is False
+
+
+def test_location_create_two_edges_to_one_place_is_invalid(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    specs = [{"to": "forest", "distance_m": 100}, {"to": "forest", "distance_m": 200}]
+    d = apply(ctx, new_location(connections=specs))
+    assert isinstance(d, Invalid)
+    assert d.code == "edge_exists"
+    assert d.message.endswith(": одно ребро на пару, время в обе стороны одно")
+    assert "cellar" not in ctx.bundle.world.locations
+    assert dump(ctx) == before
+
+
+def test_location_create_unknown_kind_is_invalid_with_list_of_kinds(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_location(connections=[{"to": "vale_tavern", "distance_m": 10, "kind": "x"}]))
+    assert isinstance(d, Invalid)
+    assert d.code == "unknown_route_kind"
+    assert "road" in d.message
+    assert "trail" in d.message
+    assert dump(ctx) == before
+
+
+def test_location_create_opposite_edge_to_already_linked_pair_is_invalid(registry, cfg):
+    # у Вейла уже есть ребро к ещё не созданному «cellar»: встречное от «cellar» к Вейлу — лишнее
+    from ai_dm.state.world import Connection
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="cellar", distance_m=50))
+    before = dump(ctx)
+    d = apply(ctx, new_location(parent_id="vale", connections=[{"to": "vale", "distance_m": 50}]))
+    assert isinstance(d, Invalid)
+    assert "cellar" not in ctx.bundle.world.locations
+    assert dump(ctx) == before
+
+
 # npc_update: attitude
 
 def attitude(ctx, delta, npc_id="aldric"):

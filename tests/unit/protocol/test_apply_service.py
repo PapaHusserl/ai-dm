@@ -1706,6 +1706,13 @@ def test_update_adds_services_to_npc(registry, cfg):
     assert d.result["services"] == ["room_modest"]
 
 
+def test_update_accepts_the_default_ferry_service(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    d = update(ctx, services=["ferry"])
+    assert d.status == "accepted"
+    assert grok(ctx).services == ["ferry"]
+
+
 def test_update_merges_without_duplicates_keeping_order(registry, cfg):
     ctx = service_ctx(registry, cfg, services=["room_modest"])
     update(ctx, services=["ale", "room_modest", "ale"])
@@ -1821,3 +1828,384 @@ def test_create_with_services_and_trade_kind(registry, cfg):
     npc = ctx.bundle.world.npcs["cook_1"]
     assert npc.trade.kind == "general"
     assert npc.services == ["ale"]
+
+
+# М0 П2: перевозка услугой за плату (решения 41, 48). Ожидаемый API (предположение доебы, вопрос
+# к папе): ServiceKind(effect="passage", transport="water"); место назначения —
+# поле Service.destination (id локации); часы сдвигаются на время ребра по роду пути.
+
+def passage_ctx(registry, cfg, money=1000):
+    from ai_dm.config.settings import ServiceKind
+    from ai_dm.state.world import Connection, Location
+
+    ferry = cfg.model_copy(deep=True)
+    ferry.services.kinds["ferry"] = ServiceKind(
+        name="перевозка", price_cp=50, unit="once", effect="passage", transport="water"
+    )
+    ctx = service_ctx(registry, ferry, money=money, services=["ferry"])
+    world = ctx.bundle.world
+    world.locations["island"] = Location(id="island", name="Остров")
+    world.locations["vale"].connections.append(
+        Connection(to="island", distance_m=4800, kind="water", needs_transport=True)
+    )
+    return ctx
+
+
+def ferry(ctx):
+    return apply(ctx, req(
+        "service", npc_id="grok", direction="buy", service_id="ferry", qty=1, destination="island"
+    ))
+
+
+def test_passage_moves_hero_across_and_charges(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    price = prices(listing(ctx))["ferry"]
+    d = ferry(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "island"
+    assert ctx.hero.money_cp == 1000 - price
+    assert price > 0
+
+
+def test_passage_shifts_clock_by_edge_time(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    # 4800 м водой: 50 % от часа
+    assert ctx.bundle.world.clock.now_s == 1800
+
+
+def test_passage_takes_companion_with_follows(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ctx.bundle.world.npcs["bran"] = NPC(
+        id="bran", name="Бран", named=True, means=["m"], location_id="vale", follows=ctx.hero.id
+    )
+    ctx.bundle.world.npcs["tom"] = NPC(
+        id="tom", name="Том", named=True, means=["m"], location_id="vale"
+    )
+    price = prices(listing(ctx))["ferry"]
+    ferry(ctx)
+    assert ctx.bundle.world.npcs["bran"].location_id == "island"
+    assert ctx.bundle.world.npcs["tom"].location_id == "vale"
+    assert ctx.hero.money_cp == 1000 - price
+
+
+def test_passage_without_money_is_rejected_and_hero_stays(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    before = dump(ctx)
+    d = ferry(ctx)
+    assert d.status == "rejected"
+    assert ctx.hero.location_id == "vale"
+    assert dump(ctx) == before
+
+
+def ferry_to(ctx, destination, qty=1):
+    return apply(ctx, req(
+        "service", npc_id="grok", direction="buy", service_id="ferry", qty=qty,
+        destination=destination,
+    ))
+
+
+@pytest.mark.parametrize("destination", ["", "atlantis", "cellar", "forest"])
+def test_passage_bad_destination_is_invalid_and_nothing_changes(registry, cfg, destination):
+    # пусто; неизвестный id; существующая, но не сосед; сосед по суше (род ребра не водный)
+    from ai_dm.state.world import Location
+
+    ctx = passage_ctx(registry, cfg)
+    ctx.bundle.world.locations["cellar"] = Location(id="cellar", name="Погреб")
+    before = dump(ctx)
+    d = ferry_to(ctx, destination)
+    assert isinstance(d, Invalid)
+    assert d.code == "no_passage"
+    assert dump(ctx) == before
+
+
+def test_passage_bad_destination_lists_ids_the_npc_takes_to(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    d = ferry_to(ctx, "forest")
+    assert "island" in d.message
+    assert "forest" not in d.message
+
+
+def test_passage_qty_three_charges_one_price(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    price = prices(listing(ctx))["ferry"]
+    d = ferry_to(ctx, "island", qty=3)
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 1000 - price
+
+
+def test_passage_feed_line(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert "Перевозка: Грок, 5 см — «Остров»" in ferry(ctx).log
+
+
+def test_passage_with_exact_money_is_accepted(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=50)
+    d = ferry(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 0
+    assert ctx.hero.location_id == "island"
+
+
+def test_passage_records_location_visited_event(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    assert [(e.type, e.data) for e in ctx.events] == [("location_visited", {"id": "island"})]
+
+
+def test_passage_result_names_destination_and_one_unit_whatever_the_qty(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    d = ferry_to(ctx, "island", qty=3)
+    assert d.result["location_id"] == "island"
+    assert d.result["qty"] == 1
+    assert d.result["total_cp"] == d.result["price_cp"] == 50
+
+
+def test_passage_lists_all_companions_comma_separated(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    for npc_id, name in (("bran", "Бран"), ("tom", "Том")):
+        ctx.bundle.world.npcs[npc_id] = NPC(
+            id=npc_id, name=name, named=True, means=["m"], location_id="vale", follows=ctx.hero.id
+        )
+    assert "С тобой: Бран, Том" in ferry(ctx).log
+
+
+# М0 П2, правки по ревью: перевозка после сдвига часов делает то же, что travel
+
+def test_passage_ends_expired_concentration(registry, cfg):
+    from ai_dm.state.creature import Concentration
+
+    ctx = passage_ctx(registry, cfg)
+    ctx.hero.creature.concentration = Concentration(spell_id="bless", circle=1, until_s=1000)
+    d = ferry(ctx)
+    assert d.result["concentration_ended"] == "bless"
+    assert ctx.hero.creature.concentration is None
+    assert "Концентрация: Благословение кончилась" in d.log
+
+
+def test_passage_keeps_concentration_that_outlasts_the_crossing(registry, cfg):
+    from ai_dm.state.creature import Concentration
+
+    ctx = passage_ctx(registry, cfg)
+    ctx.hero.creature.concentration = Concentration(spell_id="bless", circle=1, until_s=1801)
+    d = ferry(ctx)
+    assert "concentration_ended" not in d.result
+    assert ctx.hero.creature.concentration is not None
+
+
+def test_passage_reverts_expired_max_hp_effect(registry, cfg):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    ctx = passage_ctx(registry, cfg)
+    creature = ctx.hero.creature
+    creature.hp_max += 5
+    creature.hp_current += 5
+    top = creature.hp_max
+    creature.active_effects.append(ActiveEffect(
+        id="aid", source="x", kind="max_hp", params={"amount": 5},
+        expires=Expiry(kind="seconds", value=1800),
+    ))
+    d = ferry(ctx)
+    assert creature.hp_max == top - 5
+    assert any(line.startswith("Помощь кончилась") for line in d.log)
+
+
+def test_passage_purges_expired_effect(registry, cfg):
+    from ai_dm.state.creature import ActiveEffect, Expiry
+
+    ctx = passage_ctx(registry, cfg)
+    creature = ctx.hero.creature
+    creature.active_effects = [
+        ActiveEffect(id="gone", source="x", kind="buff",
+                     expires=Expiry(kind="seconds", value=1800)),
+        ActiveEffect(id="kept", source="x", kind="buff",
+                     expires=Expiry(kind="seconds", value=1801)),
+    ]
+    ferry(ctx)
+    assert [e.id for e in creature.active_effects] == ["kept"]
+
+
+def test_passage_log_names_companions(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    for npc_id, name in (("bran", "Бран"), ("jorgen", "Йорген")):
+        ctx.bundle.world.npcs[npc_id] = NPC(
+            id=npc_id, name=name, named=True, means=["m"], location_id="vale",
+            follows=ctx.hero.id,
+        )
+    ctx.bundle.world.npcs["tom"] = NPC(
+        id="tom", name="Том", named=True, means=["m"], location_id="vale"
+    )
+    line = next(line for line in ferry(ctx).log if "С тобой:" in line)
+    assert "Бран" in line
+    assert "Йорген" in line
+    assert "Том" not in line
+
+
+def test_passage_log_has_no_companions_line_without_followers(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert not [line for line in ferry(ctx).log if "С тобой:" in line]
+
+
+# М0 П2, решения 94, 95, 97, 98, 102: перевозчик плывёт с героем, сигнал мастеру
+
+def ferry_back(ctx):
+    return apply(ctx, req(
+        "service", npc_id="grok", direction="buy", service_id="ferry", qty=1, destination="vale"
+    ))
+
+
+def add_companion(ctx, npc_id="bran", name="Бран"):
+    ctx.bundle.world.npcs[npc_id] = NPC(
+        id=npc_id, name=name, named=True, means=["m"], location_id="vale", follows=ctx.hero.id
+    )
+
+
+def test_passage_takes_the_ferryman_along(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ctx.bundle.world.npcs["tom"] = NPC(
+        id="tom", name="Том", named=True, means=["m"], location_id="vale"
+    )
+    ferry(ctx)
+    assert grok(ctx).location_id == "island"
+    assert ctx.bundle.world.npcs["tom"].location_id == "vale"
+
+
+def test_passage_without_money_leaves_the_ferryman(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    assert ferry(ctx).status != "accepted"
+    assert grok(ctx).location_id == "vale"
+
+
+def test_passage_to_non_neighbour_leaves_the_ferryman(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert ferry_to(ctx, "forest").code == "no_passage"
+    assert grok(ctx).location_id == "vale"
+
+
+def test_passage_log_does_not_name_the_ferryman_among_companions(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    add_companion(ctx)
+    line = next(line for line in ferry(ctx).log if "С тобой:" in line)
+    assert "Бран" in line
+    assert "Грок" not in line
+
+
+def test_passage_back_with_the_same_ferryman(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    add_companion(ctx)
+    price = prices(listing(ctx))["ferry"]
+    ferry(ctx)
+    d = ferry_back(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "vale"
+    assert ctx.bundle.world.npcs["bran"].location_id == "vale"
+    assert grok(ctx).location_id == "vale"
+    assert ctx.hero.money_cp == 1000 - 2 * price
+    assert ctx.bundle.world.clock.now_s == 3600
+
+
+def test_passage_leaves_no_provider_on_the_left_shore(registry, cfg):
+    from ai_dm.rules.services import passage_providers
+
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    assert passage_providers(ctx.bundle.world, "vale", "water", ctx.cfg) == []
+
+
+def test_passage_providers_skip_passage_of_another_transport(registry, cfg):
+    from ai_dm.config.settings import ServiceKind
+    from ai_dm.rules.services import passage_providers
+
+    ctx = passage_ctx(registry, cfg)
+    ctx.cfg.services.kinds["balloon"] = ServiceKind(
+        name="шар", price_cp=50, unit="once", effect="passage", transport="air"
+    )
+    grok(ctx).services = ["balloon"]
+    assert passage_providers(ctx.bundle.world, "vale", "water", ctx.cfg) == []
+    assert passage_providers(ctx.bundle.world, "vale", "air", ctx.cfg) == [grok(ctx)]
+
+
+def test_service_entries_keep_other_services_before_passage_lines(registry, cfg):
+    from ai_dm.rules.services import service_entries
+
+    ctx = passage_ctx(registry, cfg)
+    grok(ctx).services = ["ferry", "bath"]
+    labels = [label for label, _ in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
+    assert labels == ["перевозка: Остров", "баня"]
+    grok(ctx).services = ["bath", "ferry", "bath"]
+    labels = [label for label, _ in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
+    assert labels == ["баня", "перевозка: Остров", "баня"]
+
+
+def test_travel_after_passage_has_no_ferryman_in_no_route(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    ctx.hero.location_id = "vale"
+    d = apply(ctx, req("advance_time", travel_to="island"))
+    assert d.code == "no_route"
+    assert "перевозят:" not in d.message
+    assert "Грок" not in d.message
+
+
+def test_service_to_ferryman_left_on_the_island_is_absent(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    ctx.hero.location_id = "vale"
+    before = (ctx.hero.money_cp, ctx.hero.location_id)
+    d = ferry(ctx)
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_absent"
+    assert (ctx.hero.money_cp, ctx.hero.location_id) == before
+
+
+def test_ferryman_with_a_shop_sails_with_his_stock(registry, cfg):
+    from ai_dm.state.hero import InventoryEntry
+
+    ctx = passage_ctx(registry, cfg)
+    grok(ctx).trade = TradeProfile(
+        kind="general", purse_cp=5000, restock_at_s=FAR,
+        stock=[InventoryEntry(item_id="dagger", qty=2, cost_cp=200)],
+    )
+    assert ferry(ctx).status == "accepted"
+    assert grok(ctx).location_id == "island"
+    assert [(e.item_id, e.qty) for e in grok(ctx).trade.stock] == [("dagger", 2)]
+
+
+def test_update_ferry_service_with_trade_kind_is_accepted(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=[])
+    d = update(ctx, services=["ferry"], trade_kind="general")
+    assert d.status == "accepted"
+    assert grok(ctx).services == ["ferry"]
+    assert grok(ctx).trade.kind == "general"
+
+
+def test_create_ferry_service_with_trade_kind_is_accepted(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = create(ctx, services=["ferry"], trade_kind="general")
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["cook_1"].services == ["ferry"]
+
+
+def test_passage_signals_the_master_about_the_ferryman(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert ferry(ctx).signal_to_master == (
+        "Грок переправился с героем и ждёт здесь; обратно — ещё одна плата"
+    )
+
+
+def test_refused_passage_has_no_signal(registry, cfg):
+    # у отказа «нет денег» свой прежний сигнал о деньгах (short_of_money); сигнала перевозчика нет
+    ctx = passage_ctx(registry, cfg, money=0)
+    signal = ferry(ctx).signal_to_master
+    assert "на перевозка" in signal
+    assert "переправился" not in signal
+    assert getattr(ferry_to(ctx, "forest"), "signal_to_master", None) is None
+
+
+def test_passage_log_has_only_the_feed_line_and_companions_line(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert ferry(ctx).log == ["Перевозка: Грок, 5 см — «Остров»"]
+    ctx = passage_ctx(registry, cfg)
+    add_companion(ctx)
+    assert ferry(ctx).log == ["Перевозка: Грок, 5 см — «Остров»", "С тобой: Бран"]
+

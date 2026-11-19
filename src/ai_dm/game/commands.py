@@ -206,6 +206,9 @@ def cmd_sheet(app, arg):
     concentration = app.runner.concentration_line()
     if concentration:
         lines.append(concentration)
+    if hero.transport is not None:
+        kind_name = app.settings.rules.time.transports[hero.transport.kind].name
+        lines.append(f"Транспорт: {hero.transport.name} ({kind_name})")
     if app.registry.get("class", hero.sheet.class_id).spellcasting is not None:
         slots = "; ".join(slots_lines(hero, app.registry))
         lines.append(f"Заклинания (ячейки {slots}): " + ", ".join(spell_names(hero, app.registry)))

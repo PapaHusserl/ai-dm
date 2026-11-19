@@ -252,7 +252,9 @@ def skill_check_call(call_id="sc-1", skill="persuasion", category="medium"):
 
 def advance_call(call_id="adv-1", **fields):
     # advance_time: category или travel_to
+    # М0 П2: при категории цель обязательна — по умолчанию «ожидание»
     data = {"type": "advance_time", "category": "none", "travel_to": "", "pace": "normal"}
+    data["purpose"] = "wait" if fields.get("category", "none") != "none" else "none"
     data.update(fields)
     return {"id": call_id, "name": "advance_time", "input": data}
 

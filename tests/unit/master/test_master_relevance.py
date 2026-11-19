@@ -720,7 +720,7 @@ def test_far_merchant_is_in_known_npcs_with_location(registry, cfg):
 
 # nearby_locations: вынесена в relevance
 
-def test_nearby_locations_current_first_then_links_both_ways(registry):
+def test_nearby_locations_current_first_then_links_both_ways(registry, cfg):
     from ai_dm.master.relevance import nearby_locations
 
     bundle = make_bundle(registry)
@@ -729,21 +729,129 @@ def test_nearby_locations_current_first_then_links_both_ways(registry):
         id="rev", name="Обратная",
         connections=[type(world.locations["vale"].connections[0])(to="vale", distance_m=500)],
     )
-    result = nearby_locations(world, world.locations["vale"])
+    result = nearby_locations(world, world.locations["vale"], cfg)
     assert result[0] == {"id": "vale", "name": "Вейл", "distance_m": 0}
-    assert result[1:] == [
-        {"id": "forest", "name": "Лес", "distance_m": 4800},
-        {"id": "rev", "name": "Обратная", "distance_m": 500},
+    assert [(e["id"], e["name"], e["distance_m"]) for e in result[1:]] == [
+        ("forest", "Лес", 4800),
+        ("rev", "Обратная", 500),
     ]
 
 
-def test_nearby_locations_of_isolated_place_is_only_itself(registry):
+def test_nearby_locations_of_isolated_place_is_only_itself(registry, cfg):
     from ai_dm.master.relevance import nearby_locations
 
     world = make_bundle(registry).world
-    assert nearby_locations(world, world.locations["goblin_den"]) == [
+    assert nearby_locations(world, world.locations["goblin_den"], cfg) == [
         {"id": "goblin_den", "name": "Логово", "distance_m": 0}
     ]
+
+
+# М0 П2 (решение 34): показ мастеру — расстояние, время и род пути того ребра, что берёт путь.
+# Ожидаемый API (предположение доебы, вопрос к папе): nearby_locations(world, place, cfg); записи
+# получают ключи kind и seconds, distance_m остаётся.
+
+def unequal_pair_world(registry):
+    from ai_dm.state.world import Connection, Location
+
+    world = make_bundle(registry).world
+    world.locations["tower"] = Location(
+        id="tower", name="Башня", connections=[Connection(to="tavern", distance_m=3218)]
+    )
+    world.locations["tavern"] = Location(
+        id="tavern", name="Таверна", connections=[Connection(to="tower", distance_m=48270)]
+    )
+    return world
+
+
+def test_nearby_locations_unequal_pair_gives_same_number_from_tower(registry, cfg):
+    from ai_dm.master.relevance import nearby_locations
+
+    world = unequal_pair_world(registry)
+    entry = nearby_locations(world, world.locations["tower"], cfg)[1]
+    assert (entry["id"], entry["distance_m"], entry["seconds"]) == ("tavern", 3218, 2414)
+
+
+def test_nearby_locations_unequal_pair_gives_same_number_from_tavern(registry, cfg):
+    from ai_dm.master.relevance import nearby_locations
+
+    world = unequal_pair_world(registry)
+    entry = nearby_locations(world, world.locations["tavern"], cfg)[1]
+    assert (entry["id"], entry["distance_m"], entry["seconds"]) == ("tower", 3218, 2414)
+
+
+def test_nearby_locations_entry_has_kind_and_seconds_by_kind(registry, cfg):
+    from ai_dm.master.relevance import nearby_locations
+
+    world = make_bundle(registry).world
+    world.locations["vale"].connections[0].kind = "trail"
+    entry = nearby_locations(world, world.locations["vale"], cfg)[1]
+    assert (entry["id"], entry["kind"], entry["seconds"]) == ("forest", "trail", 5400)
+
+
+def island_bundle(registry):
+    from ai_dm.state.world import Connection, Location
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["island"] = Location(id="island", name="Остров")
+    bundle.world.locations["vale"].connections.append(
+        Connection(to="island", distance_m=4800, kind="water", needs_transport=True)
+    )
+    return bundle
+
+
+def island_entry(entries):
+    return next(e for e in entries if e["id"] == "island")
+
+
+def test_nearby_locations_water_neighbour_is_closed_without_transport(registry, cfg):
+    from ai_dm.master.relevance import nearby_locations
+
+    world = island_bundle(registry).world
+    entry = island_entry(nearby_locations(world, world.locations["vale"], cfg))
+    assert (entry["kind"], entry["seconds"], entry["closed"]) == ("water", 1800, True)
+
+
+def test_nearby_locations_water_neighbour_is_open_with_water_transport(registry, cfg):
+    from ai_dm.master.relevance import nearby_locations
+
+    world = island_bundle(registry).world
+    entry = island_entry(nearby_locations(world, world.locations["vale"], cfg, transport="water"))
+    assert entry["closed"] is False
+
+
+def test_state_locations_have_kind_seconds_and_closed(registry, cfg):
+    bundle = island_bundle(registry)
+    locations = data_of(build(make_ctx(registry, cfg, bundle=bundle)))["locations"]
+    forest = next(x for x in locations if x["id"] == "forest")
+    assert (forest["kind"], forest["seconds"], forest["closed"]) == ("road", 3600, False)
+
+
+def test_state_closed_water_neighbour_is_marked_closed(registry, cfg):
+    bundle = island_bundle(registry)
+    locations = data_of(build(make_ctx(registry, cfg, bundle=bundle)))["locations"]
+    assert island_entry(locations)["closed"] is True
+
+
+def test_state_water_neighbour_is_open_with_water_transport(registry, cfg):
+    from ai_dm.state.hero import Transport
+
+    bundle = island_bundle(registry)
+    ctx = make_ctx(registry, cfg, bundle=bundle)
+    ctx.hero.transport = Transport(kind="water", name="ялик")
+    locations = data_of(build(ctx))["locations"]
+    assert island_entry(locations)["closed"] is False
+
+
+def test_state_hero_transport_has_kind_and_name(registry, cfg):
+    from ai_dm.state.hero import Transport
+
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.transport = Transport(kind="water", name="ялик")
+    assert data_of(build(ctx))["hero"]["transport"] == {"kind": "water", "name": "ялик"}
+
+
+def test_state_hero_without_transport_has_no_transport_key(registry, cfg):
+    assert "transport" not in data_of(build(make_ctx(registry, cfg)))["hero"]
 
 
 # Ж2 (п. 0.10, BACKLOG 85): безымянный NPC с активной целью релевантен, как именованный
@@ -961,6 +1069,22 @@ def test_moved_last_turn_by_outcome_and_by_note(registry):
     moved_turn(by_note, player_input="(Перед этим герой сам: пришёл в «Лес» (60 с).) Жду")
     assert moved_last_turn(by_outcome) is True
     assert moved_last_turn(by_note) is True
+
+
+def test_moved_last_turn_by_passage_outcome(registry):
+    from ai_dm.master.relevance import moved_last_turn
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, outcomes=["Перевозка: Грок, 5 см — «Лес»"])
+    assert moved_last_turn(bundle) is True
+
+
+def test_absent_location_is_empty_after_a_passage_outcome(registry):
+    from ai_dm.master.relevance import absent_location_mention
+
+    bundle = make_bundle(registry)
+    moved_turn(bundle, outcomes=["Перевозка: Грок, 5 см — «Лес»"])
+    assert absent_location_mention(bundle, "Вы думаете про лес.") == []
 
 
 def test_moved_last_turn_ignores_a_turn_of_another_scene(registry):

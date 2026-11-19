@@ -552,6 +552,19 @@ def test_location_data_with_parent_and_connections():
     }
 
 
+def test_location_data_keeps_non_default_route_kind():
+    # М0 П2: род пути и «нужен транспорт» доходят до файла пака (имена полей — предположение доебы)
+    spec = PackLocation.model_validate(location_input(
+        id="inn", name="Трактир", parent_id="square", description="",
+        connections=[{
+            "to": "dock", "distance_m": 900, "kind": "water", "needs_transport": True,
+        }],
+    ))
+    assert pack_handlers.location_data(spec)["connections"] == [
+        {"to": "dock", "distance_m": 900, "kind": "water", "needs_transport": True}
+    ]
+
+
 def test_tone_data_keeps_only_filled_fields():
     tone = Tone(violence="жестоко", notes="заметка")
     assert pack_handlers.tone_data(tone) == {"violence": "жестоко", "notes": "заметка"}

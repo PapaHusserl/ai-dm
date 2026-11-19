@@ -10,7 +10,7 @@
   - заброшено
   connections:
   - to: old_tar_works
-    distance_m: 42680
+    distance_m: 3200
   visited: true
   origin: pack
 - id: ancient_tomb
@@ -19,6 +19,10 @@
   description: Катакомбы/шахты с саркофагом Мор-Владыки
   tags:
   - гробница
+  connections:
+  - to: ash_forge
+    distance_m: 500
+    kind: mine
   visited: false
   origin: pack
 - id: ash_forge
@@ -28,6 +32,10 @@
   tags:
   - крепость
   - логово врага
+  connections:
+  - to: east_shaft
+    distance_m: 300
+    kind: mine
   visited: false
   origin: pack
 - id: bathhouse_city
@@ -46,6 +54,10 @@
   description: Болота с тайной гатью (Старый Волок)
   tags:
   - болото
+  connections:
+  - to: viper_island
+    distance_m: 2000
+    kind: trail
   visited: true
   origin: pack
 - id: black_spring
@@ -89,6 +101,9 @@
   description: Хранилище, казематы, конюшни, каретный двор, офицерский флигель; ворота выбиты взрывом в гл. II
   tags:
   - власть
+  connections:
+  - to: sanctuary_of_dawn
+    distance_m: 650
   visited: true
   origin: pack
 - id: city_waterworks
@@ -112,6 +127,13 @@
   name: Ущелье Мёртвой Сосны
   parent_id: iron_ridge
   description: Быстрый маршрут 18–20 ч, риск засады 75%
+  connections:
+  - to: watch_tower_outpost
+    distance_m: 30400
+    kind: trail
+  - to: ash_forge
+    distance_m: 30400
+    kind: trail
   visited: false
   origin: pack
 - id: deep_shaft
@@ -120,6 +142,13 @@
   description: Подземный маршрут 26–28 ч
   tags:
   - шахта
+  connections:
+  - to: watch_tower_outpost
+    distance_m: 43200
+    kind: mine
+  - to: ash_forge
+    distance_m: 43200
+    kind: mine
   visited: false
   origin: pack
 - id: devils_backwater
@@ -128,6 +157,10 @@
   description: Зыбучие пески, старая ива — логово гончих, останки Итана
   tags:
   - болото
+  connections:
+  - to: swamp_topkoe
+    distance_m: 2500
+    kind: offroad
   visited: true
   origin: pack
 - id: dry_heather
@@ -137,6 +170,9 @@
   tags:
   - магазин
   - Ложа
+  connections:
+  - to: sanctuary_of_dawn
+    distance_m: 700
   visited: true
   origin: pack
 - id: east_shaft
@@ -154,6 +190,9 @@
   tags:
   - квартал
   - гильдия
+  connections:
+  - to: sanctuary_of_dawn
+    distance_m: 800
   visited: true
   origin: pack
 - id: heather_wastes
@@ -175,7 +214,7 @@
   - горы
   connections:
   - to: city
-    distance_m: 1080000
+    distance_m: 230400
   visited: false
   origin: pack
 - id: iron_ridge_foothills
@@ -199,12 +238,18 @@
   tags:
   - деревня
   - предгорья
+  connections:
+  - to: iron_ridge_foothills
+    distance_m: 3000
   visited: false
   origin: pack
 - id: olbrecht_manor
   name: Усадьба Ольбрехта
   parent_id: city
   description: Упомянута как цель для обыска
+  connections:
+  - to: grey_quarter
+    distance_m: 300
   visited: false
   origin: pack
 - id: old_gat
@@ -256,6 +301,9 @@
   description: Лавка Хэка на торговой площади
   tags:
   - магазин
+  connections:
+  - to: sanctuary_of_dawn
+    distance_m: 230
   visited: true
   origin: pack
 - id: swamp_topkoe
@@ -263,6 +311,10 @@
   description: Туманные дикие земли без дорог; река Вязкая
   tags:
   - болото
+  connections:
+  - to: old_gat
+    distance_m: 1500
+    kind: offroad
   visited: true
   origin: pack
 - id: tavern_drunken_dragon
@@ -273,8 +325,6 @@
   - таверна
   - безопасная зона
   connections:
-  - to: old_tower
-    distance_m: 48270
   - to: sanctuary_of_dawn
     distance_m: 1000
   - to: chernolesye
@@ -285,6 +335,9 @@
   name: Усадьба Варена
   parent_id: city
   description: Богатый квартал; тайник за гобеленом с лилией (опустошён)
+  connections:
+  - to: grey_quarter
+    distance_m: 300
   visited: true
   origin: pack
 - id: viper_island
@@ -295,7 +348,8 @@
   - зачищено
   connections:
   - to: dead_barrow
-    distance_m: 42680
+    distance_m: 2000
+    kind: trail
   visited: true
   origin: pack
 - id: watch_tower_outpost
@@ -308,11 +362,22 @@
   name: Карниз Белых Ветров
   parent_id: iron_ridge
   description: 'Скрытный маршрут по скалам: 34–36 ч'
+  connections:
+  - to: watch_tower_outpost
+    distance_m: 42000
+    kind: offroad
+  - to: ash_forge
+    distance_m: 42000
+    kind: offroad
   visited: false
   origin: pack
 - id: wolf_teeth_pass
   name: Перевал Волчьих Зубов
   parent_id: iron_ridge
   description: Ущелье с туманом
+  connections:
+  - to: iron_ridge
+    distance_m: 2000
+    kind: trail
   visited: false
   origin: pack

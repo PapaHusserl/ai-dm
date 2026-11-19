@@ -1,5 +1,6 @@
 # Загрузчик пака (этап 3, партия 1; STAGE3-PLAN A2). API и допущения -- в campaign_kit.py.
 # Ошибки пака -- построчно, с путём файла и полем; битая сущность не даёт загрузить пак.
+import pytest
 from campaign_kit import default_files, ids, load, pack_errors, text_of, write_pack
 
 
@@ -736,3 +737,66 @@ def test_shipped_dir_holds_the_vale_pack():
     from ai_dm.campaign.loader import SHIPPED_DIR
 
     assert (SHIPPED_DIR / "vale" / "campaign.yaml").is_file()
+
+
+# М0 П2 (сверка кода): род пути и needs_transport ребра пака сверяет check_pack_refs
+
+def edge_files(**edge):
+    files = default_files()
+    files["locations.yaml"][0]["connections"] = [{"to": "tavern", "distance_m": 100, **edge}]
+    return files
+
+
+def test_edge_with_unknown_route_kind_is_a_load_error(tmp_path, registry):
+    check_error(tmp_path, registry, edge_files(kind="canal"), "locations.yaml", "'town'", "canal")
+
+
+@pytest.mark.parametrize("edge", [
+    {"kind": "water"},
+    {"kind": "water", "needs_transport": False},
+    {"kind": "air"},
+    {"kind": "road", "needs_transport": True},
+    {"kind": "trail", "needs_transport": True},
+])
+def test_edge_needs_transport_against_its_kind_is_a_load_error(tmp_path, registry, edge):
+    check_error(tmp_path, registry, edge_files(**edge), "locations.yaml", "'town'",
+                "needs_transport")
+
+
+def test_edge_error_names_the_file_location_and_target(tmp_path, registry):
+    check_error(
+        tmp_path, registry, edge_files(kind="canal"),
+        "locations.yaml: location 'town', ребро в 'tavern', поле kind",
+    )
+
+
+def two_edges(first, second):
+    files = default_files()
+    files["locations.yaml"][0]["connections"] = [
+        {"to": "tavern", "distance_m": 100, **first},
+        {"to": "cellar", "distance_m": 100, **second},
+    ]
+    return files
+
+
+def test_edge_after_an_unknown_kind_edge_is_still_checked(tmp_path, registry):
+    files = two_edges({"kind": "canal"}, {"kind": "water"})
+    check_error(tmp_path, registry, files, "canal", "ребро в 'cellar', поле needs_transport")
+
+
+def test_edge_after_a_mine_edge_is_still_checked(tmp_path, registry):
+    files = two_edges({"kind": "mine"}, {"kind": "water"})
+    check_error(tmp_path, registry, files, "ребро в 'cellar', поле needs_transport")
+
+
+@pytest.mark.parametrize("edge", [
+    {"kind": "water", "needs_transport": True},
+    {"kind": "air", "needs_transport": True},
+    {"kind": "mine"},
+    {"kind": "mine", "needs_transport": True},
+    {"kind": "road"},
+    {},
+])
+def test_edge_agreeing_with_its_kind_loads(tmp_path, registry, edge):
+    pack = load(write_pack(tmp_path, edge_files(**edge)), registry)
+    assert ids(pack.locations) == ["town", "tavern", "cellar"]

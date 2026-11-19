@@ -64,7 +64,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # ФД2 П2: абзац о товаре вне каталога в правилах и поле GiveCustomItem.npc_id (замер 24798:
 # rules 12748, tools 12050; 24600 -> 24830).
 # К3б П4: фраза о `minions`, решение 41 (замер 24858: rules 12808, tools 12050; 24830 -> 24880).
-STATIC_MAX = 24880
+# М0 П2: поля инструментов kind/needs_transport/destination/purpose и правила о перевозке, роде
+# пути и цели времени (замер 25186: rules 12932, tools 12254; 24880 -> 25200).
+STATIC_MAX = 25200
 
 MODES = sorted(MODE_TOOLS)
 

@@ -5,7 +5,7 @@ from ai_dm.rules import trade as trade_rules
 from ai_dm.rules.inventory import find_item
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
-from ai_dm.rules.services import kinds_of, quote
+from ai_dm.rules.services import kinds_of, passage_targets, quote
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.inv_sections import inv_section
 
@@ -65,6 +65,9 @@ def service_rows(game, npc, cap_of):
     rows = []
     for kind_id, kind in kinds_of(npc, cfg):
         price = quote(kind, npc, world, cfg)
+        if kind.effect == "passage":
+            rows += passage_rows(game, npc, (kind_id, kind), cap_of)
+            continue
         label = f"{kind.name} — {format_cp(price)} / {UNIT_WORDS[kind.unit]}"
         template = f"/shop услуга {npc.id} {kind_id} {{qty}}"
         echo = strings.SHOP_ECHO.format(
@@ -73,6 +76,26 @@ def service_rows(game, npc, cap_of):
         # комната снимается на одну ночь, обряд снятия -- один раз
         cap = 1 if kind.effect in ("lodging", "cure") else cap_of(price)
         action = shop_action(strings.SHOP_SERVICE, template, echo, cap)
+        rows.append((label, kind.description, [action], strings.SHOP_SERVICE_TAB))
+    return rows
+
+
+def passage_rows(game, npc, listed, cap_of):
+    # перевозка (id, ServiceKind): строка на каждое место, куда везёт; место -- в id услуги через
+    # двоеточие, раз за сделку
+    world = game.bundle.world
+    cfg = game.settings.rules
+    kind_id, kind = listed
+    price = quote(kind, npc, world, cfg)
+    rows = []
+    for target in passage_targets(world, npc.location_id, kind.transport, cfg):
+        name = f"{kind.name}: {world.locations[target].name}"
+        label = f"{name} — {format_cp(price)} / {UNIT_WORDS[kind.unit]}"
+        template = f"/shop услуга {npc.id} {kind_id}:{target} {{qty}}"
+        echo = strings.SHOP_ECHO.format(
+            verb=strings.SHOP_SERVICE, name=name, npc=shown_name(npc)
+        )
+        action = shop_action(strings.SHOP_SERVICE, template, echo, min(1, cap_of(price)))
         rows.append((label, kind.description, [action], strings.SHOP_SERVICE_TAB))
     return rows
 

@@ -45,24 +45,55 @@ def day_part(now_s: int, cfg: RulesConfig) -> str:
     return DAY_PART_NAMES["morning"]
 
 
-def travel_seconds(distance_m: int, pace: str, cfg: RulesConfig) -> int:
-    if pace not in cfg.time.travel_pace:
-        raise ValueError(f"неизвестный темп: {pace!r}")
-    if distance_m < 0:
-        raise ValueError("дистанция не может быть отрицательной")
-    return -(-(distance_m * 3600) // cfg.time.travel_pace[pace])
+def linked_edges(world, place) -> dict[str, list]:
+    # рёбра места в обе стороны по id соседа (существующие локации): исходящие и входящие
+    edges: dict[str, list] = {}
+    for c in place.connections:
+        edges.setdefault(c.to, []).append(c)
+    for other in world.locations.values():
+        for c in other.connections:
+            if c.to == place.id:
+                edges.setdefault(other.id, []).append(c)
+    return {i: cs for i, cs in edges.items() if i in world.locations}
 
 
-def route_path(world, from_id: str, to_id: str) -> list[tuple[str, int]] | None:
-    # кратчайший путь по карте (сумма distance_m, связи в обе стороны); при равной длине
-    # остаётся первый найденный путь. Ответ -- переходы (id, distance_m) без старта:
-    # [] -- старт и есть цель, None -- пути нет
+def hero_transport(hero) -> str | None:
+    # род транспорта героя для route_path и nearby_locations; транспорта нет -- None
+    return None if hero.transport is None else hero.transport.kind
+
+
+def edge_seconds(distance_m: int, kind: str, pace: str, cfg: RulesConfig) -> int:
+    # время ребра: метры пешком темпом pace, помноженные на процент рода пути; одно округление вверх
+    percent = cfg.time.route_kinds[kind].percent
+    return -(-(distance_m * 3600 * percent) // (cfg.time.travel_pace[pace] * 100))
+
+
+def edge_open(c, cfg: RulesConfig, transport: str | None) -> bool:
+    # ребро открыто: транспорт не нужен или это род транспорта его рода пути
+    return not c.needs_transport or transport == cfg.time.route_kinds[c.kind].transport
+
+
+def open_edges(world, cfg: RulesConfig, transport: str | None, pace: str) -> dict:
+    # {id: [(сосед, секунды)]} по открытым рёбрам в обе стороны; рёбра к несуществующим пропущены
     edges: dict[str, list[tuple[str, int]]] = {}
     for place in world.locations.values():
         for c in place.connections:
-            if c.to in world.locations:
-                edges.setdefault(place.id, []).append((c.to, c.distance_m))
-                edges.setdefault(c.to, []).append((place.id, c.distance_m))
+            if c.to in world.locations and edge_open(c, cfg, transport):
+                d = edge_seconds(c.distance_m, c.kind, pace, cfg)
+                edges.setdefault(place.id, []).append((c.to, d))
+                edges.setdefault(c.to, []).append((place.id, d))
+    return edges
+
+
+def route_path(
+    world, from_id: str, to_id: str, cfg: RulesConfig, transport: str | None = None,
+    pace: str = "normal",
+) -> list[tuple[str, int]] | None:
+    # быстрейший путь по карте (сумма секунд рёбер, связи в обе стороны); при равном времени
+    # остаётся первый найденный путь. Ребро с needs_transport открыто, только если transport --
+    # род транспорта его рода пути. Ответ -- переходы (id, seconds) без старта:
+    # [] -- старт и есть цель, None -- пути нет
+    edges = open_edges(world, cfg, transport, pace)
     best = {from_id: 0}
     came: dict[str, tuple[str, int]] = {}
     queue = [(0, from_id)]
@@ -86,6 +117,17 @@ def route_path(world, from_id: str, to_id: str) -> list[tuple[str, int]] | None:
         path.append((current, d))
         current = previous
     return path[::-1]
+
+
+def closing_transport(
+    world, from_id: str, to_id: str, cfg: RulesConfig, pace: str = "normal"
+) -> str | None:
+    # род транспорта, без которого пути нет: первый из [time.transports] по порядку конфига,
+    # с которым route_path даёт путь; ни с одним -- None
+    for transport in cfg.time.transports:
+        if route_path(world, from_id, to_id, cfg, transport, pace) is not None:
+            return transport
+    return None
 
 
 def advance_by_category(clock: GameClock, category: str, cfg: RulesConfig) -> int:
