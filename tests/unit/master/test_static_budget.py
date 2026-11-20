@@ -66,7 +66,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # К3б П4: фраза о `minions`, решение 41 (замер 24858: rules 12808, tools 12050; 24830 -> 24880).
 # М0 П2: поля инструментов kind/needs_transport/destination/purpose и правила о перевозке, роде
 # пути и цели времени (замер 25186: rules 12932, tools 12254; 24880 -> 25200).
-STATIC_MAX = 25200
+# М0 П3б: правила о пути отрезками, блок `journey`, решение 117 (замер 25430: rules
+# 13176, tools 12254; 25200 -> 25450).
+STATIC_MAX = 25450
 
 MODES = sorted(MODE_TOOLS)
 

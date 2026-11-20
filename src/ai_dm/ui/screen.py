@@ -9,8 +9,9 @@ from ai_dm.game.sheet_text import boon_effects, condition_names, hp_text
 from ai_dm.llm.cost import check_limit
 from ai_dm.rules.derived import ac_summary, clock_text
 from ai_dm.rules.inventory import entry_name
+from ai_dm.rules.journey import journey_left_s
 from ai_dm.rules.money import format_cp
-from ai_dm.rules.time_ops import day_part
+from ai_dm.rules.time_ops import day_part, minutes_text
 from ai_dm.ui.combat_menu import TargetChip
 from ai_dm.ui.format import COMBAT_HINT
 
@@ -44,6 +45,20 @@ class Block:
     combat: bool = False
 
 
+def journey_text(app, hero):
+    # « · в пути: к «X», осталось 1 ч»; в «дороге» без цели (имя дороги её называет); пути нет -- ""
+    journey = hero.journey
+    if journey is None:
+        return ""
+    world = app.bundle.world
+    left_s = journey_left_s(world, hero, app.settings.rules)
+    left = f"осталось {minutes_text(left_s)}" if left_s else "пути нет"
+    goal = ""
+    if hero.location_id != journey.road_id:
+        goal = f"к «{world.locations[journey.to].name}», "
+    return f" · в пути: {goal}{left}"
+
+
 def status_line(app):
     hero = hero_of(app.bundle)
     clock = app.bundle.world.clock
@@ -54,7 +69,7 @@ def status_line(app):
     place = app.bundle.world.locations[hero.location_id]
     return (
         f"{hp_text(hero.creature)}{conditions} · "
-        f"{ac_summary(hero, app.registry, clock.now_s)} · {place.name} · "
+        f"{ac_summary(hero, app.registry, clock.now_s)} · {place.name}{journey_text(app, hero)} · "
         f"{clock.to_date()} {clock_text(clock.now_s)} "
         f"{day_part(clock.now_s, app.settings.rules)} · сессия ${spent:.4f}"
     )

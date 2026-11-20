@@ -31,6 +31,7 @@ from ai_dm.rules.boons import BOONS
 from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.derived import always_prepared, clock_text, companion_due, hero_feature_ids
 from ai_dm.rules.inventory import entry_name, find_item
+from ai_dm.rules.journey import journey_left_s, road_ends
 from ai_dm.rules.knowledge import prompt_entries
 from ai_dm.rules.npc_memory import goals_data, memory_data, memory_last
 from ai_dm.rules.npc_names import name_hidden
@@ -79,6 +80,23 @@ def absent_data(ctx, user_input):
     places = [] if moved(user_input, []) else absent_location_mention(bundle, text)
     if places:
         data["absent_location"] = [{"id": i, "name": world.locations[i].name} for i in places]
+    return data
+
+
+def journey_data(world, hero, cfg):
+    # путь отрезками: цель, темп, остаток; в «дороге» ещё выходы с ребра для travel_to
+    journey = hero.journey
+    to = world.locations[journey.to]
+    data = {
+        "to": {"id": to.id, "name": to.name},
+        "pace": journey.pace,
+        "left_s": journey_left_s(world, hero, cfg),
+    }
+    if hero.location_id == journey.road_id:
+        data["edge"] = [
+            {"id": end, "name": world.locations[end].name, "seconds": seconds}
+            for end, seconds in road_ends(world, journey, cfg, hero_transport(hero))
+        ]
     return data
 
 
@@ -716,6 +734,8 @@ class PromptBuilder:
         }
         if known_locations:
             data["known_locations"] = known_locations
+        if hero.journey is not None:
+            data["journey"] = journey_data(world, hero, ctx.cfg)
         data.update(absent_data(ctx, user_input))
         kept = {t.turn_seq for t in context_plan.turns}
         recap = scene_recap(ctx.bundle, kept, max_chars=RECAP_MAX)

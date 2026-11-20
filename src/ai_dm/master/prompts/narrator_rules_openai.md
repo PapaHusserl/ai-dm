@@ -7,3 +7,4 @@
 - `offer_choices` вызывай в том же ответе, что и текст сцены.
 - Путь и время: `advance_time` с `category` — только с `purpose` (`wait` или `work`), путь — `travel_to`;
   перевозка — `service` с `destination`.
+- Путь отрезками: `journey` (`left_s`); дальше — `travel_to` с `journey.to.id`; `travel_to` места героя снимает путь — только если он решил остаться.

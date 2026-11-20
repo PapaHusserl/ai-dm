@@ -2116,3 +2116,21 @@ updated: 2026-11-20
 - `ai_dm.protocol.handlers.world.x_location_create__mutmut_` (16): 29–36 45 46 85 100 107 122 126 127;
 - `ai_dm.protocol.handlers.resources.x_no_route_message__mutmut_` 39, 51; `x_travel__mutmut_147`;
 - `ai_dm.combat.defeat.x_do_capture__mutmut_` 62, 63; `ai_dm.campaign.loader.x_check_pack_refs__mutmut_85`.
+
+## 344. Правила рассказчика для openai упёрлись в предел 300 токенов
+status: idea
+priority: low
+updated: 2026-11-20
+
+(М0 П3б, docs/plan-m0.md, «Файлы» — «Сверка кода П3б») `narrator_rules_openai.md` после пункта о пути — 299
+токенов при пределе 300 (`test_prompt_openai_extra.py::test_rules_extra_is_within_300_tokens`). Следующий пункт
+не войдёт без сжатия старых или пересмотра предела.
+
+## 345. Выжившие мутанты М0 П3б на старых строках
+status: idea
+priority: low
+updated: 2026-11-20
+
+(М0 П3б, docs/plan-m0.md) mutmut П3б, старые строки (segfault — mutmut не смог прогнать тесты на мутанте):
+`ai_dm.ui.screen.x_status_line__mutmut_7` (`/ 1e9` → `/ 1000000001.0` — расход сессии),
+`ai_dm.master.prompt.xǁPromptBuilderǁstate_data__mutmut_7` (`known_locations = []` → `None`).

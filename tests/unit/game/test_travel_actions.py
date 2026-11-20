@@ -743,3 +743,394 @@ def test_combat_menu_number_keeps_inv_notes_and_reaches_the_runner_as_is(
         app.handle("1")
     assert seen == ["1"]
     assert app.inv_notes == ["снял «Щит»"]
+
+
+# М0 П3: /go и /where в пути (решения 37, 48, 63). Старая башня -- 24000 м от таверны (5 ч):
+# отрезки по 2 ч, на дороге герой в временной локации «Дорога: <откуда> — <куда>».
+
+def far_tower(app):
+    add_place(app, "tower", "Старая башня", distance=24000)
+
+
+def journey_of(app):
+    return hero_of(app.bundle).journey
+
+
+def test_go_to_a_far_place_walks_only_one_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    start = now_s(app)
+    app.handle("/go башня")
+    assert now_s(app) == start + 7200
+    assert journey_of(app).to == "tower"
+
+
+def test_go_in_the_road_continues_with_the_next_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    start = now_s(app)
+    app.handle("/go башня")
+    app.handle("/go башня")
+    assert now_s(app) == start + 14400
+    assert journey_of(app) is not None
+
+
+def test_go_third_leg_arrives_and_ends_the_journey(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    start = now_s(app)
+    for _ in range(3):
+        app.handle("/go башня")
+    assert location_of(app) == "tower"
+    assert journey_of(app) is None
+    assert now_s(app) == start + 18000
+
+
+def test_where_in_the_road_is_headed_by_the_road_name(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    assert travel_actions.where_lines(app)[0] == f"Ты в «Дорога: {HERE} — Старая башня»."
+
+
+def test_where_in_the_road_shows_both_ends_with_the_time_left(registry, tmp_path):
+    # решение 107: строки концов ребра целиком (отступ не сверяется), метров и рода пути нет
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    lines = travel_actions.where_lines(app)
+    assert lines[1].strip() == f"1. {HERE} — назад, 2 ч"
+    assert lines[2].strip() == "2. Старая башня — вперёд, 3 ч"
+
+
+def test_where_in_the_road_ends_with_the_hint_to_continue(registry, tmp_path):
+    # решение 112: подсказка -- последняя строка /where в пути
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    lines = travel_actions.where_lines(app)
+    assert len(lines) == 4
+    assert lines[-1] == "В пути: /go — дальше к «Старая башня»; /go <место> — свернуть"
+
+
+def test_where_in_the_road_without_the_forward_edge_has_one_line_back(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    app.bundle.world.locations["lame_goose"].connections = [
+        c for c in app.bundle.world.locations["lame_goose"].connections if c.to != "tower"
+    ]
+    lines = travel_actions.where_lines(app)
+    assert lines[1].strip() == f"1. {HERE} — назад, 2 ч"
+    assert len(lines) == 3
+
+
+def test_where_hint_names_the_new_target_after_a_turn(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    add_place(app, "far", "Дальний хутор", distance=40000)
+    visit(app, "far")
+    app.handle("/go башня")
+    app.handle("/go хутор")
+    # решение 118: после двух команд герой ровно в узле «Таверна» (назад 7200 с)
+    assert travel_actions.where_lines(app)[-1] == (
+        "В пути: /go — дальше к «Дальний хутор»; /go <место> — свернуть; "
+        f"/go {HERE} — остаться"
+    )
+
+
+def test_where_without_a_journey_has_no_hint(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    assert "В пути" not in "\n".join(travel_actions.where_lines(app))
+
+
+def test_where_after_arrival_has_no_hint(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    for _ in range(3):
+        app.handle("/go башня")
+    assert "В пути" not in "\n".join(travel_actions.where_lines(app))
+
+
+def start_journey(app, to="tower"):
+    # путь начинает мастер запросом travel_to: у башни нет рёбер от героя, /go её ещё не знает
+    from ai_dm.game.shop_actions import apply_shop
+    from ai_dm.protocol.requests import AdvanceTime
+
+    apply_shop(app, AdvanceTime(type="advance_time", travel_to=to))
+
+
+def chain_places(app):
+    # Таверна -7200 м- Брод -4800- Ключ -7200- Чернолесье -12000- Старая башня: отрезки по 2 ч
+    add_place(app, "ford", "Брод", distance=7200)
+    add_place(app, "spring", "Ключ", near="ford", distance=4800)
+    add_place(app, "wood", "Чернолесье", near="spring", distance=7200)
+    add_place(app, "tower", "Старая башня", near="wood", distance=12000)
+
+
+def test_go_by_number_in_the_road_walks_back_to_the_start(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    start = now_s(app)
+    app.handle("/go 1")
+    assert location_of(app) == "lame_goose"
+    assert now_s(app) == start + 7200
+    assert journey_of(app) is None
+
+
+def test_go_by_number_two_in_the_road_walks_the_next_leg_forward(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    start = now_s(app)
+    app.handle("/go 2")
+    assert now_s(app) == start + 7200
+    assert journey_of(app).to == "tower"
+
+
+def test_go_to_the_target_in_the_road_of_a_chain_walks_the_next_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    chain_places(app)
+    start_journey(app)
+    start = now_s(app)
+    app.handle("/go башня")
+    assert now_s(app) == start + 7200
+    assert location_of(app) == "wood"
+    assert journey_of(app).to == "tower"
+
+
+def test_text_intent_in_the_road_walks_the_next_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path, [text_step("Лес шумит.")])
+    chain_places(app)
+    start_journey(app)
+    start = now_s(app)
+    app.handle("иду к башне")
+    assert now_s(app) >= start + 7200
+    assert location_of(app) == "wood"
+
+
+# решение 104: голый /go в пути -- следующий отрезок к journey.to
+
+def test_bare_go_in_the_road_walks_the_next_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    start = now_s(app)
+    reply = app.handle("/go")
+    assert now_s(app) == start + 7200
+    assert "В пути к «Старая башня»: прошло 4 ч, осталось 1 ч" in reply.lines
+
+
+def test_bare_go_in_a_route_node_walks_the_next_leg(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    chain_places(app)
+    start_journey(app)
+    start_journey(app)
+    assert location_of(app) == "wood"
+    start = now_s(app)
+    reply = app.handle("/go")
+    assert now_s(app) == start + 7200
+    assert "В пути к «Старая башня»" in "\n".join(reply.lines)
+
+
+def test_bare_go_last_leg_arrives_and_ends_the_journey(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    app.handle("/go")
+    reply = app.handle("/go")
+    assert location_of(app) == "tower"
+    assert journey_of(app) is None
+    assert "Путь в «Старая башня»: 3600 с" in reply.lines
+
+
+def test_bare_go_without_a_journey_shows_usage_and_stays(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    start = now_s(app)
+    assert app.handle("/go").lines == ["Куда идти: /go <название места или номер из /where>"]
+    assert now_s(app) == start
+    assert location_of(app) == "lame_goose"
+
+
+def test_bare_go_in_the_road_is_refused_while_a_menu_is_pending(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    start = now_s(app)
+    app.pending = "error_menu"
+    reply = app.handle("/go")
+    assert reply.lines == ["Сначала нужно сделать выбор в меню."]
+    assert now_s(app) == start
+
+
+def test_bare_go_in_the_road_is_refused_in_combat(registry, tmp_path):
+    steps = [tools_step(start_combat_call(intent="kill")), text_step("Гоблины бросаются на вас.")]
+    app = build_app(registry, tmp_path, script_then_react(steps))
+    far_tower(app)
+    app.handle("/go башня")
+    assert app.handle("Бью ногой дверь").turn.committed is True
+    assert app.bundle.session.active_combat is not None
+    start = now_s(app)
+    assert app.handle("/go").lines == [travel_actions.IN_COMBAT]
+    assert now_s(app) == start
+
+
+def test_where_in_the_road_does_not_list_the_road_among_known_places(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    assert "Знакомые места" not in "\n".join(travel_actions.where_lines(app))
+
+
+def test_where_after_arrival_does_not_mention_a_road(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    for _ in range(3):
+        app.handle("/go башня")
+    assert "Дорога" not in "\n".join(travel_actions.where_lines(app))
+
+
+def test_known_skips_a_temporary_place_even_when_visited(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    world = app.bundle.world
+    world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Лес", temporary=True, origin="engine", visited=True
+    )
+    world.locations["old_crypt"].connections.append(Connection(to="road_x", distance_m=10))
+    assert [p.id for p in travel_actions.known(app)] == []
+
+
+# решения 114, 116, 118: «остаюсь» в узле пути
+
+STAY_LINE = "Путь к «Старая башня» прерван: остаёшься в «Чернолесье»"
+
+
+def in_the_wood(registry, tmp_path, steps=None):
+    # два отрезка по цепочке: герой ровно в «Чернолесье», путь к башне не окончен
+    app = make_app(registry, tmp_path, steps)
+    chain_places(app)
+    start_journey(app)
+    start_journey(app)
+    assert location_of(app) == "wood"
+    assert journey_of(app) is not None
+    return app
+
+
+def test_go_own_place_in_a_route_node_ends_the_journey_with_the_stay_line(registry, tmp_path):
+    app = in_the_wood(registry, tmp_path)
+    start = now_s(app)
+    reply = app.handle("/go чернолесье")
+    assert journey_of(app) is None
+    assert location_of(app) == "wood"
+    assert now_s(app) == start
+    assert STAY_LINE in reply.lines
+
+
+def test_go_own_place_in_a_route_node_leaves_no_note_for_the_narrator(registry, tmp_path):
+    # решение 116: пометки мастеру нет, слов «пришёл в» тоже
+    app = in_the_wood(registry, tmp_path)
+    app.handle("/go чернолесье")
+    assert app.inv_notes == []
+
+
+def test_pick_own_place_in_a_route_node_gives_the_target(registry, tmp_path):
+    app = in_the_wood(registry, tmp_path)
+    assert travel_actions.pick(app, "чернолесье") == ("wood", None)
+
+
+def test_pick_own_place_without_a_journey_is_still_already_here(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    assert travel_actions.pick(app, "хромой") == (None, f"Ты уже в «{HERE}».")
+
+
+def test_bare_go_after_staying_shows_usage(registry, tmp_path):
+    app = in_the_wood(registry, tmp_path)
+    app.handle("/go чернолесье")
+    start = now_s(app)
+    assert app.handle("/go").lines == [travel_actions.USAGE]
+    assert now_s(app) == start
+
+
+def test_stay_text_of_the_player_does_not_end_the_journey(registry, tmp_path):
+    app = in_the_wood(registry, tmp_path)
+    assert travel_actions.go_by_text(app, "Остаюсь в Чернолесье") == []
+    assert journey_of(app) is not None
+    assert location_of(app) == "wood"
+
+
+def test_narrator_travel_to_the_own_node_costs_the_turn_fifteen_minutes(registry, tmp_path):
+    from game_kit import advance_call
+
+    steps = [tools_step(advance_call(travel_to="wood")), text_step("Ты остаёшься.")]
+    app = in_the_wood(registry, tmp_path, steps)
+    start = now_s(app)
+    app.handle("Решаю никуда не идти")
+    assert journey_of(app) is None
+    assert now_s(app) - start == 900
+
+
+def test_where_in_a_route_node_ends_the_hint_with_the_stay_option(registry, tmp_path):
+    # решение 118: «…; /go <узел> — остаться» -- только в узле
+    app = in_the_wood(registry, tmp_path)
+    assert travel_actions.where_lines(app)[-1] == (
+        "В пути: /go — дальше к «Старая башня»; /go <место> — свернуть; /go Чернолесье — остаться"
+    )
+
+
+def test_where_in_the_road_keeps_the_hint_without_the_stay_option(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    assert "остаться" not in travel_actions.where_lines(app)[-1]
+
+
+# решение 123: имя дороги в «дороге» не место
+
+def test_go_by_the_road_name_in_the_road_is_unknown_and_the_journey_stays(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    app.handle("/go башня")
+    start = now_s(app)
+    place = location_of(app)
+    reply = app.handle("/go дорога")
+    assert reply.lines[0].startswith("Не знаю такого места: дорога.")
+    assert journey_of(app).to == "tower"
+    assert location_of(app) == place
+    assert now_s(app) == start
+
+
+# решение 122: в «дороге» знакомые места -- строкой перед подсказкой, номера после концов ребра
+
+def test_where_in_the_road_lists_a_visited_far_place_before_the_hint(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    add_place(app, "far", "Дальний хутор", distance=40000)
+    visit(app, "far")
+    app.handle("/go башня")
+    lines = travel_actions.where_lines(app)
+    assert lines[-2] == "Знакомые места: 3. Дальний хутор"
+    assert lines[-1].startswith("В пути: /go")
+
+
+def test_go_by_number_of_a_known_place_in_the_road_changes_the_target(registry, tmp_path):
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    add_place(app, "far", "Дальний хутор", distance=40000)
+    visit(app, "far")
+    app.handle("/go башня")
+    app.handle("/go 3")
+    assert journey_of(app).to == "far"
+
+
+def test_near_entries_in_the_road_use_the_hero_transport_for_the_forward_end(registry, tmp_path):
+    # башня за водой: вперёд с ребра есть выход, только пока у героя есть водный транспорт
+    from ai_dm.state.hero import Transport
+
+    app = make_app(registry, tmp_path)
+    far_tower(app)
+    link = next(c for c in app.bundle.world.locations["lame_goose"].connections if c.to == "tower")
+    link.kind, link.needs_transport = "water", True
+    hero_of(app.bundle).transport = Transport(kind="water", name="ялик")
+    app.handle("/go башня")
+    assert [p.id for p, _ in travel_actions.near_entries(app)] == ["lame_goose", "tower"]

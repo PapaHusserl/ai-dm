@@ -35,11 +35,14 @@ def nearby_locations(world, place, cfg, transport=None):
 
 
 def known_places(world, near_ids):
-    # посещённые места, не соседние текущей (цели travel_to по пути карты), по id
+    # посещённые места, не соседние текущей (цели travel_to по пути карты), по id;
+    # временные «дороги» пути не места
     return [
         p
         for p in sorted(world.locations.values(), key=lambda p: p.id)
-        if (p.visited or world.flags.get(f"visited:{p.id}")) and p.id not in near_ids
+        if (p.visited or world.flags.get(f"visited:{p.id}"))
+        and p.id not in near_ids
+        and not p.temporary
     ]
 
 

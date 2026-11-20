@@ -382,6 +382,198 @@ def test_status_line_lists_every_condition_once(registry, tmp_path):
     assert status_line(app).count("проклят") == 1
 
 
+# М0 П3: «в пути» в статус-строке (решения 48, 64)
+
+def far_tower_app(registry, tmp_path):
+    from ai_dm.state.world import Connection, Location
+
+    app = text_app(registry, tmp_path, [text_step()])
+    world = app.bundle.world
+    world.locations["tower"] = Location(id="tower", name="Старая башня")
+    world.locations["lame_goose"].connections.append(Connection(to="tower", distance_m=24000))
+    return app
+
+
+def test_status_line_in_the_road_has_no_target_after_in_the_way(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    app.handle("/go башня")
+    line = status_line(app)
+    assert "Дорога: Таверна «Хромой гусь» — Старая башня · в пути: осталось 3 ч · " in line
+
+
+def test_status_line_in_a_route_node_names_the_target_and_time_left(registry, tmp_path):
+    from ai_dm.state.world import Connection, Location
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    world = app.bundle.world
+    world.locations["wood"] = Location(id="wood", name="Чернолесье")
+    world.locations["tower"] = Location(id="tower", name="Старая башня", visited=True)
+    world.locations["lame_goose"].connections.append(Connection(to="wood", distance_m=9600))
+    world.locations["wood"].connections.append(Connection(to="tower", distance_m=12000))
+    app.handle("/go башня")
+    line = status_line(app)
+    assert "Чернолесье · в пути: к «Старая башня», осталось 2 ч 30 мин · " in line
+
+
+def test_status_line_after_staying_in_a_route_node_has_no_in_the_way(registry, tmp_path):
+    # решение 114: «остаюсь» снимает путь, «в пути: к …» пропадает
+    from ai_dm.state.world import Connection, Location
+    from ai_dm.ui.screen import status_line
+
+    app = text_app(registry, tmp_path, [text_step()])
+    world = app.bundle.world
+    world.locations["wood"] = Location(id="wood", name="Чернолесье")
+    world.locations["tower"] = Location(id="tower", name="Старая башня", visited=True)
+    world.locations["lame_goose"].connections.append(Connection(to="wood", distance_m=9600))
+    world.locations["wood"].connections.append(Connection(to="tower", distance_m=12000))
+    app.handle("/go башня")
+    assert "в пути" in status_line(app)
+    app.handle("/go чернолесье")
+    line = status_line(app)
+    assert "в пути" not in line
+    assert "Чернолесье" in line
+
+
+def test_status_line_in_the_road_does_not_name_the_target_after_in_the_way(registry, tmp_path):
+    # решение 64: цель после «в пути» -- только в узле маршрута (решение 105)
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    app.handle("/go башня")
+    assert "в пути: к" not in status_line(app)
+
+
+def test_turn_without_travel_in_the_road_ticks_fifteen_minutes_and_keeps_the_journey(
+    registry, tmp_path
+):
+    from ai_dm.game.scene import hero_of
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    app.handle("/go башня")
+    before = app.bundle.world.clock.now_s
+    app.handle("Осматриваюсь")
+    assert app.bundle.world.clock.now_s - before == 900
+    assert hero_of(app.bundle).journey is not None
+    assert "в пути: осталось" in status_line(app)
+
+
+def test_scene_mark_in_the_road_is_the_road_name(registry, tmp_path):
+    # решение 106: сцена, начатая в «дороге», берёт location_id записи дороги
+    from ai_dm.game.scene import start_scene
+    from ai_dm.ui.screen import scene_mark
+
+    app = far_tower_app(registry, tmp_path)
+    app.handle("/go башня")
+    scene = start_scene(app.bundle)
+    assert scene_mark(app) == (scene.id, "Дорога: Таверна «Хромой гусь» — Старая башня")
+
+
+def test_status_line_without_a_journey_has_no_in_the_way(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    assert "в пути" not in status_line(app)
+
+
+def test_status_line_after_arrival_has_no_in_the_way(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    for _ in range(3):
+        app.handle("/go башня")
+    assert "в пути" not in status_line(app)
+
+
+# М0 П3б: дороги до цели пути нет (решение 124)
+
+def wood_route_app(registry, tmp_path, extra=None):
+    from ai_dm.state.world import Connection, Location
+
+    app = text_app(registry, tmp_path, [text_step()])
+    world = app.bundle.world
+    world.locations["wood"] = Location(id="wood", name="Чернолесье")
+    world.locations["tower"] = Location(id="tower", name="Старая башня", visited=True)
+    world.locations["lame_goose"].connections.append(Connection(to="wood", distance_m=9600))
+    world.locations["wood"].connections.append(Connection(to="tower", distance_m=12000))
+    if extra:
+        world.locations["mill"] = Location(id="mill", name=extra, visited=True)
+        world.locations["wood"].connections.append(Connection(to="mill", distance_m=1000))
+    return app
+
+
+def cut_tower_edge(app, from_id):
+    world = app.bundle.world
+    world.locations[from_id].connections[:] = [
+        c for c in world.locations[from_id].connections if c.to != "tower"
+    ]
+
+
+def test_status_line_in_a_node_says_no_way_when_the_road_to_target_is_gone(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = wood_route_app(registry, tmp_path)
+    app.handle("/go башня")
+    cut_tower_edge(app, "wood")
+    line = status_line(app)
+    assert "Чернолесье · в пути: к «Старая башня», пути нет · " in line
+    assert "осталось" not in line
+
+
+def test_status_line_in_the_road_says_no_way_when_the_road_to_target_is_gone(registry, tmp_path):
+    from ai_dm.ui.screen import status_line
+
+    app = far_tower_app(registry, tmp_path)
+    app.handle("/go башня")
+    cut_tower_edge(app, "lame_goose")
+    line = status_line(app)
+    assert "Дорога: Таверна «Хромой гусь» — Старая башня · в пути: пути нет · " in line
+    assert "осталось" not in line
+
+
+def test_bare_go_refuses_and_keeps_the_journey_when_the_road_is_gone(registry, tmp_path):
+    from ai_dm.game.scene import hero_of
+
+    app = wood_route_app(registry, tmp_path)
+    app.handle("/go башня")
+    cut_tower_edge(app, "wood")
+    now = app.bundle.world.clock.now_s
+    reply = app.handle("/go")
+    assert "отсюда нет пути" in "\n".join(reply.lines)
+    assert hero_of(app.bundle).journey is not None
+    assert app.bundle.world.clock.now_s == now
+
+
+def test_go_to_the_target_name_refuses_and_keeps_the_journey_when_the_road_is_gone(
+    registry, tmp_path
+):
+    from ai_dm.game.scene import hero_of
+
+    app = wood_route_app(registry, tmp_path)
+    app.handle("/go башня")
+    cut_tower_edge(app, "wood")
+    now = app.bundle.world.clock.now_s
+    reply = app.handle("/go башня")
+    assert "отсюда нет пути" in "\n".join(reply.lines)
+    assert hero_of(app.bundle).journey is not None
+    assert app.bundle.world.clock.now_s == now
+
+
+def test_go_by_part_of_name_asks_to_clarify_between_neighbour_and_journey_target(
+    registry, tmp_path
+):
+    app = wood_route_app(registry, tmp_path, extra="Старая мельница")
+    app.handle("/go башня")
+    reply = app.handle("/go старая")
+    text = "\n".join(reply.lines)
+    assert "Уточни, куда: " in text
+    assert "«Старая мельница»" in text
+    assert "«Старая башня»" in text
+
+
 def groomed_effect(until):
     from ai_dm.state.creature import ActiveEffect, Expiry
 

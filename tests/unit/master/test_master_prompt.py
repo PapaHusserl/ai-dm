@@ -990,3 +990,112 @@ def test_state_last_combat_gear_names_come_from_the_registry(registry, cfg):
     ctx.bundle.session.last_combat = LastCombat(defeated=["goblin_warrior"], gear=gear)
     names = data_of(build(ctx))["last_combat"]["gear"]
     assert "скимитар" in names[0].casefold()
+
+
+# М0 П3б: блок journey в состоянии мастеру (умолчания п. 23, решение 39) -- только при hero.journey
+
+def far_tower_ctx(registry, cfg):
+    from ai_dm.state.world import Connection, Location
+
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["tower"] = Location(id="tower", name="Старая башня")
+    world.locations["vale"].connections.append(Connection(to="tower", distance_m=24000))
+    return ctx
+
+
+def in_the_road(ctx):
+    # герой на ребре Вейл -> Старая башня, пройдено 7200 с
+    from ai_dm.state.hero import Journey
+    from ai_dm.state.world import Location
+
+    ctx.bundle.world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Старая башня", temporary=True, origin="engine",
+        visited=True,
+    )
+    ctx.hero.location_id = "road_x"
+    ctx.hero.journey = Journey(
+        to="tower", pace="normal", start_id="vale", road_id="road_x", from_id="vale",
+        edge_to="tower", edge_done_s=7200,
+    )
+
+
+def test_state_without_journey_has_no_journey_key(registry, cfg):
+    assert "journey" not in data_of(build(make_ctx(registry, cfg)))
+
+
+def test_state_journey_in_the_road_is_the_whole_block(registry, cfg):
+    ctx = far_tower_ctx(registry, cfg)
+    in_the_road(ctx)
+    assert data_of(build(ctx))["journey"] == {
+        "to": {"id": "tower", "name": "Старая башня"},
+        "pace": "normal",
+        "left_s": 10800,
+        "edge": [
+            {"id": "vale", "name": "Вейл", "seconds": 7200},
+            {"id": "tower", "name": "Старая башня", "seconds": 10800},
+        ],
+    }
+
+
+def test_state_journey_in_a_route_node_has_no_edge(registry, cfg):
+    from ai_dm.state.hero import Journey
+    from ai_dm.state.world import Connection
+
+    ctx = far_tower_ctx(registry, cfg)
+    forest = ctx.bundle.world.locations["forest"]
+    forest.connections.append(Connection(to="tower", distance_m=12000))
+    ctx.hero.location_id = "forest"
+    ctx.hero.journey = Journey(to="tower", pace="normal", start_id="vale", road_id="road_x")
+    journey = data_of(build(ctx))["journey"]
+    assert set(journey) == {"to", "pace", "left_s"}
+    assert journey["left_s"] == 9000
+
+
+def test_state_journey_block_is_gone_after_the_hero_stays_in_a_route_node(registry, cfg):
+    # решения 114, 116: мастер узнаёт об «остаюсь» по исчезнувшему блоку journey
+    from ai_dm.protocol.apply import apply
+    from ai_dm.protocol.requests import AdvanceTime
+    from ai_dm.state.hero import Journey
+    from ai_dm.state.world import Connection
+
+    ctx = far_tower_ctx(registry, cfg)
+    forest = ctx.bundle.world.locations["forest"]
+    forest.connections.append(Connection(to="tower", distance_m=12000))
+    ctx.hero.location_id = "forest"
+    ctx.hero.journey = Journey(to="tower", pace="normal", start_id="vale")
+    assert "journey" in data_of(build(ctx))
+    d = apply(ctx, AdvanceTime(type="advance_time", travel_to="forest"))
+    assert d.status == "accepted"
+    assert "journey" not in data_of(build(ctx))
+
+
+def test_state_location_in_the_road_is_the_road_record(registry, cfg):
+    ctx = far_tower_ctx(registry, cfg)
+    in_the_road(ctx)
+    location = data_of(build(ctx))["location"]
+    assert location == {"id": "road_x", "name": "Дорога: Вейл — Старая башня"}
+
+
+def test_state_known_locations_skip_a_visited_temporary_place(registry, cfg):
+    from ai_dm.state.world import Location
+
+    ctx = far_tower_ctx(registry, cfg)
+    in_the_road(ctx)
+    ctx.bundle.world.locations["road_old"] = Location(
+        id="road_old", name="Дорога: Старая", temporary=True, origin="engine", visited=True
+    )
+    ctx.bundle.world.locations["goblin_den"].visited = True
+    known = data_of(build(ctx)).get("known_locations") or []
+    assert [x["id"] for x in known] == ["goblin_den"]
+
+
+def test_state_journey_in_the_road_edge_uses_the_hero_transport(registry, cfg):
+    from ai_dm.state.hero import Transport
+
+    ctx = far_tower_ctx(registry, cfg)
+    link = next(c for c in ctx.bundle.world.locations["vale"].connections if c.to == "tower")
+    link.kind, link.needs_transport = "water", True
+    ctx.hero.transport = Transport(kind="water", name="ялик")
+    in_the_road(ctx)
+    assert [e["id"] for e in data_of(build(ctx))["journey"]["edge"]] == ["vale", "tower"]
