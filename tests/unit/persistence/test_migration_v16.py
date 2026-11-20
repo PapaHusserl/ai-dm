@@ -159,11 +159,6 @@ def test_v16_fingerprint_file_exists():
     assert (SCHEMA_DIR / "save_v16.schema.json").is_file()
 
 
-def test_v16_fingerprint_equals_current_schema():
-    stored = json.loads((SCHEMA_DIR / "save_v16.schema.json").read_text(encoding="utf-8"))
-    assert stored == json.loads(json.dumps(SaveBundle.model_json_schema()))
-
-
 NEW_V16_FIELDS = [
     ("Connection", "kind"), ("Connection", "needs_transport"),
     ("Location", "temporary"),

@@ -96,6 +96,112 @@ def test_capture_uses_the_lair_from_params_when_the_group_has_none(registry, cfg
     assert hero.location_id == "goblin_den"
 
 
+# М0 П3: плен в пути заканчивает путь и удаляет временную «дорогу» (решения 50, 65)
+
+def captured_on_the_road(registry, cfg):
+    from ai_dm.state.hero import Journey
+    from ai_dm.state.world import Location
+
+    engine, hero = defeated(registry, cfg)
+    engine.world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Башня", temporary=True, origin="engine"
+    )
+    hero.location_id = "road_x"
+    hero.journey = Journey(
+        to="tower", pace="normal", start_id="vale", road_id="road_x", from_id="vale",
+        edge_to="tower", edge_done_s=7200,
+    )
+    apply(engine, hero, registry, cfg, ["capture"])
+    return engine, hero
+
+
+def test_capture_on_the_road_ends_the_journey(registry, cfg):
+    engine, hero = captured_on_the_road(registry, cfg)
+    assert hero.location_id == "goblin_den"
+    assert hero.journey is None
+
+
+def test_capture_on_the_road_removes_the_road_record(registry, cfg):
+    engine, hero = captured_on_the_road(registry, cfg)
+    assert "road_x" not in engine.world.locations
+
+
+# решение 113 (правка 5): живой спутник с follows уходит из «дороги» в логово вместе с героем
+
+def npc_at(npc_id, location_id, follows=None, status="alive"):
+    from ai_dm.state.world import NPC
+
+    return NPC(
+        id=npc_id, name=npc_id, means=["меч"], location_id=location_id, follows=follows,
+        status=status,
+    )
+
+
+def captured_with(registry, cfg, npcs, on_road=True):
+    from ai_dm.state.hero import Journey
+    from ai_dm.state.world import Location
+
+    engine, hero = defeated(registry, cfg)
+    engine.world.locations["black"] = Location(id="black", name="Чернолесье")
+    engine.world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Башня", temporary=True, origin="engine"
+    )
+    for npc in npcs:
+        engine.world.npcs[npc.id] = npc
+    hero.location_id = "road_x" if on_road else "black"
+    hero.journey = Journey(
+        to="tower", pace="normal", start_id="vale", road_id="road_x", from_id="vale",
+        edge_to="tower", edge_done_s=7200,
+    )
+    apply(engine, hero, registry, cfg, ["capture"])
+    return engine, hero
+
+
+def test_capture_on_the_road_takes_the_alive_companion_to_the_lair(registry, cfg):
+    engine, hero = captured_with(registry, cfg, [npc_at("lira", "road_x", follows="hero")])
+    assert engine.world.npcs["lira"].location_id == "goblin_den"
+    assert engine.world.npcs["lira"].follows == "hero"
+
+
+def test_capture_on_the_road_takes_both_companions_to_the_lair(registry, cfg):
+    npcs = [npc_at("lira", "road_x", follows="hero"), npc_at("bor", "road_x", follows="hero")]
+    engine, hero = captured_with(registry, cfg, npcs)
+    assert engine.world.npcs["lira"].location_id == "goblin_den"
+    assert engine.world.npcs["bor"].location_id == "goblin_den"
+
+
+def test_capture_on_the_road_other_npcs_of_the_road_lose_the_place(registry, cfg):
+    npcs = [
+        npc_at("dead_mate", "road_x", follows="hero", status="dead"),
+        npc_at("stranger", "road_x"),
+        npc_at("other_mate", "road_x", follows="somebody"),
+        npc_at("away_mate", "black", follows="hero"),
+    ]
+    engine, hero = captured_with(registry, cfg, npcs)
+    npcs = engine.world.npcs
+    assert npcs["dead_mate"].location_id is None
+    assert npcs["stranger"].location_id is None
+    assert npcs["other_mate"].location_id is None
+    assert npcs["away_mate"].location_id == "black"
+
+
+def test_capture_in_a_route_node_leaves_the_companion_in_the_node(registry, cfg):
+    engine, hero = captured_with(
+        registry, cfg, [npc_at("lira", "black", follows="hero")], on_road=False
+    )
+    assert engine.world.npcs["lira"].location_id == "black"
+    assert "road_x" not in engine.world.locations
+
+
+def test_capture_without_a_journey_leaves_the_companion_at_the_fight_place(registry, cfg):
+    engine, hero = defeated(registry, cfg)
+    engine.world.npcs["lira"] = npc_at("lira", "hall", follows="hero")
+    hero.location_id = "hall"
+    apply(engine, hero, registry, cfg, ["capture"])
+    assert hero.location_id == "goblin_den"
+    assert engine.world.npcs["lira"].location_id == "hall"
+
+
 # М0 П2б, решения 100, 103: плен на берегу перевозчика возвращает его молча
 
 def ferryman_on_island(engine, home):

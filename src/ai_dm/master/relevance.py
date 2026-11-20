@@ -46,7 +46,7 @@ def known_places(world, near_ids):
 def moved(player_input, outcomes) -> bool:
     # в ходе был переход: пометка «пришёл в «…» (/go, текст игрока), travel_to, перевозка
     return "пришёл в «" in player_input or any(
-        o.startswith(("Путь в «", "Перевозка: ")) for o in outcomes
+        o.startswith(("Путь в «", "В пути к «", "Перевозка: ")) for o in outcomes
     )
 
 

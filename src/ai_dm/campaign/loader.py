@@ -226,6 +226,15 @@ def edge_errors(pack, base, time) -> list[str]:
     return errors
 
 
+def temporary_errors(pack, base) -> list[str]:
+    # временные локации («дорога») заводит только движок
+    return [
+        f"{base / 'locations.yaml'}: location {location.id!r}, поле temporary: "
+        "временные локации заводит только движок"
+        for location in pack.locations if location.temporary
+    ]
+
+
 def check_pack_refs(pack, registry) -> list[str]:
     known = {
         "npc": {npc.id for npc in pack.npcs},
@@ -259,6 +268,7 @@ def check_pack_refs(pack, registry) -> list[str]:
             )
     errors += unknown_service_errors(pack, base, rules.services.kinds)
     errors += edge_errors(pack, base, rules.time)
+    errors += temporary_errors(pack, base)
     owners = {}
     for npc in pack.npcs:
         owners[npc.id] = npc.opportunity

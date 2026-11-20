@@ -130,6 +130,15 @@ def closing_transport(
     return None
 
 
+def minutes_text(seconds: int) -> str:
+    # до часа -- «41 мин», от часа -- «1 ч 1 мин», ровно часы -- «2 ч»; минуты округляются вверх
+    minutes = max(1, -(-seconds // 60))
+    hours, minutes = divmod(minutes, 60)
+    if not hours:
+        return f"{minutes} мин"
+    return f"{hours} ч" + (f" {minutes} мин" if minutes else "")
+
+
 def advance_by_category(clock: GameClock, category: str, cfg: RulesConfig) -> int:
     seconds = category_seconds(category, clock, cfg)
     clock.advance(seconds)

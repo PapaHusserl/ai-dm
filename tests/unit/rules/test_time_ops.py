@@ -485,6 +485,422 @@ def test_route_path_place_without_edges_has_no_implicit_link_to_parent(cfg):
     assert route_path(world, "vale", "cabin", cfg) is None
 
 
+# М0 П3а (docs/plan-m0.md, «Тесты» П3; умолчания п. 23): путь из «дороги» -- герой на ребре
+# vale -> tower (24000 м, «дорога», обычный темп 18000 с), вышел из vale, прошёл 7200 с.
+#   road_ends(world, journey, cfg, transport=None) -> [(from_id, edge_done_s), (edge_to, остаток)]
+#   road_path(world, journey, to_id, cfg, transport=None) -> [(id, seconds)] | None
+#   journey_left_s(world, hero, cfg) -> int (секунды до journey.to; пути нет -- 0)
+# Темп -- journey.pace у всех трёх; route_path не меняется.
+
+def on_edge(pace="normal", **fields):
+    from ai_dm.state.hero import Journey
+
+    values = {
+        "to": "tower", "pace": pace, "start_id": "vale", "road_id": "road_x",
+        "from_id": "vale", "edge_to": "tower", "edge_done_s": 7200,
+    }
+    return Journey(**{**values, **fields})
+
+
+def test_road_ends_gives_the_way_back_and_the_rest_of_the_edge(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    assert road_ends(world, on_edge(), cfg) == [("vale", 7200), ("tower", 10800)]
+
+
+def test_road_ends_rest_of_the_edge_follows_the_journey_pace(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    assert road_ends(world, on_edge("fast"), cfg) == [("vale", 7200), ("tower", 13500 - 7200)]
+
+
+def test_road_ends_edge_removed_from_the_map_leaves_only_the_way_back(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(isolated=["vale", "tower"])
+    assert road_ends(world, on_edge(), cfg) == [("vale", 7200)]
+
+
+def test_road_ends_edge_closed_by_transport_leaves_only_the_way_back(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(("vale", "tower", 24000, "water", True))
+    assert road_ends(world, on_edge(), cfg) == [("vale", 7200)]
+
+
+def test_road_ends_edge_opens_with_the_transport(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(("vale", "tower", 24000, "water", True))
+    ends = road_ends(world, on_edge(), cfg, transport="water")
+    assert [place for place, _ in ends] == ["vale", "tower"]
+
+
+def test_road_ends_reverse_recorded_edge_gives_the_same_answer(cfg):
+    from ai_dm.rules.journey import road_ends
+
+    world = kinded_world(("tower", "vale", 24000, "road"))
+    assert road_ends(world, on_edge(), cfg) == [("vale", 7200), ("tower", 10800)]
+
+
+def test_road_path_to_the_far_end_is_the_rest_of_the_edge(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    assert road_path(world, on_edge(), "tower", cfg) == [("tower", 10800)]
+
+
+def test_road_path_to_the_start_is_the_way_already_walked(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    assert road_path(world, on_edge(), "vale", cfg) == [("vale", 7200)]
+
+
+def test_road_path_third_place_behind_the_start_goes_back_first(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"), ("vale", "spur", 1200, "road"))
+    assert road_path(world, on_edge(), "spur", cfg) == [("vale", 7200), ("spur", 900)]
+
+
+def test_road_path_third_place_behind_the_far_end_goes_forward_first(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"), ("tower", "spur", 1200, "road"))
+    assert road_path(world, on_edge(), "spur", cfg) == [("tower", 10800), ("spur", 900)]
+
+
+def test_road_path_place_reachable_from_both_ends_takes_the_smaller_sum(cfg):
+    from ai_dm.rules.journey import road_path
+
+    # от vale 9600 м (7200 с): назад 14400; от tower 1200 м (900 с): вперёд 11700
+    world = kinded_world(
+        ("vale", "tower", 24000, "road"), ("vale", "far", 9600, "road"),
+        ("tower", "far", 1200, "road"),
+    )
+    assert road_path(world, on_edge(), "far", cfg) == [("tower", 10800), ("far", 900)]
+
+
+def test_road_path_equal_sums_go_back_through_the_start(cfg):
+    from ai_dm.rules.journey import road_path
+
+    # назад 7200 + 4500 = вперёд 10800 + 900
+    world = kinded_world(
+        ("vale", "tower", 24000, "road"), ("vale", "far", 6000, "road"),
+        ("tower", "far", 1200, "road"),
+    )
+    assert road_path(world, on_edge(), "far", cfg) == [("vale", 7200), ("far", 4500)]
+
+
+def test_road_path_place_without_edges_is_none(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"), isolated=["lost"])
+    assert road_path(world, on_edge(), "lost", cfg) is None
+
+
+def test_road_path_behind_a_water_edge_is_none_without_transport(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"), ("vale", "isle", 4800, "water", True))
+    assert road_path(world, on_edge(), "isle", cfg) is None
+
+
+def test_road_path_behind_a_water_edge_exists_with_water_transport(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "road"), ("vale", "isle", 4800, "water", True))
+    path = road_path(world, on_edge(), "isle", cfg, transport="water")
+    assert path == [("vale", 7200), ("isle", 1800)]
+
+
+def test_road_path_forward_along_a_water_edge_needs_the_transport_for_the_edge_itself(cfg):
+    from ai_dm.rules.journey import road_path
+
+    world = kinded_world(("vale", "tower", 24000, "water", True))
+    path = road_path(world, on_edge(), "tower", cfg, transport="water")
+    assert [place for place, _ in path] == ["tower"]
+
+
+def test_road_path_rest_of_the_way_follows_the_journey_pace(cfg):
+    from ai_dm.rules.journey import road_path
+
+    # от tower до far 12800 м: быстрым темпом 7200 с, обычным 9600 с
+    world = kinded_world(("vale", "tower", 24000, "road"), ("tower", "far", 12800, "road"))
+    path = road_path(world, on_edge("fast"), "far", cfg)
+    assert path == [("tower", 13500 - 7200), ("far", 7200)]
+
+
+def hero_on(location_id, journey):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(location_id=location_id, journey=journey, transport=None)
+
+
+def test_journey_left_in_the_road_is_the_rest_of_the_edge(cfg):
+    from ai_dm.rules.journey import journey_left_s
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    assert journey_left_s(world, hero_on("road_x", on_edge()), cfg) == 10800
+
+
+def test_journey_left_in_a_route_node_is_the_path_from_the_node(cfg):
+    from ai_dm.rules.journey import journey_left_s
+
+    world = kinded_world(("black", "tower", 12000, "road"))
+    journey = on_edge(road_id="road_x", from_id="", edge_to="", edge_done_s=0)
+    assert journey_left_s(world, hero_on("black", journey), cfg) == 9000
+
+
+def test_journey_left_is_zero_when_the_target_is_cut_off(cfg):
+    from ai_dm.rules.journey import journey_left_s
+
+    world = kinded_world(isolated=["vale", "tower"])
+    assert journey_left_s(world, hero_on("road_x", on_edge()), cfg) == 0
+
+
+# М0 П3а, сверка кода: minutes_text живёт в rules/time_ops.py (перенос из game/travel_actions.py)
+
+@pytest.mark.parametrize(
+    ("seconds", "text"),
+    [
+        (60, "1 мин"), (61, "2 мин"), (3600, "1 ч"), (7200, "2 ч"),
+        (3660, "1 ч 1 мин"), (3601, "1 ч 1 мин"),
+    ],
+)
+def test_minutes_text_forms(seconds, text):
+    from ai_dm.rules.time_ops import minutes_text
+
+    assert minutes_text(seconds) == text
+
+
+# leg_stop(route, limit) -> (номер перехода, секунд пройдено по нему);
+# 0 секунд -- ровно в узле route[номер - 1]
+
+def test_leg_stop_inside_the_second_hop():
+    from ai_dm.rules.journey import leg_stop
+
+    assert leg_stop([("a", 3600), ("b", 7200)], 7200) == (1, 3600)
+
+
+def test_leg_stop_exactly_in_a_node():
+    from ai_dm.rules.journey import leg_stop
+
+    assert leg_stop([("a", 7200), ("b", 3600)], 7200) == (1, 0)
+
+
+def test_leg_stop_inside_the_first_hop():
+    from ai_dm.rules.journey import leg_stop
+
+    assert leg_stop([("a", 9000)], 7200) == (0, 7200)
+
+
+def test_leg_stop_route_not_longer_than_the_limit_is_an_error():
+    from ai_dm.rules.journey import leg_stop
+
+    with pytest.raises(ValueError):
+        leg_stop([("a", 10)], 20)
+
+
+# hero_route(world, hero, to_id, cfg, pace): из «дороги» -- road_path темпом journey.pace,
+# из узла (в том числе с journey и записью «дороги») -- route_path темпом аргумента
+
+def test_hero_route_from_a_node_is_route_path_with_the_argument_pace(cfg):
+    from ai_dm.rules.journey import hero_route
+
+    world = kinded_world(("black", "tower", 12000, "road"))
+    assert hero_route(world, hero_on("black", None), "tower", cfg, "fast") == [("tower", 6750)]
+    assert hero_route(world, hero_on("black", None), "tower", cfg, "normal") == [("tower", 9000)]
+
+
+def test_hero_route_in_the_road_is_road_path_with_the_journey_pace_not_the_argument(cfg):
+    from ai_dm.rules.journey import hero_route
+
+    world = kinded_world(("vale", "tower", 24000, "road"))
+    hero = hero_on("road_x", on_edge("fast"))
+    assert hero_route(world, hero, "tower", cfg, "slow") == [("tower", 13500 - 7200)]
+
+
+def test_hero_route_in_a_node_with_a_journey_goes_from_the_node(cfg):
+    from ai_dm.rules.journey import hero_route
+
+    world = kinded_world(("black", "tower", 12000, "road"))
+    journey = on_edge(road_id="road_x", from_id="", edge_to="", edge_done_s=0)
+    assert hero_route(world, hero_on("black", journey), "tower", cfg, "normal") == [("tower", 9000)]
+
+
+def test_hero_route_in_the_road_uses_the_hero_transport(cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import hero_route
+
+    world = kinded_world(("vale", "tower", 24000, "water", True))
+    hero = hero_on("road_x", on_edge())
+    hero.transport = SimpleNamespace(kind="water")
+    route = hero_route(world, hero, "tower", cfg, "normal")
+    assert [place for place, _ in route] == ["tower"]
+
+
+# open_road: занятый id не перезаписывается (правка 3, умолчания п. 7)
+
+def test_open_road_takes_the_next_free_id_when_the_first_is_taken(cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import open_road
+    from ai_dm.state.world import Connection, Location
+
+    taken = Location(
+        id="road_5000", name="Тракт мастера", connections=[Connection(to="vale", distance_m=100)]
+    )
+    world = SimpleNamespace(locations={
+        "vale": Location(id="vale", name="Вейл"), "tower": Location(id="tower", name="Башня"),
+        "road_5000": taken,
+    })
+    journey = on_edge(road_id="")
+    open_road(world, journey, 5000)
+    assert journey.road_id == "road_5001"
+    assert journey.road_id in world.locations
+    assert world.locations[journey.road_id].temporary is True
+    assert world.locations["road_5000"] is taken
+    assert taken.name == "Тракт мастера"
+    assert taken.temporary is False
+    assert len(taken.connections) == 1
+
+
+def test_open_road_skips_every_taken_id_in_a_row(cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import open_road
+    from ai_dm.state.world import Location
+
+    world = SimpleNamespace(locations={
+        "vale": Location(id="vale", name="Вейл"), "tower": Location(id="tower", name="Башня"),
+        "road_5000": Location(id="road_5000", name="Один"),
+        "road_5001": Location(id="road_5001", name="Два"),
+    })
+    journey = on_edge(road_id="")
+    open_road(world, journey, 5000)
+    assert journey.road_id == "road_5002"
+
+
+def test_open_road_free_id_is_by_the_clock(cfg):
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import open_road
+    from ai_dm.state.world import Location
+
+    world = SimpleNamespace(locations={
+        "vale": Location(id="vale", name="Вейл"), "tower": Location(id="tower", name="Башня"),
+    })
+    journey = on_edge(road_id="")
+    open_road(world, journey, 5000)
+    assert journey.road_id == "road_5000"
+
+
+# end_journey
+
+def road_world(npcs=()):
+    from types import SimpleNamespace
+
+    from ai_dm.state.world import Location
+
+    return SimpleNamespace(
+        locations={
+            "vale": Location(id="vale", name="Вейл"),
+            "road_x": Location(id="road_x", name="Дорога", temporary=True, origin="engine"),
+        },
+        npcs={n.id: n for n in npcs}, dangers=[], custom_items={},
+    )
+
+
+def test_end_journey_without_a_journey_changes_nothing():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+
+    world = road_world()
+    hero = SimpleNamespace(journey=None, location_id="vale", death=None)
+    end_journey(world, hero)
+    assert set(world.locations) == {"vale", "road_x"}
+    assert hero.journey is None
+
+
+def test_end_journey_without_a_road_record_only_drops_the_journey():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+
+    world = road_world()
+    hero = SimpleNamespace(
+        journey=on_edge(road_id="", from_id="", edge_to=""), location_id="vale", death=None
+    )
+    end_journey(world, hero)
+    assert hero.journey is None
+    assert set(world.locations) == {"vale", "road_x"}
+
+
+def test_end_journey_clears_the_hero_death_place_of_the_road():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+    from ai_dm.state.death import DeathRecord
+
+    world = road_world()
+    death = DeathRecord(cause="hazard", at_s=10, location_id="road_x")
+    hero = SimpleNamespace(journey=on_edge(), location_id="vale", death=death)
+    end_journey(world, hero)
+    assert hero.death is death
+    assert hero.death.location_id is None
+
+
+def test_end_journey_keeps_the_hero_death_place_elsewhere():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+    from ai_dm.state.death import DeathRecord
+
+    world = road_world()
+    hero = SimpleNamespace(
+        journey=on_edge(), location_id="vale",
+        death=DeathRecord(cause="hazard", at_s=10, location_id="vale"),
+    )
+    end_journey(world, hero)
+    assert hero.death.location_id == "vale"
+
+
+def test_end_journey_item_without_a_holder_is_left_alone():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+
+    world = road_world()
+    world.custom_items["coin"] = SimpleNamespace(holder=None)
+    hero = SimpleNamespace(journey=on_edge(), location_id="vale", death=None)
+    end_journey(world, hero)
+    assert "road_x" not in world.locations
+    assert world.custom_items["coin"].holder is None
+
+
+def test_end_journey_dead_companion_with_follows_loses_the_place():
+    from types import SimpleNamespace
+
+    from ai_dm.rules.journey import end_journey
+    from ai_dm.state.world import NPC
+
+    npc = NPC(
+        id="lira", name="Лира", means=["меч"], location_id="road_x", follows="hero",
+        status="dead"
+    )
+    world = road_world([npc])
+    hero = SimpleNamespace(journey=on_edge(), location_id="vale", death=None)
+    end_journey(world, hero)
+    assert npc.location_id is None
+    assert "road_x" not in world.locations
+
+
 # day_part: утро с 6, день с 12, вечер с 18, ночь с 21 (до утра)
 
 @pytest.mark.parametrize(

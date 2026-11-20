@@ -19,7 +19,7 @@ from ai_dm.protocol.handlers.utility_spells import (
     utility_target,
 )
 from ai_dm.protocol.handlers.world import rejected
-from ai_dm.protocol.hints import allowed, item_ids, reachable_ids
+from ai_dm.protocol.hints import allowed, hero_reachable, item_ids
 from ai_dm.rules import arcane_recovery, custom_items, divine, loot, money, rests, time_ops, xp
 from ai_dm.rules import revive as revive_rules
 from ai_dm.rules import services as service_rules
@@ -40,6 +40,14 @@ from ai_dm.rules.inventory import (
     remove_item,
 )
 from ai_dm.rules.inventory import use_item as use_inventory_item
+from ai_dm.rules.journey import (
+    end_journey,
+    hero_route,
+    journey_left_s,
+    leg_stop,
+    open_road,
+    road_path,
+)
 from ai_dm.rules.modifiers import default_modifier_registry
 from ai_dm.rules.progression import feature_swap_problem, swap_feature_choice
 from ai_dm.rules.spellcasting import (
@@ -59,7 +67,7 @@ from ai_dm.rules.spellcasting import (
     swap_problem,
 )
 from ai_dm.state.creature import ActiveEffect, AppliedCondition, Expiry
-from ai_dm.state.hero import InventoryEntry
+from ai_dm.state.hero import InventoryEntry, Journey
 from ai_dm.state.memory import add_entry
 from ai_dm.state.world import CustomItem
 
@@ -1343,9 +1351,17 @@ def no_route_message(ctx, target, pace):
     # иначе допустимые id достижимых мест
     world = ctx.bundle.world
     here = ctx.hero.location_id
-    closing = time_ops.closing_transport(world, here, target, ctx.cfg, pace)
+    journey = ctx.hero.journey
+    if journey is not None and here == journey.road_id:
+        closing = next(
+            (t for t in ctx.cfg.time.transports
+             if road_path(world, journey, target, ctx.cfg, t) is not None),
+            None,
+        )
+    else:
+        closing = time_ops.closing_transport(world, here, target, ctx.cfg, pace)
     if closing is None:
-        return f"отсюда нет пути в {target!r}" + allowed(reachable_ids(world, here))
+        return f"отсюда нет пути в {target!r}" + hero_reachable(world, ctx.hero)
     name = world.locations[target].name
     kind = ctx.cfg.time.transports[closing]
     message = f"до «{name}» {kind.only} — нужен {kind.name} транспорт"
@@ -1355,55 +1371,133 @@ def no_route_message(ctx, target, pace):
     return message
 
 
-def travel(ctx, request):
+def settle_leg(ctx, request, route, pace, stop):
+    # отрезок кончился на пути route (stop -- переход и пройдено по нему секунд): journey героя и
+    # место остановки -- узел (0 секунд) или «дорога»; возвращает id места
+    index, offset = stop
     hero = ctx.hero
     world = ctx.bundle.world
-    if request.travel_to not in world.locations:
+    old = hero.journey
+    journey = old or Journey(to=request.travel_to, pace=pace, start_id=hero.location_id)
+    journey.to = request.travel_to
+    if offset == 0:
+        journey.from_id, journey.edge_to, journey.edge_done_s = "", "", 0
+        hero.journey = journey
+        return route[index - 1][0]
+    end_id = route[index][0]
+    if old is not None and index == 0 and hero.location_id == old.road_id:
+        # на том же ребре: вперёд к дальнему концу или назад к узлу выхода
+        done = old.edge_done_s + (offset if end_id == old.edge_to else -offset)
+        ends = (old.from_id, old.edge_to)
+    else:
+        done = offset
+        ends = (route[index - 1][0] if index else hero.location_id, end_id)
+    journey.from_id, journey.edge_to = ends
+    journey.edge_done_s = done
+    hero.journey = journey
+    open_road(world, journey, world.clock.now_s)
+    return journey.road_id
+
+
+def target_problem(ctx, request):
+    # Invalid: цели нет или это «дорога» пути; иначе None
+    world = ctx.bundle.world
+    target = world.locations.get(request.travel_to)
+    if target is None:
         return Invalid(
             code="unknown_location",
-            message=f"нет локации {request.travel_to!r}"
-            + allowed(reachable_ids(world, hero.location_id)),
+            message=f"нет локации {request.travel_to!r}" + hero_reachable(world, ctx.hero),
         )
-    pace = request.pace or "normal"
-    transport = time_ops.hero_transport(hero)
-    route = time_ops.route_path(
-        world, hero.location_id, request.travel_to, ctx.cfg, transport, pace
-    )
-    if route == []:
-        name = world.locations[request.travel_to].name
+    if target.temporary:
+        return Invalid(
+            code="temporary_location",
+            message=f"{request.travel_to!r} — «дорога» пути: travel_to ведёт в узлы маршрута"
+            + hero_reachable(world, ctx.hero),
+        )
+    return None
+
+
+def stay_decision(ctx, request):
+    # герой уже в цели: без пути -- отказ; с незаконченным путём (решение 114) -- «остаюсь»:
+    # путь снят, часы на месте
+    hero = ctx.hero
+    world = ctx.bundle.world
+    name = world.locations[request.travel_to].name
+    if hero.journey is None:
         return rejected(
             f"герой уже в «{name}»",
             f"Герой уже в «{name}»: опиши сцену на месте, travel_to не повторяй",
         )
+    goal = world.locations[hero.journey.to].name
+    end_journey(world, hero)
+    result = {
+        "seconds": 0, "now_s": world.clock.now_s, "location_id": hero.location_id, "path": [],
+        "stayed": True,
+    }
+    line = f"Путь к «{goal}» прерван: остаёшься в «{name}»"
+    return Decision(status="accepted", result=result, log=[line])
+
+
+def travel_line(ctx, target, seconds, path, leg):
+    # строка ленты и остаток пути: отрезок (прошло, осталось) или прибытие (через узлы пути)
+    world = ctx.bundle.world
+    hero = ctx.hero
+    if leg:
+        left_s = journey_left_s(world, hero, ctx.cfg)
+        walked = time_ops.minutes_text(hero.journey.walked_s)
+        left = time_ops.minutes_text(left_s)
+        return f"В пути к «{target.name}»: прошло {walked}, осталось {left}", left_s
+    line = f"Путь в «{target.name}»: {seconds} с"
+    if len(path) > 1:
+        line += " (через " + ", ".join(world.locations[i].name for i in path[:-1]) + ")"
+    return line, None
+
+
+def travel(ctx, request):
+    hero = ctx.hero
+    world = ctx.bundle.world
+    problem = target_problem(ctx, request)
+    if problem is not None:
+        return problem
+    pace = hero.journey.pace if hero.journey else request.pace or "normal"
+    route = hero_route(world, hero, request.travel_to, ctx.cfg, pace)
+    if route == []:
+        return stay_decision(ctx, request)
     if not route:
         return Invalid(code="no_route", message=no_route_message(ctx, request.travel_to, pace))
-    seconds = sum(s for _, s in route)
-    seconds = steed_seconds(hero, world.clock.now_s, seconds)
+    total = sum(s for _, s in route)
+    limit = ctx.cfg.time.journey_from_s
+    seconds = steed_seconds(hero, world.clock.now_s, min(total, limit))
     world.clock.advance(seconds)
-    hero.location_id = request.travel_to
+    if total > limit:
+        stop = leg_stop(route, limit)
+        here = settle_leg(ctx, request, route, pace, stop)
+        hero.journey.walked_s += seconds
+        route = route[:stop[0]]
+    else:
+        here = request.travel_to
+    hero.location_id = here
     companions = []
     for npc in world.npcs.values():
         if npc.follows == hero.id and npc.status == "alive":
-            npc.location_id = request.travel_to
+            npc.location_id = here
             companions.append(npc.name)
-    returned = service_rules.return_ferrymen(world, request.travel_to)
+    returned = service_rules.return_ferrymen(world, here)
     path = [location_id for location_id, _ in route]
     for location_id in path:
         event = DomainEvent(type="location_visited", data={"id": location_id})
         apply_events(world, [event])
         ctx.events.append(event)
-    name = world.locations[request.travel_to].name
-    line = f"Путь в «{name}»: {seconds} с"
-    if len(path) > 1:
-        via = ", ".join(world.locations[i].name for i in path[:-1])
-        line += f" (через {via})"
+    result = {"seconds": seconds, "now_s": world.clock.now_s, "location_id": here, "path": path}
+    target = world.locations[request.travel_to]
+    line, left_s = travel_line(ctx, target, seconds, path, total > limit)
+    if left_s is None:
+        end_journey(world, hero)
+    else:
+        result["left_s"] = left_s
     log = [line]
     if companions:
         log.append("С тобой: " + ", ".join(companions))
-    result = {
-        "seconds": seconds, "now_s": world.clock.now_s, "location_id": request.travel_to,
-        "path": path,
-    }
     concentration_note(ctx, log, result)
     signal = service_rules.returned_signal(world, returned) or None
     return Decision(status="accepted", result=result, log=log, signal_to_master=signal)

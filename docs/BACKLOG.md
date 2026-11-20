@@ -2102,3 +2102,17 @@ updated: 2026-11-19
 
 (mutmut М0 П2б, docs/plan-m0.md) `make mutate-diff`, «старые строки»: `ai_dm.combat.defeat.x_do_capture__mutmut_` 47, 48;
 `ai_dm.protocol.handlers.resources.x_travel__mutmut_111` (18, 19 — BACKLOG 341). Не разобраны.
+
+## 343. Выжившие мутанты М0 П3а на старых строках
+status: idea
+priority: low
+updated: 2026-11-20
+
+(mutmut М0 П3а, docs/plan-m0.md) `make mutate-diff`, «старые строки» (119), не разобраны:
+- `ai_dm.protocol.handlers.combat.x_start_combat__mutmut_` (56): 11 12 20 21 23 24 60–67 76–82 106 109–112 123
+  125 143 176 177 179 216 219 224 232–238 244 282–284 286–289 295–297 305 308 313;
+- `ai_dm.protocol.handlers.combat.x_defeat_outcome__mutmut_` (41): 10 11 21 22 52 59–61 66 84 93 94 106 109 112
+  113 116 124 127 133–153 157;
+- `ai_dm.protocol.handlers.world.x_location_create__mutmut_` (16): 29–36 45 46 85 100 107 122 126 127;
+- `ai_dm.protocol.handlers.resources.x_no_route_message__mutmut_` 39, 51; `x_travel__mutmut_147`;
+- `ai_dm.combat.defeat.x_do_capture__mutmut_` 62, 63; `ai_dm.campaign.loader.x_check_pack_refs__mutmut_85`.

@@ -231,6 +231,8 @@ class Journey(BaseModel):
     edge_to: str = ""
     # пройдено по ребру, секунд
     edge_done_s: int = 0
+    # секунд пройдено с начала пути (привал и ход без travel_to не входят)
+    walked_s: int = 0
 
 
 class HeroState(BaseModel):

@@ -1229,6 +1229,51 @@ def test_not_moved_without_note_and_travel_outcome():
     assert moved("Иду в лес", ["Золото: +5", "Куда: Путь в «Лес»"]) is False
 
 
+def test_moved_by_a_leg_line_of_a_long_journey():
+    from ai_dm.master.relevance import moved
+
+    assert moved("", ["В пути к «Башня»: прошло 2 ч, осталось 3 ч"]) is True
+
+
+def test_stay_line_of_a_cancelled_journey_is_not_a_move():
+    # решение 115: строка «остаюсь» переходом не считается
+    from ai_dm.master.relevance import moved
+
+    stay = "Путь к «Старая башня» прерван: остаёшься в «Чернолесье»"
+    assert moved("", [stay]) is False
+
+
+# М0 П3а: NPC без локации (создан в «дороге», герой сошёл) -- по общим правилам npc_reasons
+
+def test_reasons_said_for_a_living_named_npc_without_location(registry):
+    from master_kit import turn_record
+
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "boris", name="Борис", location_id=None)
+    bundle.memory.recent_turns = [turn_record(1, narration="Пришёл Борис")]
+    assert npc_reasons(bundle)["boris"] == {"said"}
+
+
+def test_known_npcs_has_a_named_npc_without_location_with_none_location(registry, cfg):
+    from master_kit import turn_record
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "boris", name="Борис", location_id=None)
+    bundle.memory.recent_turns = [turn_record(1, narration="Пришёл Борис")]
+    known = data_of(build(make_ctx(registry, cfg, bundle=bundle)))["known_npcs"]
+    assert next(n for n in known if n["id"] == "boris")["location_id"] is None
+
+
+def test_reasons_none_for_an_unmentioned_npc_without_location(registry):
+    from ai_dm.master.relevance import npc_reasons
+
+    bundle = make_bundle(registry)
+    add_npc(bundle, "boris", name="Борис", location_id=None)
+    assert "boris" not in npc_reasons(bundle)
+
+
 # Л1 П2 круг 2: place_keys и travel_intent по решению 29
 
 def test_place_keys_full_name_first_noun_and_quoted_part():

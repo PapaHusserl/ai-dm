@@ -36,6 +36,15 @@ def reachable_ids(world, location_id):
     return ids
 
 
+def hero_reachable(world, hero):
+    # подсказка «допустимые id» героя; в «дороге» -- концы ребра первыми, затем достижимое от них
+    journey = hero.journey
+    if journey is None or hero.location_id != journey.road_id:
+        return allowed(reachable_ids(world, hero.location_id))
+    ends = (journey.from_id, journey.edge_to)
+    return allowed(reachable_ids(world, ends[0]) | reachable_ids(world, ends[1]), first=ends)
+
+
 def merchant_ids(world, location_id):
     # живые торговцы в локации
     return [

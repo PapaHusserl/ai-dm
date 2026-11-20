@@ -5,6 +5,7 @@ from ai_dm.master.relevance import known_places, nearby_locations, travel_intent
 from ai_dm.protocol.decision import Decision
 from ai_dm.protocol.requests import AdvanceTime
 from ai_dm.rules import time_ops
+from ai_dm.rules.time_ops import minutes_text
 from ai_dm.rules.uniqueness import norm
 
 USAGE = "Куда идти: /go <название места или номер из /where>"
@@ -39,15 +40,6 @@ def known(app):
         p for p in known_places(world, near_ids)
         if time_ops.route_path(world, here, p.id, app.settings.rules, transport) is not None
     ]
-
-
-def minutes_text(seconds):
-    # до часа -- «41 мин», от часа -- «1 ч 1 мин», ровно часы -- «2 ч»; минуты округляются вверх
-    minutes = max(1, -(-seconds // 60))
-    hours, minutes = divmod(minutes, 60)
-    if not hours:
-        return f"{minutes} мин"
-    return f"{hours} ч" + (f" {minutes} мин" if minutes else "")
 
 
 def neighbour_line(app, number, place, entry):

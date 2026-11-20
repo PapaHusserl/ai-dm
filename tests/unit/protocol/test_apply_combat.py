@@ -611,6 +611,74 @@ def test_defeat_outcome_unknown_lair_is_invalid(registry, cfg):
     assert dump(ctx) == before
 
 
+# М0 П3а, правка 2: логово -- узел маршрута, не «дорога» (код temporary_location)
+
+def road_bundle(registry):
+    from ai_dm.state.world import Location
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Лес", temporary=True, origin="engine"
+    )
+    return bundle
+
+
+def test_start_combat_with_the_road_as_lair_is_invalid(registry, cfg):
+    request = combat_request(groups=[{
+        "id": "goblins", "leader": "g1", "intent": "capture", "lair_location_id": "road_x",
+    }])
+    ctx = make_ctx(registry, cfg, bundle=road_bundle(registry))
+    before = dump(ctx)
+    d = apply(ctx, request)
+    assert isinstance(d, Invalid)
+    assert d.code == "temporary_location"
+    assert ctx.bundle.session.active_combat is None
+    assert dump(ctx) == before
+
+
+def test_start_combat_with_an_ordinary_lair_is_accepted_when_a_road_exists(registry, cfg):
+    request = combat_request(groups=[{
+        "id": "goblins", "leader": "g1", "intent": "capture", "lair_location_id": "goblin_den",
+    }])
+    ctx, d = start(registry, cfg, request, bundle=road_bundle(registry))
+    assert d.status == "accepted"
+    assert ctx.bundle.session.active_combat.groups["goblins"].lair_location_id == "goblin_den"
+
+
+def road_pending_ctx(registry, cfg):
+    from ai_dm.state.hero import Journey
+
+    bundle = road_bundle(registry)
+    ctx, _ = start(registry, cfg, bundle=bundle)
+    ctx.bundle.session.active_combat.outcome = "defeat_pending"
+    ctx.hero.location_id = "road_x"
+    ctx.hero.journey = Journey(
+        to="forest", pace="normal", start_id="vale", road_id="road_x", from_id="vale",
+        edge_to="forest", edge_done_s=100,
+    )
+    return ctx
+
+
+def test_defeat_outcome_with_the_road_as_lair_is_invalid_and_changes_nothing(registry, cfg):
+    ctx = road_pending_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("defeat_outcome", consequences=["capture"], lair_location_id="road_x"))
+    assert isinstance(d, Invalid)
+    assert d.code == "temporary_location"
+    assert ctx.hero.location_id == "road_x"
+    assert ctx.hero.journey is not None
+    assert dump(ctx) == before
+
+
+def test_defeat_outcome_with_an_ordinary_lair_from_the_road_is_accepted(registry, cfg):
+    ctx = road_pending_ctx(registry, cfg)
+    d = apply(ctx, req("defeat_outcome", consequences=["capture"], lair_location_id="goblin_den"))
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "goblin_den"
+    assert ctx.hero.journey is None
+    assert "road_x" not in ctx.bundle.world.locations
+
+
 def test_defeat_outcome_unknown_creditor_is_invalid(registry, cfg):
     ctx = pending_ctx(registry, cfg)
     before = dump(ctx)

@@ -167,6 +167,8 @@ v16 (М0 П1, `m0016_v15_to_v16`): `Connection.kind/needs_transport`, `Location.
 `WorldState.preset/scene_weights/pending`, `ItemMods` (`InventoryEntry.mods`, `CustomItem.base_id/mods`), слоты
 одежды и украшений в `Equipped`, `HeroState.transport/journey`, `CreatureState.hp_temp_expires/wake_at_s`; миграция:
 рёбра «дорога», торговцам часы 8–16.
+v17 (М0 П3а, `m0017_v16_to_v17`): `Journey.walked_s` (секунд пройдено с начала пути, для строки ленты отрезка);
+миграция пустая, в сейвах v16 `hero.journey` — `None`.
 
 **Принцип:** persistence никогда не читает файлы старой версии текущими моделями — только сырой
 dict до миграции (поэтому ротация слотов правит `manifest.json` как сырой JSON).
@@ -222,7 +224,7 @@ ai-dm/
     state/       creature.py hero.py triggers.py world.py (NPC, Faction, God, Location, GlobalEvent, Tone)
                  memory.py session.py death.py save.py (Manifest, SaveBundle)
                  combat.py (CombatState, Participant, Zone, Group, DecisionPoint)
-    rules/       derived.py builder.py roll_pipeline.py modifiers/{base,conditions,species,effects}.py
+    rules/       derived.py builder.py roll_pipeline.py journey.py modifiers/{base,conditions,species,effects}.py
                  cast_checks.py results.py (Rejected)
                  checks.py damage.py healing.py death_saves.py exhaustion.py rests.py
                  inventory.py money.py progression.py mortality_guard.py creatures.py

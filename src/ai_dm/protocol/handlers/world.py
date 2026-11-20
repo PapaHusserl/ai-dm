@@ -1,5 +1,5 @@
 from ai_dm.protocol.decision import Decision, Invalid
-from ai_dm.protocol.hints import CREATE_FIRST, allowed
+from ai_dm.protocol.hints import CREATE_FIRST, allowed, hero_reachable
 from ai_dm.rules import divine, goals, uniqueness
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
@@ -187,6 +187,12 @@ def edge_problem(ctx, request, spec, connections):
             code="unknown_route_kind",
             message=f"нет рода пути {spec.kind!r}" + allowed(kinds),
         )
+    if ctx.bundle.world.locations[spec.to].temporary:
+        return Invalid(
+            code="road_edge",
+            message=f"ребро {request.id!r} — {spec.to!r}: {spec.to!r} — «дорога» пути, "
+            "свяжи с узлом маршрута",
+        )
     back = ctx.bundle.world.locations[spec.to].connections
     if any(c.to == spec.to for c in connections) or any(c.to == request.id for c in back):
         return Invalid(
@@ -203,6 +209,12 @@ def location_create(ctx, request):
         return Invalid(
             code="unknown_location",
             message=f"нет локации {request.parent_id!r}" + allowed(world.locations),
+        )
+    if request.parent_id is not None and world.locations[request.parent_id].temporary:
+        return Invalid(
+            code="temporary_location",
+            message=f"{request.parent_id!r} — «дорога» пути: parent_id — область или узел маршрута"
+            + hero_reachable(world, ctx.hero),
         )
     connections = []
     for spec in request.connections or []:

@@ -172,6 +172,38 @@ def test_unknown_key_in_location_is_error(tmp_path, registry):
     check_error(tmp_path, registry, files, "locations.yaml", "bogus")
 
 
+def test_temporary_location_in_pack_is_error(tmp_path, registry):
+    # М0 П3: временные локации заводит только движок
+    files = default_files()
+    files["locations.yaml"][0]["temporary"] = True
+    check_error(
+        tmp_path, registry, files, "locations.yaml", "location 'town', поле temporary",
+        "временные локации заводит только движок",
+    )
+
+
+def test_temporary_errors_text_is_path_location_and_reason():
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from ai_dm.campaign.loader import temporary_errors
+
+    pack = SimpleNamespace(locations=[
+        SimpleNamespace(id="town", temporary=True), SimpleNamespace(id="cellar", temporary=False),
+    ])
+    assert temporary_errors(pack, Path("pack")) == [
+        "pack/locations.yaml: location 'town', поле temporary: "
+        "временные локации заводит только движок"
+    ]
+
+
+def test_pack_location_with_temporary_false_loads(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][0]["temporary"] = False
+    pack = load(write_pack(tmp_path, files), registry)
+    assert ids(pack.locations) == ["town", "tavern", "cellar"]
+
+
 def test_unknown_condition_kind_in_trigger_is_error_with_path(tmp_path, registry):
     files = default_files()
     files["npcs.yaml"][0]["opportunity"][0]["if"] = {"phase_of_moon": "full"}

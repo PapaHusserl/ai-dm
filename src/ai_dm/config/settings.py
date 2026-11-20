@@ -50,6 +50,8 @@ class TimeConfig(BaseModel):
     # роды пути и роды транспорта (М0 П2); порядок transports -- порядок перебора причины no_route
     route_kinds: dict[str, RouteKind]
     transports: dict[str, TransportKind]
+    # путь дольше идёт отрезками по столько секунд за вызов travel_to (М0 П3)
+    journey_from_s: int = Field(ge=1)
 
     @model_validator(mode="after")
     def check_route_kinds(self):

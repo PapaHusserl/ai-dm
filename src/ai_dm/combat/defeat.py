@@ -11,6 +11,7 @@ from ai_dm.rules.custom_items import hand_over
 from ai_dm.rules.exhaustion import add_exhaustion
 from ai_dm.rules.healing import remove_zero_hp_unconscious
 from ai_dm.rules.inventory import pick_valuables, remove_item
+from ai_dm.rules.journey import end_journey
 from ai_dm.rules.results import Rejected
 from ai_dm.rules.services import return_ferrymen
 from ai_dm.state.creature import DeathSaves
@@ -109,6 +110,13 @@ def do_capture(state, params, world, hero, registry, cfg, rng, notes):
         ))
         notes.append(f"Отобрано: {world.custom_items[item_id].name} — тайник логова")
     hero.location_id = lair
+    if hero.journey is not None and hero.journey.road_id:
+        # спутники с follows уходят в логово вместе с героем (решение 113)
+        for npc in world.npcs.values():
+            on_road = npc.location_id == hero.journey.road_id
+            if npc.follows == hero.id and npc.status == "alive" and on_road:
+                npc.location_id = lair
+    end_journey(world, hero)
     return_ferrymen(world, lair)
     hero.inventory = []
     hero.equipped = Equipped()

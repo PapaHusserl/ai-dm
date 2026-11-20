@@ -1096,7 +1096,8 @@ def test_travel_water_edge_no_route_skips_npc_with_other_services(registry, cfg)
 def test_travel_goes_by_land_when_water_edge_is_closed(registry, cfg):
     ctx = island_ctx(registry, cfg)
     world = ctx.bundle.world
-    world.locations["forest"].connections.append(Connection(to="island", distance_m=9600))
+    # 4800 + 2400 м по суше -- 5400 с, один вызов; закрытая вода (1800 с) всё равно короче
+    world.locations["forest"].connections.append(Connection(to="island", distance_m=2400))
     d = apply(ctx, req("advance_time", travel_to="island"))
     assert d.status == "accepted"
     assert d.result["path"] == ["forest", "island"]
@@ -1547,3 +1548,890 @@ def test_travel_failure_does_not_return_the_ferryman(registry, cfg):
     assert isinstance(d, Invalid)
     assert ctx.bundle.world.npcs["finn"].location_id == "island"
     assert ctx.bundle.world.flags["ferry_home:finn"] == "vale"
+
+
+# М0 П3: «в пути» и временная локация «дорога» (решения 36–40, 50–53, 63–65).
+# Ожидаемый API (по плану): путь дольше time.journey_from_s (7200 с) идёт отрезками до 2 ч за
+# вызов travel_to; между узлами hero.location_id == hero.journey.road_id (Location с temporary=True
+# и без связей), hero.journey = Journey(to, pace, start_id, road_id, from_id, edge_to, edge_done_s);
+# по прибытии hero.journey = None, запись «дороги» убрана из world.locations.
+# Темп normal: 4800 м -- 3600 с.
+
+def long_ctx(registry, cfg):
+    # Вейл -> Старая башня одним ребром 24000 м: 5 ч, три вызова (2 ч, 2 ч, 1 ч)
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["tower"] = Location(id="tower", name="Старая башня")
+    world.locations["vale"].connections.append(Connection(to="tower", distance_m=24000))
+    return ctx
+
+
+def chain_ctx(registry, cfg):
+    # Вейл -7200 м- Брод -4800- Ключ -7200- Чернолесье -12000- Старая башня: 5400+3600+5400+9000 с;
+    # отрезки по 7200 с: между Бродом и Ключом, ровно в Чернолесье, дальше к башне, финиш
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    for place_id, name in (
+        ("ford", "Брод"), ("spring", "Ключ"), ("blackwood", "Чернолесье"), ("tower", "Старая башня")
+    ):
+        world.locations[place_id] = Location(id=place_id, name=name)
+    world.locations["vale"].connections.append(Connection(to="ford", distance_m=7200))
+    world.locations["ford"].connections.append(Connection(to="spring", distance_m=4800))
+    world.locations["spring"].connections.append(Connection(to="blackwood", distance_m=7200))
+    world.locations["blackwood"].connections.append(Connection(to="tower", distance_m=12000))
+    return ctx
+
+
+def go(ctx, to="tower", **fields):
+    return apply(ctx, req("advance_time", travel_to=to, **fields))
+
+
+def legs(ctx, count, to="tower"):
+    for _ in range(count):
+        go(ctx, to)
+
+
+def in_road(ctx):
+    # герой в «дороге»: id записи; проверка предусловия теста
+    journey = ctx.hero.journey
+    assert journey is not None
+    assert journey.road_id
+    assert ctx.hero.location_id == journey.road_id
+    return journey.road_id
+
+
+def temporary_places(ctx):
+    return [p.id for p in ctx.bundle.world.locations.values() if p.temporary]
+
+
+def test_long_travel_first_leg_takes_two_hours(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    d = go(ctx)
+    assert d.status == "accepted"
+    assert ctx.bundle.world.clock.now_s == 7200
+
+
+def test_long_travel_first_leg_keeps_the_target_in_journey(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.hero.journey.to == "tower"
+
+
+def test_long_travel_first_leg_puts_hero_in_the_road_record(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    assert road_id in ctx.bundle.world.locations
+
+
+def test_long_travel_road_record_is_temporary(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.bundle.world.locations[in_road(ctx)].temporary is True
+
+
+def test_long_travel_road_record_has_no_connections(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.bundle.world.locations[in_road(ctx)].connections == []
+
+
+def test_long_travel_road_record_is_made_by_the_engine(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.bundle.world.locations[in_road(ctx)].origin == "engine"
+
+
+def test_long_travel_journey_remembers_the_point_on_the_edge(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    journey = ctx.hero.journey
+    assert (journey.start_id, journey.from_id, journey.edge_to, journey.edge_done_s) == (
+        "vale", "vale", "tower", 7200
+    )
+
+
+def test_long_travel_first_leg_log_line(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    d = go(ctx)
+    assert "В пути к «Старая башня»: прошло 2 ч, осталось 3 ч" in d.log
+
+
+def test_long_travel_first_leg_takes_the_follower_into_the_road(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = long_ctx(registry, cfg)
+    ctx.bundle.world.npcs["bran"] = NPC(
+        id="bran", name="Бран", named=True, means=["m"], location_id="vale", follows=ctx.hero.id
+    )
+    go(ctx)
+    assert ctx.bundle.world.npcs["bran"].location_id == in_road(ctx)
+
+
+def test_long_travel_second_leg_keeps_the_hero_in_the_same_road(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    go(ctx)
+    assert in_road(ctx) == road_id
+    assert ctx.bundle.world.clock.now_s == 14400
+
+
+def test_long_travel_third_leg_arrives_and_drops_the_journey(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    legs(ctx, 3)
+    assert ctx.hero.location_id == "tower"
+    assert ctx.hero.journey is None
+
+
+def test_long_travel_arrival_removes_the_road_record(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    legs(ctx, 2)
+    assert road_id not in ctx.bundle.world.locations
+    assert temporary_places(ctx) == []
+
+
+def test_long_travel_in_three_legs_takes_the_time_of_one_call(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    legs(ctx, 2)
+    assert ctx.bundle.world.clock.now_s == 18000
+
+
+def test_travel_under_two_hours_goes_in_one_call(registry, cfg):
+    # 9520 м -- 7140 с, 1 ч 59 мин
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["tower"] = Location(id="tower", name="Старая башня")
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="tower", distance_m=9520))
+    go(ctx)
+    assert ctx.hero.location_id == "tower"
+    assert ctx.hero.journey is None
+    assert ctx.bundle.world.clock.now_s == 7140
+
+
+def test_travel_under_two_hours_creates_no_road_record(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["tower"] = Location(id="tower", name="Старая башня")
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="tower", distance_m=9520))
+    go(ctx)
+    assert temporary_places(ctx) == []
+
+
+def test_leg_ending_exactly_in_a_node_leaves_the_hero_there_with_the_journey(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    go(ctx)
+    assert ctx.hero.location_id == "blackwood"
+    assert ctx.hero.journey is not None
+    assert ctx.bundle.world.clock.now_s == 14400
+
+
+def test_road_record_made_earlier_survives_a_stop_in_a_node(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    go(ctx)
+    assert ctx.hero.journey.road_id == road_id
+    assert road_id in ctx.bundle.world.locations
+
+
+def test_trade_works_in_an_intermediate_node(registry, cfg):
+    from ai_dm.state.world import NPC, TradeProfile
+
+    ctx = chain_ctx(registry, cfg)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Мара", means=["товары"], location_id="blackwood",
+        trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=10**9, stock=[]),
+    )
+    go(ctx)
+    in_road(ctx)
+    go(ctx)
+    d = apply(
+        ctx, req("trade", npc_id="mara", direction="list", item_id="", qty=0, category="gear")
+    )
+    assert d.status == "accepted"
+
+
+def test_next_stop_between_nodes_reuses_the_same_road_record(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    go(ctx)
+    go(ctx)
+    assert in_road(ctx) == road_id
+    assert temporary_places(ctx) == [road_id]
+
+
+def test_chain_last_leg_arrives_and_removes_the_road(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    legs(ctx, 4)
+    assert ctx.hero.location_id == "tower"
+    assert ctx.hero.journey is None
+    assert temporary_places(ctx) == []
+    assert ctx.bundle.world.clock.now_s == 23400
+
+
+def test_second_journey_gets_its_own_road_record(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    first = in_road(ctx)
+    legs(ctx, 2)
+    go(ctx, "vale")
+    assert in_road(ctx) != first
+
+
+def test_first_road_id_is_nowhere_in_the_save_after_the_second_journey(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    first = in_road(ctx)
+    legs(ctx, 2)
+    go(ctx, "vale")
+    in_road(ctx)
+    legs(ctx, 2, "vale")
+    assert dump(ctx).count(f'"{first}"') == 0
+
+
+def test_trade_in_the_road_is_refused_as_npc_absent(registry, cfg):
+    from ai_dm.state.world import NPC, TradeProfile
+
+    ctx = long_ctx(registry, cfg)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Мара", means=["товары"], location_id="vale",
+        trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=10**9, stock=[]),
+    )
+    go(ctx)
+    in_road(ctx)
+    d = apply(
+        ctx, req("trade", npc_id="mara", direction="list", item_id="", qty=0, category="gear")
+    )
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_absent"
+
+
+def inn_in_vale(ctx):
+    from ai_dm.state.world import NPC
+
+    ctx.hero.money_cp = 100
+    ctx.bundle.world.npcs["grok"] = NPC(
+        id="grok", name="Грок", means=["трактир"], services=["room_modest"], location_id="vale"
+    )
+
+
+def test_service_in_the_road_is_refused_as_npc_absent(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    inn_in_vale(ctx)
+    go(ctx)
+    in_road(ctx)
+    d = apply(
+        ctx, req("service", npc_id="grok", direction="buy", service_id="room_modest", qty=1)
+    )
+    assert isinstance(d, Invalid)
+    assert d.code == "npc_absent"
+
+
+def test_long_rest_in_the_road_needs_no_paid_lodging(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    inn_in_vale(ctx)
+    ctx.hero.creature.hp_current = 50
+    go(ctx)
+    in_road(ctx)
+    d = apply(ctx, req("rest", kind="long"))
+    assert d.status == "accepted"
+
+
+def test_short_rest_in_the_road_is_accepted(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    ctx.hero.creature.hp_current = 50
+    go(ctx)
+    in_road(ctx)
+    d = apply(ctx, req("rest", kind="short"))
+    assert d.status == "accepted"
+
+
+def test_npc_made_in_the_road_without_follows_has_no_location_after_arrival(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    apply(ctx, req("npc_create", id="brana", name="Бранка", means=["кузница"], named=True))
+    legs(ctx, 2)
+    npc = ctx.bundle.world.npcs["brana"]
+    assert npc.location_id is None
+    assert npc.status == "alive"
+
+
+def test_npc_made_in_the_road_with_follows_arrives_with_the_hero(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    apply(ctx, req("npc_create", id="brana", name="Бранка", means=["кузница"], named=True))
+    ctx.bundle.world.npcs["brana"].follows = ctx.hero.id
+    legs(ctx, 2)
+    assert ctx.bundle.world.npcs["brana"].location_id == "tower"
+
+
+def test_danger_mark_on_the_road_is_removed_after_arrival(registry, cfg):
+    from ai_dm.state.world import DangerMark
+
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    ctx.bundle.world.dangers.append(DangerMark(location_id=road_id, text="волки", at_s=0))
+    legs(ctx, 2)
+    assert ctx.bundle.world.dangers == []
+
+
+def test_npc_death_record_on_the_road_loses_the_location_but_stays(registry, cfg):
+    from ai_dm.state.death import DeathRecord
+    from ai_dm.state.world import NPC
+
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    ctx.bundle.world.npcs["lost"] = NPC(
+        id="lost", name="Путник", means=["посох"], status="dead",
+        death=DeathRecord(cause="chance", at_s=100, location_id=road_id),
+    )
+    legs(ctx, 2)
+    death = ctx.bundle.world.npcs["lost"].death
+    assert death is not None
+    assert death.location_id is None
+
+
+def robbed_in_the_road(ctx, road_id):
+    from ai_dm.state.world import CustomItem, ItemHolder
+
+    ctx.bundle.world.custom_items["lost_ring"] = CustomItem(
+        id="lost_ring", name="Кольцо", created_s=0,
+        holder=ItemHolder(
+            kind="location", ref=road_id, label="потеряно в пути", location_id=road_id,
+            since_s=0, qty=2, cost_cp=30,
+        ),
+    )
+    return ctx.bundle.world.custom_items["lost_ring"]
+
+
+def test_things_lost_in_the_road_move_to_the_node_where_the_hero_got_off(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    item = robbed_in_the_road(ctx, in_road(ctx))
+    legs(ctx, 2)
+    assert (item.holder.kind, item.holder.ref, item.holder.location_id) == (
+        "location", "tower", "tower"
+    )
+
+
+def test_things_lost_in_the_road_keep_quantity_and_cost(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    item = robbed_in_the_road(ctx, in_road(ctx))
+    legs(ctx, 2)
+    assert (item.holder.qty, item.holder.cost_cp, item.holder.label) == (2, 30, "потеряно в пути")
+
+
+def test_road_id_is_nowhere_in_the_save_after_things_moved(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    robbed_in_the_road(ctx, road_id)
+    legs(ctx, 2)
+    assert dump(ctx).count(f'"{road_id}"') == 0
+
+
+def test_turning_back_to_the_start_takes_the_time_already_walked(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    go(ctx, "ford")
+    assert ctx.bundle.world.clock.now_s == 7200 + 1800
+    assert ctx.hero.location_id == "ford"
+    assert ctx.hero.journey is None
+
+
+def test_turning_to_the_far_end_of_the_edge_takes_the_rest_of_the_edge(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    in_road(ctx)
+    go(ctx, "spring")
+    assert ctx.bundle.world.clock.now_s == 7200 + 1800
+    assert ctx.hero.location_id == "spring"
+
+
+def test_turning_to_a_third_place_takes_way_back_plus_its_path(registry, cfg):
+    # назад к Броду 1800 с, от Брода до хутора 1200 м -- 900 с
+    ctx = chain_ctx(registry, cfg)
+    ctx.bundle.world.locations["spur"] = Location(id="spur", name="Хутор")
+    ctx.bundle.world.locations["ford"].connections.append(Connection(to="spur", distance_m=1200))
+    go(ctx)
+    in_road(ctx)
+    go(ctx, "spur")
+    assert ctx.bundle.world.clock.now_s == 7200 + 1800 + 900
+    assert ctx.hero.location_id == "spur"
+
+
+def far_hamlet_after_first_leg(registry, cfg):
+    # от Брода до Дальнего хутора 20000 м -- 15000 с: ещё один отрезок не доводит
+    ctx = chain_ctx(registry, cfg)
+    ctx.bundle.world.locations["far"] = Location(id="far", name="Дальний хутор")
+    ctx.bundle.world.locations["ford"].connections.append(Connection(to="far", distance_m=20000))
+    go(ctx)
+    return ctx, in_road(ctx)
+
+
+def test_new_target_in_the_road_keeps_the_record_and_changes_the_target(registry, cfg):
+    ctx, road_id = far_hamlet_after_first_leg(registry, cfg)
+    go(ctx, "far")
+    assert in_road(ctx) == road_id
+    assert ctx.hero.journey.to == "far"
+
+
+def test_new_target_in_the_road_walks_back_then_forward_within_one_leg(registry, cfg):
+    ctx, _ = far_hamlet_after_first_leg(registry, cfg)
+    go(ctx, "far")
+    journey = ctx.hero.journey
+    assert (journey.from_id, journey.edge_to, journey.edge_done_s) == ("ford", "far", 5400)
+    assert ctx.bundle.world.clock.now_s == 14400
+
+
+def test_road_record_is_named_after_start_and_target(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.bundle.world.locations[in_road(ctx)].name == "Дорога: Вейл — Старая башня"
+
+
+def test_road_record_is_renamed_to_the_new_target(registry, cfg):
+    ctx, road_id = far_hamlet_after_first_leg(registry, cfg)
+    assert ctx.bundle.world.locations[road_id].name == "Дорога: Вейл — Старая башня"
+    go(ctx, "far")
+    assert ctx.bundle.world.locations[road_id].name == "Дорога: Вейл — Дальний хутор"
+
+
+def test_travel_to_the_road_record_is_invalid(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Лес", temporary=True, origin="engine"
+    )
+    world.locations["vale"].connections.append(Connection(to="road_x", distance_m=100))
+    d = go(ctx, "road_x")
+    assert isinstance(d, Invalid)
+    assert d.code == "temporary_location"
+    assert ctx.hero.location_id == "vale"
+
+
+def test_travel_to_the_road_record_from_the_road_lists_both_ends_and_not_the_road(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    d = go(ctx, road_id)
+    assert isinstance(d, Invalid)
+    assert d.code == "temporary_location"
+    assert "допустимые id: vale, tower" in d.message
+    assert d.message.count(road_id) == 1
+
+
+def test_turn_without_travel_to_keeps_the_journey(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    apply(ctx, req("advance_time", category="hour", purpose="wait"))
+    assert in_road(ctx) == road_id
+
+
+def test_journey_continues_from_the_same_place_after_save_and_load(registry, cfg):
+    from ai_dm.state.save import SaveBundle
+
+    ctx = chain_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    loaded = SaveBundle.model_validate_json(ctx.bundle.model_dump_json())
+    ctx2 = make_ctx(registry, cfg, bundle=loaded)
+    go(ctx2)
+    assert ctx2.hero.location_id == "blackwood"
+    assert ctx2.hero.journey.road_id == road_id
+    assert ctx2.bundle.world.clock.now_s == 14400
+
+
+def test_same_seed_gives_the_same_road_id(registry, cfg):
+    first = long_ctx(registry, cfg)
+    second = long_ctx(registry, cfg)
+    go(first)
+    go(second)
+    assert in_road(first) == in_road(second)
+
+
+# М0 П3а, решения 108–111 (при Р43 (а), (б), (в) = (1)): «прошло» -- с начала пути, поле
+# Journey.walked_s (схема v17): каждый отрезок прибавляет секунды, на которые сдвинуты часы;
+# привал и ход без travel_to в сумму не входят, смена цели её не обнуляет.
+
+def test_long_travel_first_leg_counts_two_hours_as_walked(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    assert ctx.hero.journey.walked_s == 7200
+
+
+def test_long_travel_second_leg_log_line_counts_from_the_start(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    d = go(ctx)
+    assert "В пути к «Старая башня»: прошло 4 ч, осталось 1 ч" in d.log
+    assert ctx.hero.journey.walked_s == 14400
+
+
+def test_long_travel_arrival_line_has_the_time_of_the_last_call(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    legs(ctx, 2)
+    d = go(ctx)
+    assert "Путь в «Старая башня»: 3600 с" in d.log
+    assert ctx.hero.journey is None
+
+
+def test_halt_between_legs_is_not_counted_as_walked(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    ctx.bundle.world.clock.advance(900)
+    d = go(ctx)
+    assert "В пути к «Старая башня»: прошло 4 ч, осталось 1 ч" in d.log
+    assert ctx.hero.journey.walked_s == 14400
+
+
+def test_turn_without_travel_to_does_not_change_walked_s(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    apply(ctx, req("advance_time", category="hour", purpose="wait"))
+    assert ctx.hero.journey.walked_s == 7200
+
+
+def test_new_target_in_the_road_continues_the_walked_count(registry, cfg):
+    # от Брода до Дальнего хутора 15000 с, пройдено по ребру 5400 -- осталось 9600 с
+    ctx, _ = far_hamlet_after_first_leg(registry, cfg)
+    d = go(ctx, "far")
+    assert "В пути к «Дальний хутор»: прошло 4 ч, осталось 2 ч 40 мин" in d.log
+    assert ctx.hero.journey.walked_s == 14400
+
+
+def test_steed_leg_adds_the_seconds_the_clock_moved_to_walked_s(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    ctx.hero.creature.active_effects = [ActiveEffect(
+        id="phantom_steed", source="h1", kind="travel_fast", params={},
+        expires=Expiry(kind="seconds", value=10**6),
+    )]
+    go(ctx)
+    assert ctx.bundle.world.clock.now_s == 3600
+    assert ctx.hero.journey.walked_s == ctx.bundle.world.clock.now_s
+
+
+def test_walked_s_survives_save_and_load_and_the_next_line_continues_it(registry, cfg):
+    from ai_dm.state.save import SaveBundle
+
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    loaded = SaveBundle.model_validate_json(ctx.bundle.model_dump_json())
+    ctx2 = make_ctx(registry, cfg, bundle=loaded)
+    assert ctx2.hero.journey.walked_s == 7200
+    d = go(ctx2)
+    assert "В пути к «Старая башня»: прошло 4 ч, осталось 1 ч" in d.log
+
+
+# М0 П3а: порог и длина отрезка -- один ключ time.journey_from_s (по умолчанию 7200)
+
+def journey_from(cfg, seconds):
+    custom = cfg.model_copy(deep=True)
+    custom.time.journey_from_s = seconds
+    return custom
+
+
+def test_journey_from_s_from_config_sets_the_leg_length(registry, cfg):
+    ctx = long_ctx(registry, journey_from(cfg, 3600))
+    go(ctx)
+    assert ctx.bundle.world.clock.now_s == 3600
+    in_road(ctx)
+
+
+def test_path_exactly_at_the_threshold_goes_in_one_call(registry, cfg):
+    # 9600 м -- ровно 7200 с
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["tower"] = Location(id="tower", name="Старая башня")
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="tower", distance_m=9600))
+    go(ctx)
+    assert ctx.hero.location_id == "tower"
+    assert ctx.hero.journey is None
+
+
+def test_path_one_second_over_the_threshold_goes_by_legs(registry, cfg):
+    # 9601 м -- 7201 с: отрезок 7200 с, герой в «дороге»
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["tower"] = Location(id="tower", name="Старая башня")
+    ctx.bundle.world.locations["vale"].connections.append(Connection(to="tower", distance_m=9601))
+    go(ctx)
+    assert ctx.bundle.world.clock.now_s == 7200
+    in_road(ctx)
+
+
+# М0 П3а, умолчания п. 18: перевозчик возвращается, когда отрезок кончился ровно в его берегу
+
+def finn_homeward(ctx):
+    from ai_dm.state.world import NPC
+
+    ctx.bundle.world.npcs["finn"] = NPC(
+        id="finn", name="Финн", named=True, means=["лодка"], location_id="forest"
+    )
+    ctx.bundle.world.flags["ferry_home:finn"] = "blackwood"
+
+
+def test_leg_ending_in_the_ferryman_home_node_brings_him_back(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    finn_homeward(ctx)
+    legs(ctx, 2)
+    assert ctx.hero.location_id == "blackwood"
+    assert ctx.bundle.world.npcs["finn"].location_id == "blackwood"
+    assert "ferry_home:finn" not in ctx.bundle.world.flags
+
+
+def test_leg_ending_in_the_road_leaves_the_ferryman_where_he_is(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    finn_homeward(ctx)
+    go(ctx)
+    in_road(ctx)
+    assert ctx.bundle.world.npcs["finn"].location_id == "forest"
+    assert ctx.bundle.world.flags["ferry_home:finn"] == "blackwood"
+
+
+# М0 П3а: подсказка «допустимые id» из «дороги» -- концы ребра первыми, id дороги нет
+
+def test_unknown_location_from_the_road_lists_both_ends_first(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    go(ctx)
+    road_id = in_road(ctx)
+    d = go(ctx, "nowhere")
+    assert d.code == "unknown_location"
+    assert "допустимые id: vale, tower" in d.message
+    assert road_id not in d.message
+
+
+def test_no_route_from_the_road_names_both_ends(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    ctx.bundle.world.locations["lost"] = Location(id="lost", name="Потерянное")
+    go(ctx)
+    road_id = in_road(ctx)
+    d = go(ctx, "lost")
+    assert d.code == "no_route"
+    assert "vale" in d.message
+    assert "tower" in d.message
+    assert road_id not in d.message
+
+
+def test_no_route_from_the_road_behind_water_has_reason_and_no_ferrymen(registry, cfg):
+    ctx = long_ctx(registry, ferry_cfg(cfg))
+    world = ctx.bundle.world
+    world.locations["isle"] = Location(id="isle", name="Остров")
+    world.locations["vale"].connections.append(
+        Connection(to="isle", distance_m=4800, kind="water", needs_transport=True)
+    )
+    add_ferryman(ctx, location_id="vale")
+    go(ctx)
+    in_road(ctx)
+    d = go(ctx, "isle")
+    assert d.code == "no_route"
+    assert "только по воде — нужен водный транспорт" in d.message
+    assert "перевозят" not in d.message
+
+
+# М0 П3а, правка 3: занятый id «дороги» -- следующий свободный, локация мастера цела
+
+def test_road_takes_another_id_when_the_first_one_is_taken_by_a_master_location(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    taken = Location(
+        id="road_7200", name="Тракт", connections=[Connection(to="vale", distance_m=100)]
+    )
+    ctx.bundle.world.locations["road_7200"] = taken
+    go(ctx)
+    road_id = in_road(ctx)
+    world = ctx.bundle.world
+    assert road_id != "road_7200"
+    assert world.locations[road_id].temporary is True
+    assert world.locations["road_7200"] is taken
+    assert (taken.name, taken.temporary, len(taken.connections)) == ("Тракт", False, 1)
+
+
+# решение 113: после плена спутник в логове идёт с героем дальше
+
+def test_companion_in_the_lair_goes_with_the_hero_on_the_next_travel(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["lira"] = NPC(
+        id="lira", name="Лира", means=["меч"], location_id="forest", follows=ctx.hero.id
+    )
+    ctx.hero.location_id = "forest"
+    d = go(ctx, "vale")
+    assert ctx.bundle.world.npcs["lira"].location_id == "vale"
+    assert "С тобой: Лира" in d.log
+
+
+# решение 114, правка 6: travel_to в узел, где герой стоит с незаконченным путём -- «остаюсь»
+
+STAY_LINE = "Путь к «Старая башня» прерван: остаёшься в «Чернолесье»"
+
+
+def staying_ctx(registry, cfg):
+    # два отрезка по цепочке: герой ровно в «Чернолесье», путь к башне не окончен
+    ctx = chain_ctx(registry, cfg)
+    legs(ctx, 2)
+    assert ctx.hero.location_id == "blackwood"
+    assert ctx.hero.journey is not None
+    return ctx
+
+
+def test_stay_in_the_route_node_is_accepted_and_ends_the_journey(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    d = go(ctx, "blackwood")
+    assert isinstance(d, Decision)
+    assert d.status == "accepted"
+    assert ctx.hero.journey is None
+    assert ctx.hero.location_id == "blackwood"
+
+
+def test_stay_does_not_move_the_clock_and_result_is_the_stay_dict(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    now_s = ctx.bundle.world.clock.now_s
+    d = go(ctx, "blackwood")
+    assert ctx.bundle.world.clock.now_s == now_s
+    assert d.result == {
+        "seconds": 0, "now_s": now_s, "location_id": "blackwood", "path": [], "stayed": True,
+    }
+
+
+def test_stay_log_is_one_line_with_the_target_and_the_node(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    d = go(ctx, "blackwood")
+    assert d.log == [STAY_LINE]
+
+
+def test_stay_has_no_companions_line_events_or_signal(registry, cfg):
+    from ai_dm.state.world import NPC
+
+    ctx = staying_ctx(registry, cfg)
+    ctx.bundle.world.npcs["lira"] = NPC(
+        id="lira", name="Лира", means=["меч"], location_id="blackwood", follows=ctx.hero.id
+    )
+    events = len(ctx.events)
+    d = go(ctx, "blackwood")
+    assert not any(line.startswith("С тобой") for line in d.log)
+    assert [e for e in ctx.events[events:] if e.type == "location_visited"] == []
+    assert not d.signal_to_master
+
+
+def test_stay_removes_the_road_record_and_its_id_from_the_save(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    road_id = ctx.hero.journey.road_id
+    assert road_id in ctx.bundle.world.locations
+    go(ctx, "blackwood")
+    assert road_id not in ctx.bundle.world.locations
+    assert dump(ctx).count(f'"{road_id}"') == 0
+
+
+def test_stay_moves_the_things_lost_on_the_road_to_the_node(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    item = robbed_in_the_road(ctx, ctx.hero.journey.road_id)
+    go(ctx, "blackwood")
+    assert (item.holder.ref, item.holder.location_id) == ("blackwood", "blackwood")
+
+
+def test_stay_without_a_road_record_ends_the_journey_and_keeps_locations(registry, cfg):
+    from ai_dm.state.hero import Journey
+
+    ctx = chain_ctx(registry, cfg)
+    ctx.hero.location_id = "blackwood"
+    ctx.hero.journey = Journey(to="tower", pace="normal", start_id="vale")
+    before = set(ctx.bundle.world.locations)
+    d = go(ctx, "blackwood")
+    assert d.status == "accepted"
+    assert ctx.hero.journey is None
+    assert set(ctx.bundle.world.locations) == before
+
+
+def test_new_path_after_a_stay_counts_from_zero_in_a_new_road(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    old_road = ctx.hero.journey.road_id
+    go(ctx, "blackwood")
+    go(ctx)
+    assert ctx.hero.journey.walked_s == 7200
+    assert in_road(ctx) != old_road
+
+
+# М0 П3а, мутанты: поля journey, направление на ребре, путь отрезка, темп, left_s, подсказка
+
+def test_leg_ending_in_a_node_clears_the_edge_fields_of_the_journey(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    journey = ctx.hero.journey
+    assert (journey.from_id, journey.edge_to, journey.edge_done_s) == ("", "", 0)
+
+
+def test_turning_back_on_a_long_edge_walks_back_along_it(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    legs(ctx, 2)
+    road_id = in_road(ctx)
+    go(ctx, "vale")
+    journey = ctx.hero.journey
+    assert in_road(ctx) == road_id
+    assert (journey.from_id, journey.edge_to, journey.edge_done_s) == ("vale", "tower", 7200)
+
+
+def test_leg_result_path_has_only_the_nodes_passed(registry, cfg):
+    ctx = chain_ctx(registry, cfg)
+    d = go(ctx)
+    assert d.result["path"] == ["ford"]
+
+
+def test_leg_result_has_the_time_left(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    d = go(ctx)
+    assert d.result["left_s"] == 10800
+
+
+def test_arrival_result_has_no_time_left(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    legs(ctx, 2)
+    d = go(ctx)
+    assert "left_s" not in d.result
+
+
+def test_next_call_from_a_node_keeps_the_journey_pace(registry, cfg):
+    # быстрый темп: 12800 м -- 7200 с (ровно в «mid»), 12000 м -- 6750 с; обычный -- 9000 с
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["mid"] = Location(id="mid", name="Середина")
+    world.locations["tower"] = Location(id="tower", name="Старая башня")
+    world.locations["vale"].connections.append(Connection(to="mid", distance_m=12800))
+    world.locations["mid"].connections.append(Connection(to="tower", distance_m=12000))
+    go(ctx, "tower", pace="fast")
+    assert ctx.hero.location_id == "mid"
+    go(ctx, "tower")
+    assert ctx.hero.location_id == "tower"
+    assert world.clock.now_s == 7200 + 6750
+
+
+def test_unknown_location_from_the_road_lists_places_behind_both_ends(registry, cfg):
+    ctx = long_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["vspur"] = Location(id="vspur", name="В")
+    world.locations["tspur"] = Location(id="tspur", name="Т")
+    world.locations["vale"].connections.append(Connection(to="vspur", distance_m=100))
+    world.locations["tower"].connections.append(Connection(to="tspur", distance_m=100))
+    go(ctx)
+    in_road(ctx)
+    d = go(ctx, "nowhere")
+    assert "допустимые id: vale, tower, forest, tspur, vspur" in d.message
+
+
+def test_stay_repeated_is_the_old_already_here_rejection(registry, cfg):
+    ctx = staying_ctx(registry, cfg)
+    go(ctx, "blackwood")
+    d = go(ctx, "blackwood")
+    assert d.status == "rejected"
+    assert d.reason == "герой уже в «Чернолесье»"
+    assert "Герой уже в «Чернолесье»" in d.signal_to_master

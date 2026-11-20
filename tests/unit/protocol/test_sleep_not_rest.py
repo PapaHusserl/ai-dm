@@ -105,7 +105,10 @@ def test_day_is_accepted(registry, cfg):
 
 
 def test_travel_over_threshold_is_accepted(registry, cfg):
-    ctx = ctx_at(registry, cfg, 12)
+    # порог пути поднят выше длины ребра: иначе отрезок короче долгого отдыха
+    no_legs = cfg.model_copy(deep=True)
+    no_legs.time.journey_from_s = 200_000
+    ctx = ctx_at(registry, no_legs, 12)
     ctx.bundle.world.locations["vale"].connections[0].distance_m = 200_000
     d = apply(ctx, req("advance_time", travel_to="forest"))
     assert d.status == "accepted"

@@ -594,6 +594,69 @@ def test_location_create_opposite_edge_to_already_linked_pair_is_invalid(registr
     assert dump(ctx) == before
 
 
+# М0 П3: ребро к временной локации «дорога» отклоняется (решение 53)
+
+def road_ctx(registry, cfg):
+    from ai_dm.state.world import Location
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["road_x"] = Location(
+        id="road_x", name="Дорога: Вейл — Лес", temporary=True, origin="engine"
+    )
+    return ctx
+
+
+def test_location_create_edge_to_the_road_is_invalid_and_names_both_ends(registry, cfg):
+    ctx = road_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_location(parent_id="vale", connections=[{"to": "road_x", "distance_m": 50}]))
+    assert isinstance(d, Invalid)
+    assert d.code == "road_edge"
+    assert "свяжи с узлом маршрута" in d.message
+    assert "road_x" in d.message
+    assert "cellar" in d.message
+    assert "cellar" not in ctx.bundle.world.locations
+    assert dump(ctx) == before
+
+
+def test_location_create_edge_to_a_route_node_is_created(registry, cfg):
+    ctx = road_ctx(registry, cfg)
+    d = apply(ctx, new_location(parent_id="vale", connections=[{"to": "forest", "distance_m": 50}]))
+    assert d.status == "accepted"
+    assert "cellar" in ctx.bundle.world.locations
+
+
+def hero_in_the_road(ctx):
+    from ai_dm.state.hero import Journey
+
+    ctx.hero.location_id = "road_x"
+    ctx.hero.journey = Journey(
+        to="forest", pace="normal", start_id="vale", road_id="road_x", from_id="vale",
+        edge_to="forest", edge_done_s=100,
+    )
+
+
+def test_location_create_with_the_road_as_parent_is_invalid(registry, cfg):
+    ctx = road_ctx(registry, cfg)
+    hero_in_the_road(ctx)
+    before = dump(ctx)
+    d = apply(ctx, new_location(parent_id="road_x"))
+    assert isinstance(d, Invalid)
+    assert d.code == "temporary_location"
+    assert "parent_id" in d.message
+    assert "допустимые id: vale, forest" in d.message
+    assert "cellar" not in ctx.bundle.world.locations
+    assert dump(ctx) == before
+
+
+def test_location_create_with_a_route_node_as_parent_from_the_road_is_created(registry, cfg):
+    ctx = road_ctx(registry, cfg)
+    hero_in_the_road(ctx)
+    d = apply(ctx, new_location(parent_id="vale"))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.locations["cellar"].parent_id == "vale"
+
+
 # npc_update: attitude
 
 def attitude(ctx, delta, npc_id="aldric"):

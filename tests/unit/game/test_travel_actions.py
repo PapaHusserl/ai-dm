@@ -272,17 +272,6 @@ def test_known_lists_far_place_behind_water_edge_when_hero_has_the_boat(registry
     assert [p.id for p in travel_actions.known(app)] == ["far_isle"]
 
 
-@pytest.mark.parametrize(
-    ("seconds", "text"),
-    [
-        (60, "1 мин"), (61, "2 мин"), (3600, "1 ч"), (7200, "2 ч"),
-        (3660, "1 ч 1 мин"), (3601, "1 ч 1 мин"),
-    ],
-)
-def test_minutes_text_forms(seconds, text):
-    assert travel_actions.minutes_text(seconds) == text
-
-
 def test_where_command_does_not_spend_time_or_change_state(registry, tmp_path):
     app = make_app(registry, tmp_path)
     before = app.bundle.world.model_dump()

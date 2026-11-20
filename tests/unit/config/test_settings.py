@@ -368,7 +368,7 @@ def time_config(day_parts):
     return TimeConfig(
         round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
         morning_hour=6, day_parts=day_parts, advance_categories={"hour": 3600},
-        travel_pace={"normal": 4800}, route_kinds={}, transports={},
+        travel_pace={"normal": 4800}, route_kinds={}, transports={}, journey_from_s=7200,
     )
 
 
@@ -386,11 +386,11 @@ def test_turn_s_below_one_is_rejected(turn_s):
             round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=turn_s,
             morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
             advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
-            route_kinds={}, transports={},
+            route_kinds={}, transports={}, journey_from_s=7200,
         )
 
 
-@pytest.mark.parametrize("missing", ["route_kinds", "transports"])
+@pytest.mark.parametrize("missing", ["route_kinds", "transports", "journey_from_s"])
 def test_time_config_without_route_kinds_or_transports_is_rejected(missing):
     from ai_dm.config.settings import TimeConfig
 
@@ -398,12 +398,38 @@ def test_time_config_without_route_kinds_or_transports_is_rejected(missing):
         round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
         morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
         advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
-        route_kinds={}, transports={},
+        route_kinds={}, transports={}, journey_from_s=7200,
     )
     del fields[missing]
     with pytest.raises(ValidationError) as caught:
         TimeConfig(**fields)
     assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("missing", (missing,))]
+
+
+def test_default_config_journey_from_s_is_two_hours():
+    # М0 П3а: порог «путь отрезками» и длина отрезка -- один ключ
+    assert load_rules_config().time.journey_from_s == 7200
+
+
+def journey_time_config(journey_from_s):
+    from ai_dm.config.settings import TimeConfig
+
+    return TimeConfig(
+        round_s=6, short_rest_s=3600, long_rest_s=28800, min_advance_s=600, turn_s=900,
+        morning_hour=6, day_parts={"morning": 6, "day": 12, "evening": 18, "night": 21},
+        advance_categories={"hour": 3600}, travel_pace={"normal": 4800},
+        route_kinds={}, transports={}, journey_from_s=journey_from_s,
+    )
+
+
+def test_journey_from_s_one_is_accepted():
+    assert journey_time_config(1).journey_from_s == 1
+
+
+@pytest.mark.parametrize("journey_from_s", [0, -1])
+def test_journey_from_s_below_one_is_rejected(journey_from_s):
+    with pytest.raises(ValidationError):
+        journey_time_config(journey_from_s)
 
 
 def test_day_parts_missing_key_is_rejected():

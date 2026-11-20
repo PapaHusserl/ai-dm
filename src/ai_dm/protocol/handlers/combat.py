@@ -8,7 +8,7 @@ from ai_dm.combat.setup import validate_start
 from ai_dm.combat.zone_effects import bind_circle
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.world import rejected
-from ai_dm.protocol.hints import allowed
+from ai_dm.protocol.hints import allowed, hero_reachable
 from ai_dm.rules import encounter
 from ai_dm.rules.npc_names import shown_name
 from ai_dm.state.combat import CombatState, Group, Participant, Zone, ZoneFeature
@@ -117,6 +117,17 @@ def make_enemy(ctx, spec):
     return part
 
 
+def temporary_lair(ctx, lair_id):
+    # Invalid: логово -- «дорога» пути (временная локация); иначе None
+    if lair_id is None or not ctx.bundle.world.locations[lair_id].temporary:
+        return None
+    return Invalid(
+        code="temporary_location",
+        message=f"{lair_id!r}: логово — узел маршрута, не «дорога»"
+        + hero_reachable(ctx.bundle.world, ctx.hero),
+    )
+
+
 def start_combat(ctx, request):
     world = ctx.bundle.world
     session = ctx.bundle.session
@@ -149,6 +160,9 @@ def start_combat(ctx, request):
                 code="unknown_location",
                 message=f"нет локации {spec.lair_location_id!r}" + allowed(world.locations),
             )
+        problem = temporary_lair(ctx, spec.lair_location_id)
+        if problem is not None:
+            return problem
     try:
         zones = [make_zone(spec) for spec in request.zones]
     except ValidationError as error:
@@ -314,6 +328,9 @@ def defeat_outcome(ctx, request):
             code="unknown_location",
             message=f"нет локации {request.lair_location_id!r}" + allowed(world.locations),
         )
+    problem = temporary_lair(ctx, request.lair_location_id)
+    if problem is not None:
+        return problem
     if request.debt_to is not None and request.debt_to not in world.npcs:
         return Invalid(
             code="unknown_npc",
