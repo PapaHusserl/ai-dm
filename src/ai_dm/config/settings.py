@@ -52,6 +52,8 @@ class TimeConfig(BaseModel):
     transports: dict[str, TransportKind]
     # путь дольше идёт отрезками по столько секунд за вызов travel_to (М0 П3)
     journey_from_s: int = Field(ge=1)
+    # состояния, которые мастер может отложить запросом delayed_condition (М0 П4а)
+    delayed_conditions: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_route_kinds(self):

@@ -47,8 +47,7 @@ ref_kind  # unused variable (src/ai_dm/state/relations.py:47) -- Ж1+
 known_name  # unused variable (src/ai_dm/state/world.py:99) -- Ж1
 services  # unused variable (src/ai_dm/state/world.py:104) -- У0
 # Задел v16 (М0 П1, решение Влада 2026-11-17): убрать строку, когда поле начнут читать.
-hp_temp_expires  # unused variable (src/ai_dm/state/creature.py:73) -- П4
-wake_at_s  # unused variable (src/ai_dm/state/creature.py:75) -- П4
+hp_temp_expires  # unused variable (src/ai_dm/state/creature.py:73) -- читателя нет (М0 П4, решение 127)
 partner  # unused variable (src/ai_dm/state/world.py:169) -- Ж5/У2
 loot_share_percent  # unused variable (src/ai_dm/state/world.py:100) -- Ж5/У2
 contract  # unused variable (src/ai_dm/state/world.py:101) -- Ж5/У2

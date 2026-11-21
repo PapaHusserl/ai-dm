@@ -3,6 +3,8 @@
 # сюжетное: выкуп у торговца и holder_npc_id в take_item.
 from importlib import resources
 
+import pytest
+
 
 def rules_text():
     return (resources.files("ai_dm.master") / "prompts" / "narrator_rules.md").read_text(
@@ -133,3 +135,30 @@ def test_rules_say_curse_is_cursed_condition_removed_only_by_temple():
     assert "cursed" in text
     assert "отдых и смена дня его не снимают" in text
     assert "Снимает только услуга храма" in text
+
+
+# М0 П4 (решения 57, 61, 62): часы работы -- в обоих файлах правил: поля open_hour и close_hour,
+# образцы Влада (цирюльник 6-12), комнату снимают в часы работы хозяина
+
+RULES_FILES = ["narrator_rules.md", "narrator_rules_openai.md"]
+
+
+def rules_of(name):
+    return (resources.files("ai_dm.master") / "prompts" / name).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("name", RULES_FILES)
+def test_rules_name_the_hours_fields(name):
+    text = rules_of(name)
+    assert "open_hour" in text
+    assert "close_hour" in text
+
+
+@pytest.mark.parametrize("name", RULES_FILES)
+def test_rules_give_the_barber_sample(name):
+    assert "цирюльник" in rules_of(name)
+
+
+@pytest.mark.parametrize("name", RULES_FILES)
+def test_rules_say_a_room_is_let_in_the_hosts_hours(name):
+    assert "часы работы" in rules_of(name).lower()

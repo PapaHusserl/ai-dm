@@ -98,6 +98,19 @@ def test_shop_action_is_enter_with_hint_command_echo_cap():
     )
 
 
+# закрыто по часам
+
+def test_closed_npc_has_no_rows_and_open_one_has(registry, tmp_path):
+    from ai_dm.state.world import WorkHours
+
+    game = make_game(registry, tmp_path)
+    npc = add_inn(game, hours=WorkHours(open_hour=8, close_hour=16))
+    game.bundle.world.clock.now_s = 86400 + 23 * 3600
+    closed = rows_for(game, npc)
+    game.bundle.world.clock.now_s = 86400 + 10 * 3600
+    assert (closed, len(rows_for(game, npc))) == ([], 3)
+
+
 # услуги
 
 def test_services_npc_has_only_service_rows(registry, tmp_path):

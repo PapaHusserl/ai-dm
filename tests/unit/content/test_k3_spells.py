@@ -205,6 +205,12 @@ def test_max_hp_and_temp_hp_spells_gain_5_per_slot_level(registry, spell_id):
     assert registry.get("spell", spell_id).upcast.per_slot_level.value == 5
 
 
+def test_false_life_rolls_2d4_plus_4(registry):
+    # М0 П4 (решение 127): SRD 5.2 -- 2d4 + 4
+    effect = registry.get("spell", "false_life").effects[0]
+    assert (effect.type, effect.dice) == ("temp_hp", "2d4+4")
+
+
 def test_aid_is_a_max_hp_spell_for_three_targets(registry):
     effect = registry.get("spell", "aid").effects[0]
     assert (effect.type, effect.value, effect.targets) == ("max_hp", 5, 3)

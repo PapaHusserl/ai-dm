@@ -246,14 +246,14 @@ def test_npc_create_innkeeper_with_omitted_fields_is_rejected(registry, cfg):
 
 def test_npc_create_innkeeper_with_services_is_accepted(registry, cfg):
     ctx = tavern_ctx(registry, cfg)
-    d = apply(ctx, keeper(services=["ale", "meal_modest"]))
+    d = apply(ctx, keeper(services=["ale", "meal_modest"], open_hour=6, close_hour=21))
     assert d.status == "accepted"
     assert ctx.bundle.world.npcs["grok"].services == ["ale", "meal_modest"]
 
 
 def test_npc_create_innkeeper_with_trade_kind_is_accepted(registry, cfg):
     ctx = tavern_ctx(registry, cfg)
-    d = apply(ctx, keeper(trade_kind="general"))
+    d = apply(ctx, keeper(trade_kind="general", open_hour=8, close_hour=16))
     assert d.status == "accepted"
 
 
@@ -297,7 +297,10 @@ def test_npc_update_moving_keeper_into_tavern_with_services_is_accepted(registry
     ctx.bundle.world.npcs["aldric"].means = ["трактир"]
     d = apply(
         ctx,
-        req("npc_update", npc_id="aldric", location_id="vale_tavern", services=["ale"]),
+        req(
+            "npc_update", npc_id="aldric", location_id="vale_tavern", services=["ale"],
+            open_hour=6, close_hour=21,
+        ),
     )
     assert d.status != "rejected"
     assert ctx.bundle.world.npcs["aldric"].services == ["ale"]
@@ -331,7 +334,8 @@ def test_npc_update_keeper_with_npc_trade_is_moved(registry, cfg):
 
 def test_npc_update_keeper_with_request_trade_kind_is_moved(registry, cfg):
     ctx = tavern_ctx(registry, cfg)
-    assert move_keeper(ctx, trade_kind="general").status != "rejected"
+    d = move_keeper(ctx, trade_kind="general", open_hour=8, close_hour=16)
+    assert d.status != "rejected"
 
 
 def test_npc_create_name_and_id_clash_signal_names_both(registry, cfg):
@@ -1222,3 +1226,165 @@ def test_attitude_at_cap_does_not_eat_limit_for_later_opposite_change(registry, 
     d = attitude(ctx, -10)
     assert d.status == "accepted"
     assert ctx.bundle.world.npcs["aldric"].attitude == 90
+
+
+# М0 П4 (решения 44, 57, 61, 70, 72): часы работы в npc_create / npc_update (open_hour, close_hour);
+# торговцу и NPC с услугами обязательны («назови часы работы»), прочим нет; 0-24 -- круглосуточно
+
+def hours_of(ctx, npc_id):
+    return ctx.bundle.world.npcs[npc_id].hours
+
+
+def test_npc_create_with_hours_stores_them(registry, cfg):
+    from ai_dm.state.world import WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(open_hour=21, close_hour=6))
+    assert d.status == "accepted"
+    assert hours_of(ctx, "brana") == WorkHours(open_hour=21, close_hour=6)
+
+
+def test_npc_create_merchant_without_hours_is_rejected_and_not_created(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_npc(trade_kind="smith"))
+    assert d.status == "rejected"
+    assert "назови часы работы" in d.signal_to_master
+    assert "трактирщик" in d.signal_to_master
+    assert "brana" not in ctx.bundle.world.npcs
+    assert dump(ctx) == before
+
+
+def test_npc_create_services_without_hours_is_rejected_and_not_created(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(services=["ale"]))
+    assert d.status == "rejected"
+    assert "назови часы работы" in d.signal_to_master
+    assert "brana" not in ctx.bundle.world.npcs
+
+
+def test_npc_create_merchant_with_hours_is_created(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(trade_kind="smith", open_hour=8, close_hour=16))
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["brana"].trade.kind == "smith"
+    assert hours_of(ctx, "brana").open_hour == 8
+
+
+def test_npc_create_without_trade_and_services_needs_no_hours(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc())
+    assert d.status == "accepted"
+    assert hours_of(ctx, "brana") is None
+
+
+def test_npc_create_round_the_clock_is_allowed(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, new_npc(trade_kind="general", open_hour=0, close_hour=24))
+    assert d.status == "accepted"
+    assert hours_of(ctx, "brana").close_hour == 24
+
+
+@pytest.mark.parametrize(
+    ("open_hour", "close_hour"), [(8, 8), (25, 16), (8, 30), (5, 24), (0, 0)],
+)
+def test_npc_create_bad_hours_are_invalid(registry, cfg, open_hour, close_hour):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_npc(open_hour=open_hour, close_hour=close_hour))
+    assert isinstance(d, Invalid)
+    assert dump(ctx) == before
+
+
+def test_npc_update_services_without_hours_is_rejected_and_adds_nothing(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("npc_update", npc_id="aldric", services=["ale"]))
+    assert d.status == "rejected"
+    assert "назови часы работы" in d.signal_to_master
+    assert ctx.bundle.world.npcs["aldric"].services == []
+    assert dump(ctx) == before
+
+
+def test_npc_update_trade_kind_without_hours_is_rejected(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(ctx, req("npc_update", npc_id="aldric", trade_kind="general"))
+    assert d.status == "rejected"
+    assert ctx.bundle.world.npcs["aldric"].trade is None
+
+
+def test_npc_update_services_with_hours_in_the_same_request_is_accepted(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = apply(
+        ctx, req("npc_update", npc_id="aldric", services=["ale"], open_hour=6, close_hour=21)
+    )
+    assert d.status == "accepted"
+    assert ctx.bundle.world.npcs["aldric"].services == ["ale"]
+    assert hours_of(ctx, "aldric").close_hour == 21
+
+
+def test_npc_update_services_for_an_npc_that_has_hours_needs_none_in_request(registry, cfg):
+    from ai_dm.state.world import WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].hours = WorkHours(open_hour=6, close_hour=21)
+    d = apply(ctx, req("npc_update", npc_id="aldric", services=["ale"]))
+    assert d.status == "accepted"
+    assert hours_of(ctx, "aldric") == WorkHours(open_hour=6, close_hour=21)
+
+
+def test_npc_update_other_fields_of_a_service_npc_without_hours_pass(registry, cfg):
+    # NPC живого сейва: услуги есть, часов нет (решение 60) -- правка отношения и места проходит
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].services = ["ale"]
+    d = apply(ctx, req("npc_update", npc_id="aldric", attitude_delta=5, location_id="vale"))
+    assert d.status == "accepted"
+    assert hours_of(ctx, "aldric") is None
+
+
+def test_npc_update_sets_new_hours_on_a_merchant_and_touches_nothing_else(registry, cfg):
+    from ai_dm.state.world import TradeProfile, WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    npc = ctx.bundle.world.npcs["aldric"]
+    npc.trade = TradeProfile(kind="general")
+    npc.hours = WorkHours(open_hour=8, close_hour=16)
+    before = npc.model_dump(exclude={"hours"})
+    d = apply(ctx, req("npc_update", npc_id="aldric", open_hour=21, close_hour=6))
+    assert d.status == "accepted"
+    assert npc.hours == WorkHours(open_hour=21, close_hour=6)
+    assert npc.model_dump(exclude={"hours"}) == before
+    assert d.log == []
+
+
+@pytest.mark.parametrize(("open_hour", "close_hour"), [(8, 8), (25, 16), (8, 30), (5, 24)])
+def test_npc_update_bad_hours_are_invalid(registry, cfg, open_hour, close_hour):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("npc_update", npc_id="aldric", open_hour=open_hour, close_hour=close_hour))
+    assert isinstance(d, Invalid)
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("given", [{"open_hour": 8}, {"close_hour": 16}])
+def test_npc_create_only_one_of_two_hours_is_invalid(registry, cfg, given):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, new_npc(**given))
+    assert isinstance(d, Invalid)
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("given", [{"open_hour": 8}, {"close_hour": 16}])
+def test_npc_update_only_one_of_two_hours_is_invalid(registry, cfg, given):
+    ctx = make_ctx(registry, cfg)
+    before = dump(ctx)
+    d = apply(ctx, req("npc_update", npc_id="aldric", **given))
+    assert isinstance(d, Invalid)
+    assert dump(ctx) == before
+
+
+@pytest.mark.parametrize("given", [{"open_hour": 8}, {"close_hour": 16}])
+def test_npc_update_one_hour_is_a_bad_hours_not_an_empty_update(registry, cfg, given):
+    d = apply(make_ctx(registry, cfg), req("npc_update", npc_id="aldric", **given))
+    assert (d.code, "оба числа" in d.message) == ("bad_hours", True)

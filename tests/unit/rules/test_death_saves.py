@@ -69,6 +69,10 @@ class ScriptedRng(Rng):
         self.rolls = list(rolls)
 
     def randbelow(self, n):
+        # М0 П4: d4 -- срок пробуждения стабильного (1d4 ч); не заскриптован -- первая грань,
+        # очередь d20 не трогается
+        if n == 4 and not (self.rolls and self.rolls[0][0] == 4):
+            return 0
         sides, face = self.rolls.pop(0)
         assert sides == n
         return face - 1
@@ -801,6 +805,13 @@ def test_resolve_by_seed_matches_manual_death_saves(registry):
             outcome = roll_death_save(manual_hero, registry, manual_rng, now_s=0, cause="goal")
         auto, _ = resolve_out_of_combat(auto_hero, registry, Rng(seed), now_s=0, cause="goal")
         assert auto == outcome
+        # срок пробуждения (решение 128) -- d4 после бросков d20: только у стабильного, 1-4 ч
+        wake = auto_hero.creature.wake_at_s
+        if outcome == "stable":
+            assert 3600 <= wake <= 4 * 3600
+            manual_hero.creature.wake_at_s = wake
+        else:
+            assert wake is None
         assert auto_hero == manual_hero
 
 
@@ -832,3 +843,47 @@ def test_resolve_natural_20_gives_single_log_line(registry):
     outcome, logs = resolve_with_logs(make_hero(), registry, 20)
     assert outcome == "revived"
     assert len(logs) == 1
+
+
+# М0 П4: стабильный вне боя приходит в себя через 1d4 часа (wake_at_s)
+
+@pytest.mark.parametrize("hours", [1, 2, 3, 4])
+def test_resolve_stable_sets_wake_at_now_plus_d4_hours(registry, hours):
+    hero = make_hero()
+    rng = ScriptedRng((20, 10), (20, 12), (20, 15), (4, hours))
+    outcome, _ = resolve_out_of_combat(hero, registry, rng, now_s=500, cause="goal")
+    assert outcome == "stable"
+    assert hero.creature.wake_at_s == 500 + hours * 3600
+
+
+def test_resolve_stable_wake_is_within_one_to_four_hours_by_real_rng(registry):
+    stable_seen = 0
+    for seed in range(60):
+        hero = make_hero()
+        outcome, _ = resolve_out_of_combat(hero, registry, Rng(seed), now_s=1000, cause="goal")
+        if outcome == "stable":
+            stable_seen += 1
+            assert 1000 + 3600 <= hero.creature.wake_at_s <= 1000 + 4 * 3600
+    assert stable_seen > 0
+
+
+def test_resolve_death_leaves_no_wake(registry):
+    hero = make_hero()
+    resolve(hero, registry, 5, 5, 5)
+    assert hero.creature.wake_at_s is None
+
+
+def test_resolve_revived_leaves_no_wake(registry):
+    hero = make_hero()
+    resolve(hero, registry, 20)
+    assert hero.creature.wake_at_s is None
+
+
+def test_healing_before_the_term_cancels_wake(registry):
+    from ai_dm.rules.healing import heal
+
+    hero = make_hero()
+    hero.creature.death_saves = DeathSaves(stable=True)
+    hero.creature.wake_at_s = 5000
+    heal(hero, 3)
+    assert hero.creature.wake_at_s is None

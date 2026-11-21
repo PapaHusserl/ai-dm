@@ -1688,13 +1688,20 @@ def test_second_comfortable_room_same_day_is_rejected_and_keeps_smelly(registry,
 
 # npc_update services
 
+def with_hours(fields):
+    # М0 П4 (решение 61): запрос с services или trade_kind несёт часы работы
+    if fields.get("services") or fields.get("trade_kind", "none") != "none":
+        fields = {"open_hour": 0, "close_hour": 24, **fields}
+    return fields
+
+
 def update(ctx, npc_id="grok", **fields):
-    return apply(ctx, req("npc_update", npc_id=npc_id, **fields))
+    return apply(ctx, req("npc_update", npc_id=npc_id, **with_hours(fields)))
 
 
 def create(ctx, npc_id="cook_1", **fields):
     data = {"name": "Повар Ганс", "means": ["кухня"], "named": True}
-    data.update(fields)
+    data.update(with_hours(fields))
     return apply(ctx, req("npc_create", id=npc_id, **data))
 
 
@@ -2343,4 +2350,45 @@ def test_ferryman_with_a_shop_trades_on_his_shore_after_returning(registry, cfg)
     ))
     assert d.status == "accepted"
     assert "dagger" in [i["item_id"] for i in d.result["items"]]
+
+
+# М0 П4: часы работы -- вне npc.hours услуга отказывает (rejected, «закрыто до H:00»), деньги и
+# мир не тронуты; hours is None -- как раньше
+
+def hours_service_ctx(registry, cfg, hour, minute=0, open_hour=8, close_hour=16, **fields):
+    from ai_dm.state.world import WorkHours
+
+    ctx = service_ctx(
+        registry, cfg, hours=WorkHours(open_hour=open_hour, close_hour=close_hour), **fields
+    )
+    ctx.bundle.world.clock.now_s = DAY_S + hour * 3600 + minute * 60
+    return ctx
+
+
+def test_service_at_a_closed_provider_is_rejected_and_costs_nothing(registry, cfg):
+    ctx = hours_service_ctx(registry, cfg, 23)
+    before = dump(ctx)
+    d = buy(ctx)
+    assert d.status == "rejected"
+    assert "закрыто до 8:00" in d.reason
+    assert dump(ctx) == before
+
+
+def test_service_provider_is_open_at_15_59(registry, cfg):
+    assert buy(hours_service_ctx(registry, cfg, 15, 59)).status == "accepted"
+
+
+def test_service_provider_is_closed_at_16_00(registry, cfg):
+    assert buy(hours_service_ctx(registry, cfg, 16)).status == "rejected"
+
+
+def test_service_provider_without_hours_is_open_at_night(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = DAY_S + 23 * 3600
+    assert buy(ctx).status == "accepted"
+
+
+def test_overnight_service_provider_is_open_after_midnight(registry, cfg):
+    ctx = hours_service_ctx(registry, cfg, 3, open_hour=20, close_hour=4)
+    assert buy(ctx).status == "accepted"
 

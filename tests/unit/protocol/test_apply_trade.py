@@ -1261,3 +1261,74 @@ def test_list_alchemist_category_has_magic_within_the_rarity_cap(registry, cfg):
     ids = [i["item_id"] for i in d.result["items"]]
     assert "potion_of_healing" in ids
     assert "potion_rare" not in ids
+
+
+# М0 П4: часы работы -- вне npc.hours торговец отказывает (rejected, «закрыто до H:00»),
+# `hours is None` -- открыто всегда; [open, close) по часу суток, close < open -- через полночь,
+# 0-24 -- круглосуточно
+
+def at_time(ctx, hour, minute=0):
+    ctx.bundle.world.clock.now_s = 86400 + hour * 3600 + minute * 60
+    return ctx
+
+
+def hours_ctx(registry, cfg, open_hour, close_hour, hour, minute=0):
+    from ai_dm.state.world import WorkHours
+
+    ctx = trade_ctx(registry, cfg, hours=WorkHours(open_hour=open_hour, close_hour=close_hour))
+    return at_time(ctx, hour, minute)
+
+
+def test_closed_merchant_rejects_with_the_opening_hour(registry, cfg):
+    ctx = hours_ctx(registry, cfg, 8, 16, 23)
+    before = dump(ctx)
+    d = buy(ctx, "quiver")
+    assert d.status == "rejected"
+    assert "закрыто до 8:00" in d.reason
+    assert dump(ctx) == before
+
+
+def test_closed_merchant_signal_names_the_merchant_and_asks_for_the_fact(registry, cfg):
+    ctx = hours_ctx(registry, cfg, 8, 16, 23)
+    npc = ctx.bundle.world.npcs["mara"]
+    d = buy(ctx, "quiver")
+    assert d.signal_to_master == f"{npc.name}: закрыто до 8:00. Опиши по факту."
+
+
+@pytest.mark.parametrize(("hour", "minute"), [(8, 0), (12, 0), (15, 59)])
+def test_merchant_is_open_inside_hours(registry, cfg, hour, minute):
+    assert buy(hours_ctx(registry, cfg, 8, 16, hour, minute), "quiver").status == "accepted"
+
+
+@pytest.mark.parametrize(("hour", "minute"), [(16, 0), (7, 59), (0, 0)])
+def test_merchant_is_closed_outside_hours(registry, cfg, hour, minute):
+    assert buy(hours_ctx(registry, cfg, 8, 16, hour, minute), "quiver").status == "rejected"
+
+
+def test_merchant_without_hours_is_open_at_night(registry, cfg):
+    ctx = at_time(trade_ctx(registry, cfg), 23)
+    assert buy(ctx, "quiver").status == "accepted"
+
+
+def test_overnight_merchant_is_open_late_and_closed_by_day(registry, cfg):
+    assert buy(hours_ctx(registry, cfg, 20, 4, 23), "quiver").status == "accepted"
+    d = buy(hours_ctx(registry, cfg, 20, 4, 12), "quiver")
+    assert d.status == "rejected"
+    assert "закрыто до 20:00" in d.reason
+
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "status"),
+    [(20, 59, "rejected"), (21, 0, "accepted"), (5, 59, "accepted"), (6, 0, "rejected")],
+)
+def test_night_merchant_21_to_6_edges(registry, cfg, hour, minute, status):
+    assert buy(hours_ctx(registry, cfg, 21, 6, hour, minute), "quiver").status == status
+
+
+def test_night_merchant_reason_names_the_opening_hour(registry, cfg):
+    d = buy(hours_ctx(registry, cfg, 21, 6, 12), "quiver")
+    assert "закрыто до 21:00" in d.reason
+
+
+def test_round_the_clock_merchant_is_open_at_three_am(registry, cfg):
+    assert buy(hours_ctx(registry, cfg, 0, 24, 3), "quiver").status == "accepted"

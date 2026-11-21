@@ -837,7 +837,9 @@ def test_give_item_of_an_srd_item_is_a_plain_receive(registry, cfg):
 # npc_id: прилавок на лету (ФД2 П2, решение 10)
 
 def make_merchant(ctx, npc_id="aldric"):
-    d = apply(ctx, req("npc_update", npc_id=npc_id, trade_kind="general"))
+    d = apply(ctx, req(
+        "npc_update", npc_id=npc_id, trade_kind="general", open_hour=0, close_hour=24
+    ))
     assert d.status == "accepted"
     ctx.bundle.world.npcs[npc_id].location_id = "vale"
     return ctx.bundle.world.npcs[npc_id]

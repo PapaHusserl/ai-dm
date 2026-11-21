@@ -19,6 +19,8 @@ class BoundaryResult:
         self.chapter_closed = None
         # тексты доставленных закадровых заметок
         self.notices = []
+        # строки срока, наступившего при закрытии сцены (ставит run)
+        self.lines = []
         self.error = None
         # run_id вызова world на границе (None -- вызова не было): по нему ход помечается в журнале
         self.world_run_id = None
@@ -30,11 +32,13 @@ class BoundaryResult:
         self.report_tags = []
 
 
-def close_boundary(bundle, cfg, reason) -> None:
-    # шаг 1: закрытие сцены; граница не завершена (выжимку пишет summarize_scene)
+def close_boundary(bundle, cfg, reason) -> list[str]:
+    # шаг 1: закрытие сцены; граница не завершена (выжимку пишет summarize_scene);
+    # строки ленты о сроках, наступивших при закрытии
     ensure_chapter(bundle)
-    close_scene(bundle, reason, cfg)
+    lines = close_scene(bundle, reason, cfg)
     bundle.session.boundary_pending = True
+    return lines
 
 
 def boundary_lines(chapter_closed, offscreen) -> list[str]:
@@ -249,6 +253,8 @@ def run(
     bundle, cfg, registry, reason, *, saves_root, saved_at, world=None, run_id=None,
     summarizer=None,
 ) -> BoundaryResult:
-    close_boundary(bundle, cfg, reason)
+    lines = close_boundary(bundle, cfg, reason)
     save_auto(saves_root, bundle, saved_at=saved_at, cfg=cfg)
-    return finish_boundary(bundle, cfg, registry, world, run_id, summarizer)
+    done = finish_boundary(bundle, cfg, registry, world, run_id, summarizer)
+    done.lines = lines
+    return done

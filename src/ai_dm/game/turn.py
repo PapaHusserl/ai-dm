@@ -277,7 +277,7 @@ class TurnRunner:
         # страховка: любой сдвиг часов в ходе (в т.ч. left_to_die) мог закончить концентрацию
         expire_concentration(hero_of(work), work.world)
         result.lines += expire_max_hp(hero_of(work), work.world)
-        purge_expired(work)
+        result.lines += purge_expired(work)
         return work, rng, narration
 
     def retry_result(self, started, reason) -> TurnResult:
@@ -418,6 +418,7 @@ class TurnRunner:
             if run_id not in result.run_ids:
                 result.run_ids.append(run_id)
         self.take_tags(done.report_tags, result)
+        result.lines += done.lines
         self.bundle = done.bundle
         self.failed_role = done.failed_role
         if done.error is not None:

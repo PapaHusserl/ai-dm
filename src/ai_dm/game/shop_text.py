@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from ai_dm.game.sheet_text import INV_GROUPS, inv_group
 from ai_dm.protocol.handlers.trade_pick import sellable_stacks
 from ai_dm.rules import trade as trade_rules
+from ai_dm.rules import work_hours
 from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 from ai_dm.rules.money import format_cp
@@ -111,17 +112,19 @@ def shop_npcs(world, location_id):
 
 
 def shop_head(npc, world, cfg):
+    if trade_rules.refuses(npc.attitude, cfg):
+        return f"{shown_name(npc)} отказывается торговать"
     now_s = world.clock.now_s
+    kind = "" if npc.trade is None else f" ({npc.trade.kind})"
+    name = f"{shown_name(npc)}{kind}"
+    if not work_hours.is_open(npc.hours, now_s):
+        return f"{name} — {work_hours.closed_text(npc.hours)}"
     if npc.trade is not None:
         purse = format_cp(trade_rules.purse_now(npc.trade, now_s, cfg))
-        head = f"{shown_name(npc)} ({npc.trade.kind}) — кошелёк торговца: {purse}"
+        head = f"{name} — кошелёк торговца: {purse}"
     else:
-        head = f"{shown_name(npc)} — услуги"
-    haggle = trade_rules.haggle_state(haggle_slot(npc, world), now_s).get("haggle")
-    if haggle:
-        sign = "−" if haggle["percent"] < 0 else "+"
-        head += f"; торг: {sign}{abs(haggle['percent'])}% до конца дня"
-    return head
+        head = f"{name} — услуги"
+    return head + trade_rules.haggle_tail(haggle_slot(npc, world), now_s)
 
 
 def service_lines(npc, world, cfg):
@@ -144,10 +147,9 @@ def shop_lines(hero, world, registry, cfg):
     for npc in npcs:
         if lines:
             lines.append("")
-        if trade_rules.refuses(npc.attitude, cfg):
-            lines.append(f"{shown_name(npc)} отказывается торговать")
-            continue
         lines.append(shop_head(npc, world, cfg))
+        if not work_hours.serves(npc, world.clock.now_s, cfg):
+            continue
         if npc.trade is not None:
             level = hero.sheet.level
             lines += shop_item_lines(sale_rows(npc, world, registry, level, cfg))

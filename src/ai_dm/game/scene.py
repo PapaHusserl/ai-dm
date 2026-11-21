@@ -62,13 +62,14 @@ def check_close(bundle, cfg, *, time_before_s, combat_ended=False) -> str | None
     return next((reason for reason, hit in checks if hit), None)
 
 
-def close_scene(bundle, reason, cfg) -> None:
+def close_scene(bundle, reason, cfg) -> list[str]:
+    # строки ленты: сроки, наступившие в минимальном сдвиге часов
     scene = bundle.session.current_scene
     scene.closed_reason = reason
     ensure_min_advance(bundle.world.clock, scene.started_at_s, cfg)
     expire_concentration(hero_of(bundle), bundle.world)
-    expire_max_hp(hero_of(bundle), bundle.world)
-    purge_expired(bundle)
+    lines = expire_max_hp(hero_of(bundle), bundle.world)
+    return lines + purge_expired(bundle)
 
 
 def ensure_chapter(bundle) -> ChapterState:

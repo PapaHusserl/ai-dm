@@ -1183,20 +1183,23 @@ def event_types(ctx):
 
 
 def test_damage_down_then_three_successes_makes_hero_stable(registry, cfg):
-    rng = ScriptedRng(d10=[10], d20=[15, 15, 15])
+    rng = ScriptedRng(d10=[10], d20=[15, 15, 15], d4=[2])
     ctx = weak_ctx(registry, cfg, rng)
+    now = ctx.bundle.world.clock.now_s
     d = apply(ctx, req("damage", severity="nuisance", damage_type="fire"))
     assert d.status == "accepted"
     assert hp_of(ctx) == 0
     assert ctx.hero.creature.death_saves.stable is True
     assert ctx.hero.status == "active"
     assert rng.left("d20") == 0
+    assert rng.left("d4") == 0
+    assert now + 3600 <= ctx.hero.creature.wake_at_s <= now + 4 * 3600
     assert "hero_status" in d.result
     assert "hero_died" not in event_types(ctx)
 
 
 def test_damage_down_logs_every_death_save_line(registry, cfg):
-    rng = ScriptedRng(d10=[10], d20=[15, 15, 15])
+    rng = ScriptedRng(d10=[10], d20=[15, 15, 15], d4=[2])
     ctx = weak_ctx(registry, cfg, rng)
     d = apply(ctx, req("damage", severity="nuisance", damage_type="fire"))
     # строка урона, «падает» и по строке на каждый из трёх спасбросков
@@ -1224,13 +1227,16 @@ def test_damage_down_then_three_failures_kills_hero(registry, cfg):
 
 
 def test_damage_to_hero_already_down_triggers_out_of_combat_saves(registry, cfg):
-    rng = ScriptedRng(d10=[3], d20=[15, 15, 15])
+    rng = ScriptedRng(d10=[3], d20=[15, 15, 15], d4=[2])
     ctx = weak_ctx(registry, cfg, rng)
     lay_down(ctx)
+    now = ctx.bundle.world.clock.now_s
     d = apply(ctx, req("damage", severity="nuisance", damage_type="fire"))
     assert isinstance(d, Decision)
     assert rng.left("d20") == 0
+    assert rng.left("d4") == 0
     assert ctx.hero.creature.death_saves.stable is True
+    assert now + 3600 <= ctx.hero.creature.wake_at_s <= now + 4 * 3600
     assert ctx.hero.status == "active"
     assert "hero_status" in d.result
 

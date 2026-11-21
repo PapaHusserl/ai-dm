@@ -68,7 +68,10 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # пути и цели времени (замер 25186: rules 12932, tools 12254; 24880 -> 25200).
 # М0 П3б: правила о пути отрезками, блок `journey`, решение 117 (замер 25430: rules
 # 13176, tools 12254; 25200 -> 25450).
-STATIC_MAX = 25450
+# М0 П4, решение 129: часы работы (open_hour/close_hour), запрос delayed_condition, правила о
+# часах и отложенных состояниях (замер 26452: rules 13514, tools 12938; 25450 -> 26480;
+# перемерить после последней правки правил).
+STATIC_MAX = 26480
 
 MODES = sorted(MODE_TOOLS)
 

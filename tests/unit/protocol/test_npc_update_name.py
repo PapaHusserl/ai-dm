@@ -437,7 +437,7 @@ def test_trade_kind_for_dead_survivor_message_uses_label(registry, cfg):
 
 def test_trade_kind_log_uses_label(registry, cfg):
     ctx = hidden_named(registry, cfg)
-    decision = update(ctx, trade_kind="general")
+    decision = update(ctx, trade_kind="general", open_hour=8, close_hour=16)
     assert decision.status == "accepted"
     assert decision.log == [f"{LABEL} торгует: general"]
     assert decision.result["trade_kind"] == "general"
@@ -445,8 +445,8 @@ def test_trade_kind_log_uses_label(registry, cfg):
 
 def test_second_trade_kind_is_rejected_with_label(registry, cfg):
     ctx = hidden_named(registry, cfg)
-    update(ctx, trade_kind="general")
-    decision = update(ctx, trade_kind="general")
+    update(ctx, trade_kind="general", open_hour=8, close_hour=16)
+    decision = update(ctx, trade_kind="general", open_hour=8, close_hour=16)
     assert decision.status == "rejected"
     assert decision.reason == f"{LABEL} уже торговец"
     assert decision.signal_to_master == f"{LABEL} уже торгует: тип торговца не меняется."

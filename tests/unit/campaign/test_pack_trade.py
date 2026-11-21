@@ -117,3 +117,40 @@ def test_pack_npc_trade_of_mini_fixture_is_mara(registry):
 
     path = Path(__file__).resolve().parents[2] / "fixtures" / "packs" / "mini"
     assert pack_npc_trade(path, registry) == {"mara": "general"}
+
+
+# М0 П4 (решения 57, 71): часы работы NPC пака -- поле hours в npcs.yaml (читает модель NPC);
+# торговец пака без часов грузится (открыт всегда)
+
+def pack_with_hours(tmp_path, hours, trade=None):
+    files = default_files()
+    files["npcs.yaml"][1]["hours"] = hours
+    if trade is not None:
+        files["npcs.yaml"][1]["trade"] = trade
+    return write_pack(tmp_path, files)
+
+
+def test_pack_npc_hours_are_read(tmp_path, registry):
+    from ai_dm.state.world import WorkHours
+
+    pack = load(pack_with_hours(tmp_path, {"open_hour": 8, "close_hour": 16}), registry)
+    assert npc_of(pack, "guard").hours == WorkHours(open_hour=8, close_hour=16)
+
+
+def test_pack_npc_hours_reach_the_built_world(tmp_path, registry):
+    from campaign_kit import world_from_pack
+
+    from ai_dm.state.world import WorkHours
+
+    pack = load(pack_with_hours(tmp_path, {"open_hour": 21, "close_hour": 6}), registry)
+    assert world_from_pack(pack).npcs["guard"].hours == WorkHours(open_hour=21, close_hour=6)
+
+
+def test_pack_merchant_without_hours_loads_and_has_none(tmp_path, registry):
+    pack = load(pack_with({"kind": "general"}, tmp_path), registry)
+    assert npc_of(pack, "guard").hours is None
+
+
+def test_other_pack_npc_has_no_hours(tmp_path, registry):
+    pack = load(pack_with_hours(tmp_path, {"open_hour": 8, "close_hour": 16}), registry)
+    assert npc_of(pack, "aldric").hours is None

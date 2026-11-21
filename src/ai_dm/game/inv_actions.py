@@ -56,7 +56,7 @@ def shift_clock(app, hero, minutes, lines):
     if ended is not None:
         lines.append(f"Концентрация: {app.registry.get('spell', ended).name} кончилась.")
     lines += expire_max_hp(hero, world)
-    purge_expired(app.bundle)
+    lines += purge_expired(app.bundle)
 
 
 def equip_cmd(app, hero, text):

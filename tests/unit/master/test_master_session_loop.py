@@ -1055,7 +1055,10 @@ def merchant_round(tmp_path, registry, cfg, calls):
     session, _, _, _ = make_session(scripted([]), tmp_path)
     ctx = make_ctx(registry, cfg)
     ctx.hero.money_cp = 500
-    update = {"type": "npc_update", "npc_id": "aldric", "trade_kind": "general"}
+    update = {
+        "type": "npc_update", "npc_id": "aldric", "trade_kind": "general",
+        "open_hour": 0, "close_hour": 24,
+    }
     npc = apply(ctx, parse_request(update))
     assert npc.status == "accepted"
     ctx.bundle.world.npcs["aldric"].location_id = ctx.hero.location_id

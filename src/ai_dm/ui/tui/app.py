@@ -16,6 +16,7 @@ from ai_dm.game.commands import HELP, cost_report
 from ai_dm.game.lore_text import find_entity, lore_groups
 from ai_dm.game.scene import hero_of
 from ai_dm.game.shop_text import shop_head, shop_npcs
+from ai_dm.rules import work_hours
 from ai_dm.rules.trade import refuses
 from ai_dm.ui.combat_menu import MenuState
 from ai_dm.ui.format import head_lines, inert_lines
@@ -569,6 +570,11 @@ class AiDmApp(App):
 
     def show_shop(self, npc_id):
         npc = self.game.bundle.world.npcs[npc_id]
+        world = self.game.bundle.world
+        if not work_hours.is_open(npc.hours, world.clock.now_s):
+            # окно закрытого не открывается: строка в ленту
+            self.write_feed([shop_head(npc, world, self.game.settings.rules)])
+            return
         tabs = shop_tabs(shop_rows(self.game, npc))
         modal = ShopModal(strings.MODAL_TITLES["/shop"], tabs, npc_id, [shop_money(self.game, npc)])
         self.push_screen(modal, self.shop_closed)

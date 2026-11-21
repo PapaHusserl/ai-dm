@@ -427,6 +427,33 @@ def test_load_pending_boundary_closes_chapter_by_limit(registry, cfg, tmp_path):
     assert len(app.bundle.memory.chapters) == 1
 
 
+# М0 П4, решение 135 (б): срок сработал до автосейва -- после загрузки строки срока нет,
+# состояние на герое, очередь пуста
+
+def test_load_pending_boundary_shows_no_line_of_the_already_applied_pending(
+    registry, cfg, tmp_path
+):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.state.world import PendingEvent
+
+    bundle = chapter_bundle(registry, count=cfg.scene.max_per_chapter)
+    bundle.world.pending = [
+        PendingEvent(
+            at_s=300, target="hero", kind="condition", ref="diseased", text="Началась лихорадка"
+        )
+    ]
+    assert close_scene(bundle, "end_scene", cfg) == ["Началась лихорадка"]
+    bundle.session.boundary_pending = True
+    save_slot(tmp_path, bundle, "auto", saved_at="2026-01-01T12:00:00Z")
+    app = make_app(registry, tmp_path, scripted([text_step()]))
+    lines = app.load("auto")
+    assert lines[0] == "Загружено: auto."
+    assert any(line.startswith("Глава 1") for line in lines)
+    assert "Началась лихорадка" not in lines
+    assert [c.id for c in app.bundle.heroes[0].creature.conditions] == ["diseased"]
+    assert app.bundle.world.pending == []
+
+
 def test_load_without_pending_boundary_changes_no_chapter(registry, cfg, tmp_path):
     bundle = chapter_bundle(registry)
     save_slot(tmp_path, bundle, "auto", saved_at="2026-01-01T12:00:00Z")

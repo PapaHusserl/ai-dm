@@ -1,5 +1,6 @@
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.handlers.hero import condition_from_spec
+from ai_dm.rules import work_hours
 
 
 def filled(data) -> dict:
@@ -40,7 +41,9 @@ def npc_data(npc) -> dict:
     trade = None
     if npc.trade_kind is not None:
         trade = {"kind": npc.trade_kind}
+    hours = work_hours.from_pair(npc.open_hour, npc.close_hour)
     data.update(filled({
+        "hours": None if hours is None else hours.model_dump(),
         "motive": npc.motive, "means": list(npc.means),
         "opportunity": [trigger_data(t) for t in npc.opportunity],
         "secrets": [secret_data(s) for s in npc.secrets],
@@ -104,7 +107,8 @@ def pack_spec(ctx, request):
     if ctx.files is not None:
         return Invalid(code="already_done", message="Пак уже принят.")
     try:
-        # ValueError -- от condition_from_spec (порог gte у attitude и favor)
+        # ValueError -- от condition_from_spec (порог gte у attitude и favor) и work_hours.from_pair
+        # (часы работы: одно число или неверная пара)
         files = files_from_request(request, ctx.task.campaign_id)
     except ValueError as err:
         return Invalid(code="invalid_request", message=str(err))

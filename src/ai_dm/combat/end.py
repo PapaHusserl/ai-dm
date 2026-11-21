@@ -2,7 +2,7 @@ from ai_dm.combat import ammo, disarm, downed, minions, trophies
 from ai_dm.core.events import DomainEvent
 from ai_dm.rules.auto_flags import apply_events
 from ai_dm.rules.creatures import end_concentration
-from ai_dm.rules.death_saves import is_dying, is_stable
+from ai_dm.rules.death_saves import is_dying, is_stable, wake_after_combat
 from ai_dm.rules.healing import expire_max_hp
 from ai_dm.rules.inventory import add_item
 from ai_dm.rules.spellcasting import expire_concentration, spell_kind
@@ -153,6 +153,9 @@ def release_concentration(engine) -> None:
 def conclude(engine) -> list[DomainEvent]:
     # раунд, в котором бой закончился, считается целиком
     engine.world.clock.advance(rounds_to_seconds(engine.state.round, engine.cfg))
+    wake_after_combat(
+        engine.heroes.values(), engine.state.outcome, engine.rng, engine.world.clock.now_s
+    )
     release_concentration(engine)
     settle_ground(engine)
     minions.after_combat(engine)

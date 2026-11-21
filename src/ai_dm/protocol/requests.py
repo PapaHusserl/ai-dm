@@ -23,6 +23,15 @@ ParleySkillOrNone = Literal["intimidation", "persuasion", "deception", "none"]
 ParleyOutcomeOrNone = Literal["surrender", "flee", "defect", "waver", "quarrel", "none"]
 
 
+HOUR_OPEN_TEXT = (
+    "Час открытия 0-23 (часы работы NPC); торговцу и NPC с услугами обязательны вместе с "
+    "close_hour; -1 = нет."
+)
+HOUR_CLOSE_TEXT = (
+    "Час закрытия 0-24 (меньше открытия = через полночь; 0 и 24 = круглосуточно); -1 = нет."
+)
+
+
 class Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # имя поля -> нейтральное значение, которое при разборе становится None
@@ -289,6 +298,25 @@ class Curse(Request):
     cause: str = Field(description="Источник проклятия одной фразой, до 80 знаков.")
 
 
+class DelayedCondition(Request):
+    """Отложить начало состояния («к утру лихорадка»): игрок не видит его до момента начала."""
+
+    type: Literal["delayed_condition"]
+    target: str = Field(description="Id героя или NPC.")
+    condition: str = Field(description="Id состояния; допустимо только diseased (Болен).")
+    when: Literal["morning", "hours"] = Field(
+        description="morning = с ближайшего утра; hours = через hours часов."
+    )
+    hours: int = Field(-1, description="Через сколько часов (от 1) при when=hours; иначе -1.")
+    text: str = Field(
+        description="Строка ленты в момент начала, до 80 знаков, например «Началась лихорадка»."
+    )
+    failed_roll_ref: str = Field(
+        "", description="Герою: roll_ref проваленного броска этого хода; NPC и пусто = нет."
+    )
+    NEUTRAL: ClassVar[dict] = {"hours": -1, "failed_roll_ref": ""}
+
+
 class GiveItem(Request):
     """Дать герою предмет из реестра."""
 
@@ -552,9 +580,11 @@ class NpcCreate(Request):
     services: list[str] = Field(
         [], description="Id платных услуг NPC (ночлег, еда, лечение); пусто = нет."
     )
+    open_hour: int = Field(-1, description=HOUR_OPEN_TEXT)
+    close_hour: int = Field(-1, description=HOUR_CLOSE_TEXT)
     NEUTRAL: ClassVar[dict] = {
         "motive": "", "location_id": "", "trade_kind": "none", "gender": "none", "pronouns": "",
-        "services": [],
+        "services": [], "open_hour": -1, "close_hour": -1,
     }
 
 
@@ -639,9 +669,11 @@ class NpcUpdate(NpcUpdateBase):
     services: list[str] = Field(
         [], description="Добавить NPC платные услуги (id видов); пусто = не менять."
     )
+    open_hour: int = Field(-1, description=HOUR_OPEN_TEXT + " Меняет часы NPC; нет = не менять.")
+    close_hour: int = Field(-1, description=HOUR_CLOSE_TEXT)
     NEUTRAL: ClassVar[dict] = {
         **NpcUpdateBase.NEUTRAL, "location_id": "", "trade_kind": "none", "memory_kind": "none",
-        "memory_text": "", "name": "", "services": [],
+        "memory_text": "", "name": "", "services": [], "open_hour": -1, "close_hour": -1,
     }
 
 
@@ -1025,9 +1057,11 @@ class PackNpc(Request):
         [], description="Возможности NPC: что он сделает при условии; пусто = нет."
     )
     secrets: list[SecretSpec] = Field([], description="Секреты NPC и раскрытие; пусто = нет.")
+    open_hour: int = Field(-1, description=HOUR_OPEN_TEXT)
+    close_hour: int = Field(-1, description=HOUR_CLOSE_TEXT)
     NEUTRAL: ClassVar[dict] = {
         "motive": "", "location_id": "", "trade_kind": "none", "species_id": "",
-        "gender": "none", "pronouns": ""
+        "gender": "none", "pronouns": "", "open_hour": -1, "close_hour": -1,
     }
 
 
@@ -1120,6 +1154,7 @@ REQUEST_MODELS = {
     "end_combat": EndCombat,
     "damage": Damage,
     "curse": Curse,
+    "delayed_condition": DelayedCondition,
     "give_item": GiveItem,
     "give_custom_item": GiveCustomItem,
     "use_item": UseItem,
@@ -1191,7 +1226,8 @@ VISIBLE_TYPES = tuple(
 
 MasterRequest = Annotated[
     SkillCheck | SavingThrow | StartCombat | PlayerAction | NpcAction | DefeatOutcome | EndCombat
-    | Damage | Curse | GiveItem | GiveCustomItem | UseItem | CastSpell | TakeItem | Trade | Haggle
+    | Damage | Curse | DelayedCondition | GiveItem | GiveCustomItem | UseItem | CastSpell
+    | TakeItem | Trade | Haggle
     | Service | Gold | AwardXp
     | AdvanceTime | Rest
     | WarnDanger

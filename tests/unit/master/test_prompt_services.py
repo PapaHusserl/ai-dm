@@ -203,7 +203,7 @@ def test_exactly_eight_items_are_all_kept(registry, cfg):
 def test_entry_has_exactly_the_documented_keys(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_provider(ctx)
-    assert set(services_of(ctx)[0]) == {"npc_id", "items"}
+    assert set(services_of(ctx)[0]) == {"npc_id", "items", "hours"}
 
 
 # цены: отношение и торг
@@ -265,3 +265,57 @@ def test_shop_profile_haggle_prices_services_but_key_stays_in_trade(registry, cf
     assert listed_price(ctx) == 40
     assert "haggle" not in entry
     assert data_of(ctx)["trade"][0]["haggle"] == {"percent": -20}
+
+
+# М0 П4 (решения 57, 60, 72): часы работы NPC с услугами -- в записи services; нет часов --
+# пометка «часы не заданы»; 0-24 -- «круглосуточно» (формат значения выбирает кабан, тесты
+# смотрят текст и числа)
+
+def hours_text(ctx):
+    return json.dumps(services_of(ctx)[0]["hours"], ensure_ascii=False)
+
+
+def test_provider_with_hours_shows_both_hours(registry, cfg):
+    from ai_dm.state.world import WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, hours=WorkHours(open_hour=6, close_hour=21))
+    text = hours_text(ctx)
+    assert "6" in text
+    assert "21" in text
+    assert "не заданы" not in text
+
+
+def test_provider_without_hours_is_marked_hours_not_set(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx)
+    assert "часы не заданы" in hours_text(ctx)
+
+
+def test_merchant_without_hours_is_marked_hours_not_set_in_trade(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, trade=TradeProfile(kind="general", purse_cp=100))
+    assert "часы не заданы" in json.dumps(data_of(ctx)["trade"][0]["hours"], ensure_ascii=False)
+
+
+def test_merchant_with_hours_shows_them_in_trade(registry, cfg):
+    from ai_dm.state.world import WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    add_provider(
+        ctx, trade=TradeProfile(kind="general", purse_cp=100),
+        hours=WorkHours(open_hour=8, close_hour=16),
+    )
+    text = json.dumps(data_of(ctx)["trade"][0]["hours"], ensure_ascii=False)
+    assert "8" in text
+    assert "16" in text
+
+
+def test_round_the_clock_provider_says_so_and_is_not_marked_unset(registry, cfg):
+    from ai_dm.state.world import WorkHours
+
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, hours=WorkHours(open_hour=0, close_hour=24))
+    text = hours_text(ctx)
+    assert "круглосуточно" in text
+    assert "не заданы" not in text

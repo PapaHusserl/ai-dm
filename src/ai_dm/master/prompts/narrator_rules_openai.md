@@ -7,4 +7,6 @@
 - `offer_choices` вызывай в том же ответе, что и текст сцены.
 - Путь и время: `advance_time` с `category` — только с `purpose` (`wait` или `work`), путь — `travel_to`;
   перевозка — `service` с `destination`.
+- Часы работы торговцу и NPC с услугами: `open_hour`, `close_hour` в `npc_create`/`npc_update` (цирюльник 6–12,
+  трактирщик 6–21); комнату снимают в часы работы хозяина.
 - Путь отрезками: `journey` (`left_s`); дальше — `travel_to` с `journey.to.id`; `travel_to` места героя снимает путь — только если он решил остаться.

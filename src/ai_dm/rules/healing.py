@@ -17,8 +17,9 @@ def heal(target, amount: int) -> int:
     before = creature.hp_current
     creature.hp_current = min(creature.hp_max, before + amount)
     if before == 0 and amount > 0:
-        # из 0 HP: спасброски от смерти и стабильность сбрасываются
+        # из 0 HP: спасброски от смерти и стабильность сбрасываются, пробуждение отменяется
         creature.death_saves = DeathSaves()
+        creature.wake_at_s = None
         remove_zero_hp_unconscious(creature)
     return creature.hp_current - before
 

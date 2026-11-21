@@ -1,3 +1,4 @@
+from ai_dm.core.dice import roll_dice
 from ai_dm.rules.creatures import end_concentration
 from ai_dm.rules.healing import heal
 from ai_dm.rules.mortality_guard import mark_dead
@@ -127,4 +128,20 @@ def resolve_out_of_combat(
         outcome = roll_death_save(
             hero, registry, rng, now_s=now_s, cause=cause, by=by, logs=logs, intervene=intervene
         )
+    if outcome == "stable":
+        set_wake(hero.creature, rng, now_s)
     return outcome, logs
+
+
+def set_wake(creature, rng, now_s) -> None:
+    # стабильный на 0 HP приходит в себя через 1d4 часа (SRD): срок в wake_at_s
+    creature.wake_at_s = now_s + roll_dice("1d4", rng).total * 3600
+
+
+def wake_after_combat(heroes, outcome, rng, now_s) -> None:
+    # бой кончился победой или мастером: стабильный на 0 HP герой очнётся через 1d4 часа (SRD)
+    if outcome not in ("victory", "ended_by_master"):
+        return
+    for hero in heroes:
+        if hero.status == "active" and is_stable(hero.creature):
+            set_wake(hero.creature, rng, now_s)

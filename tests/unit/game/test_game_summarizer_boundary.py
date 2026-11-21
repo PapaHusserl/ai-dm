@@ -277,6 +277,50 @@ def test_retry_after_failure_writes_summary_and_opens_scene(registry, cfg, tmp_p
     assert bundle.memory.scenes[0].source == "summarizer"
 
 
+# М0 П4, решение 135 (а): срок внутри минимального сдвига, граница упала -- строка срока выходит
+# в этом же ходе один раз, рядом с подсказкой; повтор её не повторяет
+
+def fever_bundle(registry):
+    from ai_dm.state.world import PendingEvent
+
+    bundle = make_bundle(registry)
+    # ход (+15 мин) приводит часы к началу сцены; срок 1300 с попадает только в минимальный сдвиг
+    bundle.world.clock.now_s = 100
+    bundle.session.current_scene.started_at_s = 1000
+    bundle.world.pending = [
+        PendingEvent(
+            at_s=1300, target="hero", kind="condition", ref="diseased", text="Началась лихорадка"
+        )
+    ]
+    return bundle
+
+
+def test_failed_boundary_shows_the_pending_line_once_with_the_hint(registry, cfg, tmp_path):
+    rig = make_summ_rig(
+        registry, cfg, tmp_path, end_narrator("Подсказка."), summ_fail_steps(),
+        bundle=fever_bundle(registry),
+    )
+    result = rig.runner.play("ход")
+    assert result.boundary_failed is True
+    assert result.lines.count("Началась лихорадка") == 1
+    assert result.hint.startswith("Не удалось завершить границу сцены: ")
+    hero = rig.runner.bundle.heroes[0]
+    assert [c.id for c in hero.creature.conditions] == ["diseased"]
+
+
+def test_retry_after_failed_boundary_does_not_repeat_the_pending_line(registry, cfg, tmp_path):
+    rig = make_summ_rig(
+        registry, cfg, tmp_path, end_narrator("Подсказка."),
+        summ_fail_steps() + summ_steps("После повтора."), bundle=fever_bundle(registry),
+    )
+    rig.runner.play("ход")
+    result = rig.runner.retry()
+    assert result.boundary_failed is False
+    assert "Началась лихорадка" not in result.lines
+    hero = rig.runner.bundle.heroes[0]
+    assert [c.id for c in hero.creature.conditions] == ["diseased"]
+
+
 def test_retry_after_failure_keeps_input_of_the_failed_scene(registry, cfg, tmp_path):
     rig = failed_rig(
         registry, cfg, tmp_path, summ_fail_steps() + summ_steps("После повтора.")

@@ -12,14 +12,21 @@ from ai_dm.protocol.apply import apply
 from ai_dm.protocol.decision import Decision, Invalid
 
 
+def with_hours(fields):
+    # М0 П4 (решение 61): торговцу часы обязательны -- запрос с trade_kind несёт их
+    if fields.get("trade_kind", "none") != "none":
+        fields = {"open_hour": 0, "close_hour": 24, **fields}
+    return fields
+
+
 def create(ctx, npc_id="smith_1", **fields):
     data = {"name": "Кузнец Борин", "means": ["молот"], "named": True}
-    data.update(fields)
+    data.update(with_hours(fields))
     return apply(ctx, req("npc_create", id=npc_id, **data))
 
 
 def update(ctx, npc_id="aldric", **fields):
-    return apply(ctx, req("npc_update", npc_id=npc_id, **fields))
+    return apply(ctx, req("npc_update", npc_id=npc_id, **with_hours(fields)))
 
 
 def npc(ctx, npc_id):

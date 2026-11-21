@@ -3,7 +3,6 @@ from ai_dm.combat.actions.cast import UNARMORED_ONLY
 from ai_dm.combat.actions.cast_support import with_variant
 from ai_dm.combat.available import variants_of
 from ai_dm.combat.zone_effects import place_circle
-from ai_dm.core.clock import DAY
 from ai_dm.core.duration import Duration
 from ai_dm.core.events import DomainEvent
 from ai_dm.protocol.decision import Decision, Invalid
@@ -20,7 +19,17 @@ from ai_dm.protocol.handlers.utility_spells import (
 )
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed, hero_reachable, item_ids
-from ai_dm.rules import arcane_recovery, custom_items, divine, loot, money, rests, time_ops, xp
+from ai_dm.rules import (
+    arcane_recovery,
+    custom_items,
+    divine,
+    loot,
+    money,
+    rests,
+    time_ops,
+    work_hours,
+    xp,
+)
 from ai_dm.rules import revive as revive_rules
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
@@ -974,7 +983,7 @@ def concentration_note(ctx, log, result) -> None:
         log.append(f"Концентрация: {name} кончилась")
         result["concentration_ended"] = ended
     log += expire_max_hp(ctx.hero, ctx.bundle.world)
-    purge_expired(ctx.bundle)
+    log += purge_expired(ctx.bundle)
 
 
 def apply_swap(ctx, request, log, result) -> None:
@@ -1078,6 +1087,16 @@ def wait_for_long_rest(ctx, request):
     return clock.now_s
 
 
+def closed_lodging(host):
+    # все хозяева ночлега закрыты по часам: отказ называет час открытия первого из них
+    text = work_hours.closed_text(host.hours)
+    return rejected(
+        f"ночлег: {text}",
+        f"Комнату не сдадут: {text}. Предложи игроку лагерь вне трактира или ждать утра.",
+        report_tag="rest_unpaid",
+    )
+
+
 def lodging_unpaid(ctx, request):
     # длинный отдых там, где NPC сдаёт комнаты, только после оплаты ночлега; нет денег даже на
     # самую дешёвую комнату -- отдых свободен (мастер решает сюжетно)
@@ -1088,12 +1107,22 @@ def lodging_unpaid(ctx, request):
     options = service_rules.lodging_here(world, hero.location_id, ctx.cfg)
     if not options or service_rules.lodging_paid(world, hero.id, ctx.cfg):
         return None
+    # часы -- раньше денег: ночью у закрытого хозяина не отдыхает никто (решение 73)
+    now_s = world.clock.now_s
+    opened = [item for item in options if work_hours.is_open(item[0].hours, now_s)]
+    if not opened:
+        return closed_lodging(options[0][0])
     options = [
-        item for item in options
+        item for item in opened
         if hero.money_cp >= service_rules.quote(item[2], item[0], world, ctx.cfg)
     ]
     if not options:
         return None
+    return unpaid_refusal(ctx, options)
+
+
+def unpaid_refusal(ctx, options):
+    # отказ в длинном отдыхе без оплаты: хозяева комнат, которым героя хватает на комнату
     willing = [item for item in options if not trade_rules.refuses(item[0].attitude, ctx.cfg)]
     if not willing:
         return rejected(
@@ -1275,9 +1304,7 @@ def time_until(ctx, request):
         target = next_s
     else:
         hour = ctx.cfg.time.morning_hour if request.until == "morning" else request.until_hour
-        target = now_s - now_s % DAY + hour * 3600
-        if target <= now_s:
-            target += DAY
+        target = work_hours.next_hour_s(now_s, hour)
     seconds = target - now_s
     if request.until != "long_rest":
         asleep = sleep_without_rest(ctx, seconds)

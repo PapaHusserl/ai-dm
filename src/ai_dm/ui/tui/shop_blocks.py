@@ -2,6 +2,7 @@ from ai_dm.game.scene import hero_of
 from ai_dm.game.sheet_text import effect_texts
 from ai_dm.game.shop_text import UNIT_WORDS, sale_rows, sell_rows
 from ai_dm.rules import trade as trade_rules
+from ai_dm.rules import work_hours
 from ai_dm.rules.inventory import find_item
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
@@ -103,6 +104,8 @@ def passage_rows(game, npc, listed, cap_of):
 def shop_rows(game, npc):
     # строки окна /shop: (подпись, описание, [действие], вкладка); покупка, продажа и услуги --
     # подкоманды /shop, второго пути нет
+    if not work_hours.is_open(npc.hours, game.bundle.world.clock.now_s):
+        return []
     hero = hero_of(game.bundle)
     limit = game.settings.rules.limits.give_item_max_qty
 

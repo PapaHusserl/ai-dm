@@ -180,13 +180,16 @@ def test_fight_goes_on_while_a_hero_is_still_there_even_if_the_ally_died(registr
 def test_victory_when_only_the_ally_stands(registry, cfg):
     # враги побеждены союзником-стражником, герой лежит и стабилизируется
     engine = make_engine(
-        registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(d20=[15], d6=[6]),
+        registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(d20=[15], d6=[6], d4=[2]),
         monsters=[guard(zone="balcony"), mon("goblin_1", "goblin_warrior", "balcony")],
     )
     down_hero(engine, "hero")
     set_hp(engine, "goblin_1", 1)
+    start = engine.world.clock.now_s
     engine.perform("guard_1", "attack:копьё:goblin_1")
     assert engine.state.outcome == "victory"
+    wake = engine.heroes["hero"].creature.wake_at_s
+    assert start + 3600 <= wake <= engine.world.clock.now_s + 4 * 3600
 
 
 # смерть героя при живом союзнике
@@ -370,6 +373,71 @@ def test_end_combat_also_advances_the_clock(registry, cfg):
     start = engine.world.clock.now_s
     engine.end_combat()
     assert engine.world.clock.now_s == start + 6
+
+
+# М0 П4а (решение 128): бой кончился победой / мастером, герой стабилен на 0 HP -- срок пробуждения
+# d4 часов от часов мира (раунд конца боя засчитан целиком, поэтому допуск в один раунд)
+
+def stable_down(engine, ref="hero"):
+    from ai_dm.state.creature import DeathSaves
+
+    down_hero(engine, ref)
+    engine.heroes[ref].creature.death_saves = DeathSaves(stable=True)
+
+
+def wake_delay(engine, start):
+    return engine.heroes["hero"].creature.wake_at_s - start
+
+
+def test_victory_with_a_stable_hero_sets_the_wake_term(registry, cfg):
+    engine = hero_and_guard(registry, cfg, rng=ScriptedRng(d20=[15], d6=[6], d4=[2]))
+    set_hp(engine, "goblin_1", 1)
+    stable_down(engine)
+    start = engine.world.clock.now_s
+    engine.perform("guard_1", "attack:копьё:goblin_1")
+    assert engine.state.outcome == "victory"
+    assert 2 * 3600 <= wake_delay(engine, start) <= 2 * 3600 + 6
+
+
+def test_ended_by_master_with_a_stable_hero_sets_the_wake_term(registry, cfg):
+    engine = duel(registry, cfg, rng=ScriptedRng(d4=[3]))
+    stable_down(engine)
+    start = engine.world.clock.now_s
+    engine.end_combat()
+    assert engine.state.outcome == "ended_by_master"
+    assert 3 * 3600 <= wake_delay(engine, start) <= 3 * 3600 + 6
+
+
+@pytest.mark.parametrize("d4", [1, 4])
+def test_wake_term_is_between_one_and_four_hours(registry, cfg, d4):
+    engine = duel(registry, cfg, rng=ScriptedRng(d4=[d4]))
+    stable_down(engine)
+    start = engine.world.clock.now_s
+    engine.end_combat()
+    assert d4 * 3600 <= wake_delay(engine, start) <= d4 * 3600 + 6
+
+
+def test_hero_on_his_feet_gets_no_wake_term(registry, cfg):
+    engine = duel(registry, cfg, rng=ScriptedRng(d4=[2]))
+    engine.end_combat()
+    assert engine.heroes["hero"].creature.wake_at_s is None
+
+
+def test_dead_hero_gets_no_wake_term(registry, cfg):
+    engine = hero_and_guard(registry, cfg, rng=ScriptedRng(d20=[15], d6=[6], d4=[2]))
+    set_hp(engine, "goblin_1", 1)
+    kill_hero(engine)
+    engine.perform("guard_1", "attack:копьё:goblin_1")
+    assert engine.state.outcome == "hero_dead"
+    assert engine.heroes["hero"].creature.wake_at_s is None
+
+
+def test_defeat_leaves_the_wake_term_alone(registry, cfg):
+    engine = duel(registry, cfg, rng=ScriptedRng(d4=[2]))
+    down_hero(engine, "hero", by="goblin_1")
+    engine.perform("goblin_1", "end_turn")
+    assert engine.state.outcome in ("hero_dying", "defeat_pending")
+    assert engine.heroes["hero"].creature.wake_at_s is None
 
 
 def test_run_to_end_does_not_advance_the_clock_on_round_limit(registry, cfg):

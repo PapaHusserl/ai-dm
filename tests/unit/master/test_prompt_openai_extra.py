@@ -86,10 +86,11 @@ def test_static_tokens_of_openai_equal_gemini():
     assert openai == gemini
 
 
-def test_rules_extra_is_within_300_tokens():
+def test_rules_extra_is_within_380_tokens():
+    # М0 П4, решение 129: предел 300 -> 380 (замер 366)
     app = app_cfg()
     extra = PromptBuilder(app, provider="openai").rules_extra
-    assert estimate_tokens(extra, app.master.chars_per_token) <= 300
+    assert estimate_tokens(extra, app.master.chars_per_token) <= 380
 
 
 def test_rules_extra_mentions_offer_choices_and_fork():

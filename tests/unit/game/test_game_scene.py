@@ -340,6 +340,89 @@ def test_close_scene_sets_reason_and_adds_min_advance(registry, cfg):
     assert bundle.world.clock.now_s == cfg.time.min_advance_s == 600
 
 
+# М0 П4, решение 134: строки срока, наступившего при минимальном сдвиге границы, не теряются --
+# close_scene отдаёт их списком
+
+def test_close_scene_returns_the_line_of_a_pending_event_due_in_the_min_advance(registry, cfg):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.state.world import PendingEvent
+
+    bundle = make_bundle(registry)
+    bundle.world.pending = [
+        PendingEvent(at_s=300, target="hero", kind="condition", ref="diseased", text="Лихорадка")
+    ]
+    lines = close_scene(bundle, "end_scene", cfg)
+    assert lines == ["Лихорадка"]
+    assert [c.id for c in bundle.heroes[0].creature.conditions] == ["diseased"]
+    assert bundle.world.pending == []
+
+
+def test_close_scene_returns_the_waking_line_due_in_the_min_advance(registry, cfg):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.state.creature import AppliedCondition, DeathSaves
+
+    bundle = make_bundle(registry)
+    hero = bundle.heroes[0]
+    hero.creature.hp_current = 0
+    hero.creature.death_saves = DeathSaves(stable=True)
+    hero.creature.conditions = [AppliedCondition(id="unconscious", source="0_hp")]
+    hero.creature.wake_at_s = 300
+    lines = close_scene(bundle, "end_scene", cfg)
+    assert lines == [f"{hero.name} приходит в себя: HP 1"]
+    assert hero.creature.hp_current == 1
+
+
+def aid_due_in_the_min_advance(bundle):
+    from ai_dm.rules.healing import grant_max_hp
+
+    hero = bundle.heroes[0]
+    hero.creature.hp_max = hero.creature.hp_current = 10
+    grant_max_hp(hero.creature, "aid", hero.id, 5, 300)
+    return hero
+
+
+def test_close_scene_returns_the_aid_line_due_in_the_min_advance(registry, cfg):
+    from ai_dm.game.scene import close_scene
+
+    bundle = make_bundle(registry)
+    hero = aid_due_in_the_min_advance(bundle)
+    hero.creature.hp_current = 8
+    lines = close_scene(bundle, "end_scene", cfg)
+    assert lines == [f"Помощь кончилась: {hero.name} HP 8/10"]
+
+
+def test_close_scene_gives_the_aid_line_before_the_pending_line(registry, cfg):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.state.world import PendingEvent
+
+    bundle = make_bundle(registry)
+    hero = aid_due_in_the_min_advance(bundle)
+    bundle.world.pending = [
+        PendingEvent(
+            at_s=300, target="hero", kind="condition", ref="diseased", text="Началась лихорадка"
+        )
+    ]
+    lines = close_scene(bundle, "end_scene", cfg)
+    assert lines == [f"Помощь кончилась: {hero.name} HP 10/10", "Началась лихорадка"]
+
+
+def test_close_scene_keeps_the_aid_line_out_when_it_outlasts_the_min_advance(registry, cfg):
+    from ai_dm.game.scene import close_scene
+    from ai_dm.rules.healing import grant_max_hp
+
+    bundle = make_bundle(registry)
+    hero = bundle.heroes[0]
+    hero.creature.hp_max = hero.creature.hp_current = 10
+    grant_max_hp(hero.creature, "aid", hero.id, 5, 3600)
+    assert close_scene(bundle, "end_scene", cfg) == []
+
+
+def test_close_scene_without_due_events_returns_no_lines(registry, cfg):
+    from ai_dm.game.scene import close_scene
+
+    assert close_scene(make_bundle(registry), "end_scene", cfg) == []
+
+
 def test_close_scene_does_not_add_time_if_time_moved(registry, cfg):
     from ai_dm.game.scene import close_scene
 

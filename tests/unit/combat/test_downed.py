@@ -383,10 +383,12 @@ def test_knocked_out_hero_skips_the_turn_without_rolls(registry, cfg):
 def test_allies_win_and_the_dying_hero_is_stabilized(registry, cfg):
     engine = make_engine(
         registry, cfg, heroes=[make_fighter(registry, "ally"), make_fighter(registry)],
-        monsters=[mon("goblin_1", "goblin_warrior", "hall")], rng=ScriptedRng(d20=[15], d8=[4]),
+        monsters=[mon("goblin_1", "goblin_warrior", "hall")],
+        rng=ScriptedRng(d20=[15], d8=[4], d4=[2]),
     )
     down_hero(engine, "hero", by="goblin_1")
     set_hp(engine, "goblin_1", 1)
+    start = engine.world.clock.now_s
     engine.perform("ally", "attack:longsword:goblin_1")
     hero = engine.heroes["hero"]
     assert engine.state.outcome == "victory"
@@ -394,6 +396,7 @@ def test_allies_win_and_the_dying_hero_is_stabilized(registry, cfg):
     assert hero.creature.hp_current == 0
     assert hero.status == "active"
     assert hero.creature.death_saves.failures == 0
+    assert start + 3600 <= hero.creature.wake_at_s <= engine.world.clock.now_s + 4 * 3600
 
 
 # спасброски от смерти в бою

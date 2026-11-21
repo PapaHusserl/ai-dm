@@ -73,6 +73,15 @@ def haggle_state(profile, now_s) -> dict:
     return {"haggle": {"percent": active_haggle(profile, now_s)}}
 
 
+def haggle_tail(profile, now_s) -> str:
+    # хвост строки торговца в /shop про торг: «; торг: −20% до конца дня» или пусто
+    haggle = haggle_state(profile, now_s).get("haggle")
+    if not haggle:
+        return ""
+    sign = "−" if haggle["percent"] < 0 else "+"
+    return f"; торг: {sign}{abs(haggle['percent'])}% до конца дня"
+
+
 def haggle_dc(attitude, cfg) -> int:
     if attitude >= cfg.trade.attitude_good_from:
         return cfg.trade.haggle_good_dc

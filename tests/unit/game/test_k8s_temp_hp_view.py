@@ -41,6 +41,13 @@ def test_sheet_without_temp_hp_has_no_temp_mark(registry, tmp_path):
     assert "врем." not in text
 
 
+def test_sheet_temp_hp_has_no_term_mark(registry, tmp_path):
+    # М0 П4 (решение 127): срока временных HP нет -- «(до …)» не показывается
+    text = "\n".join(temp_app(registry, tmp_path, 8).handle("/sheet").lines)
+    assert "+8 врем." in text
+    assert "(до " not in text
+
+
 def test_tui_hero_panel_shows_temp_hp(registry, tmp_path):
     assert "HP 40/52 +7 врем." in hero_lines(temp_app(registry, tmp_path, 7))
 

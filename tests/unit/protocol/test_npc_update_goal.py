@@ -536,14 +536,17 @@ def test_dead_trader_check_goes_before_goal_check(registry, cfg):
 def test_merchant_is_not_created_when_goal_is_invalid(registry, cfg):
     ctx = make_ctx(registry, cfg)
     before = dump(ctx)
-    result = update(ctx, trade_kind="general", goal_kind="revenge", goal_target="nobody")
+    result = update(
+        ctx, trade_kind="general", open_hour=8, close_hour=16,
+        goal_kind="revenge", goal_target="nobody",
+    )
     assert result.code == "unknown_goal_target"
     assert dump(ctx) == before
 
 
 def test_merchant_and_goal_together(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    decision = update(ctx, trade_kind="general", goal_kind="debt")
+    decision = update(ctx, trade_kind="general", open_hour=8, close_hour=16, goal_kind="debt")
     assert decision.status == "accepted"
     assert aldric(ctx).trade is not None
     assert aldric(ctx).goals[0].kind == "debt"
@@ -551,7 +554,7 @@ def test_merchant_and_goal_together(registry, cfg):
 
 def test_valid_trade_alone_still_works(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    assert update(ctx, trade_kind="general").status == "accepted"
+    assert update(ctx, trade_kind="general", open_hour=8, close_hour=16).status == "accepted"
 
 
 def test_goal_with_follows_hero_on_dead_npc_is_npc_not_alive(registry, cfg):

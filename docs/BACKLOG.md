@@ -2134,3 +2134,14 @@ updated: 2026-11-20
 (М0 П3б, docs/plan-m0.md) mutmut П3б, старые строки (segfault — mutmut не смог прогнать тесты на мутанте):
 `ai_dm.ui.screen.x_status_line__mutmut_7` (`/ 1e9` → `/ 1000000001.0` — расход сессии),
 `ai_dm.master.prompt.xǁPromptBuilderǁstate_data__mutmut_7` (`known_locations = []` → `None`).
+
+## 346. Выжившие мутанты М0 П4 на старых строках
+status: idea
+priority: low
+updated: 2026-11-21
+
+(М0 П4, docs/plan-m0.md) mutmut П4, 58 выживших на строках до партии (`make mutate-diff`, «старые строки»):
+`combat.end:conclude` — 17, `protocol.handlers.world:npc_create` — 15, `rules.healing:heal` — 8,
+`rules.death_saves:resolve_out_of_combat` — 7, `protocol.handlers.world:update_problem` — 6,
+`ui.tui.app:AiDmApp.shop_closed` — 3, `protocol.handlers.pack:npc_data` — 1,
+`game.turn:TurnRunner.take_boundary` — 1.

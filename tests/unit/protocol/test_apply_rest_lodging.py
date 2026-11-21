@@ -313,6 +313,117 @@ def test_paid_lodging_with_short_wait_waits_and_clears_flag(registry, cfg):
     assert f"lodging:{ctx.hero.id}" not in flags(ctx)
 
 
+# М0 П4 (решения 62, 73, 74): ночлег -- только в часы работы хозяина; часы проверяются раньше
+# денег; оплаченный ночлег и хозяин без часов -- как раньше
+
+def at(ctx, hour, minute=0):
+    ctx.bundle.world.clock.now_s = hour * 3600 + minute * 60
+
+
+def open_inn(registry, cfg, **kwargs):
+    from ai_dm.state.world import WorkHours
+
+    return inn_ctx(registry, cfg, hours=WorkHours(open_hour=6, close_hour=21), **kwargs)
+
+
+def test_buying_a_room_at_a_closed_inn_is_rejected(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 23)
+    before = dump(ctx)
+    d = pay(ctx)
+    assert d.status == "rejected"
+    assert "закрыто до 6:00" in d.reason
+    assert dump(ctx) == before
+    assert ctx.hero.money_cp == 100
+    assert "lodging:hero" not in flags(ctx)
+
+
+def test_unpaid_long_rest_at_a_closed_inn_is_rejected_with_the_text(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 23)
+    d = long_rest(ctx)
+    assert d.status == "rejected"
+    assert d.reason == "ночлег: закрыто до 6:00"
+
+
+def test_closed_inn_long_rest_carries_the_rest_unpaid_tag(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 23)
+    assert long_rest(ctx).report_tag == "rest_unpaid"
+
+
+def test_closed_inn_rest_changes_nothing(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 23)
+    ctx.hero.creature.hp_current = 50
+    before = dump(ctx)
+    long_rest(ctx)
+    assert dump(ctx) == before
+    assert ctx.bundle.world.clock.now_s == 23 * 3600
+    assert ctx.hero.creature.hp_current == 50
+
+
+def test_closed_inn_signal_names_the_hour_and_the_alternatives(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 23)
+    signal = long_rest(ctx).signal_to_master
+    assert "6:00" in signal
+    assert "лагерь вне трактира или ждать утра" in signal
+
+
+def test_paid_in_the_evening_rest_at_night_is_accepted(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 20)
+    assert pay(ctx).status == "accepted"
+    at(ctx, 23)
+    assert long_rest(ctx).status == "accepted"
+
+
+def test_at_20_59_the_old_unpaid_refusal_stands(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 20, 59)
+    assert long_rest(ctx).reason == "ночлег платный"
+
+
+def test_at_21_00_the_refusal_is_by_hours(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    at(ctx, 21)
+    assert long_rest(ctx).reason == "ночлег: закрыто до 6:00"
+
+
+def test_closed_host_with_an_open_one_gives_the_unpaid_refusal_naming_the_open(registry, cfg):
+    ctx = open_inn(registry, cfg)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Мара", means=["трактир"], services=["room_modest"], location_id="vale",
+    )
+    at(ctx, 23)
+    d = long_rest(ctx)
+    assert d.reason == "ночлег платный"
+    assert "service buy room_modest у mara" in d.signal_to_master
+    assert "grok" not in d.signal_to_master
+
+
+def test_host_without_hours_at_night_is_as_before(registry, cfg):
+    ctx = inn_ctx(registry, cfg)
+    at(ctx, 23)
+    assert long_rest(ctx).reason == "ночлег платный"
+
+
+def test_no_host_at_night_rest_passes(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.hero.money_cp = 100
+    at(ctx, 23)
+    assert long_rest(ctx).status == "accepted"
+
+
+def test_closed_inn_without_money_for_a_room_still_refuses(registry, cfg):
+    ctx = open_inn(registry, cfg, money=5)
+    at(ctx, 23)
+    d = long_rest(ctx)
+    assert d.status == "rejected"
+    assert d.reason == "ночлег: закрыто до 6:00"
+
+
 def test_cooldown_rejection_without_payment_is_rest_repeat_not_unpaid(registry, cfg):
     ctx = inn_ctx(registry, cfg)
     ctx.hero.long_rest_end_s = 1000

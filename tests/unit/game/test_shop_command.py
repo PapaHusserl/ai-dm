@@ -626,3 +626,80 @@ def test_shop_with_haggle_does_not_change_the_profile(registry, tmp_path):
     before = profile.model_dump_json()
     shop(app)
     assert profile.model_dump_json() == before
+
+
+# М0 П4: закрытый по часам торговец остаётся в списке с пометкой «закрыто до H:00», товаров нет
+
+def hours_shop(registry, tmp_path, hour, open_hour=8, close_hour=16):
+    from ai_dm.state.world import WorkHours
+
+    app = make_shop(registry, tmp_path, hours=WorkHours(open_hour=open_hour, close_hour=close_hour))
+    app.bundle.world.clock.now_s = 86400 + hour * 3600
+    return app
+
+
+def test_closed_merchant_is_listed_with_the_closed_mark(registry, tmp_path):
+    lines = shop(hours_shop(registry, tmp_path, 23))
+    assert any("Мара" in line and "закрыто до 8:00" in line for line in lines)
+
+
+def test_closed_merchant_shows_no_goods(registry, tmp_path):
+    lines = shop(hours_shop(registry, tmp_path, 23))
+    assert not row(lines, "Колчан")
+
+
+def test_closed_merchant_shows_no_sell_rows(registry, tmp_path):
+    app = hours_shop(registry, tmp_path, 23)
+    add_item(hero_of(app.bundle), "quiver", cost_cp=100)
+    assert not row(shop(app), "Продать:")
+
+
+def test_open_merchant_shows_sell_rows(registry, tmp_path):
+    app = hours_shop(registry, tmp_path, 9)
+    add_item(hero_of(app.bundle), "quiver", cost_cp=100)
+    assert row(shop(app), "Продать:")
+
+
+def test_open_merchant_at_nine_is_as_before(registry, tmp_path):
+    lines = shop(hours_shop(registry, tmp_path, 9))
+    assert row(lines, "Колчан")
+    assert not row(lines, "закрыто")
+
+
+def test_merchant_without_hours_has_no_closed_mark_at_night(registry, tmp_path):
+    app = make_shop(registry, tmp_path)
+    app.bundle.world.clock.now_s = 86400 + 23 * 3600
+    lines = shop(app)
+    assert row(lines, "Колчан")
+    assert not row(lines, "закрыто")
+
+
+# решение 130: у закрытого короткая строка, без кошелька и торга
+
+def test_closed_merchant_head_is_short(registry, tmp_path):
+    lines = shop(hours_shop(registry, tmp_path, 23))
+    assert lines[0] == "Мара (general) — закрыто до 8:00"
+
+
+def test_closed_merchant_head_has_no_purse_and_no_haggle(registry, tmp_path):
+    app = hours_shop(registry, tmp_path, 23)
+    profile = app.bundle.world.npcs["mara"].trade
+    profile.haggle_percent = -10
+    profile.haggle_day = app.bundle.world.clock.now_s // 86400
+    text = " ".join(shop(app))
+    assert "кошелёк" not in text
+    assert "торг" not in text
+
+
+def test_open_merchant_head_keeps_the_purse_and_the_haggle_tail(registry, tmp_path):
+    app = hours_shop(registry, tmp_path, 9)
+    profile = app.bundle.world.npcs["mara"].trade
+    profile.haggle_percent = -10
+    profile.haggle_day = app.bundle.world.clock.now_s // 86400
+    assert "кошелёк торговца" in shop(app)[0]
+    assert shop(app)[0].endswith("; торг: −10% до конца дня")
+
+
+def test_night_merchant_closed_mark_names_the_evening_opening(registry, tmp_path):
+    lines = shop(hours_shop(registry, tmp_path, 12, open_hour=21, close_hour=6))
+    assert any("закрыто до 21:00" in line for line in lines)

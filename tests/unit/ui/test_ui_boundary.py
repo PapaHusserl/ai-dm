@@ -7,7 +7,7 @@ from slots_kit import ScriptedInput
 from ui_kit import PlainOutput
 
 from ai_dm.state.session import ChapterState
-from ai_dm.state.world import Notice
+from ai_dm.state.world import Notice, PendingEvent
 from ai_dm.ui.simple import run
 
 
@@ -40,6 +40,72 @@ def test_closed_chapter_is_printed_with_number_and_title(registry, tmp_path):
     steps = [tools_step(end_scene_call(), end_chapter_call("Пролог")), text_step("Конец.")]
     out = play(boundary_app(registry, tmp_path, steps), ["Иду"])
     assert "Глава 1: Пролог" in out.text
+
+
+# М0 П4, решение 134: строка отложенного состояния, наступившего на границе сцены, -- среди строк
+# хода, до «Глава N: …» и «За кадром:»
+
+def fever_inside_the_min_advance(app):
+    # ход (+15 мин) приводит часы ровно к началу сцены: граница добавляет минимальный сдвиг
+    # 10 мин, и срок 1300 с попадает только в него (после хода часы 1000 с, после границы 1600 с)
+    app.bundle.world.clock.now_s = 100
+    app.bundle.session.current_scene.started_at_s = 1000
+    app.bundle.world.pending = [
+        PendingEvent(
+            at_s=1300, target="hero", kind="condition", ref="diseased", text="Началась лихорадка"
+        )
+    ]
+
+
+def test_pending_line_of_the_boundary_comes_before_the_chapter_line(registry, tmp_path):
+    steps = [tools_step(end_scene_call(), end_chapter_call("Пролог")), text_step("Конец.")]
+    app = boundary_app(registry, tmp_path, steps)
+    fever_inside_the_min_advance(app)
+    out = play(app, ["Иду"])
+    assert "Началась лихорадка" in out.text
+    assert out.text.index("Началась лихорадка") < out.text.index("Глава 1: Пролог")
+    assert [c.id for c in app.bundle.heroes[0].creature.conditions] == ["diseased"]
+
+
+def test_pending_line_of_the_boundary_comes_before_the_offscreen_block(registry, tmp_path):
+    steps = [tools_step(end_scene_call()), text_step("Конец.")]
+    app = boundary_app(registry, tmp_path, steps, [notice("Олдрик покинул город.")])
+    fever_inside_the_min_advance(app)
+    out = play(app, ["Иду"])
+    assert out.text.index("Началась лихорадка") < out.text.index("За кадром:")
+
+
+def aid_inside_the_min_advance(app):
+    from ai_dm.rules.healing import grant_max_hp
+
+    hero = app.bundle.heroes[0]
+    hero.creature.hp_max = hero.creature.hp_current = 10
+    app.bundle.world.clock.now_s = 100
+    app.bundle.session.current_scene.started_at_s = 1000
+    grant_max_hp(hero.creature, "aid", hero.id, 5, 1300)
+
+
+def test_aid_line_of_the_boundary_comes_before_chapter_and_offscreen(registry, tmp_path):
+    steps = [tools_step(end_scene_call(), end_chapter_call("Пролог")), text_step("Конец.")]
+    app = boundary_app(registry, tmp_path, steps, [notice("Олдрик покинул город.")])
+    aid_inside_the_min_advance(app)
+    out = play(app, ["Иду"])
+    assert "Помощь кончилась:" in out.text
+    assert out.text.index("Помощь кончилась:") < out.text.index("Глава 1: Пролог")
+    assert out.text.index("Помощь кончилась:") < out.text.index("За кадром:")
+
+
+def test_aid_line_comes_before_the_pending_line_in_the_boundary_lines(registry, tmp_path):
+    steps = [tools_step(end_scene_call()), text_step("Конец.")]
+    app = boundary_app(registry, tmp_path, steps)
+    aid_inside_the_min_advance(app)
+    app.bundle.world.pending = [
+        PendingEvent(
+            at_s=1300, target="hero", kind="condition", ref="diseased", text="Началась лихорадка"
+        )
+    ]
+    out = play(app, ["Иду"])
+    assert out.text.index("Помощь кончилась:") < out.text.index("Началась лихорадка")
 
 
 def test_closed_chapter_without_title_is_still_printed(registry, tmp_path):

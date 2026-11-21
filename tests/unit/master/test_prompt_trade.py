@@ -124,7 +124,7 @@ def test_trade_entry_has_exactly_the_documented_keys(registry, cfg):
     ctx = make_ctx(registry, cfg)
     add_merchant(ctx)
     assert set(trade_of(ctx)[0]) == {
-        "npc_id", "kind", "purse_cp", "sell_factor", "stock", "categories"
+        "npc_id", "kind", "purse_cp", "sell_factor", "stock", "categories", "hours"
     }
 
 

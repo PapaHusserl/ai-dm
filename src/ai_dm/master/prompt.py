@@ -45,6 +45,7 @@ from ai_dm.rules.trade import (
     merchant_buy_quote,
     sell_factor,
 )
+from ai_dm.rules.work_hours import hours_text
 
 DESCRIPTION_MAX = 120
 LOST_ITEMS_MAX = 5
@@ -285,7 +286,7 @@ def merchant_data(npc, ctx, world, level):
     return {
         "npc_id": npc.id, "kind": npc.trade.kind, "purse_cp": npc.trade.purse_cp,
         "sell_factor": sell_factor(npc.attitude, cfg), "stock": stock, "categories": categories,
-        **haggle_state(npc.trade, now_s),
+        "hours": hours_text(npc.hours), **haggle_state(npc.trade, now_s),
     }
 
 
@@ -307,7 +308,7 @@ def provider_data(npc, world, cfg):
         }
         for kind_id, kind in kinds_of(npc, cfg)[:SERVICE_ITEMS_MAX]
     ]
-    data = {"npc_id": npc.id, "items": items}
+    data = {"npc_id": npc.id, "hours": hours_text(npc.hours), "items": items}
     if npc.trade is None:
         data.update(haggle_state(haggle_slot(npc, world), world.clock.now_s))
     return data

@@ -42,6 +42,10 @@ VALID = {
     "end_combat": {"reason": "враги сдались"},
     "damage": {"severity": "deadly", "damage_type": "fire", "failed_roll_ref": "r1"},
     "curse": {"failed_roll_ref": "r1", "cause": "проклятый оберег на алтаре"},
+    "delayed_condition": {
+        "target": "aldric", "condition": "diseased", "when": "morning",
+        "text": "Началась лихорадка",
+    },
     "give_item": {"item_id": "potion_of_healing", "qty": 2},
     "give_custom_item": {
         "name": "Ржавый ключ", "description": "Ключ от ворот", "qty": 1, "weight_lb": 0.5,
@@ -92,8 +96,8 @@ def example(type_name):
     return {"type": type_name, **copy.deepcopy(VALID[type_name])}
 
 
-def test_there_are_41_request_types():
-    assert len(ALL_TYPES) == 41
+def test_there_are_42_request_types():
+    assert len(ALL_TYPES) == 42
     assert sorted(REQUEST_MODELS) == sorted(ALL_TYPES)
 
 
@@ -102,7 +106,7 @@ def test_examples_cover_every_type():
 
 
 def test_visible_hidden_and_npc_only_partition_all_types():
-    assert len(VISIBLE_TYPES) == 39
+    assert len(VISIBLE_TYPES) == 40
     assert sorted(HIDDEN_TYPES) == ["afterlife_action"]
     assert NPC_ONLY_TYPES == ("npc_action",)
     assert sorted(VISIBLE_TYPES + HIDDEN_TYPES + NPC_ONLY_TYPES) == sorted(ALL_TYPES)
@@ -118,7 +122,7 @@ def test_visible_set_matches_plan():
         "end_scene", "end_chapter", "unsupported_action", "reveal_secret", "event_start",
         "event_end", "favor_change", "pray", "change_deity", "warn_danger", "cast_spell",
         "companion_update", "knowledge_note", "scene_mood",
-        "wash",
+        "wash", "delayed_condition",
     ]
     assert sorted(VISIBLE_TYPES) == sorted(plan)
 

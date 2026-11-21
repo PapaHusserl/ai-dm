@@ -145,7 +145,9 @@ def test_pack_tool_start_fields():
 def test_pack_tool_npc_items_have_triggers_and_secrets_but_no_status_or_combat():
     items = tool()["input_schema"]["properties"]["npcs"]["items"]
     props = set(items["properties"])
-    assert {"opportunity", "secrets", "species_id", "trade_kind", "means"} <= props
+    assert {
+        "opportunity", "secrets", "species_id", "trade_kind", "means", "open_hour", "close_hour",
+    } <= props
     assert not {"combat", "status", "attitude", "creature"} & props
 
 
@@ -389,7 +391,9 @@ def test_npc_empty_fields_are_absent(registry, cfg):
     guard = entity(files(registry, cfg)["npcs.yaml"], "guard")
     assert guard["named"] is False
     assert guard["key"] is False
-    for absent in ("motive", "species_id", "trade_kind", "trade", "opportunity", "secrets"):
+    for absent in (
+        "motive", "species_id", "trade_kind", "trade", "opportunity", "secrets", "hours",
+    ):
         assert absent not in guard
 
 
@@ -417,6 +421,26 @@ def test_npc_trade_kind_goes_to_trade_profile(registry, cfg):
     rows = files(registry, cfg, npcs=[npc_input(trade_kind="smith")])["npcs.yaml"]
     assert rows[0]["trade"] == {"kind": "smith"}
     assert "trade_kind" not in rows[0]
+
+
+# М0 П4 (решения 57, 71): часы NPC в запросе пака -- open_hour / close_hour, нет = -1
+
+def test_npc_hours_go_to_hours_row(registry, cfg):
+    rows = files(registry, cfg, npcs=[npc_input(open_hour=8, close_hour=16)])["npcs.yaml"]
+    assert rows[0]["hours"] == {"open_hour": 8, "close_hour": 16}
+    assert "open_hour" not in rows[0]
+    assert "close_hour" not in rows[0]
+
+
+def test_npc_without_hours_has_no_hours_key(registry, cfg):
+    rows = files(registry, cfg, npcs=[npc_input()])["npcs.yaml"]
+    assert "hours" not in rows[0]
+
+
+def test_npc_merchant_without_hours_is_accepted(registry, cfg):
+    rows = files(registry, cfg, npcs=[npc_input(trade_kind="smith")])["npcs.yaml"]
+    assert rows[0]["trade"] == {"kind": "smith"}
+    assert "hours" not in rows[0]
 
 
 def test_factions_keep_members_regions_and_means(registry, cfg):

@@ -1,6 +1,6 @@
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import CREATE_FIRST, allowed, hero_reachable
-from ai_dm.rules import divine, goals, uniqueness
+from ai_dm.rules import divine, goals, uniqueness, work_hours
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
@@ -77,6 +77,7 @@ def npc_create(ctx, request):
         id=request.id, name=request.name, named=bool(request.named), key=bool(request.key),
         motive=request.motive or "", means=request.means,
         location_id=request.location_id or ctx.hero.location_id, origin="ai",
+        hours=work_hours.from_pair(request.open_hour, request.close_hour),
     )
     conflicts = uniqueness.check_npc(world, npc, ctx.bundle.heroes)
     if conflicts:
@@ -96,8 +97,8 @@ def npc_create(ctx, request):
 
 def create_problem(ctx, request):
     # Invalid/rejected для npc_create: торговец, услуги, хозяин заведения без услуг; иначе None
-    problem = new_merchant_problem(ctx, request.trade_kind, request.key) or services_problem(
-        ctx, request
+    problem = new_merchant_problem(ctx, request.trade_kind, request.key) or offer_problem(
+        ctx, request, None
     )
     if problem is not None:
         return problem
@@ -136,6 +137,29 @@ def services_problem(ctx, request):
             message=f"нет услуг {', '.join(unknown)}" + allowed(kinds),
         )
     return None
+
+
+def hours_problem(request, current):
+    # Invalid при неверной паре open_hour/close_hour; rejected, если запрос даёт торговлю или
+    # услуги, а часов нет ни в запросе, ни у NPC (current); иначе None
+    try:
+        hours = work_hours.from_pair(request.open_hour, request.close_hour)
+    except ValueError as error:
+        return Invalid(code="bad_hours", message=str(error))
+    if hours is not None or current is not None:
+        return None
+    if request.trade_kind is None and not request.services:
+        return None
+    return rejected(
+        "торговцу и NPC с услугами нужны часы работы",
+        "Запрос не принят: назови часы работы — open_hour и close_hour в этом же запросе. "
+        "Образцы: трактирщик 6–21, цирюльник 6–12, платная компания 21–6; круглосуточно — 0 и 24.",
+    )
+
+
+def offer_problem(ctx, request, current):
+    # услуги запроса и часы работы (current — часы NPC сейчас); сначала услуги
+    return services_problem(ctx, request) or hours_problem(request, current)
 
 
 def add_services(npc, ids, decision):
@@ -513,7 +537,8 @@ def update_problem(ctx, npc, request):
     # Invalid/rejected, если изменение не принимается, иначе None
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
-        "memory_kind", "memory_text", "name", "services", "location_id", *GOAL_FIELDS,
+        "memory_kind", "memory_text", "name", "services", "location_id", "open_hour", "close_hour",
+        *GOAL_FIELDS,
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
@@ -533,7 +558,7 @@ def merchant_goal_problem(ctx, npc, request):
     # expression»
     return (
         move_problem(ctx, npc, request)
-        or merchant_update_problem(ctx, npc, request) or services_problem(ctx, request)
+        or merchant_update_problem(ctx, npc, request) or offer_problem(ctx, request, npc.hours)
         or goal_problem(ctx, npc, request)
     )
 
@@ -680,6 +705,8 @@ def npc_update(ctx, request):
         decision.result["trade_kind"] = request.trade_kind
     if request.services is not None:
         add_services(npc, request.services, decision)
+    if request.open_hour is not None:
+        npc.hours = work_hours.from_pair(request.open_hour, request.close_hour)
     return decision
 
 

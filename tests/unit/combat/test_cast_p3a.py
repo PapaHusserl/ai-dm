@@ -7,7 +7,7 @@
 #   condition: Удержание личности -- спасбросок Мдр, провал -- paralyzed на концентрации, повтор
 #     спасброска в конце хода цели; Усыпление -- недееспособен, провал повтора -- без сознания.
 #   cure: Малое восстановление снимает ПЕРВОЕ по порядку состояние из списка заклинания.
-#   temp_hp: Ложная жизнь -- 1d4+4, второе применение не складывается (максимум).
+#   temp_hp: Ложная жизнь -- 2d4+4 (без срока), второе применение не складывается (максимум).
 #   rays: Палящий луч -- 3 броска атаки заклинанием по 2d6; 3 круг -- 4 луча.
 #   Заклинатель -- волшебник 1 ур. из combat_kit (СЛ 13, атака заклинанием +5), ячейки 1-3 круга.
 from combat_kit import (
@@ -401,27 +401,35 @@ def test_remove_curse_removes_cursed(registry, cfg):
 
 # temp_hp
 
-def test_false_life_gives_1d4_plus_4_temporary_hp(registry, cfg):
-    engine = engine_of(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[3]))
+def test_false_life_gives_2d4_plus_4_temporary_hp(registry, cfg):
+    engine = engine_of(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[3, 2]))
     engine.perform("wiz", "cast:false_life:1:")
-    assert creature(engine, "wiz").hp_temp == 7
+    assert creature(engine, "wiz").hp_temp == 9
 
 
 def test_false_life_does_not_stack_it_takes_the_maximum(registry, cfg):
-    engine = idle(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[3, 1]))
+    engine = idle(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[3, 2, 1, 1]))
     engine.perform("wiz", "cast:false_life:1:")
     pass_turns(engine, 2)
     engine.perform("wiz", "cast:false_life:1:")
-    assert creature(engine, "wiz").hp_temp == 7
+    assert creature(engine, "wiz").hp_temp == 9
     assert slot(engine, 1) == 2
 
 
 def test_false_life_higher_roll_replaces_the_lower_temporary_hp(registry, cfg):
-    engine = idle(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[1, 4]))
+    engine = idle(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[1, 1, 4, 4]))
     engine.perform("wiz", "cast:false_life:1:")
     pass_turns(engine, 2)
     engine.perform("wiz", "cast:false_life:1:")
-    assert creature(engine, "wiz").hp_temp == 8
+    assert creature(engine, "wiz").hp_temp == 12
+
+
+# М0 П4 (решение 127): срока у временных HP нет
+
+def test_false_life_sets_no_term(registry, cfg):
+    engine = engine_of(registry, cfg, mage(registry, "false_life"), ScriptedRng(d4=[3, 2]))
+    engine.perform("wiz", "cast:false_life:1:")
+    assert creature(engine, "wiz").hp_temp_expires is None
 
 
 # rays

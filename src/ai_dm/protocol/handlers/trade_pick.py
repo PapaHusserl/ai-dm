@@ -11,6 +11,7 @@ from ai_dm.protocol.hints import (
     sold_ids,
 )
 from ai_dm.rules import trade as trade_rules
+from ai_dm.rules import work_hours
 from ai_dm.rules.inventory import SLOTS, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 
@@ -45,6 +46,9 @@ def refusal_problem(ctx, npc):
             f"{npc.name} отказывается торговать",
             f"{npc.name} отказывается торговать с героем: опиши отказ по факту.",
         )
+    if not work_hours.is_open(npc.hours, ctx.bundle.world.clock.now_s):
+        text = work_hours.closed_text(npc.hours)
+        return rejected(text, f"{npc.name}: {text}. Опиши по факту.")
     return None
 
 

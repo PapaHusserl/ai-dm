@@ -16,10 +16,10 @@ DROPPED = ("title", "default", "$defs")
 # наборы инструментов по режимам хода (каждый не больше 16 strict-инструментов)
 MODE_TOOLS = {
     "explore": (
-        "skill_check", "saving_throw", "start_combat", "damage", "curse", "give_item",
-        "give_custom_item", "use_item", "cast_spell", "take_item", "trade", "haggle", "service",
-        "gold", "award_xp", "advance_time", "rest", "set_flag", "npc_create", "location_create",
-        "npc_update", "favor_change", "pray", "change_deity", "companion_update",
+        "skill_check", "saving_throw", "start_combat", "damage", "curse", "delayed_condition",
+        "give_item", "give_custom_item", "use_item", "cast_spell", "take_item", "trade", "haggle",
+        "service", "gold", "award_xp", "advance_time", "rest", "set_flag", "npc_create",
+        "location_create", "npc_update", "favor_change", "pray", "change_deity", "companion_update",
         "offer_choices", "end_scene", "end_chapter", "reveal_secret", "event_start", "event_end",
         "warn_danger", "knowledge_note", "scene_mood", "wash", "unsupported_action",
     ),

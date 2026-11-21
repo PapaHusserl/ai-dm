@@ -88,6 +88,19 @@ def test_take_boundary_cleans_call_numbers_of_boundary_runs(registry, cfg, tmp_p
     assert [k for k in rig.runner.call_numbers if k.startswith("bnd-")] == []
 
 
+def test_take_boundary_appends_its_lines_after_the_lines_of_the_turn(registry, cfg, tmp_path):
+    from ai_dm.game.turn import TurnResult
+
+    rig = make_summ_rig(registry, cfg, tmp_path, [], [])
+    done = SimpleNamespace(
+        error=None, report_tags=[], summary_run_id=None, world_run_id=None, lines=["граница"],
+        bundle=rig.runner.bundle, failed_role=None, chapter_closed=None, notices=[],
+    )
+    result = TurnResult("t-1")
+    result.lines = ["ход"]
+    rig.runner.take_boundary(done, result)
+    assert result.lines == ["ход", "граница"]
+
 
 # Р2: summarize_scene / close_chapter передают аргументы в цепочку и разбирают (ctx, fell)
 

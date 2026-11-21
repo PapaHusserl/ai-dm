@@ -787,6 +787,13 @@ def test_merchant_buy_quote_uses_attitude(cfg):
     assert merchant_buy_quote(1000, npc, 100, cfg) == 810
 
 
+def test_haggle_tail_of_a_zero_percent_haggle_has_a_plus_sign():
+    from ai_dm.rules.trade import haggle_tail
+
+    tail = haggle_tail(haggled(haggle_percent=0, haggle_day=3), 3 * DAY_S + 5)
+    assert tail == "; торг: +0% до конца дня"
+
+
 def test_apply_haggle_writes_percent_and_day():
     profile = haggled()
     apply_haggle(profile, -20, 2 * DAY_S + 7)

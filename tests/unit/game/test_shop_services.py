@@ -288,6 +288,29 @@ def test_merchant_and_provider_are_both_listed_with_one_money_line(registry, tmp
     assert len(row(lines, "Деньги:")) == 1
 
 
+# М0 П4, решение 130: закрытый по часам NPC с услугами -- короткая строка, без блока услуг
+
+def closed_inn(registry, tmp_path, hour):
+    from ai_dm.state.world import WorkHours
+
+    app = make_inn(registry, tmp_path, hours=WorkHours(open_hour=8, close_hour=16))
+    app.bundle.world.clock.now_s = 86400 + hour * 3600
+    return app
+
+
+def test_closed_provider_head_is_short_and_has_no_service_block(registry, tmp_path):
+    lines = shop(closed_inn(registry, tmp_path, 23))
+    assert lines[0] == "Грок — закрыто до 8:00"
+    assert not row(lines, "Услуги")
+    assert not row(lines, "услуги")
+
+
+def test_open_provider_head_is_as_before(registry, tmp_path):
+    lines = shop(closed_inn(registry, tmp_path, 9))
+    assert "Грок — услуги" in lines
+    assert row(lines, "Услуги:")
+
+
 def test_command_does_not_move_time(registry, tmp_path):
     app = make_inn(registry, tmp_path)
     before = app.bundle.world.clock.now_s

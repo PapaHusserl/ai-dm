@@ -335,6 +335,20 @@ def test_shift_clock_purges_effect_and_condition_expired_by_the_shift_t255(regis
     assert creature.conditions == []
 
 
+def test_shift_clock_reports_the_pending_event_started_by_the_shift(registry, tmp_path):
+    from ai_dm.state.world import PendingEvent
+
+    app = bare_armor_app(registry, tmp_path, "chain_shirt")
+    start = clock_s(app)
+    app.bundle.world.pending = [
+        PendingEvent(at_s=start + 300, target="hero", kind="condition", ref="diseased",
+                     text="Началась лихорадка"),
+    ]
+    reply = app.handle("/inv надеть chain_shirt")
+    assert "Началась лихорадка" in flat(reply)
+    assert "Прошло минут: 5." in flat(reply)
+
+
 def test_putting_on_medium_armor_takes_five_minutes(registry, tmp_path):
     app = bare_armor_app(registry, tmp_path, "chain_shirt")
     start = clock_s(app)

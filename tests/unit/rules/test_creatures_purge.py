@@ -4,15 +4,22 @@
 # но только когда session.active_combat is None (индекс в списке -- часть ref участника боя).
 # Молча, без возврата.
 from combat_kit import ScriptedRng, make_engine, make_wizard, mon
-from protocol_kit import make_bundle
+from protocol_kit import make_bundle, make_ctx, req
 
 from ai_dm.combat import end, minions
 from ai_dm.persistence.migrations import CURRENT_SCHEMA_VERSION
 from ai_dm.persistence.store import load_slot, save_slot
+from ai_dm.protocol.apply import apply
 from ai_dm.rules.healing import expire_max_hp, grant_max_hp
-from ai_dm.state.creature import ActiveEffect, AppliedCondition, CreatureState, Expiry
+from ai_dm.state.creature import (
+    ActiveEffect,
+    AppliedCondition,
+    CreatureState,
+    DeathSaves,
+    Expiry,
+)
 from ai_dm.state.hero import Minion
-from ai_dm.state.world import NPC
+from ai_dm.state.world import NPC, PendingEvent
 
 NOW = 1000
 
@@ -348,3 +355,293 @@ def test_purged_bundle_saves_and_loads_without_migration(registry, tmp_path):
     loaded = load_slot(tmp_path, "w1", "auto")
     assert loaded.manifest.schema_version == bundle.manifest.schema_version
     assert loaded.model_dump_json() == bundle.model_dump_json()
+
+
+# М0 П4 (docs/plan-m0.md, «Тесты» П4): purge_expired -- одна точка после любого сдвига часов для
+# отложенных событий (world.pending) и пробуждения
+# стабильного (wake_at_s). Состояние проверяется после purge (возврат не смотрим); строки ленты --
+# через advance_time (concentration_note). Допущение доебы: событие
+# PendingEvent(kind="condition", ref=<id состояния>, text=<строка ленты>), target -- id героя
+# или NPC.
+
+HOUR = 3600
+DAY = 86400
+
+
+def event(at_s, target="hero", text="Началась лихорадка"):
+    return PendingEvent(at_s=at_s, target=target, kind="condition", ref="diseased", text=text)
+
+
+def shift(ctx, **fields):
+    return apply(ctx, req("advance_time", **fields))
+
+
+def ctx_at(registry, cfg, now_s):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = now_s
+    return ctx
+
+
+def make_stable(creature, wake_at_s):
+    creature.hp_current = 0
+    creature.death_saves = DeathSaves(stable=True)
+    creature.conditions = [AppliedCondition(id="unconscious", source="0_hp")]
+    creature.wake_at_s = wake_at_s
+
+
+# отложенные события
+
+def test_pending_event_not_yet_due_changes_nothing(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW + 1)]
+    purge(bundle)
+    assert condition_ids(bundle.heroes[0].creature) == []
+    assert len(bundle.world.pending) == 1
+
+
+def test_due_pending_event_puts_the_condition_on_the_hero_and_is_removed(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1)]
+    purge(bundle)
+    assert condition_ids(bundle.heroes[0].creature) == ["diseased"]
+    assert bundle.world.pending == []
+
+
+def test_pending_event_due_exactly_now_fires(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW)]
+    purge(bundle)
+    assert condition_ids(bundle.heroes[0].creature) == ["diseased"]
+
+
+def test_pending_event_fires_once(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1)]
+    purge(bundle)
+    purge(bundle)
+    assert condition_ids(bundle.heroes[0].creature) == ["diseased"]
+
+
+def test_pending_event_on_npc_without_creature_is_dropped_and_creates_nothing(registry):
+    bundle = bundle_at(registry)
+    npc = with_npc(bundle, creature=False)
+    bundle.world.pending = [event(NOW - 1, target="npc_c")]
+    purge(bundle)
+    assert npc.creature is None
+    assert bundle.world.pending == []
+
+
+def test_pending_event_on_a_dead_target_is_dropped_without_error(registry):
+    bundle = bundle_at(registry)
+    npc = with_npc(bundle)
+    npc.status = "dead"
+    bundle.world.pending = [event(NOW - 1, target="npc_c")]
+    purge(bundle)
+    assert condition_ids(npc.creature) == []
+    assert bundle.world.pending == []
+
+
+def test_pending_event_on_an_unknown_target_is_dropped_without_error(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1, target="nobody")]
+    purge(bundle)
+    assert bundle.world.pending == []
+    assert condition_ids(bundle.heroes[0].creature) == []
+
+
+def test_pending_event_on_a_dead_hero_is_dropped_and_gives_no_condition(registry):
+    bundle = bundle_at(registry)
+    hero = bundle.heroes[0]
+    hero.status = "dead"
+    bundle.world.pending = [event(NOW - 1)]
+    assert purge(bundle) == []
+    assert condition_ids(hero.creature) == []
+    assert bundle.world.pending == []
+
+
+def test_pending_event_due_exactly_now_is_removed(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW)]
+    purge(bundle)
+    assert bundle.world.pending == []
+
+
+def test_pending_event_skipped_by_a_dead_target_does_not_stop_the_next_one(registry):
+    bundle = bundle_at(registry)
+    npc = with_npc(bundle)
+    npc.status = "dead"
+    bundle.world.pending = [event(NOW - 2, target="npc_c"), event(NOW - 1)]
+    assert purge(bundle) == ["Началась лихорадка"]
+    assert condition_ids(bundle.heroes[0].creature) == ["diseased"]
+
+
+def test_started_condition_has_the_pending_source(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1)]
+    purge(bundle)
+    assert [c.source for c in bundle.heroes[0].creature.conditions] == ["pending"]
+
+
+# М0 П4, сверка кода (решения 132, 133): строка срока -- только если состояние вешается и цель
+# на виду (герой или NPC в локации героя)
+
+def test_hero_target_gets_the_text_line(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1)]
+    assert purge(bundle) == ["Началась лихорадка"]
+
+
+def test_target_already_carrying_the_condition_gets_it_once_and_no_line(registry):
+    bundle = bundle_at(registry)
+    bundle.heroes[0].creature.conditions = [AppliedCondition(id="diseased", source="other")]
+    bundle.world.pending = [event(NOW - 1)]
+    lines = purge(bundle)
+    assert lines == []
+    assert condition_ids(bundle.heroes[0].creature) == ["diseased"]
+    assert bundle.world.pending == []
+
+
+def test_npc_in_the_hero_location_gives_the_line(registry):
+    bundle = bundle_at(registry)
+    npc = with_npc(bundle)
+    npc.location_id = bundle.heroes[0].location_id
+    bundle.world.pending = [event(NOW - 1, target="npc_c")]
+    assert purge(bundle) == ["Началась лихорадка"]
+    assert condition_ids(npc.creature) == ["diseased"]
+
+
+def test_npc_in_another_location_gets_the_condition_without_a_line(registry):
+    bundle = bundle_at(registry)
+    npc = with_npc(bundle)
+    npc.location_id = "forest"
+    assert bundle.heroes[0].location_id != "forest"
+    bundle.world.pending = [event(NOW - 1, target="npc_c")]
+    assert purge(bundle) == []
+    assert condition_ids(npc.creature) == ["diseased"]
+    assert bundle.world.pending == []
+
+
+def test_only_the_due_event_fires(registry):
+    bundle = bundle_at(registry)
+    bundle.world.pending = [event(NOW - 1), event(NOW + 500, text="Позже")]
+    purge(bundle)
+    assert [e.text for e in bundle.world.pending] == ["Позже"]
+
+
+def test_advance_until_morning_starts_the_event_with_a_log_line(registry, cfg):
+    ctx = ctx_at(registry, cfg, DAY + 22 * HOUR + 1800)
+    ctx.bundle.world.pending = [event(2 * DAY + 6 * HOUR)]
+    assert condition_ids(ctx.hero.creature) == []
+    d = shift(ctx, until="morning")
+    assert d.status == "accepted"
+    assert condition_ids(ctx.hero.creature) == ["diseased"]
+    assert "Началась лихорадка" in d.log
+
+
+def test_second_shift_does_not_repeat_the_event_line(registry, cfg):
+    ctx = ctx_at(registry, cfg, DAY + 22 * HOUR + 1800)
+    ctx.bundle.world.pending = [event(2 * DAY + 6 * HOUR)]
+    shift(ctx, until="morning")
+    d = shift(ctx, category="hour", purpose="wait")
+    assert "Началась лихорадка" not in d.log
+    assert condition_ids(ctx.hero.creature) == ["diseased"]
+
+
+def test_event_before_its_time_gives_no_line(registry, cfg):
+    ctx = ctx_at(registry, cfg, DAY + 10 * HOUR)
+    ctx.bundle.world.pending = [event(DAY + 20 * HOUR)]
+    d = shift(ctx, category="hour", purpose="wait")
+    assert "Началась лихорадка" not in d.log
+    assert condition_ids(ctx.hero.creature) == []
+
+
+# пробуждение стабильного
+
+def test_stable_hero_wakes_at_the_term_with_one_hp(registry):
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, NOW)
+    purge(bundle)
+    assert creature.hp_current == 1
+    assert "unconscious" not in condition_ids(creature)
+    assert creature.wake_at_s is None
+
+
+def test_stable_hero_before_the_term_stays_down(registry):
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, NOW + 1)
+    purge(bundle)
+    assert creature.hp_current == 0
+    assert "unconscious" in condition_ids(creature)
+    assert creature.wake_at_s == NOW + 1
+
+
+def test_waking_clears_the_stable_flag(registry):
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, NOW - 1)
+    purge(bundle)
+    assert creature.death_saves.stable is False
+
+
+def test_hero_hurt_after_stabilizing_does_not_wake_and_loses_the_term_silently(registry):
+    # урон по стабильному снимает stable (death_saves.py:91): по сроку герой не встаёт
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, NOW - 1)
+    creature.death_saves = DeathSaves(stable=False, failures=1)
+    lines = purge(bundle)
+    assert lines == []
+    assert creature.hp_current == 0
+    assert "unconscious" in condition_ids(creature)
+    assert creature.wake_at_s is None
+
+
+def test_dead_hero_with_a_due_wake_term_does_not_wake(registry):
+    bundle = bundle_at(registry)
+    hero = bundle.heroes[0]
+    make_stable(hero.creature, NOW - 1)
+    hero.status = "dead"
+    assert purge(bundle) == []
+    assert hero.creature.hp_current == 0
+
+
+def test_hero_not_due_does_not_stop_the_waking_of_the_next_one(registry):
+    bundle = bundle_at(registry)
+    second = bundle.heroes[0].model_copy(deep=True)
+    second.id = "hero2"
+    bundle.heroes.append(second)
+    make_stable(bundle.heroes[0].creature, NOW + 100)
+    make_stable(second.creature, NOW - 1)
+    purge(bundle)
+    assert (bundle.heroes[0].creature.hp_current, second.creature.hp_current) == (0, 1)
+
+
+def test_waking_removes_only_the_zero_hp_unconscious_and_keeps_the_other_sources(registry):
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, NOW - 1)
+    creature.conditions.append(AppliedCondition(id="unconscious", source="sleep"))
+    creature.conditions.append(AppliedCondition(id="prone", source="0_hp"))
+    purge(bundle)
+    assert [(c.id, c.source) for c in creature.conditions] == [
+        ("unconscious", "sleep"), ("prone", "0_hp"),
+    ]
+
+
+def test_hero_without_wake_term_is_not_touched(registry):
+    bundle = bundle_at(registry)
+    creature = bundle.heroes[0].creature
+    make_stable(creature, None)
+    purge(bundle)
+    assert creature.hp_current == 0
+    assert "unconscious" in condition_ids(creature)
+
+
+def test_waking_gives_the_log_line(registry, cfg):
+    ctx = ctx_at(registry, cfg, DAY + 10 * HOUR)
+    make_stable(ctx.hero.creature, DAY + 10 * HOUR + 1800)
+    d = shift(ctx, category="hour", purpose="wait")
+    assert f"{ctx.hero.name} приходит в себя: HP 1" in d.log
+    assert ctx.hero.creature.hp_current == 1

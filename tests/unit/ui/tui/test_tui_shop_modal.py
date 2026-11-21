@@ -339,6 +339,98 @@ def test_shop_targets_list_merchants_before_providers(registry, tmp_path):
     assert [npc.id for npc in new_app(game).shop_targets()] == ["mara", "grok"]
 
 
+# М0 П4, решения 130, 131: окно закрытого по часам торговца не открывается; в списке выбора он с
+# пометкой, выбор его (и единственный закрытый) даёт строку в ленту
+
+CLOSED_MARA = "Мара (general) — закрыто до 8:00"
+
+
+def at_hour(game, hour):
+    game.bundle.world.clock.now_s = 86400 + hour * 3600
+
+
+def closed_mara_game(registry, tmp_path, hour, inn=False):
+    from ai_dm.state.world import WorkHours
+
+    hours = WorkHours(open_hour=8, close_hour=16)
+    game = shop_game(registry, tmp_path, inn=inn, mara=True, hours=hours)
+    at_hour(game, hour)
+    return game
+
+
+def test_single_closed_merchant_gives_the_line_in_the_feed_and_no_window(registry, tmp_path, tui):
+    game = closed_mara_game(registry, tmp_path, 23)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return (
+            isinstance(app.screen, (ShopModal, NpcModal)), len(app.screen_stack),
+            CLOSED_MARA in feed(tui, app),
+        )
+
+    assert run(new_app(game), steps) == (False, 1, True)
+
+
+def test_single_closed_provider_gives_the_line_in_the_feed(registry, tmp_path, tui):
+    from ai_dm.state.world import WorkHours
+
+    game = shop_game(registry, tmp_path)
+    game.bundle.world.npcs["grok"].hours = WorkHours(open_hour=8, close_hour=16)
+    at_hour(game, 23)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return isinstance(app.screen, ShopModal), "Грок — закрыто до 8:00" in feed(tui, app)
+
+    assert run(new_app(game), steps) == (False, True)
+
+
+def test_closed_merchant_is_in_the_choice_list_with_the_mark(registry, tmp_path, tui):
+    game = closed_mara_game(registry, tmp_path, 23, inn=True)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return isinstance(app.screen, NpcModal), option_texts(app, "#npc-list")
+
+    is_npc, texts = run(new_app(game), steps)
+    assert is_npc is True
+    assert texts == [f"1. {CLOSED_MARA}", "2. Грок — услуги"]
+
+
+def test_choosing_the_closed_merchant_gives_the_line_and_no_window(registry, tmp_path, tui):
+    game = closed_mara_game(registry, tmp_path, 23, inn=True)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await pilot.press("1")
+        await pilot.pause()
+        return isinstance(app.screen, (ShopModal, NpcModal)), CLOSED_MARA in feed(tui, app)
+
+    assert run(new_app(game), steps) == (False, True)
+
+
+def test_choosing_the_open_neighbour_of_a_closed_merchant_opens_its_window(registry, tmp_path, tui):
+    game = closed_mara_game(registry, tmp_path, 23, inn=True)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        await pilot.press("2")
+        await pilot.pause()
+        return isinstance(app.screen, ShopModal), CLOSED_MARA in feed(tui, app)
+
+    assert run(new_app(game), steps) == (True, False)
+
+
+def test_open_merchant_window_opens_as_before(registry, tmp_path, tui):
+    game = closed_mara_game(registry, tmp_path, 9)
+
+    async def steps(app, pilot):
+        await open_shop(tui, app, pilot)
+        return isinstance(app.screen, ShopModal), bool(app.screen.rows)
+
+    assert run(new_app(game), steps) == (True, True)
+
+
 def test_new_windows_are_in_modals():
     assert ShopModal in MODALS and NpcModal in MODALS and QtyModal in MODALS
 
