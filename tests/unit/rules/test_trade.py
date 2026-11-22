@@ -5,9 +5,9 @@
 #       category "" -> gear, quest -> None.
 #   merchant_sells / merchant_buys -- категория в пресете, цена > 0,
 #       магия только при preset.magic и в пределе редкости.
-#   refuses(attitude, cfg) -- attitude <= attitude_refuse_at.
+#   refuses(attitude, cfg) -- ступень не выше trade.refuse_tier (по умолчанию враг, -50).
 #   buy_quote -- ceil(цена * buy_factor), sell_quote -- floor(цена * sell_factor);
-#       при attitude >= attitude_good_from коэффициенты attitude_good_*.
+#       при ступени не ниже trade.good_tier коэффициенты attitude_good_*.
 #   assortment(registry, preset, level, cfg) -> [(id, цена)]: weapon, armor, item; внутри по id.
 #   restock(profile, now_s, cfg) -> bool: при now_s >= restock_at_s кошелёк полный,
 #       срок + restock_days суток.
@@ -250,8 +250,17 @@ def test_refuses_below_threshold(cfg):
 
 
 def test_refuses_follows_config(cfg):
-    assert refuses(-20, with_trade(cfg, attitude_refuse_at=-20))
-    assert not refuses(-19, with_trade(cfg, attitude_refuse_at=-20))
+    assert refuses(-30, with_trade(cfg, refuse_tier="foe"))
+    assert not refuses(-29, with_trade(cfg, refuse_tier="foe"))
+
+
+def test_refuses_at_minus_100(cfg):
+    assert refuses(-100, cfg)
+
+
+def test_close_tier_has_the_same_factors_as_friend(cfg):
+    assert (buy_factor(90, cfg), sell_factor(90, cfg)) == (0.9, 0.6)
+    assert (buy_factor(100, cfg), sell_factor(100, cfg)) == (0.9, 0.6)
 
 
 def test_good_factors_exactly_at_threshold(cfg):
@@ -270,7 +279,7 @@ def test_base_factors_at_zero(cfg):
 
 
 def test_good_threshold_follows_config(cfg):
-    other = with_trade(cfg, attitude_good_from=30)
+    other = with_trade(cfg, good_tier="buddy")
     assert buy_factor(30, other) == 0.9
     assert buy_factor(29, other) == 1.0
 
@@ -633,6 +642,10 @@ def test_haggle_dc_good_attitude(cfg):
     assert haggle_dc(50, cfg) == 10
 
 
+def test_haggle_dc_close_tier_is_good_too(cfg):
+    assert haggle_dc(90, cfg) == 10
+
+
 def test_haggle_dc_follows_config(cfg):
     other = with_trade(cfg, haggle_dc=18, haggle_good_dc=7)
     assert (haggle_dc(0, other), haggle_dc(50, other)) == (18, 7)
@@ -644,6 +657,13 @@ def test_haggle_mode_normal_at_zero(cfg):
 
 def test_haggle_mode_disadvantage_below_zero(cfg):
     assert haggle_mode(-1, cfg) == "disadvantage"
+
+
+def test_haggle_mode_disadvantage_at_minus_10_though_tier_is_neutral(cfg):
+    from ai_dm.rules.attitude import tier_of
+
+    assert tier_of(-10, cfg).id == "neutral"
+    assert haggle_mode(-10, cfg) == "disadvantage"
 
 
 def test_haggle_mode_follows_config(cfg):

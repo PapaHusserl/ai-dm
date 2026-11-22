@@ -49,7 +49,7 @@ def world_bundle(registry, *npcs):
 # конфиг по умолчанию
 
 def test_config_defaults_for_goals():
-    assert CFG.survivors.revenge_attitude_max == -40
+    assert CFG.survivors.revenge_tier == "foe"
     assert CFG.world.goals_check_every_days == 1
 
 

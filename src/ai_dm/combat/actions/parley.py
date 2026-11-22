@@ -2,6 +2,7 @@ from ai_dm.combat.actions.parley_effects import apply_success, offend, sentient
 from ai_dm.combat.controllers import quarrel_targets
 from ai_dm.combat.zones import distance
 from ai_dm.core.events import DomainEvent
+from ai_dm.rules.attitude import at_least, at_most
 from ai_dm.rules.checks import skill_check
 from ai_dm.rules.names import SKILL_NAMES
 from ai_dm.rules.results import Rejected
@@ -113,9 +114,9 @@ def parley_dc(engine, ref, target, skill, outcome):
     parts = [(label, base)]
     mode = "normal"
     npc = engine.world.npcs.get(target)
-    if npc is None or npc.attitude <= cfg.hostile_attitude:
+    if npc is None or at_most(npc.attitude, cfg.hostile_tier, engine.cfg):
         mode = "disadvantage"
-    elif npc.attitude >= cfg.friendly_attitude:
+    elif at_least(npc.attitude, cfg.friendly_tier, engine.cfg):
         parts.append(("дружелюбен", -cfg.friendly_bonus))
     creature = engine.creature(target)
     if creature.hp_current * 4 <= creature.hp_max:

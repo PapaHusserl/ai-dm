@@ -27,6 +27,7 @@ from ai_dm.master.relevance import (
 )
 from ai_dm.protocol.schema import tool_set
 from ai_dm.rules import divine
+from ai_dm.rules.attitude import tier_of
 from ai_dm.rules.boons import BOONS
 from ai_dm.rules.creatures import live_effects
 from ai_dm.rules.derived import always_prepared, clock_text, companion_due, hero_feature_ids
@@ -670,7 +671,10 @@ class PromptBuilder:
             ]
             for npc in world.npcs.values():
                 if npc.status == "alive" and npc.location_id == hero.location_id:
-                    item = {"id": npc.id, "name": npc.name, "attitude": npc.attitude}
+                    item = {
+                        "id": npc.id, "name": npc.name, "attitude": npc.attitude,
+                        "attitude_tier": tier_of(npc.attitude, ctx.cfg).name,
+                    }
                     if npc.follows == hero.id:
                         item["follows"] = hero.id
                     item.update(identity_data(npc))
@@ -685,7 +689,10 @@ class PromptBuilder:
         known_npcs = []
         for npc_id in sorted(context_plan.npc_ids):
             n = world.npcs[npc_id]
-            item = {"id": n.id, "name": n.name, "location_id": n.location_id, "key": n.key}
+            item = {
+                "id": n.id, "name": n.name, "location_id": n.location_id, "key": n.key,
+                "attitude_tier": tier_of(n.attitude, ctx.cfg).name,
+            }
             item.update(identity_data(n))
             item.update(survivor_data(n))
             if n.follows == hero.id:

@@ -455,3 +455,108 @@ def test_day_parts_edge_hours_0_and_23_are_accepted():
 def test_disarm_override_keeps_the_unarmed_types():
     cfg = load_rules_config(toml_text="[disarm]\nenemy_chance = 10\n")
     assert cfg.disarm.unarmed_types == ["humanoid", "fey"]
+
+
+# М0 П6а: ступени отношения [attitude.tiers] и ключи механик со ступенями (п. 29 «Умолчаний»;
+# имена ключей -- образец из плана, окончательные -- у кабана)
+
+def tier_toml(*rows):
+    return "".join(
+        f'[[attitude.tiers]]\nid = "{tid}"\nname = "{tid}"\nfrom = {low}\n' for tid, low in rows
+    )
+
+
+TIER_KEYS = [
+    ("parley", "friendly_tier", "buddy"),
+    ("parley", "hostile_tier", "foe"),
+    ("trade", "good_tier", "friend"),
+    ("trade", "refuse_tier", "enemy"),
+    ("services", "romance_tier", "close"),
+    ("survivors", "revenge_tier", "foe"),
+]
+
+
+@pytest.mark.parametrize("section,key,value", TIER_KEYS)
+def test_default_tier_keys(section, key, value):
+    assert getattr(getattr(load_rules_config(), section), key) == value
+
+
+@pytest.mark.parametrize("section,key,value", TIER_KEYS)
+def test_unknown_tier_id_in_key_is_error_with_key_name(section, key, value):
+    # тот же ключ с настоящим id грузится, с чужим -- ошибка с именем ключа
+    load_rules_config(toml_text=f'[{section}]\n{key} = "{value}"\n')
+    with pytest.raises(ValidationError, match=key):
+        load_rules_config(toml_text=f'[{section}]\n{key} = "nobody"\n')
+
+
+def test_refuse_tier_equal_to_good_tier_is_error():
+    load_rules_config(toml_text='[trade]\nrefuse_tier = "buddy"\n')
+    with pytest.raises(ValidationError, match="refuse_tier"):
+        load_rules_config(toml_text='[trade]\nrefuse_tier = "friend"\n')
+
+
+def test_refuse_tier_above_good_tier_is_error():
+    load_rules_config(toml_text='[trade]\nrefuse_tier = "buddy"\n')
+    with pytest.raises(ValidationError, match="refuse_tier"):
+        load_rules_config(toml_text='[trade]\nrefuse_tier = "close"\n')
+
+
+def test_refuse_tier_just_below_good_tier_is_fine():
+    cfg = load_rules_config(toml_text='[trade]\nrefuse_tier = "buddy"\n')
+    assert cfg.trade.refuse_tier == "buddy"
+
+
+GOOD_TIERS = (
+    ("enemy", -100), ("foe", -49), ("neutral", -29), ("buddy", 30), ("friend", 50), ("close", 90),
+)
+
+
+def tiers_with(index, row):
+    rows = list(GOOD_TIERS)
+    rows[index] = row
+    return tier_toml(*rows)
+
+
+def test_tier_bounds_not_growing_are_error():
+    load_rules_config(toml_text=tier_toml(*GOOD_TIERS))
+    with pytest.raises(ValidationError, match="tiers"):
+        load_rules_config(toml_text=tiers_with(2, ("neutral", -49)))
+
+
+def test_tier_bounds_descending_are_error():
+    load_rules_config(toml_text=tier_toml(*GOOD_TIERS))
+    with pytest.raises(ValidationError, match="tiers"):
+        load_rules_config(toml_text=tiers_with(2, ("neutral", -60)))
+
+
+def test_duplicate_tier_id_is_error():
+    load_rules_config(toml_text=tier_toml(*GOOD_TIERS))
+    with pytest.raises(ValidationError, match="tiers"):
+        load_rules_config(toml_text=tiers_with(2, ("foe", -29)))
+
+
+def test_empty_tier_list_is_error():
+    load_rules_config(toml_text=tier_toml(*GOOD_TIERS))
+    with pytest.raises(ValidationError, match="tiers"):
+        load_rules_config(toml_text="[attitude]\ntiers = []\n")
+
+
+OLD_ATTITUDE_KEYS = [
+    ("parley", "friendly_attitude", 30),
+    ("parley", "hostile_attitude", -30),
+    ("trade", "attitude_good_from", 50),
+    ("trade", "attitude_refuse_at", -50),
+    ("services", "romance_from", 90),
+    ("survivors", "revenge_attitude_max", -40),
+]
+
+
+@pytest.mark.parametrize("section,key,value", OLD_ATTITUDE_KEYS)
+def test_old_numeric_attitude_key_is_load_error_with_its_name(section, key, value):
+    with pytest.raises(ValidationError, match=key):
+        load_rules_config(toml_text=f"[{section}]\n{key} = {value}\n")
+
+
+def test_haggle_hostile_below_stays_a_numeric_key():
+    cfg = load_rules_config(toml_text="[trade]\nhaggle_hostile_below = 5\n")
+    assert cfg.trade.haggle_hostile_below == 5

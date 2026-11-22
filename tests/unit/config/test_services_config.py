@@ -200,7 +200,7 @@ def test_cure_kind_with_cures_in_toml_loads():
     ]
 
 
-# У1 П1: boon, intimate, risks, effect = "plain", romance_from, hygiene_days
+# У1 П1: boon, intimate, risks, effect = "plain", romance_tier, hygiene_days
 
 def test_unknown_boon_is_error():
     with pytest.raises(ValidationError):
@@ -243,7 +243,7 @@ def test_negative_risk_dc_is_error():
 
 
 def test_services_romance_and_hygiene_defaults():
-    assert services().romance_from == 90
+    assert services().romance_tier == "close"
     assert services().hygiene_days == 7
 
 

@@ -1312,7 +1312,7 @@ def test_list_of_intimate_service_sets_no_flag(registry, cfg):
 
 def test_intimate_buy_deal_does_not_block_romance_at_high_attitude(registry, cfg):
     ctx = companion_ctx(registry, cfg)
-    grok(ctx).attitude = cfg.services.romance_from
+    grok(ctx).attitude = 90
     buy(ctx, "companion_common")
     d = apply(ctx, req("npc_update", npc_id="grok", memory_kind="romance", memory_text="остался"))
     assert d.status == "accepted"

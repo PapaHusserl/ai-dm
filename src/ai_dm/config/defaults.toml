@@ -83,8 +83,8 @@ fall_step_ft = 10
 
 [parley]
 base_dc = 15
-friendly_attitude = 30
-hostile_attitude = -30
+friendly_tier = "buddy"
+hostile_tier = "foe"
 friendly_bonus = 5
 hp_half_bonus = 2
 hp_quarter_bonus = 5
@@ -111,8 +111,8 @@ defected = 40
 surrendered = 0
 spared = 20
 fled = -40
-# бежавший или сдавшийся с отношением не выше этого порога мстит герою
-revenge_attitude_max = -40
+# бежавший или сдавшийся со ступенью отношения не выше этой мстит герою
+revenge_tier = "foe"
 
 [disarm]
 unarmed_types = ["humanoid", "fey"]
@@ -144,6 +144,38 @@ max_per_chapter = 15
 [attitude]
 step = 10
 per_scene = 30
+
+# ступени отношения от худшей к лучшей: from -- нижняя граница, ступень -- последняя, чья граница
+# не выше числа (враг <= -50, недруг <= -30, приятель >= 30, друг >= 50, близкий >= 90)
+[[attitude.tiers]]
+id = "enemy"
+name = "враг"
+from = -100
+
+[[attitude.tiers]]
+id = "foe"
+name = "недруг"
+from = -49
+
+[[attitude.tiers]]
+id = "neutral"
+name = "нейтрален"
+from = -29
+
+[[attitude.tiers]]
+id = "buddy"
+name = "приятель"
+from = 30
+
+[[attitude.tiers]]
+id = "friend"
+name = "друг"
+from = 50
+
+[[attitude.tiers]]
+id = "close"
+name = "близкий"
+from = 90
 
 # новые локации (BACKLOG 170): связи внутри родителя не длиннее inside_max_m метров
 [locations]
@@ -197,10 +229,10 @@ high_from_level = 5
 [trade]
 buy_factor = 1.0
 sell_factor = 0.5
-attitude_good_from = 50
+good_tier = "friend"
 attitude_good_buy_factor = 0.9
 attitude_good_sell_factor = 0.6
-attitude_refuse_at = -50
+refuse_tier = "enemy"
 ops_per_scene = 50
 new_merchants_per_scene = 3
 restock_days = 7
@@ -245,8 +277,8 @@ buys = ["weapon", "armor", "ammo", "gear", "consumable", "clothing", "valuable"]
 # платные услуги NPC (service): ночлег, еда, лечение; цена в меди за единицу
 [services]
 paid_rest = true
-# отношение NPC, с которого платная близость запоминается как роман
-romance_from = 90
+# ступень отношения NPC, с которой платная близость запоминается как роман
+romance_tier = "close"
 # дней без мытья до состояния «вонь»
 hygiene_days = 7
 

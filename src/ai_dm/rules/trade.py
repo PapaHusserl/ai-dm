@@ -1,6 +1,7 @@
 from fractions import Fraction
 from math import ceil, floor
 
+from ai_dm.rules.attitude import at_least, at_most
 from ai_dm.rules.loot import rarity_exceeds_cap
 
 DAY_S = 86400
@@ -36,17 +37,17 @@ def merchant_buys(kind, model, preset) -> bool:
 
 
 def refuses(attitude, cfg) -> bool:
-    return attitude <= cfg.trade.attitude_refuse_at
+    return at_most(attitude, cfg.trade.refuse_tier, cfg)
 
 
 def buy_factor(attitude, cfg) -> float:
-    if attitude >= cfg.trade.attitude_good_from:
+    if at_least(attitude, cfg.trade.good_tier, cfg):
         return cfg.trade.attitude_good_buy_factor
     return cfg.trade.buy_factor
 
 
 def sell_factor(attitude, cfg) -> float:
-    if attitude >= cfg.trade.attitude_good_from:
+    if at_least(attitude, cfg.trade.good_tier, cfg):
         return cfg.trade.attitude_good_sell_factor
     return cfg.trade.sell_factor
 
@@ -83,7 +84,7 @@ def haggle_tail(profile, now_s) -> str:
 
 
 def haggle_dc(attitude, cfg) -> int:
-    if attitude >= cfg.trade.attitude_good_from:
+    if at_least(attitude, cfg.trade.good_tier, cfg):
         return cfg.trade.haggle_good_dc
     return cfg.trade.haggle_dc
 

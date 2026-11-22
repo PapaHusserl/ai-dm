@@ -3,7 +3,7 @@
 #       движок считает сам (rules/trade.py), мастер её не передаёт.
 #   Проверки по порядку: бой -> Invalid in_combat; нет NPC -> unknown_npc; не alive или не в
 #       локации героя -> npc_absent; npc.trade None -> not_merchant; qty < 1 -> bad_amount;
-#       attitude <= attitude_refuse_at (-50) -> rejected;
+#       ступень не выше trade.refuse_tier (враг, -50) -> rejected;
 #       сделок за сцену >= ops_per_scene -> rejected.
 #   Перед сделкой ленивый restock кошелька.
 #   buy: id из ассортимента пресета или из stock торговца, иначе Invalid not_sold (+ список id);

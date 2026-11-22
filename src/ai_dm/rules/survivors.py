@@ -1,6 +1,7 @@
 from typing import NamedTuple
 
 from ai_dm.combat.engine import participant_name
+from ai_dm.rules.attitude import at_most
 from ai_dm.rules.goals import add_goal
 from ai_dm.rules.knowledge import MET, fact, is_near, mentions, remember_fact, rename_met
 from ai_dm.rules.npc_memory import remember
@@ -113,7 +114,7 @@ def start_attitude(config, kind) -> int:
 
 
 def vengeful(npc, cfg) -> bool:
-    return npc.attitude <= cfg.survivors.revenge_attitude_max
+    return at_most(npc.attitude, cfg.survivors.revenge_tier, cfg)
 
 
 def remember_fight(bundle, hero, npc, survivor, cfg) -> None:

@@ -91,9 +91,10 @@ class ParleyConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # СЛ переговоров: база (SRD Influence); если Инт цели выше -- Инт цели
     base_dc: int = 15
-    # отношение NPC: от friendly -- дружелюбный (СЛ ниже), до hostile -- враждебный (помеха)
-    friendly_attitude: int = 30
-    hostile_attitude: int = -30
+    # ступень отношения NPC (id из [attitude] tiers): не ниже friendly -- дружелюбный (СЛ ниже),
+    # не выше hostile -- враждебный (помеха)
+    friendly_tier: str = "buddy"
+    hostile_tier: str = "foe"
     friendly_bonus: int = 5
     # цель при HP не больше половины / четверти: СЛ ниже
     hp_half_bonus: int = 2
@@ -132,8 +133,8 @@ class SurvivorsConfig(BaseModel):
     surrendered: int = Field(default=0, ge=-100, le=100)
     spared: int = Field(default=20, ge=-100, le=100)
     fled: int = Field(default=-40, ge=-100, le=100)
-    # бежавший или сдавшийся с отношением не выше этого порога становится мстителем (Ж2)
-    revenge_attitude_max: int = Field(default=-40, ge=-100, le=100)
+    # бежавший или сдавшийся со ступенью не выше этой (id из attitude.tiers) -- мститель (Ж2)
+    revenge_tier: str = "foe"
 
 
 class DisarmConfig(BaseModel):
@@ -193,10 +194,32 @@ class SceneConfig(BaseModel):
     max_per_chapter: int
 
 
+class AttitudeTier(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    name: str
+    # нижняя граница ступени: ступень -- последняя, чья граница не выше отношения
+    low: int = Field(alias="from", ge=-100, le=100)
+
+
 class AttitudeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     step: int
     per_scene: int
+    # от худшей ступени к лучшей
+    tiers: list[AttitudeTier]
+
+    @model_validator(mode="after")
+    def check_tiers(self):
+        if not self.tiers:
+            raise ValueError("tiers: список ступеней пуст")
+        ids = [t.id for t in self.tiers]
+        if len(set(ids)) != len(ids):
+            raise ValueError("tiers: id ступеней повторяются")
+        lows = [t.low for t in self.tiers]
+        if any(a >= b for a, b in zip(lows, lows[1:], strict=False)):
+            raise ValueError("tiers: границы ступеней должны строго расти")
+        return self
 
 
 class LocationsConfig(BaseModel):
@@ -333,12 +356,12 @@ class TradeConfig(BaseModel):
     # покупка = цена экземпляра * buy_factor, продажа = * sell_factor (в пользу торговца)
     buy_factor: float = Field(default=1.0, gt=0)
     sell_factor: float = Field(default=0.5, ge=0)
-    # хорошее отношение (attitude >= attitude_good_from): свои коэффициенты
-    attitude_good_from: int = Field(default=50, ge=-100, le=100)
+    # хорошая ступень отношения (не ниже good_tier, id из [attitude] tiers): свои коэффициенты
+    good_tier: str = "friend"
     attitude_good_buy_factor: float = Field(default=0.9, gt=0)
     attitude_good_sell_factor: float = Field(default=0.6, ge=0)
-    # плохое отношение (attitude <= attitude_refuse_at): торговец отказывается
-    attitude_refuse_at: int = Field(default=-50, ge=-100, le=100)
+    # плохая ступень (не выше refuse_tier): торговец отказывается
+    refuse_tier: str = "enemy"
     ops_per_scene: int = Field(default=50, ge=1)
     new_merchants_per_scene: int = Field(default=3, ge=0)
     restock_days: int = Field(default=7, ge=1)
@@ -359,8 +382,6 @@ class TradeConfig(BaseModel):
 
     @model_validator(mode="after")
     def check_no_arbitrage(self):
-        if self.attitude_refuse_at >= self.attitude_good_from:
-            raise ValueError("attitude_refuse_at должен быть меньше attitude_good_from")
         if self.attitude_good_sell_factor < self.sell_factor:
             raise ValueError("attitude_good_sell_factor не может быть меньше sell_factor")
         if self.attitude_good_buy_factor > self.buy_factor:
@@ -426,8 +447,8 @@ class ServicesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # долгий отдых там, где есть ночлег у NPC, только после оплаты (У0 П2)
     paid_rest: bool = True
-    # отношение NPC, с которого платная близость запоминается как роман (У1 П2)
-    romance_from: int = Field(default=90, ge=-100, le=100)
+    # ступень отношения NPC (id из attitude.tiers), с которой платная близость -- роман (У1 П2)
+    romance_tier: str = "close"
     # дней без мытья до состояния «вонь» (У1 П3); 0 -- гигиена выключена
     hygiene_days: int = Field(default=7, ge=0)
     kinds: dict[str, ServiceKind] = {}
@@ -472,6 +493,24 @@ class RulesConfig(BaseModel):
     trade: TradeConfig = TradeConfig()
     services: ServicesConfig = ServicesConfig()
     world: WorldConfig
+
+    @model_validator(mode="after")
+    def check_tier_keys(self):
+        order = [t.id for t in self.attitude.tiers]
+        keys = {
+            "parley.friendly_tier": self.parley.friendly_tier,
+            "parley.hostile_tier": self.parley.hostile_tier,
+            "trade.good_tier": self.trade.good_tier,
+            "trade.refuse_tier": self.trade.refuse_tier,
+            "services.romance_tier": self.services.romance_tier,
+            "survivors.revenge_tier": self.survivors.revenge_tier,
+        }
+        for key, tier_id in keys.items():
+            if tier_id not in order:
+                raise ValueError(f"{key}: нет ступени {tier_id!r} в attitude.tiers: {order}")
+        if order.index(self.trade.refuse_tier) >= order.index(self.trade.good_tier):
+            raise ValueError("trade.refuse_tier должна быть ниже trade.good_tier")
+        return self
 
     @model_validator(mode="after")
     def check_passage_transports(self):

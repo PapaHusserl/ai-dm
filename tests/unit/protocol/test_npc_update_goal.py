@@ -942,7 +942,9 @@ def test_love_goal_on_hero_after_payment_below_threshold_is_rejected(registry, c
     d = update(ctx, goal_kind="love")
     assert d.status == "rejected"
     assert d.report_tag == "paid_not_romance"
-    assert str(cfg.services.romance_from) in d.signal_to_master
+    assert "со ступени «близкий»" in d.signal_to_master
+    assert "≥" not in d.signal_to_master
+    assert "90" not in d.signal_to_master
     assert aldric(ctx).goals == []
 
 
@@ -959,7 +961,7 @@ def test_love_goal_with_explicit_hero_target_is_rejected_too(registry, cfg):
 
 
 def test_love_goal_at_threshold_is_set(registry, cfg):
-    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    ctx = paid_ctx(registry, cfg, 90)
     assert update(ctx, goal_kind="love").status == "accepted"
     assert [g.kind for g in aldric(ctx).goals] == ["love"]
 
@@ -1035,7 +1037,7 @@ def test_love_goal_negative_delta_lowers_forecast(registry, cfg):
 
 
 def test_love_goal_without_delta_forecast_is_current_attitude(registry, cfg):
-    ctx = paid_ctx(registry, cfg, cfg.services.romance_from - 1)
+    ctx = paid_ctx(registry, cfg, 89)
     assert update(ctx, goal_kind="love").report_tag == "paid_not_romance"
 
 

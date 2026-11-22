@@ -370,7 +370,7 @@ def update(ctx, **fields):
 def test_attitude_log_uses_label(registry, cfg):
     ctx = hidden_named(registry, cfg)
     decision = update(ctx, attitude_delta=4)
-    assert decision.log[0] == f"Отношение {LABEL}: +4 (теперь 4)"
+    assert decision.log[0] == f"Отношение {LABEL}: +4 (теперь 4, нейтрален)"
     assert SECRET_NAME not in text_of(decision)
 
 

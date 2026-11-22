@@ -649,7 +649,39 @@ def test_message_known_npcs_do_not_leak_motive_or_secrets(registry, cfg):
     text = build(ctx).messages[0].content[0].text
     assert "ТАЙНЫЙ-МОТИВ" not in text
     for npc in data_of(build(ctx))["known_npcs"]:
-        assert set(npc) == {"id", "name", "location_id", "key"}
+        assert set(npc) == {"id", "name", "location_id", "key", "attitude_tier"}
+
+
+def test_message_known_npc_shows_tier_word_without_number(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["grakh"].attitude = 40
+    [npc] = data_of(build(ctx))["known_npcs"]
+    assert npc["attitude_tier"] == "приятель"
+    assert "attitude" not in npc
+
+
+def test_message_known_npc_tier_neutral_at_zero(registry, cfg):
+    [npc] = data_of(build(make_ctx(registry, cfg)))["known_npcs"]
+    assert npc["attitude_tier"] == "нейтрален"
+
+
+def test_message_scene_npc_has_tier_next_to_the_number(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["grakh"].attitude = 40
+    [npc] = data_of(build(ctx))["scene_npcs"]
+    assert (npc["attitude"], npc["attitude_tier"]) == (40, "приятель")
+
+
+def test_message_scene_npc_tier_neutral_at_zero(registry, cfg):
+    [npc] = data_of(build(make_ctx(registry, cfg)))["scene_npcs"]
+    assert (npc["attitude"], npc["attitude_tier"]) == (0, "нейтрален")
+
+
+def test_message_scene_npc_tier_enemy_at_minus_50(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["grakh"].attitude = -50
+    [npc] = data_of(build(ctx))["scene_npcs"]
+    assert npc["attitude_tier"] == "враг"
 
 
 def olgerd_ctx(

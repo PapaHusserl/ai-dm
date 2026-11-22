@@ -115,9 +115,9 @@ def test_unknown_key_in_preset_is_error():
 
 def test_default_attitude_steps():
     cfg = trade()
-    assert cfg.attitude_good_from == 50
+    assert cfg.good_tier == "friend"
     assert (cfg.attitude_good_buy_factor, cfg.attitude_good_sell_factor) == (0.9, 0.6)
-    assert cfg.attitude_refuse_at == -50
+    assert cfg.refuse_tier == "enemy"
 
 
 def test_default_restock_days():
@@ -225,14 +225,14 @@ def test_good_sell_factor_decides_when_it_is_the_best_sale():
         load_rules_config(toml_text="[trade]\nattitude_good_sell_factor = 0.7\n")
 
 
-def test_attitude_refuse_at_must_be_below_good_from():
+def test_refuse_tier_must_be_below_good_tier():
     with pytest.raises(ValidationError):
-        load_rules_config(toml_text="[trade]\nattitude_refuse_at = 50\n")
+        load_rules_config(toml_text='[trade]\nrefuse_tier = "friend"\n')
 
 
-def test_attitude_refuse_at_just_below_good_from_is_fine():
-    cfg = load_rules_config(toml_text="[trade]\nattitude_refuse_at = 49\n").trade
-    assert cfg.attitude_refuse_at == 49
+def test_refuse_tier_just_below_good_tier_is_fine():
+    cfg = load_rules_config(toml_text='[trade]\nrefuse_tier = "buddy"\n').trade
+    assert cfg.refuse_tier == "buddy"
 
 
 def test_good_sell_factor_below_sell_factor_is_error():
@@ -257,8 +257,6 @@ BAD_FIELDS = [
     ("sell_factor", -0.1),
     ("attitude_good_buy_factor", 0),
     ("attitude_good_sell_factor", -0.1),
-    ("attitude_good_from", 101), ("attitude_good_from", -101),
-    ("attitude_refuse_at", 101), ("attitude_refuse_at", -101),
     ("ops_per_scene", 0),
     ("new_merchants_per_scene", -1),
     ("restock_days", 0),

@@ -670,8 +670,15 @@ def test_paid_romance_below_threshold_is_clamped_with_tag_and_signal(registry, c
     d = remember_call(paid_ctx(registry, cfg, 40), "romance")
     assert (d.status, d.report_tag) == ("clamped", "paid_not_romance")
     assert "сделка" in d.signal_to_master
-    assert str(cfg.services.romance_from) in d.signal_to_master
+    assert "со ступени «близкий»" in d.signal_to_master
+    assert "≥" not in d.signal_to_master
+    assert "90" not in d.signal_to_master
     assert any("сделку" in line for line in d.log)
+
+
+def test_paid_romance_signal_ends_with_instruction_to_master(registry, cfg):
+    d = remember_call(paid_ctx(registry, cfg, 40), "romance")
+    assert d.signal_to_master.endswith(": записано как сделка, опиши по факту.")
 
 
 def test_paid_romance_keeps_text_of_the_event(registry, cfg):
@@ -681,14 +688,20 @@ def test_paid_romance_keeps_text_of_the_event(registry, cfg):
 
 
 def test_paid_romance_at_threshold_is_romance(registry, cfg):
-    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    ctx = paid_ctx(registry, cfg, 90)
     d = remember_call(ctx, "romance")
     assert d.status == "accepted"
     assert kinds(ctx) == ["romance"]
 
 
+def test_paid_romance_at_100_is_romance(registry, cfg):
+    ctx = paid_ctx(registry, cfg, 100)
+    remember_call(ctx, "romance")
+    assert kinds(ctx) == ["romance"]
+
+
 def test_paid_romance_one_below_threshold_is_deal(registry, cfg):
-    ctx = paid_ctx(registry, cfg, cfg.services.romance_from - 1)
+    ctx = paid_ctx(registry, cfg, 89)
     remember_call(ctx, "romance")
     assert kinds(ctx) == ["deal"]
 
@@ -804,7 +817,7 @@ def test_romance_at_threshold_after_deal_in_scene_is_written(registry, cfg):
     from ai_dm.rules.npc_memory import remember
     from ai_dm.state.relations import NpcEvent
 
-    ctx = paid_ctx(registry, cfg, cfg.services.romance_from)
+    ctx = paid_ctx(registry, cfg, 90)
     npc = ctx.bundle.world.npcs["aldric"]
     remember(npc, ctx.bundle.session.current_scene,
              NpcEvent(kind="deal", turn_seq=1, text="купил(а) услугу"), cfg.npc_memory)

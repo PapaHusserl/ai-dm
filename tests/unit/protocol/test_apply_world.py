@@ -675,6 +675,41 @@ def test_attitude_delta_within_step_is_accepted(registry, cfg):
     assert d.log
 
 
+def test_attitude_log_names_the_tier_after_change(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = 30
+    d = attitude(ctx, 10)
+    assert d.log[0] == "Отношение Олдрик: +10 (теперь 40, приятель)"
+
+
+def test_attitude_log_tier_is_by_the_new_number(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = 25
+    d = attitude(ctx, 10)
+    assert d.log[0] == "Отношение Олдрик: +10 (теперь 35, приятель)"
+
+
+def test_attitude_log_tier_neutral_at_minus_10(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    d = attitude(ctx, -10)
+    assert d.log[0] == "Отношение Олдрик: -10 (теперь -10, нейтрален)"
+
+
+def test_attitude_log_tier_by_actual_number_when_clamped_at_the_limit(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = 95
+    d = attitude(ctx, 10)
+    assert d.status == "clamped"
+    assert d.log[0] == "Отношение Олдрик: +5 (теперь 100, близкий)"
+
+
+def test_attitude_log_tier_enemy_below_minus_50(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.npcs["aldric"].attitude = -45
+    d = attitude(ctx, -10)
+    assert d.log[0] == "Отношение Олдрик: -10 (теперь -55, враг)"
+
+
 def test_attitude_negative_delta(registry, cfg):
     ctx = make_ctx(registry, cfg)
     attitude(ctx, -8)

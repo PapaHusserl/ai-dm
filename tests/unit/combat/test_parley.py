@@ -175,6 +175,19 @@ def test_hostile_named_npc_rolls_with_disadvantage(registry, cfg):
     assert (dc, mode) == (15, "disadvantage")
 
 
+def test_enemy_tier_is_also_hostile_at_minus_100(registry, cfg):
+    engine = duel(registry, cfg, named=True)
+    engine.world.npcs["goblin_1"].attitude = -100
+    assert dc_of(engine)[1] == "disadvantage"
+
+
+def test_close_tier_is_also_friendly_at_100(registry, cfg):
+    engine = duel(registry, cfg, named=True)
+    engine.world.npcs["goblin_1"].attitude = 100
+    dc, mode, _ = dc_of(engine)
+    assert (dc, mode) == (10, "normal")
+
+
 def test_defect_adds_five(registry, cfg):
     assert dc_of(duel(registry, cfg), outcome="defect")[0] == 20
 
@@ -755,7 +768,7 @@ def test_perform_menu_option_defect(registry, cfg):
 
 def test_default_parley_config(cfg):
     p = cfg.parley
-    assert (p.base_dc, p.friendly_attitude, p.hostile_attitude) == (15, 30, -30)
+    assert (p.base_dc, p.friendly_tier, p.hostile_tier) == (15, "buddy", "foe")
     assert (p.friendly_bonus, p.hp_half_bonus, p.hp_quarter_bonus) == (5, 2, 5)
     assert (p.losses_bonus, p.leader_down_bonus) == (3, 3)
     assert (p.overwhelm_bonus, p.defect_penalty, p.waver_bonus, p.key_penalty) == (2, 5, 2, 5)

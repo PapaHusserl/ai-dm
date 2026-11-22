@@ -886,8 +886,8 @@ then=текст цели, once=True)` в `npc.opportunity`. Структура: 
 считает `due` один раз, передаёт `skip_goals=not due` в `verdict_candidates`, пропускает спутников (`goals.skipped`), после
 проверки пишет метку. Обычные триггеры не затронуты; `max_calls_per_day` world — второй потолок.
 
-**Факты, по которым движок ставит цели.** `survivors.remember_fight`: бежавший/сдавшийся с отношением ≤
-`[survivors] revenge_attitude_max` (−40) → `revenge`; пощажённый → `gratitude`; перебежчик → `life_debt` (через
+**Факты, по которым движок ставит цели.** `survivors.remember_fight`: бежавший/сдавшийся
+с отношением «недруг» и ниже (`[survivors] revenge_tier`) → `revenge`; пощажённый → `gratitude`; перебежчик → `life_debt` (через
 `add_goal`). `goals.on_kill` (из `TurnRunner.end_fight`) и `goals.on_npc_killed` (из `change_status` при
 `by=<герой>`) → `avenge`: мстители — живые NPC с `FamilyLink.ref` = убитый или с группой убитого в `npc.groups`
 (не участники боя, не `follows` героя, отношение ≤ 0); цель `revenge` на героя и память `kin_killed` (при наличии сцены).

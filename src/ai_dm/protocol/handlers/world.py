@@ -1,6 +1,7 @@
 from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import CREATE_FIRST, allowed, hero_reachable
 from ai_dm.rules import divine, goals, uniqueness, work_hours
+from ai_dm.rules.attitude import at_least, tier_name, tier_of
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
 from ai_dm.rules.creatures import ensure_creature
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
@@ -321,7 +322,10 @@ def change_attitude(ctx, npc, delta, decision):
     applied = npc.attitude - before
     spent[npc.id] = spent.get(npc.id, 0) + abs(applied)
     decision.result["attitude"] = npc.attitude
-    decision.log.append(f"Отношение {npc_label(npc)}: {applied:+d} (теперь {npc.attitude})")
+    tier = tier_of(npc.attitude, ctx.cfg).name
+    decision.log.append(
+        f"Отношение {npc_label(npc)}: {applied:+d} (теперь {npc.attitude}, {tier})"
+    )
     if ctx.scene is not None:
         refresh_weight(npc, ctx.scene)
     if abs(applied) < abs(delta):
@@ -337,7 +341,7 @@ def romance_gate(ctx, npc, delta=0) -> bool:
     # change_attitude) ниже порога романа (У1 П2)
     paid = ctx.bundle.world.flags.get(f"{PAID_COMPANY_FLAG}:{ctx.hero.id}:{npc.id}")
     attitude = wanted_attitude(ctx, npc, delta)
-    return bool(paid) and attitude < ctx.cfg.services.romance_from
+    return bool(paid) and not at_least(attitude, ctx.cfg.services.romance_tier, ctx.cfg)
 
 
 def change_memory(ctx, npc, request, decision):
@@ -355,8 +359,9 @@ def change_memory(ctx, npc, request, decision):
         decision.reason = "платная близость не роман"
         decision.log.append(f"{npc_label(npc)} запомнит это как сделку")
         decision.signal_to_master = (
-            f"Для {npc_label(npc)} это сделка, роман — при отношении "
-            f"≥ {ctx.cfg.services.romance_from}: записано как сделка, опиши по факту."
+            f"Для {npc_label(npc)} это сделка, роман — со ступени "
+            f"«{tier_name(ctx.cfg.services.romance_tier, ctx.cfg)}»: "
+            "записано как сделка, опиши по факту."
         )
         if has_kind(npc, scene, "deal"):
             # deal не тёплый вид: дубль защитой сцены не отсекается
@@ -509,7 +514,7 @@ def goal_problem(ctx, npc, request):
         return rejected(
             "платная близость не роман",
             f"Цель love на героя у {npc_label(npc)} не поставлена: для NPC это сделка, "
-            f"роман — при отношении ≥ {ctx.cfg.services.romance_from}.",
+            f"роман — со ступени «{tier_name(ctx.cfg.services.romance_tier, ctx.cfg)}».",
             report_tag="paid_not_romance",
         )
     return goal_state_problem(npc, request, target)

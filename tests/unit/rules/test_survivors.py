@@ -432,19 +432,34 @@ def test_revenge_goal_has_companion_trigger(registry, cfg):
     assert [t.id for t in npc.opportunity] == ["goal:revenge:hero"]
 
 
-def test_fled_above_threshold_gets_no_revenge(registry, cfg):
-    _, npc = remembered(registry, tuned(cfg, fled=-39), status="fled")
+def test_fled_just_above_foe_tier_gets_no_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-29), status="fled")
     assert npc.goals == []
     assert npc.opportunity == []
 
 
+def test_fled_at_foe_tier_bound_gets_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-30), status="fled")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
+def test_fled_at_minus_35_gets_revenge_though_it_did_not_before(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-35), status="fled")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
+def test_fled_at_minus_50_enemy_tier_gets_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-50), status="fled")
+    assert [g.kind for g in npc.goals] == ["revenge"]
+
+
 def test_revenge_threshold_comes_from_config(registry, cfg):
-    _, npc = remembered(registry, tuned(cfg, revenge_attitude_max=-41), status="fled")
+    _, npc = remembered(registry, tuned(cfg, revenge_tier="enemy"), status="fled")
     assert npc.goals == []
 
 
-def test_fled_with_attitude_exactly_at_threshold_gets_revenge(registry, cfg):
-    _, npc = remembered(registry, tuned(cfg, fled=-10, revenge_attitude_max=-10), status="fled")
+def test_fled_with_tier_exactly_at_threshold_gets_revenge(registry, cfg):
+    _, npc = remembered(registry, tuned(cfg, fled=-10, revenge_tier="neutral"), status="fled")
     assert [g.kind for g in npc.goals] == ["revenge"]
 
 
@@ -455,7 +470,7 @@ def test_surrendered_hostile_by_config_gets_revenge(registry, cfg):
 
 
 def test_surrendered_at_zero_with_raised_threshold_gets_revenge(registry, cfg):
-    _, npc = remembered(registry, tuned(cfg, revenge_attitude_max=0), status="surrendered")
+    _, npc = remembered(registry, tuned(cfg, revenge_tier="neutral"), status="surrendered")
     assert [g.kind for g in npc.goals] == ["revenge"]
 
 
