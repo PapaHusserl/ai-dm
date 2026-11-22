@@ -392,9 +392,28 @@ def test_npc_empty_fields_are_absent(registry, cfg):
     assert guard["named"] is False
     assert guard["key"] is False
     for absent in (
-        "motive", "species_id", "trade_kind", "trade", "opportunity", "secrets", "hours",
+        "motive", "species_id", "trade_kind", "trade", "opportunity", "secrets", "hours", "links",
     ):
         assert absent not in guard
+
+
+# М0 П5 (116): связи NPC--NPC пака
+
+def test_npc_links_are_written_with_the_same_pairs(registry, cfg):
+    links = [{"npc_id": "guard", "text": "должен денег"}]
+    rows = files(registry, cfg, npcs=[npc_input(links=links), guard_input()])["npcs.yaml"]
+    assert entity(rows, "mara")["links"] == [{"npc_id": "guard", "text": "должен денег"}]
+
+
+def test_npc_without_links_has_no_links_key(registry, cfg):
+    mara = entity(files(registry, cfg)["npcs.yaml"], "mara")
+    assert "links" not in mara
+
+
+def test_pack_tool_npc_items_have_links_with_npc_id_and_text():
+    items = tool()["input_schema"]["properties"]["npcs"]["items"]["properties"]
+    assert "links" in items
+    assert set(items["links"]["items"]["properties"]) == {"npc_id", "text"}
 
 
 def test_npc_without_location_has_no_location_key(registry, cfg):

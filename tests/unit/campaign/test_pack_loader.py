@@ -832,3 +832,64 @@ def test_edge_after_a_mine_edge_is_still_checked(tmp_path, registry):
 def test_edge_agreeing_with_its_kind_loads(tmp_path, registry, edge):
     pack = load(write_pack(tmp_path, edge_files(**edge)), registry)
     assert ids(pack.locations) == ["town", "tavern", "cellar"]
+
+
+# М0 П5 (116): связи NPC--NPC из npcs.yaml; ссылку на неизвестного NPC сверяет check_pack_refs
+
+def link_files(*links):
+    files = default_files()
+    files["npcs.yaml"][0]["links"] = list(links)
+    return files
+
+
+def test_npc_links_are_loaded_from_yaml(tmp_path, registry):
+    files = link_files({"npc_id": "guard", "text": "должен денег"})
+    aldric = load(write_pack(tmp_path, files), registry).npcs[0]
+    assert [(link.npc_id, link.text) for link in aldric.links] == [("guard", "должен денег")]
+
+
+def test_npc_without_links_has_empty_links(tmp_path, registry):
+    assert load(write_pack(tmp_path), registry).npcs[0].links == []
+
+
+def test_link_to_unknown_npc_is_a_load_error(tmp_path, registry):
+    files = link_files({"npc_id": "nobody", "text": "брат"})
+    check_error(
+        tmp_path, registry, files,
+        "npcs.yaml: npc 'aldric', поле links: неизвестный npc 'nobody'",
+    )
+
+
+def test_second_link_to_unknown_npc_is_still_checked(tmp_path, registry):
+    files = link_files({"npc_id": "guard", "text": "друг"}, {"npc_id": "nobody", "text": "брат"})
+    check_error(tmp_path, registry, files, "поле links: неизвестный npc 'nobody'")
+
+
+@pytest.mark.parametrize("pack_id", ["drunk_dragon", "dusk_academy", "inn_test", "test"])
+def test_shipped_packs_without_links_still_load(pack_id):
+    from pathlib import Path
+
+    from campaign_kit import pack_errors
+
+    from ai_dm.campaign.loader import pack_content_dir
+    from ai_dm.content.loader import load_registry
+
+    root = Path(__file__).resolve().parents[3] / "campaigns" / pack_id
+    content = pack_content_dir(root)
+    registry = load_registry([content] if content is not None else [])
+    assert pack_errors(root, registry) is None
+
+
+def test_npc_links_reach_the_world_npc(tmp_path, registry, cfg):
+    from campaign_kit import SAVED_AT
+
+    from ai_dm.game.starter import new_world_from_pack
+
+    files = link_files({"npc_id": "guard", "text": "должен денег"})
+    pack = load(write_pack(tmp_path, files), registry)
+    world = new_world_from_pack(
+        registry, cfg, pack, hero="arn", seed=1, world_id="w1", saved_at=SAVED_AT
+    ).world
+    assert [(link.npc_id, link.text) for link in world.npcs["aldric"].links] == [
+        ("guard", "должен денег")
+    ]

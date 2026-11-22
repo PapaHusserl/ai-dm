@@ -124,6 +124,22 @@ def survivor_data(npc):
     return data
 
 
+def conditions_data(npc):
+    # id состояний NPC сцены (без вложенных); ключа нет, если их нет
+    if npc.creature is None or not npc.creature.conditions:
+        return {}
+    return {"conditions": [c.id for c in npc.creature.conditions]}
+
+
+def links_data(world, npc):
+    # связи NPC--NPC пака (одна сторона); связь на NPC, которого нет в мире, пропускается
+    links = [
+        {"npc_id": x.npc_id, "name": world.npcs[x.npc_id].name, "text": x.text}
+        for x in npc.links if x.npc_id in world.npcs
+    ]
+    return {"links": links} if links else {}
+
+
 def npc_memory_data(npc, short=False):
     # заметки, память о герое и цели NPC: ключи только если непусты;
     # short (known_npcs) -- заметки, цели и последнее событие вместо всей памяти
@@ -663,6 +679,7 @@ class PromptBuilder:
                         item["merchant"] = npc.trade.kind
                     item.update(services_item(npc))
                     item.update(npc_memory_data(npc))
+                    item.update(conditions_data(npc))
                     scene_npcs.append(item)
             scene_npcs.sort(key=lambda n: n["id"])
         known_npcs = []
@@ -674,6 +691,7 @@ class PromptBuilder:
             if n.follows == hero.id:
                 item["follows"] = hero.id
             item.update(npc_memory_data(n, short=True))
+            item.update(links_data(world, n))
             known_npcs.append(item)
         secrets = []
         # секреты только у NPC сцены (локация героя: ход идёт)

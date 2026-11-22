@@ -256,6 +256,26 @@ def test_rules_say_staying_companion_gets_follows_none():
     assert 'follows: "none"' in rules_text()
 
 
+# М0 П5: связать, оглушить, развязать NPC -- npc_update с полем состояния (имя поля `condition` --
+# контракт, docs/plan-m0.md «Умолчания» п. 28); `conditions` у NPC сцены, `links` у known_npcs
+
+def test_rules_name_the_npc_condition_field_and_values():
+    text = rules_text()
+    assert "`condition`" in text
+    assert "bound" in text
+    assert "unbound" in text
+    assert "unconscious" in text
+    assert "conscious" in text
+
+
+def test_rules_name_npc_conditions_key():
+    assert "`conditions`" in rules_text()
+
+
+def test_rules_name_npc_links_key():
+    assert "`links`" in rules_text()
+
+
 def test_rules_explain_upcast_and_prepared_swap():
     text = rules_text()
     assert "prepared_swap" in text

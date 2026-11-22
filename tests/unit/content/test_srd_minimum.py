@@ -165,10 +165,17 @@ def test_there_are_exactly_15_srd_conditions(registry):
     assert len([i for i in ids if registry.get("condition", i).source != "custom"]) == 15
 
 
-def test_custom_conditions_are_cursed_diseased_and_smelly(registry):
+def test_custom_conditions_are_bound_cursed_diseased_and_smelly(registry):
     ids = registry.ids("condition")
     custom = [i for i in ids if registry.get("condition", i).source == "custom"]
-    assert sorted(custom) == ["cursed", "diseased", "smelly"]
+    assert sorted(custom) == ["bound", "cursed", "diseased", "smelly"]
+
+
+def test_bound_condition_is_custom_and_named_bound(registry):
+    # М0 П5, решение 45
+    condition = registry.get("condition", "bound")
+    assert condition.name == "Связан"
+    assert condition.source == "custom"
 
 
 @pytest.mark.parametrize("monster_id", MONSTERS)

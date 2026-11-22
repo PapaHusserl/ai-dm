@@ -136,6 +136,13 @@ def test_incapacitated_participant_can_only_end_the_turn(registry, cfg, conditio
     assert option_ids(engine, "goblin_1") == ["end_turn"]
 
 
+def test_bound_participant_can_only_end_the_turn(registry, cfg):
+    # М0 П5, Р59 = (1): «Связан» влечёт «Недееспособен»
+    engine = duel(registry, cfg)
+    creature(engine, "goblin_1").conditions.append(AppliedCondition(id="bound", source="x"))
+    assert option_ids(engine, "goblin_1") == ["end_turn"]
+
+
 # смена экипировки (шаг 96а): скрытые варианты equip / unequip
 
 def swap_duel(registry, cfg, hero=None, rng=None):

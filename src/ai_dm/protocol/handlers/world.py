@@ -2,6 +2,7 @@ from ai_dm.protocol.decision import Decision, Invalid
 from ai_dm.protocol.hints import CREATE_FIRST, allowed, hero_reachable
 from ai_dm.rules import divine, goals, uniqueness, work_hours
 from ai_dm.rules.auto_flags import RESERVED_FLAG_PREFIXES, apply_events
+from ai_dm.rules.creatures import ensure_creature
 from ai_dm.rules.knowledge import note_favor, note_secret, shorten_text
 from ai_dm.rules.mortality_guard import remove_creature
 from ai_dm.rules.npc_memory import events_full, has_kind, refresh_weight, remember
@@ -11,6 +12,7 @@ from ai_dm.rules.secrets import reveal
 from ai_dm.rules.services import PAID_COMPANY_FLAG, keeper_hint
 from ai_dm.rules.trade import DAY_S
 from ai_dm.rules.triggers_eval import event_active
+from ai_dm.state.creature import AppliedCondition
 from ai_dm.state.gender import GENDER_WORDS
 from ai_dm.state.memory import add_entry
 from ai_dm.state.relations import (
@@ -402,6 +404,37 @@ def npc_label(npc) -> str:
     return shown_name(npc)
 
 
+CONDITION_SOURCE = "npc_update"
+# значение поля condition -> (id состояния, ставится ли, строка ленты)
+CONDITION_CHANGES = {
+    "bound": ("bound", True, "связан"),
+    "unbound": ("bound", False, "развязан"),
+    "unconscious": ("unconscious", True, "без сознания"),
+    "conscious": ("unconscious", False, "приходит в себя"),
+}
+
+
+def change_condition(ctx, npc, request, decision):
+    # постановка без срока и без броска; снятие -- только записей этого источника
+    condition_id, setting, line = CONDITION_CHANGES[request.condition]
+    if setting:
+        ensure_creature(npc, ctx.registry)
+        if any(c.id == condition_id for c in npc.creature.conditions):
+            return
+        npc.creature.conditions.append(AppliedCondition(id=condition_id, source=CONDITION_SOURCE))
+    else:
+        if npc.creature is None:
+            return
+        kept = [
+            c for c in npc.creature.conditions
+            if (c.id, c.source) != (condition_id, CONDITION_SOURCE)
+        ]
+        if len(kept) == len(npc.creature.conditions):
+            return
+        npc.creature.conditions = kept
+    decision.log.append(f"{npc_label(npc)}: {line}")
+
+
 def change_name(npc, request, decision):
     # рассказчик дал безымянному выжившему имя; игроку оно откроется, когда прозвучит в тексте
     npc.name = request.name.strip()
@@ -538,11 +571,15 @@ def update_problem(ctx, npc, request):
     if nothing_to_change(
         request, "attitude_delta", "status", "follows", "trade_kind", "gender", "pronouns",
         "memory_kind", "memory_text", "name", "services", "location_id", "open_hour", "close_hour",
-        *GOAL_FIELDS,
+        "condition", *GOAL_FIELDS,
     ):
         return Invalid(code="empty_update", message="в npc_update нечего менять")
     if request.follows == "hero" and npc.status != "alive":
         return Invalid(code="npc_not_alive", message=f"{npc_label(npc)} не жив: не идёт с героем")
+    if request.condition is not None and npc.status != "alive":
+        return Invalid(
+            code="npc_not_alive", message=f"{npc_label(npc)} не жив: состояние не меняется"
+        )
     if request.trade_kind is not None and request.status is not None:
         return Invalid(
             code="trade_kind_with_status", message="trade_kind и status нельзя в одном запросе"
@@ -690,6 +727,8 @@ def npc_update(ctx, request):
         change_follows(ctx, npc, request, decision)
     if request.name is not None:
         change_name(npc, request, decision)
+    if request.condition is not None:
+        change_condition(ctx, npc, request, decision)
     change_identity(npc, request, decision)
     if request.attitude_delta is not None:
         change_attitude(ctx, npc, request.attitude_delta, decision)

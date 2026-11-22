@@ -49,6 +49,7 @@ def npc_data(npc) -> dict:
         "secrets": [secret_data(s) for s in npc.secrets],
         "location_id": npc.location_id, "species_id": npc.species_id, "trade": trade,
         "gender": npc.gender, "pronouns": npc.pronouns,
+        "links": [{"npc_id": link.npc_id, "text": link.text} for link in npc.links],
     }))
     return data
 

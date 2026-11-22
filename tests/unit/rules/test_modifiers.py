@@ -1019,3 +1019,48 @@ def test_ability_filtered_effect_applies_to_death_saves_without_ability(registry
     actor.active_effects.append(beacon())
     request = make_request("death_save", actor=actor, dc=None, bonus=0)
     assert roll(request, two_dice(), registry).advantage == "advantage"
+
+
+# связан (не SRD, М0 П5, Р59 = (1)): влечёт недееспособность; атаки по нему с преимуществом,
+# помеха на его спасброски Ловкости; подпись «связан»
+
+def test_attack_on_bound_target_has_advantage(registry):
+    result = roll(make_request(target=make_creature("bound")), two_dice(), registry)
+    assert result.advantage == "advantage"
+
+
+def test_attack_on_bound_target_label_is_bound_word(registry):
+    result = roll(make_request(target=make_creature("bound")), two_dice(), registry)
+    assert result.advantage_from == ["связан"]
+
+
+def test_bound_actor_has_disadvantage_on_dex_save(registry):
+    request = make_request("save", actor=make_creature("bound"), ability="dex")
+    assert roll(request, two_dice(), registry).advantage == "disadvantage"
+
+
+def test_bound_dex_save_label_is_bound_word(registry):
+    request = make_request("save", actor=make_creature("bound"), ability="dex")
+    assert roll(request, two_dice(), registry).disadvantage_from == ["связан"]
+
+
+def test_bound_actor_normal_on_str_save(registry):
+    request = make_request("save", actor=make_creature("bound"), ability="str")
+    assert roll(request, ScriptedRng((20, 12)), registry).advantage == "normal"
+
+
+def test_bound_actor_is_incapacitated_on_initiative(registry):
+    request = make_request("initiative", actor=make_creature("bound"), dc=None)
+    result = roll(request, two_dice(), registry)
+    assert result.advantage == "disadvantage"
+    assert result.disadvantage_from == ["недееспособен"]
+
+
+def test_bound_actor_attack_is_not_changed_by_bound_itself(registry):
+    result = roll(make_request(actor=make_creature("bound")), ScriptedRng((20, 12)), registry)
+    assert result.advantage == "normal"
+
+
+def test_attack_on_bound_target_is_not_a_crit_in_melee(registry):
+    request = make_request(target=make_creature("bound"), tags={"melee": True})
+    assert roll(request, two_dice(first=14), registry).outcome != "crit"

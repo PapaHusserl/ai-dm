@@ -374,3 +374,61 @@ def test_held_turn_marker_is_cleared_when_the_turn_continues(registry, cfg):
     engine.step()
     engine.step()
     assert engine.state.turn_started_for is None
+
+
+# М0 П5 (сверка перед П5): NPC, которому ensure_creature дал 1/1, входит в бой с HP монстра
+
+def npc_engine(registry, cfg, npc_creature, monster="goblin_boss"):
+    from ai_dm.state.creature import CreatureState
+
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(d20=[10, 10]),
+        monsters=[mon("boss", monster, "hall", named=True)], started=False,
+    )
+    npc = engine.world.npcs["boss"]
+    npc.creature = None if npc_creature is None else CreatureState(
+        hp_current=npc_creature[0], hp_max=npc_creature[1]
+    )
+    return engine
+
+
+def test_start_gives_monster_hp_to_an_npc_with_placeholder_one_hp(registry, cfg):
+    engine = npc_engine(registry, cfg, (1, 1))
+    engine.start()
+    assert (creature(engine, "boss").hp_current, creature(engine, "boss").hp_max) == (21, 21)
+
+
+def test_start_keeps_conditions_of_an_npc_with_placeholder_one_hp(registry, cfg):
+    engine = npc_engine(registry, cfg, (1, 1))
+    # связанный бросает инициативу с помехой (недееспособен): три d20 вместо двух
+    engine.rng = ScriptedRng(d20=[10, 10, 10])
+    creature(engine, "boss").conditions.append(AppliedCondition(id="bound", source="npc_update"))
+    engine.start()
+    assert [c.id for c in creature(engine, "boss").conditions] == ["bound"]
+
+
+def test_start_keeps_hp_of_a_wounded_npc(registry, cfg):
+    engine = npc_engine(registry, cfg, (5, 21))
+    engine.start()
+    assert (creature(engine, "boss").hp_current, creature(engine, "boss").hp_max) == (5, 21)
+
+
+def test_start_gives_two_hp_of_a_two_hp_monster_to_an_npc_with_placeholder(registry, cfg):
+    from types import SimpleNamespace
+
+    engine = npc_engine(registry, cfg, (1, 1))
+    engine.monster = lambda ref: SimpleNamespace(hp=2)
+    engine.give_npc_hp(engine.world.npcs["boss"], "boss")
+    assert (creature(engine, "boss").hp_current, creature(engine, "boss").hp_max) == (2, 2)
+
+
+def test_start_keeps_one_hp_of_a_one_hp_monster(registry, cfg):
+    engine = npc_engine(registry, cfg, (1, 1), monster="hawk")
+    engine.start()
+    assert (creature(engine, "boss").hp_current, creature(engine, "boss").hp_max) == (1, 1)
+
+
+def test_start_gives_monster_hp_to_an_npc_without_creature(registry, cfg):
+    engine = npc_engine(registry, cfg, None)
+    engine.start()
+    assert (creature(engine, "boss").hp_current, creature(engine, "boss").hp_max) == (21, 21)

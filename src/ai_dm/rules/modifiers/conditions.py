@@ -22,6 +22,7 @@ IMPLIED_CONDITIONS = {
     "paralyzed": ("incapacitated",),
     "stunned": ("incapacitated",),
     "petrified": ("incapacitated",),
+    "bound": ("incapacitated",),
 }
 
 # подписи состояний в строке броска (источник преимущества или помехи)
@@ -30,7 +31,7 @@ CONDITION_WORDS = {
     "prone": "лежит", "paralyzed": "паралич", "unconscious": "без сознания",
     "stunned": "оглушён", "petrified": "окаменел", "blinded": "ослеплён",
     "restrained": "опутан", "invisible": "невидим", "frightened": "страх", "cursed": "проклят",
-    "diseased": "болен", "smelly": "вонь",
+    "diseased": "болен", "smelly": "вонь", "bound": "связан",
 }
 
 # состояния SRD 5.2, влияющие на броски; остальные (charmed, deafened) на конвейер не влияют
@@ -81,6 +82,11 @@ CONDITION_RULES = {
     "diseased": [Rule("actor", ("attack", "check"), "disadvantage")],
     # не SRD: неделя без мытья, помеха на проверки Харизмы (У1 П3)
     "smelly": [Rule("actor", ("check",), "disadvantage", abilities=("cha",))],
+    # не SRD: связан -- как «Опутан» без помехи на свои атаки (влечёт недееспособность)
+    "bound": [
+        Rule("actor", ("save",), "disadvantage", abilities=("dex",)),
+        Rule("target", ("attack",), "advantage"),
+    ],
 }
 
 

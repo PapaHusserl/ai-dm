@@ -151,3 +151,104 @@ def test_scene_npc_only_active_goal_is_shown(ctx, grakh):
 
 def test_known_npc_without_goals_has_no_goals_key(ctx):
     assert "goals" not in by_id(state(ctx)["known_npcs"])["grakh"]
+
+
+# М0 П5 (решение 47 и сверка перед П5): conditions у NPC сцены, links у known_npcs
+
+def with_conditions(npc, *conditions):
+    from ai_dm.state.creature import AppliedCondition, CreatureState
+
+    npc.creature = CreatureState(
+        hp_current=5, hp_max=5, conditions=[AppliedCondition(**c) for c in conditions]
+    )
+
+
+def test_scene_npc_with_bound_has_conditions(ctx, grakh):
+    with_conditions(grakh, {"id": "bound", "source": "npc_update"})
+    assert by_id(state(ctx)["scene_npcs"])["grakh"]["conditions"] == ["bound"]
+
+
+def test_scene_npc_with_diseased_from_pending_has_conditions(ctx, grakh):
+    with_conditions(grakh, {"id": "diseased", "source": "pending"})
+    assert by_id(state(ctx)["scene_npcs"])["grakh"]["conditions"] == ["diseased"]
+
+
+def test_scene_npc_conditions_list_every_id(ctx, grakh):
+    with_conditions(grakh, {"id": "bound", "source": "npc_update"}, {"id": "diseased"})
+    assert by_id(state(ctx)["scene_npcs"])["grakh"]["conditions"] == ["bound", "diseased"]
+
+
+def test_scene_npc_conditions_have_no_implied_ones(ctx, grakh):
+    with_conditions(grakh, {"id": "bound", "source": "npc_update"})
+    assert "incapacitated" not in by_id(state(ctx)["scene_npcs"])["grakh"]["conditions"]
+
+
+def test_scene_npc_without_creature_has_no_conditions_key(ctx, grakh):
+    assert grakh.creature is None
+    assert "conditions" not in by_id(state(ctx)["scene_npcs"])["grakh"]
+
+
+def test_scene_npc_without_conditions_has_no_conditions_key(ctx, grakh):
+    with_conditions(grakh)
+    assert "conditions" not in by_id(state(ctx)["scene_npcs"])["grakh"]
+
+
+def test_known_npc_has_no_conditions_key(ctx, grakh):
+    with_conditions(grakh, {"id": "bound", "source": "npc_update"})
+    assert "conditions" not in by_id(state(ctx)["known_npcs"])["grakh"]
+
+
+def add_finn(ctx, **fields):
+    from ai_dm.state.world import NPC
+
+    data = {"id": "finn", "name": "Финн", "named": True, "means": ["торгует"]} | fields
+    ctx.bundle.world.npcs["finn"] = NPC(**data)
+
+
+def link(grakh, npc_id="finn", text="должен денег"):
+    from ai_dm.state.world import NpcLink
+
+    grakh.links.append(NpcLink(npc_id=npc_id, text=text))
+
+
+def test_known_npc_with_link_has_links_with_name_and_text(ctx, grakh):
+    add_finn(ctx)
+    link(grakh)
+    item = by_id(state(ctx)["known_npcs"])["grakh"]
+    assert item["links"] == [{"npc_id": "finn", "name": "Финн", "text": "должен денег"}]
+
+
+def test_known_npc_without_links_has_no_links_key(ctx):
+    assert "links" not in by_id(state(ctx)["known_npcs"])["grakh"]
+
+
+def test_linked_side_has_no_links_key(ctx, grakh):
+    add_finn(ctx, location_id="vale", key=True)
+    link(grakh)
+    assert "links" not in by_id(state(ctx)["known_npcs"])["finn"]
+
+
+def test_link_to_missing_npc_is_skipped(ctx, grakh):
+    link(grakh, npc_id="nobody")
+    assert "links" not in by_id(state(ctx)["known_npcs"])["grakh"]
+
+
+def test_link_to_missing_npc_does_not_hide_the_next_one(ctx, grakh):
+    add_finn(ctx)
+    link(grakh, npc_id="nobody")
+    link(grakh)
+    links = by_id(state(ctx)["known_npcs"])["grakh"]["links"]
+    assert [x["npc_id"] for x in links] == ["finn"]
+
+
+def test_link_to_dead_npc_is_shown(ctx, grakh):
+    add_finn(ctx, status="dead")
+    link(grakh)
+    links = by_id(state(ctx)["known_npcs"])["grakh"]["links"]
+    assert [x["npc_id"] for x in links] == ["finn"]
+
+
+def test_scene_npc_has_no_links_key(ctx, grakh):
+    add_finn(ctx)
+    link(grakh)
+    assert "links" not in by_id(state(ctx)["scene_npcs"])["grakh"]

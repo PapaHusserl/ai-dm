@@ -374,9 +374,8 @@ class CombatEngine:
         # у именованного NPC без состояния оно заводится из записи монстра
         for p in self.state.participants:
             npc = self.world.npcs.get(p.ref)
-            if npc is not None and p.creature is None and npc.creature is None:
-                hit_points = self.monster(p.ref).hp
-                npc.creature = CreatureState(hp_current=hit_points, hp_max=hit_points)
+            if npc is not None and p.creature is None:
+                self.give_npc_hp(npc, p.ref)
             if npc is not None and p.equipment is None and npc.equipment is not None:
                 p.equipment = npc.equipment.model_copy(deep=True)
         cast.convert_pending_marks(self)
@@ -386,6 +385,17 @@ class CombatEngine:
         self.state.turn_index = 0
         self.log("Бой начался")
         return []
+
+    def give_npc_hp(self, npc, ref) -> None:
+        # без состояния -- HP монстра; заглушка 1/1 от ensure_creature -- тоже (состояния остаются)
+        creature = npc.creature
+        if creature is not None and (creature.hp_current, creature.hp_max) != (1, 1):
+            return
+        hit_points = self.monster(ref).hp
+        if creature is None:
+            npc.creature = CreatureState(hp_current=hit_points, hp_max=hit_points)
+        elif hit_points > 1:
+            creature.hp_current = creature.hp_max = hit_points
 
     def available_actions(self, ref) -> list[ActionOption]:
         return list_options(self, ref)

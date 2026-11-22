@@ -2145,3 +2145,50 @@ updated: 2026-11-21
 `rules.death_saves:resolve_out_of_combat` — 7, `protocol.handlers.world:update_problem` — 6,
 `ui.tui.app:AiDmApp.shop_closed` — 3, `protocol.handlers.pack:npc_data` — 1,
 `game.turn:TurnRunner.take_boundary` — 1.
+
+## 347. NPC паков без monster_id получают вне боя HP 1/1
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, сверка перед П5, docs/plan-m0.md) У NPC всех четырёх паков нет `combat.monster_id` — вне боя
+`ensure_creature` даёт им 1/1; лечение и баффы по таким NPC считаются от 1 HP.
+
+## 348. Состояния NPC за кадром мир не ставит и не снимает
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, сверка перед П5, docs/plan-m0.md) `WorldNpcUpdate` без поля состояния — побег пленника за кадром невозможен.
+
+## 349. Связать или оглушить героя запросом мастера нельзя
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, сверка перед П5, docs/plan-m0.md) Решение 10 — только NPC; герой в плену не моделируется.
+
+## 350. Связи NPC—NPC мастер в игре не пишет
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, сверка перед П5, docs/plan-m0.md) Решение 47 — «запись мастером позже»; у безымянных NPC без целей связи
+мастеру не показываются.
+
+## 351. move_options сверяет restrained без with_implied
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, сверка перед П5, docs/plan-m0.md) `combat/available.py:254 move_options` сверяет `restrained` по голому id —
+будущее состояние, влекущее «Опутан», движения не остановит.
+
+## 352. Выжившие мутанты П5 М0 на старых строках
+status: idea
+priority: low
+updated: 2026-11-22
+
+(М0, mutmut П5, docs/plan-m0.md) 28 выживших на строках до П5: `campaign.loader:entity_refs` — 19
+(№ 7, 12, 13, 19, 21, 27, 28, 37, 39, 45, 57, 63, 81, 83, 87–91), `world:update_problem` — 6 (№ 66, 67, 101–104),
+по одному — `pack:npc_data` (№ 10), `PromptBuilder.state_data` (№ 7), `CombatEngine.start` (№ 4). Добить тестами или признать эквивалентными.

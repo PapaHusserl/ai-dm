@@ -176,6 +176,7 @@ def entity_refs(kind, entity) -> list[tuple[str, str, str]]:
         if entity.species_id is not None:
             refs.append(("species_id", "species", entity.species_id))
         refs += trigger_refs(entity.opportunity)
+        refs += [("links", "npc", link.npc_id) for link in entity.links]
         for secret in entity.secrets:
             for target, ref in condition_refs(secret.reveal_if):
                 refs.append((f"secrets[{secret.id}].reveal_if", target, ref))

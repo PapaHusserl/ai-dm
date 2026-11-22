@@ -671,9 +671,15 @@ class NpcUpdate(NpcUpdateBase):
     )
     open_hour: int = Field(-1, description=HOUR_OPEN_TEXT + " Меняет часы NPC; нет = не менять.")
     close_hour: int = Field(-1, description=HOUR_CLOSE_TEXT)
+    # Gemini не принимает пустую строку в enum -- нейтральное значение keep
+    condition: Literal["bound", "unbound", "unconscious", "conscious", "keep"] = Field(
+        "keep", description="bound = связан, unbound = развязан; unconscious = без сознания, "
+        "conscious = пришёл в себя; keep = без изменений."
+    )
     NEUTRAL: ClassVar[dict] = {
         **NpcUpdateBase.NEUTRAL, "location_id": "", "trade_kind": "none", "memory_kind": "none",
         "memory_text": "", "name": "", "services": [], "open_hour": -1, "close_hour": -1,
+        "condition": "keep",
     }
 
 
@@ -1035,6 +1041,11 @@ class PackLocation(Request):
     NEUTRAL: ClassVar[dict] = {"parent_id": "", "description": ""}
 
 
+class PackLink(Request):
+    npc_id: str = Field(description="Id NPC пака, с которым связан.")
+    text: str = Field(description="Суть связи: должен денег, брат, враг.")
+
+
 class PackNpc(Request):
     id: str = Field(description="Уникальный id NPC, латиницей.")
     name: str = Field(description="Имя; у именованных NPC уникально.")
@@ -1059,6 +1070,9 @@ class PackNpc(Request):
     secrets: list[SecretSpec] = Field([], description="Секреты NPC и раскрытие; пусто = нет.")
     open_hour: int = Field(-1, description=HOUR_OPEN_TEXT)
     close_hour: int = Field(-1, description=HOUR_CLOSE_TEXT)
+    links: list[PackLink] = Field(
+        [], description="Связи с другими NPC пака (одна сторона); пусто = нет."
+    )
     NEUTRAL: ClassVar[dict] = {
         "motive": "", "location_id": "", "trade_kind": "none", "species_id": "",
         "gender": "none", "pronouns": "", "open_hour": -1, "close_hour": -1,

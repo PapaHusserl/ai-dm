@@ -71,7 +71,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # М0 П4, решение 129: часы работы (open_hour/close_hour), запрос delayed_condition, правила о
 # часах и отложенных состояниях (замер 26452: rules 13514, tools 12938; 25450 -> 26480;
 # перемерить после последней правки правил).
-STATIC_MAX = 26480
+# М0 П5, решение 140: поле condition у npc_update, фраза о состояниях NPC и связях (замер 26725:
+# rules 13690, tools 13035; 26480 -> 26750).
+STATIC_MAX = 26750
 
 MODES = sorted(MODE_TOOLS)
 
