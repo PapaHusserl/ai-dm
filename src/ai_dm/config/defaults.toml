@@ -279,6 +279,8 @@ buys = ["weapon", "armor", "ammo", "gear", "consumable", "clothing", "valuable"]
 paid_rest = true
 # ступень отношения NPC, с которой платная близость запоминается как роман
 romance_tier = "close"
+# ступень отношения NPC, с которой услуги даром раз в день на вид и NPC
+free_tier = "friend"
 # дней без мытья до состояния «вонь»
 hygiene_days = 7
 

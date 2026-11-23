@@ -1,12 +1,13 @@
 from ai_dm.game.scene import hero_of
+from ai_dm.game.service_text import service_price_text
 from ai_dm.game.sheet_text import effect_texts
-from ai_dm.game.shop_text import UNIT_WORDS, sale_rows, sell_rows
+from ai_dm.game.shop_text import sale_rows, sell_rows
 from ai_dm.rules import trade as trade_rules
 from ai_dm.rules import work_hours
 from ai_dm.rules.inventory import find_item
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
-from ai_dm.rules.services import kinds_of, passage_targets, quote
+from ai_dm.rules.services import is_free, kinds_of, passage_targets, quote
 from ai_dm.ui.tui import strings
 from ai_dm.ui.tui.inv_sections import inv_section
 
@@ -65,17 +66,19 @@ def service_rows(game, npc, cap_of):
     cfg = game.settings.rules
     rows = []
     for kind_id, kind in kinds_of(npc, cfg):
-        price = quote(kind, npc, world, cfg)
+        price = quote(kind, npc, world, cfg, kind_id)
         if kind.effect == "passage":
             rows += passage_rows(game, npc, (kind_id, kind), cap_of)
             continue
-        label = f"{kind.name} — {format_cp(price)} / {UNIT_WORDS[kind.unit]}"
+        label = f"{kind.name} — {service_price_text(kind, kind_id, npc, world, cfg)}"
         template = f"/shop услуга {npc.id} {kind_id} {{qty}}"
         echo = strings.SHOP_ECHO.format(
             verb=strings.SHOP_SERVICE, name=kind.name, npc=shown_name(npc)
         )
         # комната снимается на одну ночь, обряд снятия -- один раз
-        cap = 1 if kind.effect in ("lodging", "cure") else cap_of(price)
+        # даровая услуга -- одна единица (решение 153)
+        free = is_free(kind_id, kind, npc, world, cfg)
+        cap = 1 if free or kind.effect in ("lodging", "cure") else cap_of(price)
         action = shop_action(strings.SHOP_SERVICE, template, echo, cap)
         rows.append((label, kind.description, [action], strings.SHOP_SERVICE_TAB))
     return rows
@@ -87,11 +90,12 @@ def passage_rows(game, npc, listed, cap_of):
     world = game.bundle.world
     cfg = game.settings.rules
     kind_id, kind = listed
-    price = quote(kind, npc, world, cfg)
+    price = quote(kind, npc, world, cfg, kind_id)
+    price_text = service_price_text(kind, kind_id, npc, world, cfg)
     rows = []
     for target in passage_targets(world, npc.location_id, kind.transport, cfg):
         name = f"{kind.name}: {world.locations[target].name}"
-        label = f"{name} — {format_cp(price)} / {UNIT_WORDS[kind.unit]}"
+        label = f"{name} — {price_text}"
         template = f"/shop услуга {npc.id} {kind_id}:{target} {{qty}}"
         echo = strings.SHOP_ECHO.format(
             verb=strings.SHOP_SERVICE, name=name, npc=shown_name(npc)

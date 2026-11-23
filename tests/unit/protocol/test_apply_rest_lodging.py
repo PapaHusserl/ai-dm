@@ -75,8 +75,79 @@ def test_unpaid_with_money_exactly_for_cheapest_is_rejected(registry, cfg):
 
 
 def test_unpaid_cheapest_uses_attitude_price(registry, cfg):
-    # скромная комната при хорошем отношении: 45; денег 45 -- хватает, значит отказ
-    assert long_rest(inn_ctx(registry, cfg, money=45, attitude=60)).status == "rejected"
+    # скромная комната у друга, даровая сегодня уже взята: 45; денег 45 -- хватает, значит отказ
+    ctx = inn_ctx(registry, cfg, money=45, attitude=60)
+    flags(ctx)["free_service:grok:room_modest"] = 0
+    assert long_rest(ctx).status == "rejected"
+
+
+# М0 П6б (решения 148, 152): комнату даром сдаёт друг; цена 0 -- отказ остаётся, комнату берут
+# услугой
+
+def test_free_room_with_no_money_still_needs_the_room_first(registry, cfg):
+    d = long_rest(inn_ctx(registry, cfg, money=0, attitude=60))
+    assert d.status == "rejected"
+    assert d.report_tag == "rest_unpaid"
+
+
+def test_free_room_refusal_signal_says_given_for_free(registry, cfg):
+    d = long_rest(inn_ctx(registry, cfg, money=0, attitude=60))
+    assert d.signal_to_master == (
+        "Комнату у Грок дают даром: сначала service buy room_modest у grok (или другая комната "
+        "из service list), затем rest long в этом же ходу."
+    )
+    assert "Ночлег платный" not in d.signal_to_master
+
+
+def test_free_room_refusal_reason_is_room_not_taken(registry, cfg):
+    d = long_rest(inn_ctx(registry, cfg, money=0, attitude=60))
+    assert d.reason == "комната не взята"
+    assert d.report_tag == "rest_unpaid"
+
+
+def test_paid_room_refusal_reason_and_tag_are_as_before(registry, cfg):
+    d = long_rest(inn_ctx(registry, cfg, money=100, attitude=49))
+    assert d.reason == "ночлег платный"
+    assert d.report_tag == "rest_unpaid"
+
+
+def test_paid_room_refusal_signal_is_as_before(registry, cfg):
+    d = long_rest(inn_ctx(registry, cfg, money=100, attitude=49))
+    assert d.signal_to_master.startswith("Ночлег платный: сначала service buy room_modest у grok")
+
+
+def test_free_room_then_long_rest_is_accepted(registry, cfg):
+    ctx = inn_ctx(registry, cfg, money=0, attitude=60)
+    assert pay(ctx).status == "accepted"
+    assert long_rest(ctx).status == "accepted"
+    assert ctx.hero.money_cp == 0
+
+
+def test_free_room_taken_today_second_one_goes_by_friend_price(registry, cfg):
+    # даровая room_modest сегодня уже взята, ночлег ещё не оплачен (флаг снят отдыхом): комната
+    # снова с ценой друга, а не даром
+    ctx = inn_ctx(registry, cfg, money=100, attitude=60)
+    pay(ctx)
+    long_rest(ctx)
+    d = pay(ctx)
+    assert d.status == "accepted"
+    assert d.result["price_cp"] == 45
+    assert ctx.hero.money_cp == 55
+
+
+def test_taken_free_room_without_money_for_friend_price_rest_is_free(registry, cfg):
+    # даровая комната сегодня взята: цена друга 45, денег нет -- не по карману, отдых свободен
+    ctx = inn_ctx(registry, cfg, money=0, attitude=60)
+    flags(ctx)["free_service:grok:room_modest"] = 0
+    assert long_rest(ctx).status == "accepted"
+
+
+def test_taken_free_room_with_money_refusal_says_paid(registry, cfg):
+    ctx = inn_ctx(registry, cfg, money=100, attitude=60)
+    flags(ctx)["free_service:grok:room_modest"] = 0
+    d = long_rest(ctx)
+    assert d.reason == "ночлег платный"
+    assert d.signal_to_master.startswith("Ночлег платный: сначала service buy room_modest")
 
 
 def test_unpaid_money_one_short_of_cheapest_is_allowed(registry, cfg):

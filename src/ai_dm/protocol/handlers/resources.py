@@ -1114,7 +1114,7 @@ def lodging_unpaid(ctx, request):
         return closed_lodging(options[0][0])
     options = [
         item for item in opened
-        if hero.money_cp >= service_rules.quote(item[2], item[0], world, ctx.cfg)
+        if hero.money_cp >= service_rules.quote(item[2], item[0], world, ctx.cfg, item[1])
     ]
     if not options:
         return None
@@ -1132,9 +1132,13 @@ def unpaid_refusal(ctx, options):
             report_tag="rest_unpaid",
         )
     npc, kind_id, kind = willing[0]
+    if service_rules.is_free(kind_id, kind, npc, ctx.bundle.world, ctx.cfg):
+        reason, lead = "комната не взята", f"Комнату у {npc.name} дают даром"
+    else:
+        reason, lead = "ночлег платный", "Ночлег платный"
     return rejected(
-        "ночлег платный",
-        f"Ночлег платный: сначала service buy {kind_id} у {npc.id} (или другая комната из "
+        reason,
+        f"{lead}: сначала service buy {kind_id} у {npc.id} (или другая комната из "
         "service list), затем rest long в этом же ходу.",
         report_tag="rest_unpaid",
     )

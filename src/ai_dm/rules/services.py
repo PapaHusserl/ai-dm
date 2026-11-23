@@ -2,6 +2,7 @@ import re
 
 from ai_dm.rules import time_ops
 from ai_dm.rules import trade as trade_rules
+from ai_dm.rules.attitude import at_least
 
 # заведение по имени локации ↔ ремесло хозяина в means ↔ подсказка по услугам (Л1 П3);
 # стемы по casefold
@@ -30,6 +31,8 @@ LODGING_FLAG = "lodging"
 FERRY_HOME_FLAG = "ferry_home"
 # герой платил NPC за близость: romance в памяти пишется только с порога отношения (У1 П2)
 PAID_COMPANY_FLAG = "paid_company"
+# день даровой услуги вида у NPC: free_service:<id NPC>:<id вида> = день (П6б)
+FREE_FLAG = "free_service"
 
 
 class FlagHaggle:
@@ -79,8 +82,34 @@ def kinds_of(npc, cfg) -> list:
     return [(kind_id, kinds[kind_id]) for kind_id in npc.services if kind_id in kinds]
 
 
-def quote(kind, npc, world, cfg) -> int:
-    # цена услуги за единицу: отношение и торг, как у покупки в trade
+def free_key(npc, kind_id) -> str:
+    return f"{FREE_FLAG}:{npc.id}:{kind_id}"
+
+
+def free_today(kind_id, npc, world, cfg) -> bool:
+    # друг (ступень не ниже free_tier) ещё не брал даровую услугу этого вида у этого NPC сегодня
+    day = trade_rules.day_of(world.clock.now_s)
+    return (
+        at_least(npc.attitude, cfg.services.free_tier, cfg)
+        and world.flags.get(free_key(npc, kind_id)) != day
+    )
+
+
+def mark_free(kind_id, npc, world) -> None:
+    world.flags[free_key(npc, kind_id)] = trade_rules.day_of(world.clock.now_s)
+
+
+def is_free(kind_id, kind, npc, world, cfg) -> bool:
+    # перевозка у друга -- даром всегда, прочие виды -- раз в день (решения 148, 149, 154)
+    if kind.effect == "passage":
+        return at_least(npc.attitude, cfg.services.free_tier, cfg)
+    return free_today(kind_id, npc, world, cfg)
+
+
+def quote(kind, npc, world, cfg, kind_id) -> int:
+    # цена услуги за единицу: даром у друга, иначе отношение и торг, как у покупки в trade
+    if is_free(kind_id, kind, npc, world, cfg):
+        return 0
     slot = haggle_slot(npc, world)
     haggle = trade_rules.active_haggle(slot, world.clock.now_s)
     return trade_rules.buy_quote(kind.price_cp, npc.attitude, cfg, haggle)
@@ -145,15 +174,15 @@ def returned_signal(world, returned) -> str:
 
 
 def service_entries(npc, world, cfg) -> list:
-    # [(подпись строки, ServiceKind)] услуг NPC для /shop; перевозка -- строка на каждое место,
-    # куда везёт
+    # [(подпись строки, id вида, ServiceKind)] услуг NPC для /shop; перевозка -- строка на каждое
+    # место, куда везёт
     entries = []
-    for _kind_id, kind in kinds_of(npc, cfg):
+    for kind_id, kind in kinds_of(npc, cfg):
         if kind.effect != "passage":
-            entries.append((kind.name, kind))
+            entries.append((kind.name, kind_id, kind))
             continue
         targets = passage_targets(world, npc.location_id, kind.transport, cfg)
-        entries += [(f"{kind.name}: {world.locations[t].name}", kind) for t in targets]
+        entries += [(f"{kind.name}: {world.locations[t].name}", kind_id, kind) for t in targets]
     return entries
 
 
@@ -165,7 +194,7 @@ def lodging_here(world, location_id, cfg) -> list:
         for kind_id, kind in kinds_of(npc, cfg)
         if kind.effect == "lodging"
     ]
-    return sorted(found, key=lambda item: quote(item[2], item[0], world, cfg))
+    return sorted(found, key=lambda item: quote(item[2], item[0], world, cfg, item[1]))
 
 
 def lodging_paid(world, hero_id, cfg) -> bool:

@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from ai_dm.game.service_text import service_lines
 from ai_dm.game.sheet_text import INV_GROUPS, inv_group
 from ai_dm.protocol.handlers.trade_pick import sellable_stacks
 from ai_dm.rules import trade as trade_rules
@@ -8,16 +9,10 @@ from ai_dm.rules.inventory import entry_name, find_item
 from ai_dm.rules.loot import rarity_exceeds_cap
 from ai_dm.rules.money import format_cp
 from ai_dm.rules.npc_names import shown_name
-from ai_dm.rules.services import (
-    haggle_slot,
-    providers_here,
-    quote,
-    service_entries,
-)
+from ai_dm.rules.services import haggle_slot, providers_here
 
 SHOP_ROWS_MAX = 40
 NO_MERCHANT = "Здесь никто не торгует"
-UNIT_WORDS = {"night": "ночь", "meal": "порция", "hour": "час", "once": "раз"}
 
 
 def merchants_here(world, location_id):
@@ -125,18 +120,6 @@ def shop_head(npc, world, cfg):
     else:
         head = f"{name} — услуги"
     return head + trade_rules.haggle_tail(haggle_slot(npc, world), now_s)
-
-
-def service_lines(npc, world, cfg):
-    # блок «Услуги:» NPC; пусто, если услуг нет
-    entries = service_entries(npc, world, cfg)
-    if not entries:
-        return []
-    lines = ["  Услуги:"]
-    for name, kind in entries:
-        price = format_cp(quote(kind, npc, world, cfg))
-        lines.append(f"    {name} — {price} / {UNIT_WORDS[kind.unit]}")
-    return lines
 
 
 def shop_lines(hero, world, registry, cfg):

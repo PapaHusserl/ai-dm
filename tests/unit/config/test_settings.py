@@ -472,6 +472,7 @@ TIER_KEYS = [
     ("trade", "good_tier", "friend"),
     ("trade", "refuse_tier", "enemy"),
     ("services", "romance_tier", "close"),
+    ("services", "free_tier", "friend"),
     ("survivors", "revenge_tier", "foe"),
 ]
 

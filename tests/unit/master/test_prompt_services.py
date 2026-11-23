@@ -210,9 +210,17 @@ def test_entry_has_exactly_the_documented_keys(registry, cfg):
 
 def test_prices_follow_good_attitude(registry, cfg):
     ctx = make_ctx(registry, cfg)
-    add_provider(ctx, services=["room_modest"], attitude=60)
-    assert listed_price(ctx) == 45
+    add_provider(ctx, services=["room_modest"], attitude=49)
+    assert listed_price(ctx) == 50
     assert "price_cp" not in services_of(ctx)[0]["items"][0]
+
+
+def test_friend_service_is_free_in_the_list_and_discounted_after_the_free_one(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    add_provider(ctx, services=["room_modest"], attitude=60)
+    assert listed_price(ctx) == 0
+    ctx.bundle.world.flags["free_service:grok:room_modest"] = 0
+    assert listed_price(ctx) == 45
 
 
 def test_no_haggle_key_without_haggle(registry, cfg):

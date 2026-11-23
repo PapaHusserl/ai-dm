@@ -59,44 +59,51 @@ def test_kinds_of_npc_without_services_is_empty(cfg):
 # quote
 
 def test_quote_neutral_attitude_is_base_price(cfg):
-    assert quote(cfg.services.kinds["room_modest"], provider(), make_world(), cfg) == 50
+    kind = cfg.services.kinds["room_modest"]
+    assert quote(kind, provider(), make_world(), cfg, "room_modest") == 50
 
 
-def test_quote_good_attitude_is_cheaper(cfg):
-    # 50 * 0.9 = 45
+def test_quote_taken_free_service_at_good_attitude_is_cheaper(cfg):
+    # даровая room_modest сегодня уже взята: 50 * 0.9 = 45 (М0 П6б, решение 149)
+    world = make_world()
+    world.flags["free_service:grok:room_modest"] = 0
     npc = provider(attitude=60)
-    assert quote(cfg.services.kinds["room_modest"], npc, make_world(), cfg) == 45
+    assert quote(cfg.services.kinds["room_modest"], npc, world, cfg, "room_modest") == 45
 
 
 def test_quote_rounds_up(cfg):
-    # 1 * 0.9 = 0.9 -> 1 (в пользу поставщика)
+    # 1 * 0.9 = 0.9 -> 1 (в пользу поставщика); даровая сегодня уже взята
+    world = make_world()
+    world.flags["free_service:grok:shave"] = 0
     npc = provider(attitude=60)
-    assert quote(cfg.services.kinds["shave"], npc, make_world(), cfg) == 1
+    assert quote(cfg.services.kinds["shave"], npc, world, cfg, "shave") == 1
 
 
-def test_quote_bed_hour_costs_ten_copper_and_nine_with_good_attitude(cfg):
+def test_quote_bed_hour_costs_ten_copper_and_nine_with_good_attitude_after_the_free_one(cfg):
     kind = cfg.services.kinds["bed_hour"]
-    assert quote(kind, provider(), make_world(), cfg) == 10
-    assert quote(kind, provider(attitude=60), make_world(), cfg) == 9
+    world = make_world()
+    world.flags["free_service:grok:bed_hour"] = 0
+    assert quote(kind, provider(), make_world(), cfg, "bed_hour") == 10
+    assert quote(kind, provider(attitude=60), world, cfg, "bed_hour") == 9
 
 
 def test_quote_uses_flag_haggle_today(cfg):
     world = make_world()
     world.flags["haggle:grok"] = "0:-10"
-    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg) == 45
+    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg, "room_modest") == 45
 
 
 def test_quote_ignores_yesterdays_flag_haggle(cfg):
     world = make_world()
     world.flags["haggle:grok"] = "0:-20"
     world.clock.advance(DAY_S)
-    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg) == 50
+    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg, "room_modest") == 50
 
 
 def test_quote_fail_haggle_makes_dearer(cfg):
     world = make_world()
     world.flags["haggle:grok"] = "0:10"
-    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg) == 55
+    assert quote(cfg.services.kinds["room_modest"], provider(), world, cfg, "room_modest") == 55
 
 
 def test_quote_uses_shop_profile_haggle_when_npc_has_trade(cfg):
@@ -104,12 +111,154 @@ def test_quote_uses_shop_profile_haggle_when_npc_has_trade(cfg):
     profile = TradeProfile(kind="general", purse_cp=100, restock_at_s=10**9)
     apply_haggle(profile, -20, 0)
     npc = provider(trade=profile)
-    assert quote(cfg.services.kinds["room_modest"], npc, world, cfg) == 40
+    assert quote(cfg.services.kinds["room_modest"], npc, world, cfg, "room_modest") == 40
 
 
 def test_quote_zero_price_stays_zero(cfg):
     free = cfg.services.kinds["ale"].model_copy(update={"price_cp": 0})
-    assert quote(free, provider(), make_world(), cfg) == 0
+    assert quote(free, provider(), make_world(), cfg, "ale") == 0
+
+
+# М0 П6б (решения 141-143, 148, 149, 155): услуги друга даром, раз в день на вид и NPC.
+# Имена free_today / mark_free и порядок параметров quote -- из плана (имена -- кабан).
+
+def test_quote_friend_is_free_for_every_default_kind(cfg):
+    world = make_world()
+    npc = provider(attitude=50)
+    assert {kind_id: quote(kind, npc, world, cfg, kind_id)
+            for kind_id, kind in cfg.services.kinds.items()} == dict.fromkeys(cfg.services.kinds, 0)
+
+
+def test_quote_close_tier_is_free_too(cfg):
+    assert quote(cfg.services.kinds["room_modest"], provider(attitude=90), make_world(), cfg,
+                 "room_modest") == 0
+
+
+def test_quote_just_below_friend_is_full_price(cfg):
+    assert quote(cfg.services.kinds["room_modest"], provider(attitude=49), make_world(), cfg,
+                 "room_modest") == 50
+
+
+def test_quote_intimate_and_cure_kinds_are_free_for_a_friend(cfg):
+    npc = provider(attitude=50)
+    world = make_world()
+    assert quote(cfg.services.kinds["uncurse_temple"], npc, world, cfg, "uncurse_temple") == 0
+    assert quote(cfg.services.kinds["companion_common"], npc, world, cfg, "companion_common") == 0
+
+
+def test_quote_free_ignores_haggle(cfg):
+    world = make_world()
+    world.flags["haggle:grok"] = "0:10"
+    assert quote(cfg.services.kinds["room_modest"], provider(attitude=60), world, cfg,
+                 "room_modest") == 0
+
+
+def test_quote_after_taken_free_pays_friend_price_with_haggle(cfg):
+    # 50 с торгом -10% = 45, скидка друга 0,9 -> 40.5 -> 41 (вверх); купленная даровая сегодня
+    world = make_world()
+    world.flags["free_service:grok:room_modest"] = 0
+    world.flags["haggle:grok"] = "0:-10"
+    npc = provider(attitude=60)
+    assert quote(cfg.services.kinds["room_modest"], npc, world, cfg, "room_modest") == 41
+
+
+def test_quote_other_kind_of_the_same_npc_stays_free(cfg):
+    world = make_world()
+    world.flags["free_service:grok:meal_modest"] = 0
+    assert quote(cfg.services.kinds["room_modest"], provider(attitude=60), world, cfg,
+                 "room_modest") == 0
+
+
+def test_quote_same_kind_of_another_npc_stays_free(cfg):
+    world = make_world()
+    world.flags["free_service:grok:meal_modest"] = 0
+    other = provider("mara", attitude=60)
+    assert quote(cfg.services.kinds["meal_modest"], other, world, cfg, "meal_modest") == 0
+
+
+def test_quote_free_again_next_day(cfg):
+    world = make_world()
+    world.flags["free_service:grok:meal_modest"] = 0
+    world.clock.advance(DAY_S)
+    assert quote(cfg.services.kinds["meal_modest"], provider(attitude=60), world, cfg,
+                 "meal_modest") == 0
+
+
+def test_quote_custom_free_tier_in_user_config(cfg):
+    from ai_dm.config.settings import load_rules_config
+    toml = "".join(
+        f'[[attitude.tiers]]\nid = "{tid}"\nname = "{tid}"\nfrom = {low}\n'
+        for tid, low in (("enemy", -100), ("foe", -49), ("neutral", -29), ("buddy", 30),
+                         ("friend", 40), ("close", 90))
+    )
+    custom = load_rules_config(toml_text=toml)
+    ale = custom.services.kinds["ale"]
+    assert quote(ale, provider(attitude=40), make_world(), custom, "ale") == 0
+    assert quote(ale, provider(attitude=39), make_world(), custom, "ale") == 4
+
+
+# free_today(kind_id, npc, world, cfg): ступень не ниже free_tier и флаг не равен сегодняшнему дню
+
+def test_free_today_friend_without_flag_is_true(cfg):
+    from ai_dm.rules.services import free_today
+    assert free_today("ale", provider(attitude=50), make_world(), cfg) is True
+
+
+def test_free_today_below_friend_is_false(cfg):
+    from ai_dm.rules.services import free_today
+    assert free_today("ale", provider(attitude=49), make_world(), cfg) is False
+
+
+def test_free_today_todays_flag_is_false(cfg):
+    from ai_dm.rules.services import free_today
+    world = make_world()
+    world.flags["free_service:grok:ale"] = 0
+    assert free_today("ale", provider(attitude=50), world, cfg) is False
+
+
+def test_free_today_yesterdays_flag_is_true(cfg):
+    from ai_dm.rules.services import free_today
+    world = make_world()
+    world.flags["free_service:grok:ale"] = 0
+    world.clock.advance(DAY_S)
+    assert free_today("ale", provider(attitude=50), world, cfg) is True
+
+
+def test_free_today_day_changes_at_midnight_not_morning(cfg):
+    # решение 155: граница суток -- полночь, как у торга (day_of)
+    from ai_dm.rules.services import free_today
+    world = make_world()
+    world.clock.advance(DAY_S - 600)
+    world.flags["free_service:grok:ale"] = 0
+    assert free_today("ale", provider(attitude=50), world, cfg) is False
+    world.clock.advance(1200)
+    assert free_today("ale", provider(attitude=50), world, cfg) is True
+
+
+def test_free_today_flag_is_per_npc_and_kind(cfg):
+    from ai_dm.rules.services import free_today
+    world = make_world()
+    world.flags["free_service:grok:ale"] = 0
+    assert free_today("meal_modest", provider(attitude=50), world, cfg) is True
+    assert free_today("ale", provider("mara", attitude=50), world, cfg) is True
+
+
+def test_mark_free_makes_free_today_false_and_writes_the_day(cfg):
+    from ai_dm.rules.services import free_today, mark_free
+    world = make_world()
+    world.clock.advance(DAY_S * 2 + 5)
+    npc = provider(attitude=50)
+    mark_free("ale", npc, world)
+    assert world.flags["free_service:grok:ale"] == 2
+    assert free_today("ale", npc, world, cfg) is False
+
+
+def test_is_free_passage_stays_free_for_a_friend_after_taken_flag(cfg):
+    from ai_dm.rules.services import is_free
+    world = make_world()
+    world.flags["free_service:grok:ferry"] = 0
+    npc = provider(services=["ferry"], attitude=50)
+    assert is_free("ferry", cfg.services.kinds["ferry"], npc, world, cfg) is True
 
 
 # providers_here
@@ -239,6 +388,18 @@ def test_lodging_here_sorts_across_npcs_by_their_own_quote(cfg):
     world.npcs["grok"] = provider("grok", services=["room_modest"], location_id="inn")
     world.npcs["doc"] = provider("doc", services=["room_modest"], location_id="inn", attitude=60)
     assert [npc.id for npc, _, _ in lodging_here(world, "inn", cfg)] == ["doc", "grok"]
+
+
+def test_lodging_here_sorts_by_per_kind_free_flag_for_a_friend(cfg):
+    # room_poor у друга уже взят сегодня (платная), room_modest ещё даром: даровая первой
+    world = make_world()
+    world.flags["free_service:grok:room_poor"] = 0
+    world.npcs["grok"] = provider(
+        "grok", services=["room_poor", "room_modest"], location_id="inn", attitude=50
+    )
+    assert [kind_id for _, kind_id, _ in lodging_here(world, "inn", cfg)] == [
+        "room_modest", "room_poor"
+    ]
 
 
 def test_lodging_here_skips_other_location(cfg):

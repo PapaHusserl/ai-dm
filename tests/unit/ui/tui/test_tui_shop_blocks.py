@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "game"))
 
 from types import SimpleNamespace  # noqa: E402
 
+import pytest  # noqa: E402
 from ui_kit import text_app, text_step  # noqa: E402
 
 from ai_dm.content.models.common import EffectSpec  # noqa: E402
@@ -232,6 +233,66 @@ def test_passage_cap_is_one_even_with_much_money(registry, tmp_path):
     add_water_neighbours(game, "Остров")
     rows = rows_for(game, add_inn(game, services=["ferry"]))
     assert cap(rows[0]) == 1
+
+
+# М0 П6б (решения 141, 150, 151, 153): строка окна у даровой услуги друга -- «<название> — даром»;
+# кнопка и эхо -- как у платной; потолок количества у даровой -- 1
+
+@pytest.mark.parametrize("attitude", [50, 90])
+def test_friend_service_rows_say_free(registry, tmp_path, attitude):
+    game = make_game(registry, tmp_path)
+    rows = rows_for(game, add_inn(game, attitude=attitude))
+    assert [row[0] for row in rows] == [
+        "эль (кружка) — даром",
+        "комната (скромная) — даром",
+        "баня — даром",
+    ]
+
+
+def test_below_friend_service_rows_keep_the_price(registry, tmp_path):
+    game = make_game(registry, tmp_path)
+    rows = rows_for(game, add_inn(game, attitude=49))
+    assert [row[0] for row in rows] == [
+        "эль (кружка) — 4 мм / порция",
+        "комната (скромная) — 5 см / ночь",
+        "баня — 1 см / раз",
+    ]
+
+
+def test_free_row_button_command_and_echo_are_as_for_a_paid_one(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=0)
+    row = find(rows_for(game, add_inn(game, services=["meal_modest"], attitude=50)), "еда")
+    assert row[2] == [
+        ("Enter", "Оплатить", "/shop услуга grok meal_modest {qty}",
+         "Оплатить: еда (скромная) (Грок)", 1)
+    ]
+
+
+def test_free_row_cap_is_one_with_much_money(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=10**6)
+    row = find(rows_for(game, add_inn(game, services=["meal_modest"], attitude=50)), "еда")
+    assert cap(row) == 1
+
+
+def test_taken_free_row_shows_the_friend_price_and_money_cap(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=30)
+    npc = add_inn(game, services=["meal_modest", "room_modest"], attitude=50)
+    game.bundle.world.flags["free_service:grok:meal_modest"] = 0
+    rows = rows_for(game, npc)
+    assert [row[0] for row in rows] == [
+        "еда (скромная) — 9 мм / порция", "комната (скромная) — даром"
+    ]
+    assert cap(rows[0]) == 3
+
+
+def test_free_passage_row_says_free_and_is_pressable_without_money(registry, tmp_path):
+    game = make_game(registry, tmp_path, money=0)
+    add_water_neighbours(game, "Остров")
+    rows = rows_for(game, add_inn(game, services=["ferry"], attitude=50))
+    assert rows[0][0] == "перевозка: Остров — даром"
+    assert rows[0][2][0][2:] == (
+        "/shop услуга grok ferry:isle0 {qty}", "Оплатить: перевозка: Остров (Грок)", 1
+    )
 
 
 def test_passage_rows_sit_between_the_other_services_in_order(registry, tmp_path):

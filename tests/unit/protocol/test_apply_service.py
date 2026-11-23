@@ -98,8 +98,11 @@ def test_list_works_at_the_scene_limit(registry, cfg):
 
 
 def test_list_prices_follow_attitude(registry, cfg):
-    d = listing(service_ctx(registry, cfg, attitude=60))
-    assert prices(d) == {"room_modest": 45, "meal_modest": 9}
+    ctx = service_ctx(registry, cfg, attitude=60)
+    ctx.bundle.world.flags.update({
+        "free_service:grok:room_modest": 0, "free_service:grok:meal_modest": 0,
+    })
+    assert prices(listing(ctx)) == {"room_modest": 45, "meal_modest": 9}
 
 
 def test_list_works_with_no_money(registry, cfg):
@@ -147,6 +150,7 @@ def test_buy_without_scene_still_works(registry, cfg):
 
 def test_buy_price_follows_attitude(registry, cfg):
     ctx = service_ctx(registry, cfg, attitude=60)
+    ctx.bundle.world.flags["free_service:grok:room_modest"] = 0
     assert buy(ctx, "room_modest").result["price_cp"] == 45
     assert ctx.hero.money_cp == 955
 
@@ -555,6 +559,7 @@ def test_temple_heal_rolls_2d8_plus_4(registry, cfg):
 def test_heal_price_follows_attitude(registry, cfg):
     ctx = heal_ctx(registry, cfg, hp=3, die=5)
     grok(ctx).attitude = 60
+    ctx.bundle.world.flags["free_service:grok:heal_barber"] = 0
     assert buy(ctx, "heal_barber").result["price_cp"] == 45
 
 
@@ -627,6 +632,7 @@ def test_cure_exact_money_leaves_zero(registry, cfg):
 def test_cure_price_follows_attitude(registry, cfg):
     ctx = cure_ctx(registry, cfg)
     grok(ctx).attitude = 60
+    ctx.bundle.world.flags["free_service:grok:uncurse_temple"] = 0
     d = buy(ctx, "uncurse_temple")
     assert d.result["price_cp"] == 2250
     assert ctx.hero.money_cp == 750
@@ -1313,6 +1319,7 @@ def test_list_of_intimate_service_sets_no_flag(registry, cfg):
 def test_intimate_buy_deal_does_not_block_romance_at_high_attitude(registry, cfg):
     ctx = companion_ctx(registry, cfg)
     grok(ctx).attitude = 90
+    ctx.bundle.world.flags["free_service:grok:companion_common"] = 0  # даровая сегодня взята
     buy(ctx, "companion_common")
     d = apply(ctx, req("npc_update", npc_id="grok", memory_kind="romance", memory_text="остался"))
     assert d.status == "accepted"
@@ -2137,10 +2144,10 @@ def test_service_entries_keep_other_services_before_passage_lines(registry, cfg)
 
     ctx = passage_ctx(registry, cfg)
     grok(ctx).services = ["ferry", "bath"]
-    labels = [label for label, _ in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
+    labels = [label for label, _id, _kind in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
     assert labels == ["перевозка: Остров", "баня"]
     grok(ctx).services = ["bath", "ferry", "bath"]
-    labels = [label for label, _ in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
+    labels = [label for label, _id, _kind in service_entries(grok(ctx), ctx.bundle.world, ctx.cfg)]
     assert labels == ["баня", "перевозка: Остров", "баня"]
 
 
@@ -2391,4 +2398,470 @@ def test_service_provider_without_hours_is_open_at_night(registry, cfg):
 def test_overnight_service_provider_is_open_after_midnight(registry, cfg):
     ctx = hours_service_ctx(registry, cfg, 3, open_hour=20, close_hour=4)
     assert buy(ctx).status == "accepted"
+
+
+# М0 П6б: услуги друга даром (решения 141-143, 148-156). Друг -- отношение 50, близкий -- 90;
+# первая за день услуга вида у NPC -- даром, вторая -- по цене друга; перевозка -- всегда даром.
+
+def friend_ctx(registry, cfg, money=0, attitude=50, **kwargs):
+    return service_ctx(registry, cfg, money=money, attitude=attitude, **kwargs)
+
+
+@pytest.mark.parametrize("attitude", [50, 90])
+def test_friend_meal_is_free_and_spends_nothing(registry, cfg, attitude):
+    ctx = friend_ctx(registry, cfg, attitude=attitude)
+    d = buy(ctx, "meal_modest")
+    assert d.status == "accepted"
+    assert ctx.hero.money_cp == 0
+    assert (d.result["price_cp"], d.result["total_cp"]) == (0, 0)
+
+
+def test_below_friend_meal_is_full_price(registry, cfg):
+    d = buy(friend_ctx(registry, cfg, attitude=49), "meal_modest")
+    assert d.status == "rejected"
+
+
+def test_free_meal_log_line(registry, cfg):
+    d = buy(friend_ctx(registry, cfg), "meal_modest")
+    assert d.log == ["Заказано: еда (скромная) x1 у Грок — даром"]
+
+
+def test_free_meal_spends_one_scene_trade(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    buy(ctx, "meal_modest")
+    assert ctx.scene.trades == 1
+
+
+def test_free_meal_writes_the_day_into_the_flag(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    buy(ctx, "meal_modest")
+    assert ctx.bundle.world.flags["free_service:grok:meal_modest"] == 0
+
+
+def test_second_meal_the_same_day_costs_friend_price(registry, cfg):
+    ctx = friend_ctx(registry, cfg, money=100)
+    buy(ctx, "meal_modest")
+    d = buy(ctx, "meal_modest")
+    assert d.status == "accepted"
+    assert d.result["price_cp"] == 9
+    assert ctx.hero.money_cp == 91
+    assert d.log == ["Заказано: еда (скромная) x1 у Грок за 9 мм"]
+
+
+def test_second_meal_without_money_is_rejected(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    buy(ctx, "meal_modest")
+    d = buy(ctx, "meal_modest")
+    assert d.status == "rejected"
+    assert "не хватает денег" in d.reason
+
+
+def test_other_kind_the_same_day_is_free(registry, cfg):
+    ctx = friend_ctx(registry, cfg, services=["meal_modest", "ale"])
+    buy(ctx, "meal_modest")
+    d = buy(ctx, "ale")
+    assert d.result["price_cp"] == 0
+    assert ctx.hero.money_cp == 0
+
+
+def test_same_kind_at_another_friend_is_free(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    ctx.bundle.world.npcs["mara"] = NPC(
+        id="mara", name="Мара", means=["трактир"], services=["meal_modest"],
+        location_id="vale", attitude=50,
+    )
+    buy(ctx, "meal_modest")
+    d = buy(ctx, "meal_modest", npc_id="mara")
+    assert d.result["price_cp"] == 0
+
+
+def test_free_meal_again_the_next_day(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    buy(ctx, "meal_modest")
+    ctx.bundle.world.clock.advance(DAY_S)
+    assert buy(ctx, "meal_modest").result["price_cp"] == 0
+
+
+def test_free_meal_again_after_midnight(registry, cfg):
+    # решение 155: граница суток -- полночь, не утро
+    ctx = friend_ctx(registry, cfg)
+    ctx.bundle.world.clock.now_s = DAY_S - 600
+    buy(ctx, "meal_modest")
+    ctx.bundle.world.clock.advance(1200)
+    assert buy(ctx, "meal_modest").result["price_cp"] == 0
+
+
+def test_free_meal_a_minute_before_midnight_is_taken(registry, cfg):
+    ctx = friend_ctx(registry, cfg, money=100)
+    ctx.bundle.world.clock.now_s = DAY_S - 600
+    buy(ctx, "meal_modest")
+    ctx.bundle.world.clock.advance(300)
+    assert buy(ctx, "meal_modest").result["price_cp"] == 9
+
+
+def test_save_without_the_free_flag_gives_a_free_service(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    assert not [n for n in ctx.bundle.world.flags if n.startswith("free_service")]
+    assert buy(ctx, "meal_modest").status == "accepted"
+
+
+def test_rejected_free_attempt_does_not_use_up_the_free_one(registry, cfg):
+    # лечить нечего: попытка отклонена, флаг не ставится, раненый в тот же день лечится даром
+    ctx = heal_ctx(registry, cfg, hp=10, die=5, money=0, service="heal_temple")
+    grok(ctx).attitude = 50
+    assert buy(ctx, "heal_temple").status == "rejected"
+    assert "free_service:grok:heal_temple" not in ctx.bundle.world.flags
+    ctx.hero.creature.hp_current = 3
+    ctx.rng = ScriptedRng(d8=[4, 4])
+    d = buy(ctx, "heal_temple")
+    assert d.status == "accepted"
+    assert d.result["price_cp"] == 0
+
+
+def test_rejected_free_curse_removal_does_not_use_up_the_free_one(registry, cfg):
+    ctx = cure_ctx(registry, cfg, money=0, cursed=False)
+    grok(ctx).attitude = 50
+    assert buy(ctx, "uncurse_temple").status == "rejected"
+    assert "free_service:grok:uncurse_temple" not in ctx.bundle.world.flags
+    ctx.hero.creature.conditions.append(AppliedCondition(id="cursed", source="master:t1"))
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.conditions == []
+
+
+def test_rejected_free_lodging_does_not_use_up_the_free_one(registry, cfg):
+    ctx = friend_ctx(registry, cfg, services=["room_poor", "room_modest"])
+    assert buy(ctx, "room_poor").status == "accepted"
+    assert buy(ctx, "room_modest").status == "rejected"
+    assert "free_service:grok:room_modest" not in ctx.bundle.world.flags
+
+
+def test_scene_limit_rejection_does_not_use_up_the_free_one(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    ctx.scene.trades = cfg.trade.ops_per_scene
+    buy(ctx, "meal_modest")
+    assert "free_service:grok:meal_modest" not in ctx.bundle.world.flags
+
+
+def test_free_service_list_shows_zero_for_untaken_kinds(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    ctx.bundle.world.flags["free_service:grok:meal_modest"] = 0
+    assert prices(listing(ctx)) == {"room_modest": 0, "meal_modest": 9}
+
+
+def test_free_service_list_does_not_use_up_the_free_one(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    listing(ctx)
+    assert "free_service:grok:room_modest" not in ctx.bundle.world.flags
+
+
+def test_free_service_ignores_flag_haggle(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    ctx.bundle.world.flags["haggle:grok"] = "0:10"
+    assert buy(ctx, "meal_modest").result["price_cp"] == 0
+
+
+def test_set_flag_cannot_forge_free_service_flag(registry, cfg):
+    ctx = service_ctx(registry, cfg)
+    d = apply(ctx, req("set_flag", name="free_service:grok:meal_modest", value="0"))
+    assert isinstance(d, Invalid)
+    assert d.code == "reserved_flag"
+    assert "free_service:grok:meal_modest" not in ctx.bundle.world.flags
+
+
+# количество у даровой услуги (решение 153): урезается до 1
+
+def test_free_meal_qty_three_is_clamped_to_one(registry, cfg):
+    ctx = friend_ctx(registry, cfg)
+    d = buy(ctx, "meal_modest", 3)
+    assert d.status == "clamped"
+    assert d.result["qty"] == 1
+    assert d.reason == "запрошено 3, оплачено 1"
+    assert d.log == ["Заказано: еда (скромная) x1 у Грок — даром"]
+    assert d.signal_to_master == (
+        "Оплачено только 1 из 3 (у друга даром раз в день): опиши по факту."
+    )
+
+
+def test_free_bed_hour_clamped_signal_adds_rest_short_after_clamp_text(registry, cfg):
+    d = buy(friend_ctx(registry, cfg, services=["bed_hour"]), "bed_hour", 3)
+    assert d.status == "clamped"
+    assert d.signal_to_master == (
+        "Оплачено только 1 из 3 (у друга даром раз в день): опиши по факту. "
+        "Отдых у Грок даром: теперь rest short в этом же ходу."
+    )
+
+
+def test_paid_bed_hour_clamped_signal_adds_rest_short_after_clamp_text(registry, cfg):
+    ctx = service_ctx(registry, cfg, money=15, services=["bed_hour"])
+    d = buy(ctx, "bed_hour", 3)
+    assert d.status == "clamped"
+    assert d.signal_to_master == (
+        "Оплачено только 1 из 3 (не хватило денег): опиши по факту. "
+        "Платный отдых оплачен: теперь rest short в этом же ходу."
+    )
+
+
+def test_free_qty_one_is_not_clamped(registry, cfg):
+    assert buy(friend_ctx(registry, cfg), "meal_modest", 1).status == "accepted"
+
+
+def test_after_the_free_one_the_rest_is_bought_by_price(registry, cfg):
+    ctx = friend_ctx(registry, cfg, money=100)
+    buy(ctx, "meal_modest", 3)
+    d = buy(ctx, "meal_modest", 2)
+    assert (d.status, d.result["qty"], d.result["total_cp"]) == ("accepted", 2, 18)
+
+
+def test_free_heal_qty_three_heals_once(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, money=0, service="heal_temple", rolls=[1, 1, 1, 1])
+    ctx.hero.creature.hp_max = 100
+    grok(ctx).attitude = 50
+    d = buy(ctx, "heal_temple", 3)
+    assert d.status == "clamped"
+    assert d.result["qty"] == 1
+    assert ctx.hero.creature.hp_current == 7
+
+
+# все виды даром (решение 148)
+
+def test_free_temple_heal_log_and_no_charge(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, money=0, service="heal_temple", rolls=[1, 1])
+    ctx.hero.creature.hp_max = 20
+    grok(ctx).attitude = 50
+    d = buy(ctx, "heal_temple")
+    assert d.log == ["Лечение: исцеление в храме x1 у Грок: +6 HP (теперь 7/20) — даром"]
+    assert ctx.hero.money_cp == 0
+
+
+def test_free_curse_removal_works_without_money(registry, cfg):
+    ctx = cure_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    d = buy(ctx, "uncurse_temple")
+    assert d.status == "accepted"
+    assert ctx.hero.creature.conditions == []
+    assert d.log == ["Проклятие снято: снятие проклятия у Грок — даром"]
+
+
+def test_free_disease_removal_title_has_free_word(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "diseased", money=0)
+    grok(ctx).attitude = 50
+    assert buy(ctx, "uncurse_temple").log == ["Болезнь снята: снятие проклятия у Грок — даром"]
+
+
+def test_free_curse_and_disease_removal_title_has_free_word(registry, cfg):
+    ctx = temple_ctx(registry, cfg, "cursed", "diseased", money=0)
+    grok(ctx).attitude = 50
+    assert buy(ctx, "uncurse_temple").log == [
+        "Проклятие и болезнь сняты: снятие проклятия у Грок — даром"
+    ]
+
+
+def test_paid_curse_removal_log_is_as_before(registry, cfg):
+    d = buy(cure_ctx(registry, cfg), "uncurse_temple")
+    assert d.log == ["Проклятие снято: снятие проклятия у Грок за 25 зм"]
+
+
+def test_free_bath_gives_the_boon_and_log_line(registry, cfg):
+    ctx = friend_ctx(registry, cfg, services=["bath"])
+    d = buy(ctx, "bath")
+    assert d.log[0] == "Даром: баня x1 у Грок"
+    assert d.result["boon"] == "washed"
+    assert f"washed:{ctx.hero.id}" in ctx.bundle.world.flags
+
+
+def test_free_bed_hour_log_and_signal(registry, cfg):
+    d = buy(friend_ctx(registry, cfg, services=["bed_hour"]), "bed_hour")
+    assert d.log == ["Даром: час в постели x1 у Грок"]
+    assert d.signal_to_master == "Отдых у Грок даром: теперь rest short в этом же ходу."
+
+
+def test_paid_bed_hour_signal_is_as_before(registry, cfg):
+    d = buy(service_ctx(registry, cfg, services=["bed_hour"]), "bed_hour")
+    assert d.signal_to_master == "Платный отдых оплачен: теперь rest short в этом же ходу."
+    assert d.log == ["Оплачено: час в постели x1 у Грок за 1 см"]
+
+
+def test_free_lodging_log_signal_and_flag(registry, cfg):
+    ctx = friend_ctx(registry, cfg, services=["room_poor"])
+    d = buy(ctx, "room_poor")
+    assert d.log == ["Ночлег: комната (бедная) у Грок — даром"]
+    assert d.signal_to_master == "Ночлег у Грок даром: теперь rest long в этом же ходу."
+    assert ctx.bundle.world.flags["lodging:hero"] == 0
+    assert ctx.hero.money_cp == 0
+
+
+def test_free_lodging_twice_the_same_night_is_rejected_as_paid(registry, cfg):
+    ctx = friend_ctx(registry, cfg, services=["room_poor"])
+    buy(ctx, "room_poor")
+    d = buy(ctx, "room_poor")
+    assert d.status == "rejected"
+    assert d.reason == "ночлег уже оплачен"
+
+
+def test_paid_lodging_signal_and_log_are_as_before(registry, cfg):
+    ctx = service_ctx(registry, cfg, services=["room_poor"])
+    d = buy(ctx, "room_poor")
+    assert d.signal_to_master == "Ночлег оплачен: теперь rest long в этом же ходу."
+    assert d.log == ["Ночлег оплачен: комната (бедная) у Грок — 1 см"]
+
+
+def test_free_services_have_no_free_word_for_a_non_friend(registry, cfg):
+    d = buy(service_ctx(registry, cfg, attitude=49), "meal_modest")
+    assert "даром" not in " ".join(d.log)
+
+
+# перевозка у друга (решения 141, 142, 154): всегда даром, без счёта «раз в день»
+
+@pytest.mark.parametrize("attitude", [50, 90])
+def test_friend_ferry_is_free_with_zero_money(registry, cfg, attitude):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = attitude
+    grok(ctx).name = "Финн"
+    d = ferry(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "island"
+    assert ctx.hero.money_cp == 0
+    assert d.log[0] == "Финн перевёз даром"
+    assert (d.result["price_cp"], d.result["total_cp"]) == (0, 0)
+
+
+def test_below_friend_ferry_is_paid_as_before(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=1000)
+    grok(ctx).attitude = 49
+    grok(ctx).name = "Финн"
+    d = ferry(ctx)
+    assert d.log[0] == "Перевозка: Финн, 5 см — «Остров»"
+    assert ctx.hero.money_cp == 950
+
+
+def test_free_ferry_keeps_destination_shore_and_scene_trade(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    ferry(ctx)
+    assert grok(ctx).location_id == "island"
+    assert ctx.bundle.world.flags["ferry_home:grok"] == "vale"
+    assert ctx.scene.trades == 1
+
+
+def test_free_ferry_lists_companions_line(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    add_companion(ctx)
+    assert ferry(ctx).log[1] == "С тобой: Бран"
+
+
+def test_free_ferry_back_the_same_day_is_free_too(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    ferry(ctx)
+    d = ferry_back(ctx)
+    assert d.status == "accepted"
+    assert ctx.hero.location_id == "vale"
+    assert ctx.hero.money_cp == 0
+
+
+def test_free_ferry_signal_has_no_second_fare_words(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    signal = ferry(ctx).signal_to_master
+    assert "обратно — ещё одна плата" not in signal
+    assert "ждёт здесь" in signal
+    assert "Его берег — «" in signal
+
+
+def test_free_ferry_signal_has_no_text_between_waits_and_shore(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    signal = ferry(ctx).signal_to_master
+    assert signal.startswith("Грок переправился с героем и ждёт здесь. Его берег — «")
+
+
+def test_free_heal_qty_three_signal_names_the_friend_cause(registry, cfg):
+    ctx = heal_ctx(registry, cfg, hp=1, die=0, money=0, service="heal_temple", rolls=[1, 1, 1, 1])
+    ctx.hero.creature.hp_max = 100
+    grok(ctx).attitude = 50
+    d = buy(ctx, "heal_temple", 3)
+    assert "Оплачено только 1 из 3 (у друга даром раз в день)" in d.signal_to_master
+
+
+def test_free_ferry_sets_no_free_service_flag(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    assert ferry(ctx).status == "accepted"
+    assert not [n for n in ctx.bundle.world.flags if n.startswith("free_service")]
+
+
+def test_paid_ferry_signal_keeps_second_fare_words(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    assert "обратно — ещё одна плата" in ferry(ctx).signal_to_master
+
+
+def test_free_ferry_list_price_is_zero(registry, cfg):
+    ctx = passage_ctx(registry, cfg, money=0)
+    grok(ctx).attitude = 50
+    assert prices(listing(ctx))["ferry"] == 0
+
+
+# близость даром (решения 148, 156): не сделка, последствия остаются
+
+def test_free_company_log_boon_and_signal(registry, cfg):
+    ctx = companion_ctx(registry, cfg, kind="companion_cheap", money=0)
+    grok(ctx).attitude = 50
+    d = buy(ctx, "companion_cheap")
+    assert d.status == "accepted"
+    assert d.log[0] == "Даром: компания на час (простая) x1 у Грок"
+    assert d.result["boon"] == "inspired"
+    assert ctx.hero.heroic_inspiration is True
+    assert "Отдых у Грок даром: теперь rest short в этом же ходу." in d.signal_to_master
+    assert ctx.hero.money_cp == 0
+
+
+@pytest.mark.parametrize("attitude", [50, 90])
+def test_free_company_is_not_a_deal(registry, cfg, attitude):
+    ctx = companion_ctx(registry, cfg, kind="companion_cheap", money=0)
+    grok(ctx).attitude = attitude
+    d = buy(ctx, "companion_cheap")
+    assert d.status == "accepted"
+    assert "paid_company:hero:grok" not in ctx.bundle.world.flags
+    assert deals(ctx) == []
+    assert not any("запомнит это" in line for line in d.log)
+
+
+def test_free_company_still_triggers_jealousy(registry, cfg):
+    ctx = companion_ctx(registry, cfg, kind="companion_cheap", money=0)
+    grok(ctx).attitude = 50
+    lira = add_lover(ctx)
+    d = buy(ctx, "companion_cheap")
+    assert lira.attitude < 50
+    assert any("Лира: измена раскрыта" in line for line in d.log)
+
+
+def test_free_company_still_rolls_theft_and_disease(registry, cfg):
+    ctx = risky_ctx(registry, cfg, False, False, money=1000)
+    grok(ctx).attitude = 50
+    d = buy(ctx, "companion_cheap")
+    assert d.result["consequences"] == ["robbed", "diseased"]
+    assert ctx.hero.money_cp == 800
+    assert len(d.result["consequence_rolls"]) == 2
+    assert len(sick(ctx)) == 1
+
+
+def test_second_company_the_same_day_is_paid_and_a_deal(registry, cfg):
+    ctx = companion_ctx(registry, cfg, kind="companion_cheap", money=1000)
+    grok(ctx).attitude = 50
+    buy(ctx, "companion_cheap")
+    d = buy(ctx, "companion_cheap")
+    assert d.result["price_cp"] > 0
+    assert ctx.bundle.world.flags["paid_company:hero:grok"] is True
+    assert len(deals(ctx)) == 1
+    assert any("запомнит это" in line for line in d.log)
+
+
+def test_free_company_does_not_close_romance_for_a_friend(registry, cfg):
+    ctx = companion_ctx(registry, cfg, kind="companion_cheap", money=0)
+    grok(ctx).attitude = 60
+    assert buy(ctx, "companion_cheap").status == "accepted"
+    d = apply(ctx, req("npc_update", npc_id="grok", memory_kind="romance", memory_text="остался"))
+    assert d.status == "accepted"
 

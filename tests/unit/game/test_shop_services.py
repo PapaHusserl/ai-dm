@@ -8,6 +8,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ui"))
 
 from ui_kit import text_app, text_step  # noqa: E402
@@ -175,8 +177,58 @@ def test_hero_money_is_last_line(registry, tmp_path):
 
 
 def test_prices_follow_good_attitude(registry, tmp_path):
-    lines = shop(make_inn(registry, tmp_path, attitude=60))
-    assert "    комната (скромная) — 4 см 5 мм / ночь" in lines
+    # даровая комната сегодня уже взята: цена друга, 50 * 0.9 = 45
+    app = make_inn(registry, tmp_path, attitude=60)
+    app.bundle.world.flags["free_service:grok:room_modest"] = 0
+    assert "    комната (скромная) — 4 см 5 мм / ночь" in shop(app)
+
+
+# М0 П6б (решения 141, 150): строка даровой услуги -- «<подпись> — даром», без единицы
+
+@pytest.mark.parametrize("attitude", [50, 90])
+def test_friend_service_lines_say_free_without_unit(registry, tmp_path, attitude):
+    lines = shop(make_inn(registry, tmp_path, attitude=attitude))
+    assert "    комната (скромная) — даром" in lines
+    assert "    еда (скромная) — даром" in lines
+
+
+def test_free_line_has_no_zero_price_or_unit(registry, tmp_path):
+    lines = shop(make_inn(registry, tmp_path, attitude=50))
+    assert not [line for line in lines if "0 мм" in line or "/ ночь" in line or "/ порция" in line]
+
+
+def test_below_friend_lines_are_priced_as_before(registry, tmp_path):
+    lines = shop(make_inn(registry, tmp_path, attitude=49))
+    assert "    комната (скромная) — 5 см / ночь" in lines
+    assert "    еда (скромная) — 1 см / порция" in lines
+
+
+def test_taken_free_service_line_shows_friend_price(registry, tmp_path):
+    app = make_inn(registry, tmp_path, attitude=50)
+    app.bundle.world.flags["free_service:grok:meal_modest"] = 0
+    lines = shop(app)
+    assert "    еда (скромная) — 9 мм / порция" in lines
+    assert "    комната (скромная) — даром" in lines
+
+
+def test_free_poor_room_line(registry, tmp_path):
+    lines = shop(make_inn(registry, tmp_path, services=["room_poor"], attitude=50))
+    assert "    комната (бедная) — даром" in lines
+
+
+def test_free_ferry_line_per_destination_says_free(registry, tmp_path):
+    app = ferry_inn(registry, tmp_path, islands=("island", "reef"))
+    npc = app.bundle.world.npcs["grok"]
+    npc.attitude = 50
+    lines = shop(app)
+    assert "    перевозка: Island — даром" in lines
+    assert "    перевозка: Reef — даром" in lines
+
+
+def test_ferry_line_below_friend_is_priced_as_before(registry, tmp_path):
+    app = ferry_inn(registry, tmp_path)
+    app.bundle.world.npcs["grok"].attitude = 49
+    assert "    перевозка: Island — 5 см / раз" in shop(app)
 
 
 def test_flag_haggle_is_shown_in_head_and_prices(registry, tmp_path):

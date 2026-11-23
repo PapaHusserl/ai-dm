@@ -449,6 +449,8 @@ class ServicesConfig(BaseModel):
     paid_rest: bool = True
     # ступень отношения NPC (id из attitude.tiers), с которой платная близость -- роман (У1 П2)
     romance_tier: str = "close"
+    # ступень отношения NPC (id из attitude.tiers), с которой услуги даром раз в день на вид
+    free_tier: str = "friend"
     # дней без мытья до состояния «вонь» (У1 П3); 0 -- гигиена выключена
     hygiene_days: int = Field(default=7, ge=0)
     kinds: dict[str, ServiceKind] = {}
@@ -503,6 +505,7 @@ class RulesConfig(BaseModel):
             "trade.good_tier": self.trade.good_tier,
             "trade.refuse_tier": self.trade.refuse_tier,
             "services.romance_tier": self.services.romance_tier,
+            "services.free_tier": self.services.free_tier,
             "survivors.revenge_tier": self.survivors.revenge_tier,
         }
         for key, tier_id in keys.items():
