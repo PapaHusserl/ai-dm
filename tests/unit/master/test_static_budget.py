@@ -73,7 +73,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # перемерить после последней правки правил).
 # М0 П5, решение 140: поле condition у npc_update, фраза о состояниях NPC и связях (замер 26725:
 # rules 13690, tools 13035; 26480 -> 26750).
-STATIC_MAX = 26750
+# 270: фраза о последствиях в «Кто что делает» (замер 26814: rules 13779, tools 13035;
+# 26750 -> 26840).
+STATIC_MAX = 26840
 
 MODES = sorted(MODE_TOOLS)
 
