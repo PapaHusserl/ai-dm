@@ -4,7 +4,7 @@
 
 ## Где мы
 - 270 ✅ Регулятор двигает только время, не исход (BACKLOG 270) — docs/plan-270.md. Фраза в narrator_rules.md:9,
-  абзац «Регулятор» в ARCHITECTURE D6. Коммит закрытия — пока нет. Факт по тестю: 8,11 $ (смета 8,2–12,1 $).
+  абзац «Регулятор» в ARCHITECTURE D6. Коммит закрытия 483fbff. Факт по тестю: 8,11 $ (смета 8,2–12,1 $); по metrics.py на коммите: 8,84 $.
 - Новая сессия: Read ~/.claude/kaban-kb/ family.md, okna.md, testy.md, sessiya.md; агенты — новыми Agent.
   Пороги: smells ≤ 200 (сейчас 200), STATIC_MAX = 26840, `uv run ruff check src tests`.
 - Замеры (режим «долго»): cov 80 мин (98,47 %, 26801 passed), mutmut партии — 2–4 ч.
@@ -31,6 +31,6 @@
 - Pilot-тесты флакают под нагрузкой: BACKLOG 216, 226, 278, 294 — причина не установлена.
 
 ## Ссылки
-- docs/plan-270.md («Итог», «Приёмка», «Решения»); последний коммит — пока нет (до него bf4586e).
+- docs/plan-270.md («Итог», «Приёмка», «Решения»); последний коммит 483fbff.
 - Очередь — docs/ROADMAP.md; беклог — docs/BACKLOG.md; NOTES.md. AGENTS.md, docs/RULES.md.
 - Отклик — ~/projects/semia-kabanov/otkliki/orkestrator/ai-dm/2026-11-23-270.md.
