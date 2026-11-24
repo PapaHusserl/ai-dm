@@ -182,7 +182,7 @@ PCG32 в `core/rng.py` (не `random.Random`): состояние — два int
 Конвейер бросков `rules/roll_pipeline.py`:
 
 ```
-RollRequest {kind, actor, target?, ability?, skill?, tags: {critical_moment, stakes_critical,...}, base_adv}
+RollRequest {kind, actor, target?, ability?, skill?, tags: {critical_moment, position,...}, base_adv}
   -> ModifierSource-ы (реестр по kind + ActiveEffect-ы + состояния + зона):
      adv/dis, плоские бонусы, бонусные кубики, auto_fail/auto_crit, диапазон крита
   -> бросок (любое adv + любое dis = обычный)

@@ -16,6 +16,9 @@ from ai_dm.rules.inventory import add_item, entry_name, remove_item
 from ai_dm.rules.services import haggle_slot, save_haggle
 from ai_dm.state.hero import InventoryEntry
 
+# позицию торга ставит движок (решение 17, Р11): провал стоит наценки и цены
+HAGGLE_POSITION = "risky"
+
 
 def trade(ctx, request):
     world = ctx.bundle.world
@@ -56,7 +59,7 @@ def haggle(ctx, request):
     mode = trade_rules.haggle_mode(npc.attitude, ctx.cfg)
     result = checks.skill_check(
         ctx.hero, ctx.registry, ctx.rng, "persuasion", dc=dc, base_adv=mode,
-        base_adv_label="недружелюбен", tags={"stakes": "normal"}, now_s=now_s,
+        base_adv_label="недружелюбен", tags={"position": HAGGLE_POSITION}, now_s=now_s,
     )
     ref = ctx.add_roll(result, ctx.hero.id)
     percent = trade_rules.haggle_percent_for(result.outcome, result.total, dc, ctx.cfg)
@@ -66,7 +69,7 @@ def haggle(ctx, request):
         status="accepted",
         result={
             "roll_ref": ref, "outcome": result.outcome, "dc": result.dc, "total": result.total,
-            "haggle_percent": percent, "until": "конец дня",
+            "position": HAGGLE_POSITION, "haggle_percent": percent, "until": "конец дня",
         },
         log=[result.log.text, f"Торг с {npc.name}: цены покупки {percent:+d}% до конца дня"],
     )

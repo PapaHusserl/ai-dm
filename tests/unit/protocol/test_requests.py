@@ -20,7 +20,7 @@ from ai_dm.protocol.schema import tool_defs
 
 VALID = {
     "skill_check": {"skill": "persuasion", "category": "medium"},
-    "saving_throw": {"ability": "dex", "category": "hard", "stakes": "critical"},
+    "saving_throw": {"ability": "dex", "category": "hard", "position": "desperate"},
     "start_combat": {
         "zones": [
             {"id": "door", "name": "У двери", "adjacent": ["hall"]},
@@ -204,9 +204,11 @@ def test_skill_check_dc_only_by_category():
         parse_request({"type": "skill_check", "skill": "stealth", "category": "15"})
 
 
-def test_skill_check_stakes_is_optional_and_defaults_to_none():
-    model = parse_request({"type": "skill_check", "skill": "stealth", "category": "easy"})
-    assert model.stakes is None
+@pytest.mark.parametrize("type_name", ["skill_check", "saving_throw"])
+def test_check_position_defaults_to_controlled(type_name):
+    assert parse_request(example(type_name) | {"position": "controlled"}).position == "controlled"
+    data = {k: v for k, v in example(type_name).items() if k != "position"}
+    assert parse_request(data).position == "controlled"
 
 
 def test_damage_severity_is_literal():
@@ -306,8 +308,6 @@ def test_award_xp_scale_is_literal():
 # Какие поля необязательные -- по контракту (protocol_kit.py); нейтральное значение берём из схемы.
 
 OPTIONAL_FIELDS = {
-    "skill_check": ["stakes"],
-    "saving_throw": ["stakes"],
     "player_action": ["unsupported"],
     "defeat_outcome": [
         "lair_location_id", "scar_ability", "scar_skill", "scar_text", "debt_to", "debt_text",
@@ -358,17 +358,34 @@ def test_defeat_outcome_rob_items_zero_is_none():
     assert parse_request({**example("defeat_outcome"), "rob_items": 0}).rob_items is None
 
 
-def test_skill_check_stakes_normal_is_none():
-    model = parse_request({**example("skill_check"), "stakes": "normal"})
-    assert model.stakes is None
+@pytest.mark.parametrize("type_name", ["skill_check", "saving_throw"])
+@pytest.mark.parametrize("position", ["controlled", "risky", "desperate"])
+def test_check_position_values_are_kept(type_name, position):
+    assert parse_request({**example(type_name), "position": position}).position == position
 
 
-def test_skill_check_stakes_critical_stays():
-    assert parse_request({**example("skill_check"), "stakes": "critical"}).stakes == "critical"
+@pytest.mark.parametrize("type_name", ["skill_check", "saving_throw"])
+def test_check_with_stakes_is_rejected(type_name):
+    with pytest.raises(ValidationError):
+        parse_request({**example(type_name), "stakes": "normal"})
 
 
-def test_saving_throw_stakes_normal_is_none():
-    assert parse_request({**example("saving_throw"), "stakes": "normal"}).stakes is None
+@pytest.mark.parametrize("type_name", ["skill_check", "saving_throw"])
+def test_check_unknown_position_is_rejected(type_name):
+    with pytest.raises(ValidationError):
+        parse_request({**example(type_name), "position": "heroic"})
+
+
+@pytest.mark.parametrize("type_name", ["skill_check", "saving_throw"])
+def test_check_schema_has_position_without_stakes(type_name):
+    props = tool_defs([type_name])[0]["input_schema"]["properties"]
+    assert set(props["position"]["enum"]) == {"controlled", "risky", "desperate"}
+    assert "stakes" not in props
+
+
+def test_haggle_schema_has_no_position():
+    props = tool_defs(["haggle"])[0]["input_schema"]["properties"]
+    assert "position" not in props
 
 
 def test_advance_time_pace_normal_is_none():

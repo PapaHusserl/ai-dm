@@ -354,16 +354,21 @@ def d20_outcome(request, dc, natural, total, auto_fail, mods, crit_min) -> str |
     return "fail"
 
 
+POSITION_WORDS = {"controlled": "спокойно", "risky": "рискованно", "desperate": "отчаянно"}
+
+
 def roll_title(request) -> str:
-    # что именно бросается: «Выживание (Мдр)», «Проверка Сил», «Спасбросок Тел»
+    # что именно бросается: «Выживание (Мдр), рискованно», «Проверка Сил», «Спасбросок Тел»
     short = ABILITY_SHORT.get(request.ability or "", "")
+    word = POSITION_WORDS.get(request.tags.get("position"), "")
+    suffix = f", {word}" if word else ""
     if request.kind == "check":
         if request.skill:
             name = SKILL_NAMES.get(request.skill, request.skill)
-            return f"{name} ({short})" if short else name
-        return f"Проверка {short}" if short else "Проверка"
+            return (f"{name} ({short})" if short else name) + suffix
+        return (f"Проверка {short}" if short else "Проверка") + suffix
     if request.kind == "save":
-        return f"Спасбросок {short}".strip()
+        return f"Спасбросок {short}".strip() + suffix
     if request.kind == "attack" and request.label:
         return f"Атака ({request.label})"
     # инициатива и прочее в бою подписываются строкой лога боя

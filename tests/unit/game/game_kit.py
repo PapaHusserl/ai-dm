@@ -235,7 +235,7 @@ SAVED_AT = "2026-10-03T12:00:00Z"
 
 BAD_CHECK = {
     "id": "bad", "name": "skill_check",
-    "input": {"type": "skill_check", "skill": "nope", "category": "medium", "stakes": "normal"},
+    "input": {"type": "skill_check", "skill": "nope", "category": "medium"},
 }
 
 
@@ -246,7 +246,7 @@ def settings():
 def skill_check_call(call_id="sc-1", skill="persuasion", category="medium"):
     return {
         "id": call_id, "name": "skill_check",
-        "input": {"type": "skill_check", "skill": skill, "category": category, "stakes": "normal"},
+        "input": {"type": "skill_check", "skill": skill, "category": category},
     }
 
 

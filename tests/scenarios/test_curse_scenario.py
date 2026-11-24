@@ -28,7 +28,7 @@ def save_call():
     return {
         "id": "st-1", "name": "saving_throw",
         "input": {"type": "saving_throw", "ability": "wis", "category": "nearly_impossible",
-                  "stakes": "normal"},
+                  "position": "controlled"},
     }
 
 

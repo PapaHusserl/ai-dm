@@ -254,7 +254,7 @@ class SaveThenKill:
         n = len(self.requests)
         if n == 1:
             data = {
-                "type": "saving_throw", "ability": "con", "category": "hard", "stakes": "normal",
+                "type": "saving_throw", "ability": "con", "category": "hard",
                 "actor": self.roller,
             }
             content = [ToolCall(id="st-1", name="saving_throw", input=data)]
@@ -526,7 +526,7 @@ def test_set_flag_without_then_ref_is_allowed(registry, cfg, tmp_path):
 
 @pytest.mark.parametrize("name", ["skill_check", "saving_throw"])
 def test_world_check_without_actor_is_actor_required(name, registry, cfg, tmp_path):
-    data = {"type": name, "category": "medium", "stakes": "normal"}
+    data = {"type": name, "category": "medium"}
     data.update({"skill": "persuasion"} if name == "skill_check" else {"ability": "con"})
     steps = world_step({"id": "ck-1", "name": name, "input": data}) + world_step()
     rig = make_world_rig(

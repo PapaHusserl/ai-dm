@@ -8,7 +8,7 @@
 #     преимуществом
 #     (два d20, берётся больший), prayer_day после этого сбрасывается (None); второй критический
 #       -- без.
-#     Критический момент: skill_check/saving_throw со stakes="critical". normal -- не тратит
+#     Критический момент: skill_check/saving_throw с position="desperate". risky -- не тратит
 #       молитву.
 #     Новая молитва в новый день -- снова преимущество.
 #   -6 (favor <= -6): первый критический бросок за день -- с помехой (два d20, меньший);
@@ -57,12 +57,12 @@ def make_divine_ctx(registry, cfg, rng, favor=0, day=3, hp_max=None):
     return make_ctx(registry, cfg, rng, bundle=bundle)
 
 
-def check(stakes):
-    return req("skill_check", skill="perception", category="medium", stakes=stakes)
+def check(position):
+    return req("skill_check", skill="perception", category="medium", position=position)
 
 
-def save(stakes):
-    return req("saving_throw", ability="wis", category="medium", stakes=stakes)
+def save(position):
+    return req("saving_throw", ability="wis", category="medium", position=position)
 
 
 # молитва
@@ -96,7 +96,7 @@ def test_prayer_gives_advantage_on_first_critical_check(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15]), favor=6)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 15
     assert ctx.rng.left("d20") == 0
 
@@ -105,7 +105,7 @@ def test_prayer_gives_advantage_on_critical_save(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15]), favor=6)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, save("critical"))
+    apply(ctx, save("desperate"))
     assert ctx.rolls["r1"].natural == 15
 
 
@@ -113,19 +113,19 @@ def test_prayer_is_spent_by_first_critical_roll(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15, 4]), favor=6)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("critical"))
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 4
     assert ctx.rng.left("d20") == 0
 
 
-def test_normal_roll_does_not_spend_prayer(registry, cfg):
+def test_risky_roll_does_not_spend_prayer(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[7, 3, 15]), favor=6)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("normal"))
+    apply(ctx, check("risky"))
     assert ctx.rng.left("d20") == 2
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 15
 
 
@@ -133,7 +133,7 @@ def test_prayer_from_yesterday_does_not_work(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15]), favor=6, day=4)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
     assert ctx.rng.left("d20") == 1
 
@@ -142,10 +142,10 @@ def test_prayer_next_day_gives_advantage_again(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15, 5, 14]), favor=6, day=3)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     ctx.bundle.world.clock.now_s = 4 * DAY + 3600
     apply(ctx, req("pray", god_id="selune"))
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 14
     assert ctx.rng.left("d20") == 0
 
@@ -154,13 +154,13 @@ def test_prayer_without_favor_six_gives_no_advantage(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15]), favor=5)
     ctx.hero.divine.prayer_day = 3
     ctx.hero.divine.prayer_god = "selune"
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
 
 
 def test_critical_roll_without_prayer_has_no_advantage(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[3, 15]), favor=8)
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
     assert ctx.rng.left("d20") == 1
 
@@ -169,7 +169,7 @@ def test_critical_roll_without_prayer_has_no_advantage(registry, cfg):
 
 def test_curse_gives_disadvantage_on_first_critical_roll(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 3]), favor=-6)
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
     assert ctx.rng.left("d20") == 0
     assert ctx.hero.divine.curse_day_used == 3
@@ -177,38 +177,38 @@ def test_curse_gives_disadvantage_on_first_critical_roll(registry, cfg):
 
 def test_curse_second_critical_roll_same_day_is_plain(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 3, 12]), favor=-6)
-    apply(ctx, check("critical"))
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 12
     assert ctx.rng.left("d20") == 0
 
 
 def test_curse_returns_on_next_day(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 3, 15, 4]), favor=-6, day=3)
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     ctx.bundle.world.clock.now_s = 4 * DAY + 3600
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 4
 
 
-def test_curse_does_not_touch_normal_roll(registry, cfg):
+def test_curse_does_not_touch_risky_roll(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 9, 2]), favor=-6)
-    apply(ctx, check("normal"))
+    apply(ctx, check("risky"))
     assert ctx.rng.left("d20") == 2
     assert ctx.hero.divine.curse_day_used is None
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r2"].natural == 2
 
 
 def test_curse_applies_to_critical_save(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 3]), favor=-6)
-    apply(ctx, save("critical"))
+    apply(ctx, save("desperate"))
     assert ctx.rolls["r1"].natural == 3
 
 
 def test_favor_minus_five_has_no_curse(registry, cfg):
     ctx = make_divine_ctx(registry, cfg, DiceRng(d20=[15, 3]), favor=-5)
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 15
     assert ctx.rng.left("d20") == 1
 
@@ -340,21 +340,21 @@ def pray_ctx(registry, cfg):
 
 def test_prayer_works_while_prayed_god_keeps_favor(registry, cfg):
     ctx = pray_ctx(registry, cfg)
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 15
 
 
 def test_prayer_dies_when_prayed_god_favor_drops_below_six(registry, cfg):
     ctx = pray_ctx(registry, cfg)
     ctx.hero.favor["selune"] = 5
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
 
 
 def test_prayer_dies_when_prayed_god_is_frozen(registry, cfg):
     ctx = pray_ctx(registry, cfg)
     ctx.hero.divine.frozen = ["selune"]
-    apply(ctx, check("critical"))
+    apply(ctx, check("desperate"))
     assert ctx.rolls["r1"].natural == 3
 
 

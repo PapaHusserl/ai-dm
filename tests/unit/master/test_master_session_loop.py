@@ -167,7 +167,7 @@ def test_skill_check_result_has_roll_line_for_the_model(tmp_path, registry, cfg)
         "id": "k1", "name": "skill_check",
         "input": {
             "type": "skill_check", "skill": "persuasion", "category": "medium",
-            "stakes": "normal",
+            "position": "controlled",
         },
     }
     adapter = scripted([tools_step(call), text_step()])

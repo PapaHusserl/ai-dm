@@ -168,7 +168,7 @@ def test_negative_attitude_rolls_with_disadvantage(registry, cfg):
 
 def test_disadvantage_line_names_the_reason(registry, cfg):
     ctx = haggle_ctx(registry, cfg, [14, 13], attitude=-10)
-    assert "недружелюбен" in haggle(ctx).log[0]
+    assert "помеха: недружелюбен" in haggle(ctx).log[0]
 
 
 # один торг в день
@@ -410,7 +410,35 @@ def test_stored_roll_is_the_persuasion_check_against_the_dc(registry, cfg):
     assert (roll.dc, roll.total, roll.outcome) == (15, 17, "success")
 
 
-def test_stored_roll_has_normal_stakes(registry, cfg):
+def test_stored_roll_has_risky_position_tag_only(registry, cfg):
     ctx = total_ctx(registry, cfg, 15)
     roll = ctx.rolls[haggle(ctx).result["roll_ref"]]
-    assert roll.tags == {"stakes": "normal"}
+    assert roll.tags == {"position": "risky"}
+
+
+def test_haggle_result_has_risky_position(registry, cfg):
+    ctx = total_ctx(registry, cfg, 15)
+    assert haggle(ctx).result["position"] == "risky"
+
+
+def test_haggle_roll_line_has_risky_word(registry, cfg):
+    ctx = total_ctx(registry, cfg, 15)
+    assert haggle(ctx).log[0].startswith("Убеждение (Хар), рискованно: ")
+
+
+def test_haggle_price_line_is_unchanged(registry, cfg):
+    ctx = total_ctx(registry, cfg, 14)
+    assert haggle(ctx).log[1] == "Торг с Mara: цены покупки +10% до конца дня"
+
+
+def test_prayer_does_not_give_advantage_on_haggle(registry, cfg):
+    from ai_dm.state.world import God
+
+    ctx = total_ctx(registry, cfg, 14)
+    ctx.bundle.world.pantheon["selune"] = God(id="selune", name="Селунэ")
+    ctx.hero.favor = {"selune": 6}
+    ctx.hero.divine.prayer_day = 0
+    ctx.hero.divine.prayer_god = "selune"
+    haggle(ctx)
+    assert ctx.rng.calls == ["d20"]
+    assert ctx.hero.divine.prayer_day == 0

@@ -144,30 +144,40 @@ class ConnectionSpec(Request):
 
 # запросы мастера (ТЗ 2.1)
 
-class SkillCheck(Request):
-    """Проверка навыка героя. Мастер выбирает навык и категорию сложности, движок бросает."""
+POSITION_DESCRIPTION = (
+    "Позиция: controlled -- провал герою ничем не грозит; risky -- провал чего-то стоит; "
+    "desperate -- провал может стоить жизни или изменить ход истории."
+)
 
+
+class SkillCheckBase(Request):
     type: Literal["skill_check"]
     skill: Skill = Field(description="Навык.")
     category: DcCategory = Field(
         description="very_easy 5, easy 10, medium 15, hard 20, very_hard 25, nearly_impossible 30"
     )
-    stakes: Literal["normal", "critical"] = Field(
-        "normal", description="critical, если от броска зависит критический исход; иначе normal."
+
+
+class SkillCheck(SkillCheckBase):
+    """Проверка навыка героя. Мастер выбирает навык, сложность и позицию, движок бросает."""
+
+    position: Literal["controlled", "risky", "desperate"] = Field(
+        "controlled", description=POSITION_DESCRIPTION
     )
-    NEUTRAL: ClassVar[dict] = {"stakes": "normal"}
 
 
-class SavingThrow(Request):
-    """Спасбросок героя. Мастер выбирает характеристику и категорию сложности, движок бросает."""
-
+class SavingThrowBase(Request):
     type: Literal["saving_throw"]
     ability: Ability = Field(description="Характеристика спасброска.")
     category: DcCategory = Field(description="Категория сложности.")
-    stakes: Literal["normal", "critical"] = Field(
-        "normal", description="critical, если от броска зависит критический исход; иначе normal."
+
+
+class SavingThrow(SavingThrowBase):
+    """Спасбросок героя. Мастер выбирает характеристику, сложность и позицию, движок бросает."""
+
+    position: Literal["controlled", "risky", "desperate"] = Field(
+        "controlled", description=POSITION_DESCRIPTION
     )
-    NEUTRAL: ClassVar[dict] = {"stakes": "normal"}
 
 
 class StartCombat(Request):
@@ -831,18 +841,18 @@ class UnsupportedAction(Request):
 
 # запросы роли world (режим "world"): служебные и версии запросов 2.1 с закадровыми полями
 
-class WorldSkillCheck(SkillCheck):
+class WorldSkillCheck(SkillCheckBase):
     """Закадровая проверка навыка: бросает NPC (actor) или герой; движок бросает кубик."""
 
     actor: str = Field("", description="Id NPC, который бросает; пусто = герой.")
-    NEUTRAL: ClassVar[dict] = {**SkillCheck.NEUTRAL, "actor": ""}
+    NEUTRAL: ClassVar[dict] = {"actor": ""}
 
 
-class WorldSavingThrow(SavingThrow):
+class WorldSavingThrow(SavingThrowBase):
     """Закадровый спасбросок: бросает NPC (actor) или герой; движок бросает кубик."""
 
     actor: str = Field("", description="Id NPC, который бросает; пусто = герой.")
-    NEUTRAL: ClassVar[dict] = {**SavingThrow.NEUTRAL, "actor": ""}
+    NEUTRAL: ClassVar[dict] = {"actor": ""}
 
 
 class WorldNpcUpdate(NpcUpdateBase):

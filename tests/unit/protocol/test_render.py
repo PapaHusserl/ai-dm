@@ -89,7 +89,7 @@ def test_render_check_contains_roll_line_and_dc(registry, cfg):
     assert data["result"]["dc"] == 15
     line = data["log"][0]
     # строка называет проверку (живой прогон: было непонятно, что бросается)
-    assert line.startswith("Убеждение (Хар): d20 (20)")
+    assert line.startswith("Убеждение (Хар), спокойно: d20 (20)")
     assert "против СЛ 15" in line
     assert "→ успех" in line
 

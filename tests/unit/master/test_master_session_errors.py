@@ -20,7 +20,7 @@ from ai_dm.protocol.apply import apply
 
 BAD_CHECK = {
     "id": "bad", "name": "skill_check",
-    "input": {"type": "skill_check", "skill": "nope", "category": "medium", "stakes": "normal"},
+    "input": {"type": "skill_check", "skill": "nope", "category": "medium"},
 }
 GHOST_ITEM = {
     "id": "ghost", "name": "give_item",

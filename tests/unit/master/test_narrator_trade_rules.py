@@ -32,6 +32,14 @@ def test_rules_tell_merchant_is_scene_npc_with_merchant_field():
     assert "NPC из `scene_npcs` с полем `merchant`" in rules_text()
 
 
+def test_rules_say_haggle_position_is_set_by_engine_as_risky():
+    text = rules_text()
+    start = text.index("## Торговля")
+    end = text.find("\n## ", start + 1)
+    section = text[start:] if end == -1 else text[start:end]
+    assert "Позицию торга ставит движок: risky." in section
+
+
 def test_rules_describe_trade_state_key():
     assert "В ключе `trade` состояния" in rules_text()
 

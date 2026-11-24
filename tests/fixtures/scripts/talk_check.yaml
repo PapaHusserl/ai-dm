@@ -4,6 +4,6 @@ steps:
     tool_calls:
       - id: call-1
         name: skill_check
-        input: {type: skill_check, skill: persuasion, category: medium, stakes: normal}
+        input: {type: skill_check, skill: persuasion, category: medium, position: controlled}
   - text: "Стражник нехотя кивает и пропускает вас."
     usage: {input: 1200, output: 80, cache_read: 900}

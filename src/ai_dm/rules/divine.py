@@ -194,7 +194,7 @@ def hero_critical_modifier(request) -> tuple[bool, bool]:
     if request.now_s is None or not is_hero(actor):
         return False, False
     tags = request.tags
-    if not tags.get("critical_moment") and tags.get("stakes") != "critical":
+    if not tags.get("critical_moment"):
         return False, False
     day = day_of(request.now_s)
     favors = hero_favors(actor)

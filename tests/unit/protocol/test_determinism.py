@@ -13,7 +13,7 @@ from ai_dm.state.session import LastCombat
 def sequence():
     return [
         req("skill_check", skill="persuasion", category="medium"),
-        req("saving_throw", ability="dex", category="hard", stakes="critical"),
+        req("saving_throw", ability="dex", category="hard", position="desperate"),
         req("damage", severity="dangerous", damage_type="fire"),
         req("gold", direction="gain", kind="loot_individual"),
         req("give_item", item_id="crowbar", qty=2),

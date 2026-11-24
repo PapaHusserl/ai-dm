@@ -105,7 +105,7 @@ def test_commit_syncs_world_rng_with_turn_rng(registry, cfg, tmp_path):
     rig = make_rig(registry, cfg, tmp_path, scripted(steps))
     before = rig.runner.bundle.world.rng
     ref = make_ctx(registry, cfg, bundle=make_bundle(registry))
-    apply(ref, req("skill_check", skill="persuasion", category="medium", stakes="normal"))
+    apply(ref, req("skill_check", skill="persuasion", category="medium", position="controlled"))
     rig.runner.play("Убеждаю")
     after = rig.runner.bundle.world.rng
     assert after.draws > before.draws

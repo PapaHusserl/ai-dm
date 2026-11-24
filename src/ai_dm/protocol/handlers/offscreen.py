@@ -79,7 +79,7 @@ def skill_check(ctx, request):
     result = roll(
         RollRequest(
             kind="check", actor=actor_state(npc), actor_id=npc.id, ability=SKILLS[request.skill],
-            skill=request.skill, tags=checks.stakes_tags(request) or {}, bonus=0,
+            skill=request.skill, bonus=0,
             dc=dc_for_category(request.category, ctx.registry),
         ),
         ctx.rng, ctx.registry,
@@ -96,7 +96,7 @@ def saving_throw(ctx, request):
     result = roll(
         RollRequest(
             kind="save", actor=actor_state(npc), actor_id=npc.id, ability=request.ability,
-            tags=checks.stakes_tags(request) or {}, bonus=0,
+            bonus=0,
             dc=dc_for_category(request.category, ctx.registry),
         ),
         ctx.rng, ctx.registry,

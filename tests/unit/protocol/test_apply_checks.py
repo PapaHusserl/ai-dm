@@ -1,7 +1,8 @@
 # Ожидаемый API: ai_dm.protocol.apply.apply(ctx, request) -- см. контракт в protocol_kit.py.
 # skill_check / saving_throw (ТЗ 2.1, 2.3): СЛ только категорией (очень лёгкая 5 ... почти
 # невозможная 30), бросает движок через rules.checks, бросок кладётся в журнал хода (roll_ref),
-# stakes "critical" попадает в tags броска (RollResult.tags["stakes"]), строка броска -- первая в
+# position (controlled/risky/desperate) попадает в tags броска (RollResult.tags["position"]),
+# desperate -- ещё critical_moment, строка броска -- первая в
 # Decision.log, rng движется только броском движка.
 import pytest
 from protocol_kit import ScriptedRng, dump, make_ctx, req
@@ -80,22 +81,68 @@ def test_check_moves_rng_draws(registry, cfg):
     assert ctx.rng.draws > before
 
 
-def test_stakes_critical_is_passed_to_roll(registry, cfg):
+@pytest.mark.parametrize("position", ["controlled", "risky", "desperate"])
+def test_position_is_passed_to_roll_tags(position, registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
-    apply(ctx, req("skill_check", skill="stealth", category="hard", stakes="critical"))
-    assert ctx.rolls["r1"].tags["stakes"] == "critical"
+    apply(ctx, req("skill_check", skill="stealth", category="hard", position=position))
+    assert ctx.rolls["r1"].tags["position"] == position
 
 
-def test_saving_throw_stakes_critical_is_passed_to_roll(registry, cfg):
+@pytest.mark.parametrize("position", ["controlled", "risky", "desperate"])
+def test_saving_throw_position_is_passed_to_roll_tags(position, registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
-    apply(ctx, req("saving_throw", ability="dex", category="hard", stakes="critical"))
-    assert ctx.rolls["r1"].tags["stakes"] == "critical"
+    apply(ctx, req("saving_throw", ability="dex", category="hard", position=position))
+    assert ctx.rolls["r1"].tags["position"] == position
 
 
-def test_no_stakes_means_no_stakes_tag(registry, cfg):
+def test_desperate_check_has_critical_moment_tag(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    apply(ctx, req("skill_check", skill="stealth", category="hard", position="desperate"))
+    assert ctx.rolls["r1"].tags["critical_moment"] is True
+
+
+def test_desperate_save_has_critical_moment_tag(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    apply(ctx, req("saving_throw", ability="dex", category="hard", position="desperate"))
+    assert ctx.rolls["r1"].tags["critical_moment"] is True
+
+
+@pytest.mark.parametrize("position", ["controlled", "risky"])
+def test_non_desperate_check_has_no_critical_moment_tag(position, registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    apply(ctx, req("skill_check", skill="stealth", category="hard", position=position))
+    assert "critical_moment" not in ctx.rolls["r1"].tags
+
+
+def test_no_position_means_controlled_tag(registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
     apply(ctx, req("skill_check", skill="stealth", category="hard"))
+    assert ctx.rolls["r1"].tags["position"] == "controlled"
+
+
+def test_no_stakes_tag_in_roll(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    apply(ctx, req("skill_check", skill="stealth", category="hard", position="risky"))
     assert "stakes" not in ctx.rolls["r1"].tags
+
+
+@pytest.mark.parametrize("position", ["controlled", "risky", "desperate"])
+def test_roll_result_has_position(position, registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    d = apply(ctx, req("skill_check", skill="stealth", category="hard", position=position))
+    assert d.result["position"] == position
+
+
+def test_saving_throw_result_has_position(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    d = apply(ctx, req("saving_throw", ability="dex", category="hard", position="risky"))
+    assert d.result["position"] == "risky"
+
+
+def test_roll_line_has_position_word(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[7]))
+    d = apply(ctx, req("skill_check", skill="stealth", category="medium", position="risky"))
+    assert "рискованно:" in d.log[0]
 
 
 def test_saving_throw_roll_is_a_save(registry, cfg):

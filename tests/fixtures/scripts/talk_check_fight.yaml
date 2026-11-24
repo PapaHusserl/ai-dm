@@ -17,7 +17,7 @@ steps:
   - tool_calls:
       - id: call-2
         name: skill_check
-        input: {type: skill_check, skill: persuasion, category: medium, stakes: normal}
+        input: {type: skill_check, skill: persuasion, category: medium, position: controlled}
   - text: "Трактирщик вздыхает и кивает на дверь в подвал."
     usage: {input: 1600, output: 70, cache_read: 1300}
 

@@ -41,7 +41,7 @@ def check_call(call_id="sc1"):
         "id": call_id, "name": "skill_check",
         "input": {
             "type": "skill_check", "skill": "perception", "category": "medium",
-            "stakes": "normal",
+            "position": "controlled",
         },
     }
 

@@ -75,7 +75,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # rules 13690, tools 13035; 26480 -> 26750).
 # 270: фраза о последствиях в «Кто что делает» (замер 26814: rules 13779, tools 13035;
 # 26750 -> 26840).
-STATIC_MAX = 26840
+# 265 П1, решение 20: фразы о позиции проверки (position) вместо stakes, о позиции торга и
+# пометке рискованных вариантов (замер 26977: rules 13862, tools 13115; 26840 -> 27010).
+STATIC_MAX = 27010
 
 MODES = sorted(MODE_TOOLS)
 

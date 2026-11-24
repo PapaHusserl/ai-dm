@@ -853,6 +853,65 @@ def test_world_death_without_own_roll_is_rejected_with_tag(registry, cfg):
     assert aldric(ctx).status == "alive"
 
 
+@pytest.mark.parametrize("name", ["skill_check", "saving_throw"])
+def test_world_roll_schema_has_no_position_or_stakes(name):
+    props = tool_defs([name], "world")[0]["input_schema"]["properties"]
+    assert "actor" in props
+    assert "position" not in props
+    assert "stakes" not in props
+
+
+@pytest.mark.parametrize("field", ["position", "stakes"])
+def test_world_roll_with_position_field_is_rejected_by_parser(field):
+    data = {
+        "type": "skill_check", "skill": "athletics", "category": "easy", "actor": "aldric",
+        field: "risky",
+    }
+    with pytest.raises(ValueError):
+        parse_request(data, "world")
+
+
+@pytest.mark.parametrize("kind", ["skill_check", "saving_throw"])
+def test_world_npc_roll_has_no_position_tag(registry, cfg, kind):
+    ctx = world_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    data = (
+        {"type": "skill_check", "skill": "athletics"} if kind == "skill_check"
+        else {"type": "saving_throw", "ability": "dex"}
+    )
+    decision = apply(
+        ctx, parse_request({**data, "category": "easy", "actor": "aldric"}, "world")
+    )
+    assert decision.status == "accepted"
+    assert "position" not in ctx.rolls[decision.result["roll_ref"]].tags
+    assert decision.result.get("position") is None
+
+
+def test_world_npc_skill_check_names_skill_and_ability_with_zero_bonus(registry, cfg):
+    ctx = world_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    decision = apply(
+        ctx,
+        parse_request(
+            {"type": "skill_check", "skill": "athletics", "category": "easy", "actor": "aldric"},
+            "world",
+        ),
+    )
+    assert decision.log[0].startswith("Атлетика (Сил):")
+    assert decision.result["total"] == 10
+
+
+def test_world_npc_saving_throw_names_ability_with_zero_bonus(registry, cfg):
+    ctx = world_ctx(registry, cfg, ScriptedRng(d20=[10]))
+    decision = apply(
+        ctx,
+        parse_request(
+            {"type": "saving_throw", "ability": "dex", "category": "easy", "actor": "aldric"},
+            "world",
+        ),
+    )
+    assert decision.log[0].startswith("Спасбросок Лов:")
+    assert decision.result["total"] == 10
+
+
 def test_world_death_with_roll_of_other_npc_is_rejected(registry, cfg):
     ctx = world_ctx(registry, cfg, ScriptedRng(d20=[1]))
     roll = apply(

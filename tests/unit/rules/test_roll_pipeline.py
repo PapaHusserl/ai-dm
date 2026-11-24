@@ -7,7 +7,7 @@
 #       target: HeroState | CreatureState | None = None
 #       target_id: str | None = None
 #       ability: str | None = None, skill: str | None = None
-#       tags: dict[str, bool | int | str] = {}    -- critical_moment, stakes_critical, melee, ...
+#       tags: dict[str, bool | int | str] = {}    -- critical_moment, position, melee, ...
 #       base_adv: "normal" | "advantage" | "disadvantage" = "normal"
 #       bonus: int = 0             -- плоский бонус (из derived), уже посчитанный вызывающим
 #       dc: int | None = None      -- КД для атаки, СЛ для остальных; None -- исхода нет

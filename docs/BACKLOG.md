@@ -2312,3 +2312,88 @@ updated: 2026-11-23
 рассказчику заметку «оплатил услугу «баня» x1 у Грок (0 мм)» (`game/shop_actions.py` `note_of`, `remember`);
 даровая и платные в один день склеиваются в «оплатил … x3 (8 мм)». Вариант папы: своя заметка «взял даром
 услугу … x1 у …», без склейки с платной; тесты на заметку даровой.
+
+## 374. Эффект и «сделка с дьяволом» для проверок
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, решение 10, docs/plan-265.md «К беклогу» п. 1) Степень успеха limited / standard / great и бонус к броску
+за добровольную цену при любом исходе (docs/research/research-quests-arcs.md:94-98); задевает вдохновение 165.
+
+## 375. «Комфорт+» снимает цену проверки 265
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, решения 8 и 19, docs/plan-265.md «К беклогу» п. 2) Пятая ручка режима 223: обязательная цена провала 265
+не взимается. Шов — `unpaid_fails` (план 265); где живёт настройка — груминг 223.
+
+## 376. Закадровая проверка: «actor пусто = герой» в схеме, хендлер отклоняет
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, docs/plan-265.md «К беклогу» п. 3) Схема обещает «actor пусто = герой» (`protocol/requests.py:837`, `:844`),
+а хендлер пустой `actor` отклоняет (`protocol/handlers/offscreen.py:74`, `:91`) — описание и код расходятся.
+
+## 377. Отложенные цены провала: шум, тик часов, злость фракции
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, решение 3, docs/plan-265.md «К беклогу» п. 4) Шум — строкой в груминг 266, тик часов — в груминг 264
+(тем же швом «оплачено = бросок потрачен»); злость фракции требует поле у `Faction` (`state/world.py:181`) и
+версию сейва.
+
+## 378. Пауза-подтверждение перед рискованным броском
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, Р6 вариант 3, не выбран решением 16, docs/plan-265.md «К беклогу» п. 5) Перед рискованным и отчаянным
+броском игрок подтверждает или меняет действие — новая фаза хода.
+
+## 379. `take_item` как цена не сверяет ценность вещи
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, docs/plan-265.md «К беклогу» п. 6) Отчаянный провал можно закрыть мелочью — движок ценность вещи не
+сверяет с позицией.
+
+## 380. Позиция для переговоров в бою и первой помощи
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, вне решения 5, docs/plan-265.md «К беклогу» п. 7) Переговоры в бою (`combat/actions/parley.py:183`) и
+первая помощь (`combat/actions/standard.py:76`) остаются без позиции и цены.
+
+## 381. Срабатывание ловушки закрывает цену 265
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265, docs/plan-265.md «К беклогу» п. 8, «Открыто к папе») При проваленном обезвреживании срабатывание ловушки
+должно закрывать цену 265 (`roll_ref` в `ctx.used_rolls`) — вопрос груминга 262.
+
+## 382. Выжившие мутанты на старых строках (265 П1)
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265 П1, docs/plan-265.md, `make mutate-diff` 2026-11-24) 33 выживших на строках до П1:
+`protocol.handlers.checks` `skill_check` 19, 22; `saving_throw` 19, 22;
+`protocol.handlers.offscreen` `skill_check` 11, 18, 21, 24, 28; `saving_throw` 11, 18, 20, 23, 26, 37, 40;
+`protocol.handlers.trade` `haggle` 35, 36; `rules.roll_pipeline` `roll_title` 3, 5, 7, 8, 27, 28, 29;
+`rules.divine` `hero_critical_modifier` 2, 19, 21, 29, 31, 32, 41, 42. Тесты — `tests/unit/protocol`, `tests/unit/rules`.
+
+## 383. Плавающий test_load_v7_gives_new_romance_value под xdist
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265 П1, `make cov` 2026-11-24) `tests/unit/persistence/test_migration_v8.py::test_load_v7_gives_new_romance_value`
+упал под xdist (gw2): нет `saves/old_world/slots/auto/manifest.json` во временном каталоге (`store.py:174`
+`read_raw`). Отдельно — 42 passed. `src/ai_dm/persistence` и его тесты шаг 265 не трогал. Причина не установлена.

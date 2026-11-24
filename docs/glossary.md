@@ -409,4 +409,6 @@
 | Pending acts | Отложенные действия мира | `WorldSim.pending_acts`, `world_sim/pending.py` | `act`-кандидаты, отложенные при пропуске или мягком сбое world до следующей границы; не более 20 (Ж2, BACKLOG 46) |
 | Event verdict | Вердикт события | `event:<id>`, `candidates.event_candidates` | нарративный остаток `ends_when` глобального события проверяет world как вердикт-кандидат (Ж2, BACKLOG 9) |
 | Event hazard roll | Hazard в тике | `world_sim/hazard.py`, `roll_hazards` | раз в день активный герой в зоне события с `hazard` бросает спасбросок; провал — +1 истощение (Ж2) |
+| Position | Позиция | `SkillCheck.position`, `SavingThrow.position`, `RollRequest.tags["position"]` | controlled / risky / desperate: насколько провал проверки опасен; своя адаптация, в SRD нет (шаг 265) |
+| Failure price | Цена провала | — | то, чем герой платит за провал в позиции risky / desperate; обязательна с П2 шага 265, пока в коде нет |
 | Change of deity | Смена бога | `change_deity`, `ChangeDeity`, `divine.change_deity` | запрос рассказчика любому герою; +1 только богу, которому герой не служил (нет ключа в `hero.favor`); прежний бог остаётся с 0 (Ж2) |

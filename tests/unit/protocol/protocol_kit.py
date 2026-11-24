@@ -11,8 +11,8 @@
 #     партии 2, union в схеме нет нигде); Pydantic при разборе превращает нейтральное в None, так
 #     что внутри протокола «нет» = None. Ниже типы необязательных полей записаны как `X | None`.
 #     set_flag.value -- одна строка: "true"/"false" становятся bool, прочее остаётся текстом.
-#     skill_check{skill: Skill, category: DcCategory, stakes: "critical"|None}
-#     saving_throw{ability: Ability, category: DcCategory, stakes: "critical"|None}
+#     skill_check{skill: Skill, category: DcCategory, position: controlled|risky|desperate}
+#     saving_throw{ability: Ability, category: DcCategory, position: controlled|risky|desperate}
 #     start_combat{zones: [ZoneSpec], enemies: [EnemySpec], groups: [GroupSpec], hero_zone: str}
 #       ZoneSpec{id, name, adjacent: [str]; exit: bool|None, features: [FeatureSpec]|None}
 #       FeatureSpec{kind: str; damage, damage_type: str|None, save: Ability|None, dc: int|None}
