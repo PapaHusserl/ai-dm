@@ -207,6 +207,54 @@ def test_player_controller_improvise_then_steps(registry, cfg):
     assert first_improvise < first_move
 
 
+def failed_improvise_log(registry, cfg, position):
+    from combat_kit import ScriptedRng
+
+    from ai_dm.game.controllers import PlayerController
+    from ai_dm.protocol.requests import ImproviseSpec
+
+    _, engine = hero_engine(registry, cfg)
+    engine.rng = ScriptedRng(d20=[1])
+    spec = ImproviseSpec(
+        skill="athletics", category="medium", effect="advantage", position=position
+    )
+    controller = PlayerController([], improvise=spec)
+    controller.attach(engine)
+    engine.controllers["hero"] = controller
+    engine.run_controller("hero")
+    return engine.state.log, engine.name("hero")
+
+
+def test_player_controller_passes_risky_position_to_the_engine(registry, cfg):
+    log, name = failed_improvise_log(registry, cfg, "risky")
+    assert f"  {name} открылся" in log
+    assert f"  {name} сбит с ног" not in log
+
+
+def test_player_controller_passes_desperate_position_to_the_engine(registry, cfg):
+    log, name = failed_improvise_log(registry, cfg, "desperate")
+    assert f"  {name} открылся" in log
+    assert f"  {name} сбит с ног" in log
+
+
+def test_player_controller_passes_zone_to_the_engine(registry, cfg):
+    from combat_kit import ScriptedRng
+
+    from ai_dm.game.controllers import PlayerController
+    from ai_dm.protocol.requests import ImproviseSpec
+
+    _, engine = hero_engine(registry, cfg)
+    engine.rng = ScriptedRng(d20=[20])
+    spec = ImproviseSpec(
+        skill="athletics", category="medium", effect="push", target="g1", zone="balcony"
+    )
+    controller = PlayerController([], improvise=spec)
+    controller.attach(engine)
+    engine.controllers["hero"] = controller
+    engine.run_controller("hero")
+    assert engine.part("g1").zone_id == "balcony"
+
+
 def test_player_controller_improvise_is_done_once(registry, cfg):
     from ai_dm.game.controllers import PlayerController
     from ai_dm.protocol.requests import ImproviseSpec

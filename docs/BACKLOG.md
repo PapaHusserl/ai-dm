@@ -2419,3 +2419,12 @@ updated: 2026-11-24
 149–154, 158, 159, 164, 165, 186–193; `take_item` 18–25, 39–41, 43–46, 50–52, 54–61, 108–111, 125;
 `protocol.handlers.trade` `haggle` 35, 36 (и в 382), 56, 65 (эквивалентные по разбору П1).
 Тесты — `tests/unit/protocol`, `tests/unit/master`.
+
+## 386. Выжившие мутанты на старых строках (265 П3)
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265 П3, docs/plan-265.md, `make mutate-diff` 2026-11-24) 5 выживших на строках до П3:
+`combat.actions.improvise` `improvise` 50; `game.controllers` `PlayerController.act` 2, 24, 25, 26.
+Тесты — `tests/unit/combat`, `tests/unit/game`.

@@ -415,9 +415,12 @@ class CombatEngine:
         events = PERFORM[option.kind](self, ref, option)
         return self.finish(events)
 
-    def improvise(self, ref, *, skill, category, effect, target=None, zone=None):
+    def improvise(
+        self, ref, *, skill, category, effect, target=None, zone=None, position="controlled"
+    ):
         return improvise.improvise(
-            self, ref, skill=skill, category=category, effect=effect, target=target, zone=zone
+            self, ref, skill=skill, category=category, effect=effect, target=target, zone=zone,
+            position=position,
         )
 
     def parley(self, ref, *, skill, outcome, target=None):

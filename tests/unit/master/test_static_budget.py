@@ -79,7 +79,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # пометке рискованных вариантов (замер 26977: rules 13862, tools 13115; 26840 -> 27010).
 # 265 П2: обязательная цена провала, полосы тяжести, цена торга, failed_roll_ref у take_item
 # (замер 27282: rules 14039, tools 13243; 27010 -> 27310).
-STATIC_MAX = 27310
+# 265 П3: фраза о позиции импровизации в разделе «Бой» (замер 27358: rules 14115, tools 13243;
+# 27310 -> 27390).
+STATIC_MAX = 27390
 
 MODES = sorted(MODE_TOOLS)
 

@@ -31,7 +31,7 @@ class PlayerController:
             self.improvise = None
             done = engine.improvise(
                 point.actor, skill=spec.skill, category=spec.category, effect=spec.effect,
-                target=spec.target, zone=spec.zone,
+                target=spec.target, zone=spec.zone, position=spec.position,
             )
             if isinstance(done, Rejected):
                 reason = REJECT_WORDS.get(done.reason, done.reason)

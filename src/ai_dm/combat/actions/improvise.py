@@ -66,7 +66,9 @@ def check_request(engine, ref, effect, target, zone):
     return None if problem is None else rejected(problem)
 
 
-def improvise(engine, ref, *, skill, category, effect, target=None, zone=None):
+def improvise(
+    engine, ref, *, skill, category, effect, target=None, zone=None, position="controlled"
+):
     bad = check_request(engine, ref, effect, target, zone)
     if bad is not None:
         return bad
@@ -81,7 +83,25 @@ def improvise(engine, ref, *, skill, category, effect, target=None, zone=None):
     events = []
     if result.outcome == "success":
         events += APPLY[effect](engine, ref, target, zone)
+    elif position != "controlled":
+        open_hero(engine, ref, position)
     return engine.finish(events)
+
+
+def open_hero(engine, ref, position) -> None:
+    # провал в рискованной позиции: первая атака врага по герою с преимуществом;
+    # в отчаянной герой ещё и сбит с ног
+    engine.creature(ref).active_effects.append(
+        ActiveEffect(
+            id="opened_up", source=ref, kind="modifier",
+            params={"target": "attack_roll", "side": "target", "mode": "advantage",
+                    "consume": True},
+            expires=Expiry(kind="end_of_turn", value=1, owner=ref),
+        )
+    )
+    engine.log(f"  {engine.name(ref)} открылся")
+    if position == "desperate":
+        apply_prone(engine, ref, ref, None)
 
 
 def apply_advantage(engine, ref, target, zone) -> list[DomainEvent]:

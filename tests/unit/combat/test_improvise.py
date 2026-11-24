@@ -30,9 +30,11 @@ import pytest
 from combat_kit import (
     ScriptedRng,
     creature,
+    feature,
     hp,
     make_engine,
     make_fighter,
+    make_zones,
     mon,
     option_ids,
     part,
@@ -143,6 +145,143 @@ def test_failed_check_has_no_effect_but_spends_the_action(registry, cfg):
     improvise(engine, "extra_damage", target="goblin_1")
     assert hp(engine, "goblin_1") == 10
     assert turn(engine, "hero").action is False
+
+
+def hero_conditions(engine):
+    return [c.id for c in creature(engine, "hero").conditions]
+
+
+def goblin_hits_hero(engine):
+    # ход гоблина: атака по герою; d20 [3, 20] -- с преимуществом бьёт, без -- промах (КД 19)
+    part(engine, "goblin_1").turn.action = True
+    engine.perform("goblin_1", "attack:скимитар:hero")
+
+
+# позиция проверки (шаг 265, решение 18): провал открывает героя
+
+def test_risky_failed_improvisation_gives_the_enemy_advantage_once(registry, cfg):
+    # d20=20 -- крит: кубики урона удваиваются (d6 и d4 по два)
+    engine = duel(registry, cfg, ScriptedRng(d20=[9, 3, 20], d6=[1, 1], d4=[1, 1]))
+    improvise(engine, "advantage", position="risky")
+    before = hp(engine, "hero")
+    goblin_hits_hero(engine)
+    assert hp(engine, "hero") < before
+    assert creature(engine, "hero").active_effects == []
+
+
+def test_risky_failed_improvisation_logs_the_opening(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="risky")
+    assert f"  {engine.name('hero')} открылся" in engine.state.log
+    assert f"  {engine.name('hero')} сбит с ног" not in engine.state.log
+
+
+def test_risky_failed_improvisation_does_not_knock_the_hero_down(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="risky")
+    assert "prone" not in hero_conditions(engine)
+
+
+def test_opening_lasts_through_the_next_hero_turn(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="risky")
+    # конец хода, в котором провал, эффект не снимает; следующий ход героя начался -- ещё висит
+    engine.expire("end_of_turn", "hero")
+    engine.start_turn("hero")
+    assert [e.id for e in creature(engine, "hero").active_effects] != []
+    # конец следующего хода -- снят
+    engine.expire("end_of_turn", "hero")
+    assert creature(engine, "hero").active_effects == []
+
+
+def test_controlled_failed_improvisation_gives_the_enemy_no_advantage(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9, 3], d6=[1]))
+    improvise(engine, "advantage", position="controlled")
+    before = hp(engine, "hero")
+    goblin_hits_hero(engine)
+    assert hp(engine, "hero") == before
+
+
+def test_desperate_failed_improvisation_knocks_the_hero_down(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="desperate")
+    assert "prone" in hero_conditions(engine)
+
+
+def test_desperate_failed_improvisation_logs_both_lines(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="desperate")
+    name = engine.name("hero")
+    assert f"  {name} открылся" in engine.state.log
+    assert f"  {name} сбит с ног" in engine.state.log
+
+
+def test_desperate_failed_improvisation_gives_the_enemy_advantage(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9, 3, 20], d6=[1, 1], d4=[1, 1]))
+    improvise(engine, "advantage", position="desperate")
+    before = hp(engine, "hero")
+    goblin_hits_hero(engine)
+    assert hp(engine, "hero") < before
+
+
+def test_controlled_failed_improvisation_only_loses_the_action(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="controlled")
+    assert creature(engine, "hero").active_effects == []
+    assert hero_conditions(engine) == []
+    assert not any("открылся" in line for line in engine.state.log)
+    assert turn(engine, "hero").action is False
+
+
+def test_failed_improvisation_without_position_is_controlled(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage")
+    assert not any("открылся" in line for line in engine.state.log)
+
+
+def test_action_function_without_position_is_controlled(registry, cfg):
+    from ai_dm.combat.actions.improvise import improvise as improvise_action
+
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise_action(
+        engine, "hero", skill="athletics", category="medium", effect="advantage"
+    )
+    assert creature(engine, "hero").active_effects == []
+    assert not any("открылся" in line for line in engine.state.log)
+
+
+def test_opening_effect_is_named_opened_up(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="risky")
+    assert [e.id for e in creature(engine, "hero").active_effects] == ["opened_up"]
+
+
+def test_desperate_prone_is_sourced_from_the_hero(registry, cfg):
+    engine = duel(registry, cfg, ScriptedRng(d20=[9]))
+    improvise(engine, "advantage", position="desperate")
+    prone = [c for c in creature(engine, "hero").conditions if c.id == "prone"]
+    assert [c.source for c in prone] == ["hero"]
+
+
+def test_successful_improvisation_does_not_open_the_hero_in_any_position(registry, cfg):
+    for position in ("controlled", "risky", "desperate"):
+        engine = duel(registry, cfg, ScriptedRng(d20=[10], d6=[1]))
+        improvise(engine, "extra_damage", target="goblin_1", position=position, skill="athletics")
+        assert hero_conditions(engine) == []
+        assert not any("открылся" in line for line in engine.state.log)
+
+
+def test_failed_hide_from_the_menu_does_not_open_the_hero(registry, cfg):
+    engine = make_engine(
+        registry, cfg, heroes=[make_fighter(registry)], rng=ScriptedRng(d20=[1, 1]),
+        zones=make_zones(hall=[feature("cover_half")]),
+        monsters=[mon("goblin_1", "goblin_warrior", "balcony")],
+    )
+    engine.start_turn("hero")
+    engine.perform("hero", "hide")
+    assert creature(engine, "hero").active_effects == []
+    assert hero_conditions(engine) == []
+    assert not any("открылся" in line for line in engine.state.log)
 
 
 def test_check_roll_is_written_to_the_log(registry, cfg):

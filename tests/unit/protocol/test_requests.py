@@ -617,6 +617,36 @@ def test_rest_prey_swap_description_names_both_options():
     assert "horde_breaker" in prop["description"]
 
 
+def improvise_request(**extra):
+    from ai_dm.protocol.requests import PlayerAction
+
+    spec = {"skill": "athletics", "category": "easy", "effect": "advantage", **extra}
+    return PlayerAction.model_validate({"type": "player_action", "steps": [], "improvise": spec})
+
+
+def test_improvise_position_defaults_to_controlled():
+    assert improvise_request().improvise.position == "controlled"
+
+
+def test_improvise_accepts_the_three_positions():
+    for position in ("controlled", "risky", "desperate"):
+        assert improvise_request(position=position).improvise.position == position
+
+
+def test_improvise_position_is_in_the_player_action_schema():
+    text = json.dumps(tool_defs(["player_action"])[0], ensure_ascii=False)
+    assert "desperate" in text and "risky" in text
+
+
+def test_improvise_position_is_required_in_the_strict_combat_schema():
+    from ai_dm.protocol.schema import tool_set
+
+    tool = [t for t in tool_set("combat_classify") if t["name"] == "player_action"][0]
+    assert tool["strict"] is True
+    improvise = tool["input_schema"]["properties"]["improvise"]
+    assert "position" in improvise["required"]
+
+
 def test_improvise_push_description_mentions_the_fall():
     text = json.dumps(tool_defs(["player_action"])[0], ensure_ascii=False)
     assert "в зону ниже" in text

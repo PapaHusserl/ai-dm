@@ -111,6 +111,11 @@ class ImproviseSpec(Request):
     )
     target: str = Field("", description="ref цели; пусто = нет.")
     zone: str = Field("", description="Идентификатор зоны, если действие про зону; пусто = нет.")
+    position: Literal["controlled", "risky", "desperate"] = Field(
+        "controlled",
+        description="Позиция импровизации: controlled -- провал стоит только действия; "
+        "risky -- провал открывает героя; desperate -- провал открывает героя и сбивает с ног.",
+    )
     NEUTRAL: ClassVar[dict] = {"effect": "none", "target": "", "zone": ""}
 
 
