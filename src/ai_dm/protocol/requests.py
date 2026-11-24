@@ -287,11 +287,13 @@ class Damage(Request):
 
     type: Literal["damage"]
     severity: Literal["nuisance", "dangerous", "deadly"] = Field(
-        description="Тяжесть: nuisance, dangerous, deadly (deadly только после провала)."
+        description="Тяжесть: nuisance, dangerous, deadly; после проваленного броска -- по его "
+        "позиции: risky nuisance или dangerous, desperate dangerous или deadly."
     )
     damage_type: str = Field(description="Тип урона: fire, poison, falling и т.п.")
     failed_roll_ref: str = Field(
-        "", description="roll_ref проваленного броска этого хода; нужен для deadly, иначе пусто."
+        "", description="roll_ref проваленного броска этого хода, цену которого платит урон; "
+        "нужен для deadly, иначе пусто."
     )
     NEUTRAL: ClassVar[dict] = {"failed_roll_ref": ""}
 
@@ -400,7 +402,11 @@ class TakeItem(Request):
         "", description="Для сюжетных предметов при given/lost/stolen: id NPC в этой локации, "
         "у которого вещь оказалась (обязателен); при spent и для обычных предметов пусто."
     )
-    NEUTRAL: ClassVar[dict] = {"holder_npc_id": ""}
+    failed_roll_ref: str = Field(
+        "", description="roll_ref проваленного броска этого хода, цену которого платит потеря "
+        "вещи (why lost, stolen, spent); иначе пусто."
+    )
+    NEUTRAL: ClassVar[dict] = {"holder_npc_id": "", "failed_roll_ref": ""}
 
 
 class Trade(Request):
@@ -425,7 +431,8 @@ class Trade(Request):
 
 class Haggle(Request):
     """Торг Убеждением с торговцем: движок бросает Убеждение героя против СЛ торговца, итог --
-    скидка или наценка покупки у него до конца дня. Раз в день на торговца."""
+    скидка или наценка покупки у него до конца дня; провал: наценка и цена. Раз в день на
+    торговца."""
 
     type: Literal["haggle"]
     npc_id: str = Field(description="Id NPC-торговца (в scene_npcs с merchant).")

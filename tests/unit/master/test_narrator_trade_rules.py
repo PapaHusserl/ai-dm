@@ -40,6 +40,14 @@ def test_rules_say_haggle_position_is_set_by_engine_as_risky():
     assert "Позицию торга ставит движок: risky." in section
 
 
+def test_rules_say_failed_haggle_costs_a_price_like_a_failed_check():
+    text = rules_text()
+    start = text.index("## Торговля")
+    end = text.find("\n## ", start + 1)
+    section = text[start:] if end == -1 else text[start:end]
+    assert "Провал торга, кроме наценки, стоит цены, как провал проверки." in section
+
+
 def test_rules_describe_trade_state_key():
     assert "В ключе `trade` состояния" in rules_text()
 

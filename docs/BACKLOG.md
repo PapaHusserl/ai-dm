@@ -2397,3 +2397,25 @@ updated: 2026-11-24
 (265 П1, `make cov` 2026-11-24) `tests/unit/persistence/test_migration_v8.py::test_load_v7_gives_new_romance_value`
 упал под xdist (gw2): нет `saves/old_world/slots/auto/manifest.json` во временном каталоге (`store.py:174`
 `read_raw`). Отдельно — 42 passed. `src/ai_dm/persistence` и его тесты шаг 265 не трогал. Причина не установлена.
+
+## 384. Ранний выход без цены не считается в invalid_retries
+status: done
+priority: low
+updated: 2026-11-24
+
+(265 П2, docs/plan-265.md, разбор папы) На раннем выходе `run` (`session.py:556-564`, раунд `offer_choices` с
+текстом при неоплаченной цене) заметка о цене добавляется, но `count_invalid` не вызывается: модель, раз за разом
+отвечающая только `offer_choices`, не упирается в предел решения 14 («третий финал → invalid»), её держит лишь
+общий предел раундов `run`.
+
+## 385. Выжившие мутанты на старых строках (265 П2)
+status: idea
+priority: low
+updated: 2026-11-24
+
+(265 П2, docs/plan-265.md, `make mutate-diff` 2026-11-24) 89 выживших на строках до П2:
+`master.session` `MasterSession.run` 45, 114, 117–119, 131, 136–138, 155, 230, 233–235, 262;
+`protocol.handlers.resources` `damage` 11, 12, 45, 49, 51, 74, 83–85, 94, 100, 107, 108, 114, 118, 133–138,
+149–154, 158, 159, 164, 165, 186–193; `take_item` 18–25, 39–41, 43–46, 50–52, 54–61, 108–111, 125;
+`protocol.handlers.trade` `haggle` 35, 36 (и в 382), 56, 65 (эквивалентные по разбору П1).
+Тесты — `tests/unit/protocol`, `tests/unit/master`.

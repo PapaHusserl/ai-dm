@@ -136,6 +136,17 @@ def buy_call(call_id):
     }
 
 
+def price_call(call_id="hg-9"):
+    # цена проваленного торга (шаг 265): при seed=7 бросок торга провален (+10%)
+    return {
+        "id": call_id, "name": "damage",
+        "input": {
+            "type": "damage", "severity": "nuisance", "damage_type": "bludgeoning",
+            "failed_roll_ref": "r1",
+        },
+    }
+
+
 def haggle_story(registry, root, extra_calls=()):
     bundle = new_world(
         registry, settings().rules, hero="arn", seed=7, world_id="vale-haggle", saved_at=SAVED_AT
@@ -146,7 +157,7 @@ def haggle_story(registry, root, extra_calls=()):
         trade=TradeProfile(kind="general", purse_cp=5000, restock_at_s=10**9),
     )
     steps = [
-        {"tool_calls": [haggle_call("hg-1"), buy_call("hg-2"), *extra_calls]},
+        {"tool_calls": [haggle_call("hg-1"), buy_call("hg-2"), *extra_calls, price_call()]},
         {"text": "Мара хмыкает и называет цену."},
     ]
     adapter = ScriptedAdapter(steps, provider="anthropic", model=OPUS)
@@ -159,7 +170,14 @@ def haggle_story(registry, root, extra_calls=()):
 def test_haggle_turn_is_committed(registry, tmp_path):
     _, _, reply, _ = haggle_story(registry, tmp_path)
     assert reply.turn.committed is True
-    assert reply.turn.requests == ["haggle", "trade"]
+    assert reply.turn.requests == ["haggle", "trade", "damage"]
+
+
+def test_failed_haggle_price_is_paid_in_the_same_turn(registry, tmp_path):
+    app, _, reply, _ = haggle_story(registry, tmp_path)
+    hero = hero_of(app.bundle)
+    assert app.bundle.world.npcs["mara"].trade.haggle_percent == 10
+    assert hero.creature.hp_current < hero.creature.hp_max
 
 
 def test_haggle_is_written_to_the_merchant_profile(registry, tmp_path):
@@ -179,7 +197,7 @@ def test_second_haggle_in_the_same_turn_is_refused(registry, tmp_path):
     app, _, reply, _ = haggle_story(registry, tmp_path, extra_calls=[haggle_call("hg-3")])
     profile = app.bundle.world.npcs["mara"].trade
     first = profile.haggle_percent
-    assert reply.turn.requests == ["haggle", "trade"]
+    assert reply.turn.requests == ["haggle", "trade", "damage"]
     assert profile.haggle_percent == first
 
 

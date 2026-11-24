@@ -487,6 +487,18 @@ class MasterSession:
             return EMPTY_NOTES["summarize_scene"]
         return EMPTY_NOTES.get(mode, EMPTY_NOTES["narrator"])
 
+    def price_note(self, ctx, mode):
+        # заметка модели, если провал героя в позиции с ценой остался без цены; иначе None
+        if self.role != "narrator" or mode != "explore" or not ctx.unpaid_fails:
+            return None
+        ref = ctx.unpaid_fails[0]
+        position = ctx.rolls[ref].tags["position"]
+        return (
+            f"Провал {ref} ({position}) остался без цены: вызови damage, take_item, curse или "
+            f"delayed_condition с failed_roll_ref {ref} либо начни бой (start_combat), "
+            "потом опиши последствие."
+        )
+
     def run(self, ctx, user_input, executor, mode, *, world_text="", run_id=None):
         run_id = run_id or self.run_id
         result = MasterResult()
@@ -541,16 +553,20 @@ class MasterSession:
                 told = any(t.strip() for t in result.texts + texts)
                 clean = not has_invalid and all_free and bool(accepted)
                 done = required is None or required_done
-                if self.role == "narrator" and clean and done and told:
+                unpaid = self.price_note(ctx, mode)
+                ready = clean and done and told
+                if ready and self.role == "narrator" and unpaid is None:
                     # варианты предложены, рассказ уже есть -- завершающий вызов не нужен
                     result.texts += texts
                     return self.finish(result)
                 if self.choices_unseen(done, told, accepted):
                     blocks.append(Text(text=CHOICES_NOTE))
+                if ready and unpaid is not None:
+                    blocks.append(Text(text=unpaid))
                 result.texts += texts
                 messages.append(Message(role="assistant", content=response.content))
                 messages.append(Message(role="user", content=blocks))
-                if has_invalid:
+                if has_invalid or (ready and unpaid is not None):
                     self.count_invalid(result, "Модель не смогла дать корректный вызов.")
                 req = req.model_copy(update={"messages": list(messages)})
                 continue
@@ -561,6 +577,8 @@ class MasterSession:
             elif self.role == "narrator" and looks_like_plan("\n\n".join(texts)):
                 note = PLAN_NOTE
                 result.report_tags.append("plan_leak")
+            if note is None:
+                note = self.price_note(ctx, mode)
             if note is None:
                 result.texts += texts
                 result = self.finish(result)

@@ -112,6 +112,22 @@ def spent_fail_ref(ctx, roll_ref):
     return True
 
 
+PRICE_BANDS = {"risky": ("nuisance", "dangerous"), "desperate": ("dangerous", "deadly")}
+SEVERITY_ORDER = ("nuisance", "dangerous", "deadly")
+
+
+def price_severity(ctx, request):
+    # (тяжесть, по_полосе_ли): бросок тратится при любой тяжести, тяжесть -- в полосе позиции
+    # проваленного броска; без полосы (нет оплаченного броска, controlled) deadly -> dangerous
+    severity = request.severity
+    spent = spent_fail_ref(ctx, request.failed_roll_ref)
+    band = spent and PRICE_BANDS.get(ctx.rolls[request.failed_roll_ref].tags.get("position"))
+    if not band:
+        return ("dangerous" if severity == "deadly" else severity), False
+    low, high = (SEVERITY_ORDER.index(s) for s in band)
+    return SEVERITY_ORDER[min(max(SEVERITY_ORDER.index(severity), low), high)], True
+
+
 def curse(ctx, request):
     hero = ctx.hero
     if hero.status == "dead":
@@ -144,11 +160,8 @@ def damage(ctx, request):
     hero = ctx.hero
     if hero.status == "dead":
         return Invalid(code="hero_dead", message="герой уже мёртв, урон по нему не применяется")
-    severity = request.severity
-    cut = False
-    if severity == "deadly" and not spent_fail_ref(ctx, request.failed_roll_ref):
-        severity = "dangerous"
-        cut = True
+    severity, paid = price_severity(ctx, request)
+    cut = severity != request.severity
     now_s = ctx.bundle.world.clock.now_s
     hazard = roll_hazard(
         hero, severity, request.damage_type, ctx.registry, ctx.rng,
@@ -197,6 +210,13 @@ def damage(ctx, request):
         "damage": hazard.damage.final, "hp": hero.creature.hp_current, "severity": severity,
         "hero_status": hero_status, "death_saves": after,
     }
+    if cut and paid:
+        return clamped(
+            f"тяжесть урона вне полосы позиции броска: применён {severity}",
+            "Тяжесть вреда после провала задаёт позиция броска (risky: nuisance или dangerous, "
+            f"desperate: dangerous или deadly): применён {severity}. Опиши последствия по факту.",
+            result, log,
+        )
     if cut:
         return clamped(
             "смертельный урон без проваленного броска этого хода",
@@ -833,6 +853,9 @@ def take_item(ctx, request):
     if npc is not None:
         given = InventoryEntry(item_id=request.item_id, qty=qty, cost_cp=removed[0].cost_cp)
         custom_items.hand_to_npc(world, npc, given, world.clock.now_s)
+    if request.why != "given":
+        # потеря вещи платит цену проваленного броска (given -- не потеря)
+        spent_fail_ref(ctx, request.failed_roll_ref)
     log = [f"{TAKE_WORDS[request.why]}: {found[1].name} x{qty}"]
     result = {"item_id": request.item_id, "qty": qty}
     if qty < request.qty:

@@ -1,4 +1,5 @@
 from ai_dm.core.events import DomainEvent
+from ai_dm.protocol.context import owes_price
 from ai_dm.protocol.decision import Decision
 from ai_dm.protocol.handlers.resources import clamped
 from ai_dm.protocol.handlers.trade_pick import (
@@ -65,12 +66,15 @@ def haggle(ctx, request):
     percent = trade_rules.haggle_percent_for(result.outcome, result.total, dc, ctx.cfg)
     trade_rules.apply_haggle(profile, percent, now_s)
     save_haggle(profile)
+    data = {
+        "roll_ref": ref, "outcome": result.outcome, "dc": result.dc, "total": result.total,
+        "position": HAGGLE_POSITION, "haggle_percent": percent, "until": "конец дня",
+    }
+    if owes_price(result):
+        data["price_due"] = True
     return Decision(
         status="accepted",
-        result={
-            "roll_ref": ref, "outcome": result.outcome, "dc": result.dc, "total": result.total,
-            "position": HAGGLE_POSITION, "haggle_percent": percent, "until": "конец дня",
-        },
+        result=data,
         log=[result.log.text, f"Торг с {npc.name}: цены покупки {percent:+d}% до конца дня"],
     )
 

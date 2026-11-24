@@ -77,7 +77,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # 26750 -> 26840).
 # 265 П1, решение 20: фразы о позиции проверки (position) вместо stakes, о позиции торга и
 # пометке рискованных вариантов (замер 26977: rules 13862, tools 13115; 26840 -> 27010).
-STATIC_MAX = 27010
+# 265 П2: обязательная цена провала, полосы тяжести, цена торга, failed_roll_ref у take_item
+# (замер 27282: rules 14039, tools 13243; 27010 -> 27310).
+STATIC_MAX = 27310
 
 MODES = sorted(MODE_TOOLS)
 

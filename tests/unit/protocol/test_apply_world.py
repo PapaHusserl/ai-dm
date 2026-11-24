@@ -1197,7 +1197,9 @@ def test_two_rolls_can_kill_two_npcs(registry, cfg):
 
 def test_roll_spent_on_deadly_damage_cannot_kill_npc(registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1], d10=[1, 1, 1, 1]))
-    ref = roll_ref(ctx)
+    ref = apply(
+        ctx, req("skill_check", skill="athletics", category="easy", position="desperate")
+    ).result["roll_ref"]
     hit = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert hit.status == "accepted"
     d = kill(ctx, cause="goal", evidence_ref=ref)

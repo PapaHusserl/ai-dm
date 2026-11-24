@@ -442,3 +442,64 @@ def test_prayer_does_not_give_advantage_on_haggle(registry, cfg):
     haggle(ctx)
     assert ctx.rng.calls == ["d20"]
     assert ctx.hero.divine.prayer_day == 0
+
+
+# шаг 265, П2: провал торга -- наценка плюс цена (решения 17, 22)
+
+def unpaid(ctx):
+    value = ctx.unpaid_fails
+    return list(value() if callable(value) else value)
+
+
+def failed_haggle_ctx(registry, cfg):
+    ctx = total_ctx(registry, cfg, 14)
+    ctx.rng.queues["d10"] = [3] * 10
+    return ctx
+
+
+def test_failed_haggle_keeps_the_markup_and_reports_price_due(registry, cfg):
+    ctx = failed_haggle_ctx(registry, cfg)
+    d = haggle(ctx)
+    assert d.result["outcome"] == "fail"
+    assert d.result["haggle_percent"] == 10
+    assert d.result["price_due"] is True
+
+
+def test_failed_haggle_is_an_unpaid_fail(registry, cfg):
+    ctx = failed_haggle_ctx(registry, cfg)
+    ref = haggle(ctx).result["roll_ref"]
+    assert unpaid(ctx) == [ref]
+
+
+def test_successful_haggle_has_no_price_due_and_no_unpaid_fail(registry, cfg):
+    ctx = total_ctx(registry, cfg, 15)
+    d = haggle(ctx)
+    assert "price_due" not in d.result
+    assert unpaid(ctx) == []
+
+
+def test_take_item_lost_pays_for_failed_haggle(registry, cfg):
+    ctx = failed_haggle_ctx(registry, cfg)
+    ref = haggle(ctx).result["roll_ref"]
+    d = apply(
+        ctx, req("take_item", item_id="longsword", qty=1, why="lost", failed_roll_ref=ref)
+    )
+    assert d.status == "accepted"
+    assert unpaid(ctx) == []
+
+
+def test_deadly_damage_after_failed_haggle_is_cut_to_dangerous(registry, cfg):
+    ctx = failed_haggle_ctx(registry, cfg)
+    ref = haggle(ctx).result["roll_ref"]
+    d = apply(
+        ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref)
+    )
+    assert d.status == "clamped"
+    assert d.result["severity"] == "dangerous"
+
+
+def test_second_haggle_same_day_is_rejected_and_adds_no_unpaid_fail(registry, cfg):
+    ctx = failed_haggle_ctx(registry, cfg)
+    ref = haggle(ctx).result["roll_ref"]
+    assert haggle(ctx).status == "rejected"
+    assert unpaid(ctx) == [ref]

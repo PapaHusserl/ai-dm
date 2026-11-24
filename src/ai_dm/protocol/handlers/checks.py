@@ -1,3 +1,4 @@
+from ai_dm.protocol.context import owes_price
 from ai_dm.protocol.decision import Decision
 from ai_dm.rules import checks
 from ai_dm.rules.roll_pipeline import spent_lines
@@ -8,6 +9,8 @@ def roll_decision(ctx, result, actor_id=None) -> Decision:
     data = {"roll_ref": ref, "outcome": result.outcome, "dc": result.dc, "total": result.total}
     if "position" in result.tags:
         data["position"] = result.tags["position"]
+    if owes_price(result):
+        data["price_due"] = True
     return Decision(
         status="accepted",
         result=data,

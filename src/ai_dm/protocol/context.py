@@ -3,6 +3,13 @@ from dataclasses import dataclass
 from ai_dm.core.rng import Rng
 from ai_dm.protocol.requests import IMPORT_MODE
 
+PRICE_POSITIONS = ("risky", "desperate")
+
+
+def owes_price(result):
+    # провал в позиции с ценой: controlled и бросок без позиции цены не несут
+    return result.outcome == "fail" and result.tags.get("position") in PRICE_POSITIONS
+
 
 class TurnContext:
     def __init__(
@@ -89,6 +96,18 @@ class TurnContext:
         if self.scene is None:
             return self.own_favor_spent
         return self.scene.favor_spent
+
+    @property
+    def unpaid_fails(self):
+        # roll_ref проваленных бросков героя в позиции с ценой, которые ход ещё не оплатил;
+        # бой в ходу и мёртвый герой цену закрывают (шаг 265, решения 11, 12)
+        if self.hero.status == "dead" or self.bundle.session.active_combat is not None:
+            return []
+        return [
+            ref for ref, result in self.rolls.items()
+            if self.roll_actors[ref] == self.hero.id and owes_price(result)
+            and ref not in self.used_rolls
+        ]
 
     def add_roll(self, result, actor_id=None, *, engine=False) -> str:
         ref = f"r{len(self.rolls) + 1}"

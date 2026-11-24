@@ -39,6 +39,40 @@ def test_rules_do_not_mention_stakes():
     assert "stakes" not in rules("narrator_rules.md")
 
 
+# шаг 265, П2: цена провала (п. 17 плана)
+
+def test_checks_section_says_risky_or_desperate_fail_costs_a_price():
+    checks = section("Проверки и сложность")
+    assert "стоит цены" in checks
+    assert "без цены движок ход не примет" in checks
+
+
+def test_checks_section_names_the_tools_that_pay_the_price():
+    checks = section("Проверки и сложность")
+    for name in ("damage", "take_item", "curse", "delayed_condition", "start_combat"):
+        assert f"`{name}`" in checks
+
+
+def test_checks_section_says_the_tools_take_the_failed_roll_ref():
+    assert "failed_roll_ref" in section("Проверки и сложность")
+
+
+def test_checks_section_names_take_item_whys_that_pay():
+    checks = section("Проверки и сложность")
+    for why in ("lost", "stolen", "spent"):
+        assert why in checks
+
+
+def test_checks_section_gives_severity_bands_by_position():
+    checks = section("Проверки и сложность")
+    assert "risky — nuisance или dangerous" in checks
+    assert "desperate — dangerous или deadly" in checks
+
+
+def test_checks_section_says_success_and_controlled_fail_cost_nothing():
+    assert "Успех и провал в controlled цены не несут." in section("Проверки и сложность")
+
+
 def test_choices_section_asks_to_mark_risky_variant():
     choices = section("Выбор игроку")
     assert "(рискованно)" in choices

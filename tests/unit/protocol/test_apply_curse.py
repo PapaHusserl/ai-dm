@@ -75,7 +75,9 @@ def test_curse_with_ref_to_failed_skill_check_is_accepted(registry, cfg):
 
 def test_curse_with_ref_spent_by_deadly_damage_is_rejected(registry, cfg):
     ctx = curse_ctx(registry, cfg, d10=[5, 5, 5, 5])
-    ref = failed_save(ctx)
+    ref = apply(
+        ctx, req("saving_throw", ability="wis", category="very_hard", position="desperate")
+    ).result["roll_ref"]
     hit = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert hit.status == "accepted"
     d = curse(ctx, ref)

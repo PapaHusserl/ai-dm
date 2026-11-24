@@ -29,6 +29,12 @@ def failed_ref(ctx):
     return apply(ctx, req("skill_check", skill="persuasion", category="hard")).result["roll_ref"]
 
 
+def desperate_ref(ctx):
+    # проваленный бросок в позиции desperate: только после него deadly не урезается (шаг 265)
+    d = apply(ctx, req("skill_check", skill="persuasion", category="hard", position="desperate"))
+    return d.result["roll_ref"]
+
+
 def hp_of(ctx):
     return ctx.hero.creature.hp_current
 
@@ -117,7 +123,7 @@ def test_deadly_with_ref_to_successful_roll_is_clamped(registry, cfg):
 
 def test_deadly_with_ref_to_failed_roll_is_accepted(registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1], d10=[5, 6, 7, 8]))
-    ref = failed_ref(ctx)
+    ref = desperate_ref(ctx)
     d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert d.status == "accepted"
     assert d.report_tag is None
@@ -130,7 +136,7 @@ def test_deadly_level_5_with_failed_ref_rolls_10d10(registry, cfg):
     rng = ScriptedRng(d20=[1], d10=[1] * 11)
     ctx = make_ctx(registry, cfg, rng)
     ctx.hero.sheet.primary.level = 5
-    ref = failed_ref(ctx)
+    ref = desperate_ref(ctx)
     assert rng.calls.count("d10") == 1
     d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert d.status == "accepted"
@@ -153,6 +159,26 @@ def test_ref_from_other_turn_does_not_count(registry, cfg):
     ctx = make_ctx(registry, cfg, ScriptedRng(d10=[5, 5]))
     d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert d.status == "clamped"
+
+
+def test_deadly_without_ref_signal_names_missing_failed_roll(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d10=[5, 5]))
+    d = apply(ctx, req("damage", severity="deadly", damage_type="fire"))
+    assert d.signal_to_master.startswith("Смертельный урон возможен только после")
+    assert "позиция броска" not in d.signal_to_master
+
+
+def test_deadly_after_risky_fail_signal_names_position_band(registry, cfg):
+    ctx = make_ctx(registry, cfg, ScriptedRng(d20=[1], d10=[5, 5]))
+    ref = apply(
+        ctx, req("skill_check", skill="persuasion", category="hard", position="risky")
+    ).result["roll_ref"]
+    d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
+    assert d.status == "clamped"
+    assert d.signal_to_master.startswith(
+        "Тяжесть вреда после провала задаёт позиция броска (risky: nuisance или dangerous, "
+    )
+    assert "desperate: dangerous или deadly): применён dangerous." in d.signal_to_master
 
 
 # give_item / take_item
@@ -1350,7 +1376,7 @@ def test_short_rest_above_the_sum_of_pools_is_clamped(registry, cfg):
 def test_deadly_damage_cannot_reuse_the_same_failed_roll(registry, cfg):
     rng = ScriptedRng(d20=[1], d10=[5, 5, 5, 5, 5, 5])
     ctx = make_ctx(registry, cfg, rng)
-    ref = failed_ref(ctx)
+    ref = desperate_ref(ctx)
     first = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     second = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert first.status == "accepted"
@@ -1365,10 +1391,10 @@ def test_two_failed_rolls_allow_two_deadly_hits(registry, cfg):
     rng = ScriptedRng(d20=[1, 1], d10=[1] * 8)
     ctx = make_ctx(registry, cfg, rng)
     first = apply(ctx, req(
-        "damage", severity="deadly", damage_type="fire", failed_roll_ref=failed_ref(ctx)
+        "damage", severity="deadly", damage_type="fire", failed_roll_ref=desperate_ref(ctx)
     ))
     second = apply(ctx, req(
-        "damage", severity="deadly", damage_type="fire", failed_roll_ref=failed_ref(ctx)
+        "damage", severity="deadly", damage_type="fire", failed_roll_ref=desperate_ref(ctx)
     ))
     assert first.status == "accepted"
     assert second.status == "accepted"
@@ -1378,7 +1404,7 @@ def test_clamped_deadly_does_not_spend_the_ref(registry, cfg):
     # урезанный (неверный) deadly без ref ничего не тратит: бросок ещё годится
     rng = ScriptedRng(d20=[1], d10=[1, 1, 1, 1, 1, 1])
     ctx = make_ctx(registry, cfg, rng)
-    ref = failed_ref(ctx)
+    ref = desperate_ref(ctx)
     apply(ctx, req("damage", severity="deadly", damage_type="fire"))
     d = apply(ctx, req("damage", severity="deadly", damage_type="fire", failed_roll_ref=ref))
     assert d.status == "accepted"
