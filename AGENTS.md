@@ -13,7 +13,7 @@
   Ресёрчи — docs/research/. Закрытые пункты беклога — docs/done/.
 - ~/.config/ai-dm/checklists/ — чек-листы живых прогонов (не в репо).
 
-Общие практики проектов — @~/projects/dashboard/priv/scaffold/COMMON.md
+Общие практики проектов — @~/projects/semia-kabanov/pravila/COMMON.md
 
 ## Местные правила
 
