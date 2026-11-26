@@ -1,0 +1,23 @@
+id: poisoned_needle
+name: Отравленная игла
+description: Игла с ядом в замке; тот, кто возится с замком, рискует уколоться.
+source: srd-5.2
+license: CC-BY-4.0
+severity: nuisance
+levels: [1, 20]
+trigger:
+  kind: object
+  text: Замок запертого предмета; игла срабатывает, когда замок трогают или вскрывают.
+detect:
+  skill: perception
+  dc: 15
+disarm:
+  text: Ловкость рук, действие; при провале ловушка срабатывает.
+  skill: sleight_of_hand
+  dc: 15
+save:
+  ability: con
+  dc: [11, 13, 15, 17]
+damage_type: poison
+condition: poisoned
+resets: false

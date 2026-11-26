@@ -16,6 +16,7 @@ from ai_dm.content.models.monsters import Monster
 from ai_dm.content.models.species import Species
 from ai_dm.content.models.spells import Spell
 from ai_dm.content.models.tables import Table
+from ai_dm.content.models.traps import Trap
 from ai_dm.content.monster_checks import check_monster_actions
 from ai_dm.content.registry import ContentRegistry
 
@@ -37,6 +38,7 @@ KINDS = {
     "monster": ("monsters", Monster),
     "mastery": ("masteries", Mastery),
     "table": ("tables", Table),
+    "trap": ("traps", Trap),
 }
 
 
@@ -156,6 +158,11 @@ def check_refs(items, paths):
         for class_id in spell.classes:
             if not has("class", class_id):
                 bad("spell", id, "classes", f"неизвестный класс '{class_id}'")
+    for id, trap in items["trap"].items():
+        if trap.condition is not None and not has("condition", trap.condition):
+            bad("trap", id, "condition", f"неизвестное состояние '{trap.condition}'")
+        if trap.damage_type is not None and trap.damage_type not in DAMAGE_TYPE_WORDS:
+            bad("trap", id, "damage_type", f"неизвестный тип урона '{trap.damage_type}'")
     for id, monster in items["monster"].items():
         for trait in monster.traits:
             if not has("feature", trait):

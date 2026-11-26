@@ -169,6 +169,8 @@ v16 (М0 П1, `m0016_v15_to_v16`): `Connection.kind/needs_transport`, `Location.
 рёбра «дорога», торговцам часы 8–16.
 v17 (М0 П3а, `m0017_v16_to_v17`): `Journey.walked_s` (секунд пройдено с начала пути, для строки ленты отрезка);
 миграция пустая, в сейвах v16 `hero.journey` — `None`.
+v18 (шаг 262 П1, `m0018_v17_to_v18`): `Location.hostile/traps/hidden/garrison`, модели `Hidden`, `PlacedTrap`, `Ambush`,
+`GarrisonEntry`; миграция пустая (см. раздел «Сейв v18»).
 
 **Принцип:** persistence никогда не читает файлы старой версии текущими моделями — только сырой
 dict до миграции (поэтому ротация слотов правит `manifest.json` как сырой JSON).
@@ -1278,3 +1280,16 @@ capture, text, now)` -> `saves/<мир>/issues/<YYYYMMDDTHHMMSS>-t<ход>-<ме
 - **Книга волшебника** = `CharacterSheet.spells_known["wizard"]`; подготовленные — из книги (`rules/spellbook.py`); Магическое
   восстановление — `rules/arcane_recovery.py`; Помощь вне боя и `utility`-заклинания вне боя — `protocol/handlers/utility_spells.py`.
 - **Сетка** `devtools/sim_grid`: базовая линия `devtools/sim_grid_baseline.yaml` перегенерирована в К3 П4 (жрец и волшебник 1–5).
+
+## Сейв v18: ловушки и засады (шаг 262, docs/plan-262.md)
+
+- **Реестр**: вид `trap` (`content/models/traps.py`, `srd/data/traps/*.yaml`, 8 ловушек); `check_refs` проверяет состояние и
+  тип урона. `Trap.severity_by_level` — тяжесть на полосах уровня 1-4 / 5-10 / 11-16 / 17-20, если она не равна
+  `severity` (читает П3). Кубов урона в данных нет — их даёт таблица ТЗ 2.3 от тяжести и уровня героя.
+- **Локация** (`state/world.py`): `hostile` (метка пака или рассказчика), `traps` (id реестра, заданные автором),
+  `garrison` (`monster_id`, `count`), `hidden: Hidden | None` (`None` — ещё не расставлено; `Hidden{level, traps:
+  [PlacedTrap{id, trap_id, state}], ambush: Ambush{stealth, noticed}, entered_from}`). Пак читает `Location` напрямую,
+  отдельной модели пака нет.
+- **Пак**: `check_pack_refs` проверяет id ловушек и монстров гарнизона по реестру; `merge.fill_location_hidden` в идущем
+  мире дозаполняет `hostile/traps/garrison` у непосещённой локации пака (`origin == "pack"`), заполненное не трогает.
+- Расстановка, обнаружение, срабатывание и засады — П2–П4.

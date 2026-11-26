@@ -1,0 +1,23 @@
+id: rolling_stone
+name: Катящийся камень
+description: Нажимная плита пускает по коридору огромный каменный шар.
+source: srd-5.2
+license: CC-BY-4.0
+severity: dangerous
+levels: [11, 20]
+severity_by_level:
+  17-20: nuisance
+trigger:
+  kind: path
+  text: Нажимная плита; наступивший на неё запускает по коридору катящийся камень.
+detect:
+  skill: investigation
+  dc: 15
+disarm:
+  text: Вбить клин под плиту; проверки нет.
+save:
+  ability: dex
+  dc: [15]
+damage_type: bludgeoning
+condition: prone
+resets: false

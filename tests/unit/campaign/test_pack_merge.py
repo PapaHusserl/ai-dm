@@ -581,3 +581,96 @@ def test_merged_entities_are_copies_of_pack_ones(tmp_path, registry):
     bundle.world.events[0].regions.append("port")
     assert next(n for n in pack.npcs if n.id == "brana").means == ["топор"]
     assert pack.events[0].regions == ["town"]
+
+
+# скрытое в локациях пака (шаг 262 П1): fill_location_hidden в merge_new
+
+def hostile_pack(tmp_path, registry, location_id="cellar", **fields):
+    def edit(files):
+        for location in files["locations.yaml"]:
+            if location["id"] == location_id:
+                location.update(hostile=True, **fields)
+
+    return v2_pack(tmp_path, registry, edit)
+
+
+def test_merge_gives_unvisited_pack_location_hostile_from_pack(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    assert bundle.world.locations["cellar"].hostile is False
+    merge(bundle, hostile_pack(tmp_path, registry))
+    assert bundle.world.locations["cellar"].hostile is True
+
+
+def test_merge_fills_traps_and_garrison_of_unvisited_location(tmp_path, registry):
+    trap_id = registry.ids("trap")[0]
+    garrison = [{"monster_id": "goblin_warrior", "count": 3}]
+    bundle = v1_bundle(tmp_path, registry)
+    merge(bundle, hostile_pack(tmp_path, registry, traps=[trap_id], garrison=garrison))
+    cellar = bundle.world.locations["cellar"]
+    assert cellar.traps == [trap_id]
+    assert [(g.monster_id, g.count) for g in cellar.garrison] == [("goblin_warrior", 3)]
+
+
+def test_hidden_fill_is_silent_in_report_added(tmp_path, registry):
+    trap_id = registry.ids("trap")[0]
+    garrison = [{"monster_id": "goblin_warrior", "count": 3}]
+    bundle = v1_bundle(tmp_path, registry)
+    report = merge(bundle, hostile_pack(tmp_path, registry, traps=[trap_id], garrison=garrison))
+    assert bundle.world.locations["cellar"].traps == [trap_id]
+    assert [a for a in report.added if a.startswith(("hostile:", "traps:", "garrison:"))] == []
+
+
+def test_hidden_fill_alone_leaves_report_added_empty(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    report = merge(bundle, hostile_pack(tmp_path, registry))
+    assert bundle.world.locations["cellar"].hostile is True
+    assert report.added == []
+
+
+def test_merge_does_not_touch_visited_location(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.locations["cellar"].visited = True
+    merge(bundle, hostile_pack(tmp_path, registry))
+    assert bundle.world.locations["cellar"].hostile is False
+
+
+def test_merge_does_not_touch_ai_location(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.locations["cellar"].origin = "ai"
+    merge(bundle, hostile_pack(tmp_path, registry))
+    assert bundle.world.locations["cellar"].hostile is False
+
+
+def test_merge_fills_later_location_after_visited_one(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.locations["town"].visited = True
+    merge(bundle, hostile_pack(tmp_path, registry))
+    assert bundle.world.locations["cellar"].hostile is True
+
+
+def test_merge_does_not_overwrite_traps_set_in_world(tmp_path, registry):
+    trap_ids = registry.ids("trap")
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.locations["cellar"].traps = [trap_ids[0]]
+    merge(bundle, hostile_pack(tmp_path, registry, traps=[trap_ids[1]]))
+    assert bundle.world.locations["cellar"].traps == [trap_ids[0]]
+
+
+def test_merge_does_not_overwrite_garrison_set_in_world(tmp_path, registry):
+    from ai_dm.state.world import GarrisonEntry
+
+    bundle = v1_bundle(tmp_path, registry)
+    in_world = GarrisonEntry(monster_id="goblin_warrior", count=1)
+    bundle.world.locations["cellar"].garrison = [in_world]
+    garrison = [{"monster_id": "goblin_warrior", "count": 3}]
+    merge(bundle, hostile_pack(tmp_path, registry, garrison=garrison))
+    assert [(g.monster_id, g.count) for g in bundle.world.locations["cellar"].garrison] == [
+        ("goblin_warrior", 1)
+    ]
+
+
+def test_merge_does_not_reset_hostile_set_in_world(tmp_path, registry):
+    bundle = v1_bundle(tmp_path, registry)
+    bundle.world.locations["cellar"].hostile = True
+    merge(bundle, v2_pack(tmp_path, registry, lambda files: None))
+    assert bundle.world.locations["cellar"].hostile is True

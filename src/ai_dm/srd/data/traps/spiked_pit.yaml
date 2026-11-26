@@ -1,0 +1,17 @@
+id: spiked_pit
+name: Яма с кольями
+description: Яма под крышкой, на дне которой колья; провалившийся падает без спасброска.
+source: srd-5.2
+license: CC-BY-4.0
+severity: dangerous
+levels: [1, 20]
+trigger:
+  kind: path
+  text: Крышка ямы, неотличимая от пола; под весом проваливается на колья.
+detect:
+  skill: investigation
+  dc: 15
+disarm:
+  text: Вбить клин под крышку или запереть её Волшебным замком; проверки нет.
+damage_type: piercing
+resets: false

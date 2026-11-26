@@ -1,0 +1,20 @@
+id: falling_net
+name: Падающая сеть
+description: Растяжка роняет тяжёлую сеть; урона нет, но она опутывает.
+source: srd-5.2
+license: CC-BY-4.0
+severity: nuisance
+levels: [1, 20]
+trigger:
+  kind: path
+  text: Растяжка поперёк прохода; тронутая, она роняет сеть.
+detect:
+  skill: perception
+  dc: 11
+disarm:
+  text: Разрезать растяжку или обойти её; проверки нет.
+save:
+  ability: dex
+  dc: [10, 12, 14, 16]
+condition: restrained
+resets: false

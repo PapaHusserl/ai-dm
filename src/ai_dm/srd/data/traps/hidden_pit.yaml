@@ -1,0 +1,17 @@
+id: hidden_pit
+name: Скрытая яма
+description: Яма под лёгкой крышкой, маскирующейся под пол; провалившийся падает без спасброска.
+source: srd-5.2
+license: CC-BY-4.0
+severity: nuisance
+levels: [1, 20]
+trigger:
+  kind: path
+  text: Крышка ямы, неотличимая от пола; под весом проваливается.
+detect:
+  skill: investigation
+  dc: 15
+disarm:
+  text: Вбить клин под крышку или запереть её Волшебным замком; проверки нет.
+damage_type: falling
+resets: false

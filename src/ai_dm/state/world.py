@@ -221,6 +221,38 @@ class Connection(BaseModel):
     needs_transport: bool = False
 
 
+class PlacedTrap(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # "t1", "t2"... в пределах локации
+    id: str
+    trap_id: str
+    state: Literal["hidden", "found", "disarmed", "sprung"] = "hidden"
+
+
+class Ambush(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # бросок Скрытности засады (становится СЛ для пассивной Внимательности героя)
+    stealth: int
+    noticed: bool = False
+
+
+class Hidden(BaseModel):
+    # скрытое в локации, расставленное движком при первом входе
+    model_config = ConfigDict(extra="forbid")
+    # уровень героя в момент расстановки
+    level: int = Field(ge=1)
+    traps: list[PlacedTrap] = Field(default_factory=list)
+    ambush: Ambush | None = None
+    # id локации, откуда герой вошёл (для ловушек «на пути»)
+    entered_from: str | None = None
+
+
+class GarrisonEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    monster_id: str
+    count: int = Field(ge=1)
+
+
 class Location(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
@@ -233,6 +265,13 @@ class Location(BaseModel):
     origin: str = "pack"
     # временная локация (дорога): заводит и удаляет движок
     temporary: bool = False
+    # враждебная локация: ловушки и засаду ставит движок при первом входе
+    hostile: bool = False
+    # id ловушек реестра, заданные паком или рассказчиком
+    traps: list[str] = Field(default_factory=list)
+    # None -- ещё не расставлено
+    hidden: Hidden | None = None
+    garrison: list[GarrisonEntry] = Field(default_factory=list)
 
 
 class NaturalEventKind(BaseModel):

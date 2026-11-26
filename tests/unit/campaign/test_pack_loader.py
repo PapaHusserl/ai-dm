@@ -204,6 +204,63 @@ def test_pack_location_with_temporary_false_loads(tmp_path, registry):
     assert ids(pack.locations) == ["town", "tavern", "cellar"]
 
 
+# ловушки и гарнизон локаций пака (шаг 262 П1)
+
+def test_pack_location_with_unknown_trap_is_error_with_file_and_location(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["traps"] = ["нет_такой"]
+    check_error(tmp_path, registry, files, "locations.yaml", "cellar", "нет_такой")
+
+
+def test_unknown_trap_error_names_location_and_field(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["traps"] = ["нет_такой"]
+    check_error(tmp_path, registry, files, "location 'cellar', поле traps")
+
+
+def test_unknown_garrison_monster_error_names_location_and_field(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["garrison"] = [{"monster_id": "no_such_monster", "count": 2}]
+    check_error(tmp_path, registry, files, "location 'cellar', поле garrison")
+
+
+def test_pack_location_with_known_trap_loads(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["traps"] = [registry.ids("trap")[0]]
+    pack = load(write_pack(tmp_path, files), registry)
+    assert pack.locations[2].traps == [registry.ids("trap")[0]]
+
+
+def test_pack_location_with_unknown_garrison_monster_is_error(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["garrison"] = [{"monster_id": "no_such_monster", "count": 2}]
+    check_error(tmp_path, registry, files, "locations.yaml", "cellar", "no_such_monster")
+
+
+def test_pack_location_with_known_garrison_loads(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["garrison"] = [{"monster_id": "goblin_warrior", "count": 3}]
+    pack = load(write_pack(tmp_path, files), registry)
+    assert [(g.monster_id, g.count) for g in pack.locations[2].garrison] == [("goblin_warrior", 3)]
+
+
+def test_pack_location_hostile_true_is_read(tmp_path, registry):
+    files = default_files()
+    files["locations.yaml"][2]["hostile"] = True
+    pack = load(write_pack(tmp_path, files), registry)
+    assert [loc.hostile for loc in pack.locations] == [False, False, True]
+
+
+def test_vale_pack_locations_are_not_hostile(registry):
+    from campaign_kit import VALE_DIR
+
+    from ai_dm.campaign.loader import load_pack
+
+    pack = load_pack(VALE_DIR, registry)
+    assert len(pack.locations) == 4
+    assert [loc.hostile for loc in pack.locations] == [False] * 4
+
+
 def test_unknown_condition_kind_in_trigger_is_error_with_path(tmp_path, registry):
     files = default_files()
     files["npcs.yaml"][0]["opportunity"][0]["if"] = {"phase_of_moon": "full"}

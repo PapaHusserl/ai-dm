@@ -1,0 +1,20 @@
+id: poisoned_darts
+name: Отравленные дротики
+description: Нажимная плита выпускает из отверстий в стене отравленные дротики.
+source: srd-5.2
+license: CC-BY-4.0
+severity: deadly
+levels: [1, 20]
+trigger:
+  kind: path
+  text: Нажимная плита; наступивший на неё получает залп дротиков из отверстий в стене.
+detect:
+  skill: perception
+  dc: 15
+disarm:
+  text: Заткнуть отверстия или вбить клин под плиту; проверки нет.
+save:
+  ability: dex
+  dc: [13]
+damage_type: poison
+resets: true

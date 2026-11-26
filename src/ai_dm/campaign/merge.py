@@ -57,6 +57,20 @@ def fill_npc_services(world, pack, report) -> None:
         report.added.append(f"services:{npc.id}")
 
 
+def fill_location_hidden(world, pack) -> None:
+    # скрытое в локациях пака (шаг 262): у непосещённой локации пака заполняем только пустое поле
+    for location in pack.locations:
+        old = world.locations.get(location.id)
+        if old is None or old.origin != "pack" or old.visited:
+            continue
+        if location.hostile and not old.hostile:
+            old.hostile = True
+        if location.traps and not old.traps:
+            old.traps = list(location.traps)
+        if location.garrison and not old.garrison:
+            old.garrison = [entry.model_copy() for entry in location.garrison]
+
+
 def preset_choices(hero, pack):
     # выборы пресета пака с полом, имя и класс совпадают с героем; иначе None
     key = (hero.name, hero.sheet.class_id)
@@ -115,6 +129,7 @@ def merge_new(bundle, pack) -> MergeReport:
             old.tags = list(npc.tags)
             report.added.append(f"tags:{npc.id}")
     fill_npc_services(world, pack, report)
+    fill_location_hidden(world, pack)
     fill_identity(bundle, pack, report)
     world.campaign_version = pack.manifest.version
     # миры этапа 2 мигрируют с пустым текстом мира: берём из пака, только если пуст

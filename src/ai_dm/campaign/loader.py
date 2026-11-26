@@ -162,6 +162,8 @@ def entity_refs(kind, entity) -> list[tuple[str, str, str]]:
             refs.append(("parent_id", "location", entity.parent_id))
         for connection in entity.connections:
             refs.append(("connections", "location", connection.to))
+        refs += [("traps", "trap", ref) for ref in entity.traps]
+        refs += [("garrison", "monster", entry.monster_id) for entry in entity.garrison]
     elif kind == "god":
         refs += [("rivals", "god", ref) for ref in entity.rivals]
         refs += [("servants", "npc", ref) for ref in entity.servants]
@@ -191,8 +193,8 @@ def entity_refs(kind, entity) -> list[tuple[str, str, str]]:
 def ref_exists(target, ref, known, registry) -> bool:
     if target == "item":
         return find_item(registry, ref) is not None
-    if target == "species":
-        return registry.has("species", ref)
+    if target in ("species", "trap", "monster"):
+        return registry.has(target, ref)
     return ref in known[target]
 
 
