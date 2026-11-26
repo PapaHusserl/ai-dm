@@ -33,6 +33,7 @@ def location_data(location) -> dict:
     return filled({
         "id": location.id, "name": location.name, "parent_id": location.parent_id,
         "description": location.description, "connections": connections,
+        "hostile": location.hostile or None,
     })
 
 

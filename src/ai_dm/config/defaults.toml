@@ -123,6 +123,12 @@ mode = "check"
 # шанс (%) монстра без тега disarmer получить роль обезоруживающего при старте боя, раз за бой
 enemy_chance = 0
 
+[traps]
+# бросок к6 при первом входе во враждебную локацию без ловушек пака: меньше one_from -- ни одной,
+# от one_from до two_from -- одна, от two_from -- две
+one_from = 4
+two_from = 6
+
 [defeat]
 robbery_gold_percent = 50
 left_to_die_hours_dice = "1d8"

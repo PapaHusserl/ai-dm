@@ -651,6 +651,23 @@ class PromptBuilder:
         entries = prompt_entries(ctx.hero, refs, self.app_cfg.master.knowledge_max)
         return {"knowledge": entries} if entries else {}
 
+    def traps_data(self, ctx, location_id):
+        # ловушки локации героя: незамеченные с пометкой «скрыто»; СЛ рассказчику не даём
+        place = ctx.bundle.world.locations.get(location_id)
+        if place is None or place.hidden is None:
+            return []
+        items = []
+        for trap in place.hidden.traps:
+            kind = ctx.registry.get("trap", trap.trap_id)
+            item = {
+                "id": trap.id, "name": kind.name, "state": trap.state,
+                "trigger": kind.trigger.text, "disarm": kind.disarm.text,
+            }
+            if trap.state == "hidden":
+                item["note"] = "скрыто: играй с учётом, не раскрывай; найдёт движок или поиск героя"
+            items.append(item)
+        return items
+
     def state_data(self, ctx, user_input, context_plan):
         world = ctx.bundle.world
         session = ctx.bundle.session
@@ -760,6 +777,9 @@ class PromptBuilder:
         }
         if known_locations:
             data["known_locations"] = known_locations
+        traps = self.traps_data(ctx, hero.location_id)
+        if traps:
+            data["traps"] = traps
         if hero.journey is not None:
             data["journey"] = journey_data(world, hero, ctx.cfg)
         data.update(absent_data(ctx, user_input))

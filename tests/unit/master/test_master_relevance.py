@@ -176,6 +176,84 @@ def test_secrets_are_not_in_system_blocks(registry, cfg):
     assert all("СЕКРЕТ-В-СЦЕНЕ" not in block.text for block in request.system)
 
 
+# шаг 262, П2: блок traps в state_data -- ловушки локации героя; незамеченные с пометкой «скрыто»,
+# СЛ рассказчику не передаётся.
+
+def bundle_with_traps(registry):
+    from ai_dm.state.world import Hidden, PlacedTrap
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["vale"].hidden = Hidden(level=1, traps=[
+        PlacedTrap(id="t1", trap_id="falling_net", state="found"),
+        PlacedTrap(id="t2", trap_id="spiked_pit", state="hidden"),
+    ])
+    return bundle
+
+
+def test_state_traps_block_lists_placed_traps_of_hero_location(registry, cfg):
+    text = json.dumps(
+        data_of(build(make_ctx(registry, cfg, bundle=bundle_with_traps(registry))))["traps"],
+        ensure_ascii=False,
+    )
+    assert "Падающая сеть" in text
+    assert "Яма с кольями" in text
+
+
+def test_state_traps_block_marks_unnoticed_trap_hidden(registry, cfg):
+    block = data_of(build(make_ctx(registry, cfg, bundle=bundle_with_traps(registry))))["traps"]
+    by_id = {t["id"]: json.dumps(t, ensure_ascii=False) for t in block}
+    assert "скрыто" in by_id["t2"]
+    assert "скрыто" not in by_id["t1"]
+
+
+def test_state_traps_block_has_no_dc(registry, cfg):
+    block = data_of(build(make_ctx(registry, cfg, bundle=bundle_with_traps(registry))))["traps"]
+    text = json.dumps(block, ensure_ascii=False)
+    assert "СЛ" not in text
+    assert "dc" not in text
+
+
+def test_state_traps_block_has_trigger_and_disarm_text_from_data(registry, cfg):
+    block = data_of(build(make_ctx(registry, cfg, bundle=bundle_with_traps(registry))))["traps"]
+    by_id = {t["id"]: json.dumps(t, ensure_ascii=False) for t in block}
+    for trap_id, key in (("t1", "falling_net"), ("t2", "spiked_pit")):
+        trap = registry.get("trap", key)
+        assert trap.trigger.text in by_id[trap_id]
+        assert trap.disarm.text in by_id[trap_id]
+
+
+def test_state_traps_block_entries_have_exact_keys_and_values(registry, cfg):
+    block = data_of(build(make_ctx(registry, cfg, bundle=bundle_with_traps(registry))))["traps"]
+    by_id = {t["id"]: t for t in block}
+    net = registry.get("trap", "falling_net")
+    pit = registry.get("trap", "spiked_pit")
+    assert by_id["t1"] == {
+        "id": "t1", "name": net.name, "state": "found",
+        "trigger": net.trigger.text, "disarm": net.disarm.text,
+    }
+    assert by_id["t2"] == {
+        "id": "t2", "name": pit.name, "state": "hidden",
+        "trigger": pit.trigger.text, "disarm": pit.disarm.text,
+        "note": "скрыто: играй с учётом, не раскрывай; найдёт движок или поиск героя",
+    }
+
+
+def test_state_traps_block_is_empty_without_hidden(registry, cfg):
+    data = data_of(build(make_ctx(registry, cfg, bundle=make_bundle(registry))))
+    assert not data.get("traps")
+
+
+def test_state_traps_block_skips_other_locations(registry, cfg):
+    from ai_dm.state.world import Hidden, PlacedTrap
+
+    bundle = make_bundle(registry)
+    bundle.world.locations["forest"].hidden = Hidden(
+        level=1, traps=[PlacedTrap(id="t1", trap_id="falling_net", state="found")]
+    )
+    data = data_of(build(make_ctx(registry, cfg, bundle=bundle)))
+    assert not data.get("traps")
+
+
 def test_prefix_bytes_do_not_change_between_turns(registry, cfg):
     bundle = make_bundle(registry)
     first = build(make_ctx(registry, cfg, bundle=bundle))

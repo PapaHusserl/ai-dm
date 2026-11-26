@@ -473,6 +473,35 @@ def test_location_create_adds_location(registry, cfg):
     assert d.log
 
 
+def test_location_create_hostile_true_is_stored(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_location(hostile=True))
+    assert ctx.bundle.world.locations["cellar"].hostile is True
+
+
+def test_location_create_without_description_stores_empty_string(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_location())
+    assert ctx.bundle.world.locations["cellar"].description == ""
+
+
+def test_location_create_without_hostile_is_false(registry, cfg):
+    ctx = make_ctx(registry, cfg)
+    apply(ctx, new_location())
+    assert ctx.bundle.world.locations["cellar"].hostile is False
+
+
+def test_location_create_inside_hostile_parent_is_placed_on_entry(registry, cfg):
+    # без поля hostile внутри враждебной локации: расстановка при входе (наследование)
+    from ai_dm.rules import hidden
+
+    ctx = make_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale_tavern"].hostile = True
+    apply(ctx, new_location())
+    hidden.enter(ctx, "cellar")
+    assert ctx.bundle.world.locations["cellar"].hidden is not None
+
+
 def test_location_create_same_name_other_parent_is_rejected(registry, cfg):
     # имя локации уникально во всём мире (BACKLOG 170)
     ctx = make_ctx(registry, cfg)

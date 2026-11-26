@@ -2450,3 +2450,12 @@ updated: 2026-11-26
 mutmut П1 шага 262 (`make mutate-diff`): 121 выживший на старых строках `content.loader:check_refs`,
 `campaign.loader:entity_refs`, `ref_exists`, `campaign.merge:merge_new`. Список — вывод `make mutate-diff` по тем же
 FUNCS (docs/plan-262.md, «Функции для mutmut»).
+
+## 392. Выжившие мутанты на старых строках — 262 П2
+status: idea
+priority: low
+updated: 2026-11-26
+
+mutmut П2 шага 262 (`make mutate-diff`): 18 выживших на старых строках
+`protocol.handlers.world:location_create` (15) и `protocol.handlers.resources:travel` (3: mutmut_13, 14, 167).
+Список — вывод `make mutate-diff` по FUNCS П2 (docs/plan-262.md, «Партии» п. 2).

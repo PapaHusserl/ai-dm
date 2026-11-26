@@ -161,7 +161,9 @@ def test_pack_tool_secret_items_are_flat_conditions():
 
 def test_pack_tool_location_items_have_connections():
     items = tool()["input_schema"]["properties"]["locations"]["items"]
-    assert set(items["properties"]) == {"id", "name", "parent_id", "description", "connections"}
+    assert set(items["properties"]) == {
+        "id", "name", "parent_id", "description", "connections", "hostile",
+    }
 
 
 def test_pack_tool_set_is_stable_between_calls():
@@ -583,6 +585,17 @@ def test_location_data_drops_empty_fields():
     assert pack_handlers.location_data(spec) == {
         "id": "square", "name": "Площадь", "description": "Шумная площадь.",
     }
+
+
+def test_location_data_keeps_hostile_flag():
+    # шаг 262, П2: hostile уходит в locations.yaml пака; False в файл не попадает
+    spec = PackLocation.model_validate(location_input(connections=[], hostile=True))
+    assert pack_handlers.location_data(spec)["hostile"] is True
+
+
+def test_location_data_without_hostile_has_no_key():
+    spec = PackLocation.model_validate(location_input(connections=[]))
+    assert "hostile" not in pack_handlers.location_data(spec)
 
 
 def test_location_data_with_parent_and_connections():

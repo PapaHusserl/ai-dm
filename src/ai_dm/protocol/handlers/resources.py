@@ -30,6 +30,7 @@ from ai_dm.rules import (
     work_hours,
     xp,
 )
+from ai_dm.rules import hidden as hidden_rules
 from ai_dm.rules import revive as revive_rules
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
@@ -1492,8 +1493,9 @@ def stay_decision(ctx, request):
     return Decision(status="accepted", result=result, log=[line])
 
 
-def travel_line(ctx, target, seconds, path, leg):
-    # строка ленты и остаток пути: отрезок (прошло, осталось) или прибытие (через узлы пути)
+def travel_line(ctx, target, seconds, path, leg, goal=None):
+    # строка ленты и остаток пути: отрезок (прошло, осталось) или прибытие (через узлы пути);
+    # goal -- цель, до которой герой не дошёл: путь оборван в target
     world = ctx.bundle.world
     hero = ctx.hero
     if leg:
@@ -1501,7 +1503,10 @@ def travel_line(ctx, target, seconds, path, leg):
         walked = time_ops.minutes_text(hero.journey.walked_s)
         left = time_ops.minutes_text(left_s)
         return f"В пути к «{target.name}»: прошло {walked}, осталось {left}", left_s
-    line = f"Путь в «{target.name}»: {seconds} с"
+    if goal is None:
+        line = f"Путь в «{target.name}»: {seconds} с"
+    else:
+        line = f"Путь к «{goal.name}» прерван в «{target.name}»: {seconds} с"
     if len(path) > 1:
         line += " (через " + ", ".join(world.locations[i].name for i in path[:-1]) + ")"
     return line, None
@@ -1519,6 +1524,7 @@ def travel(ctx, request):
         return stay_decision(ctx, request)
     if not route:
         return Invalid(code="no_route", message=no_route_message(ctx, request.travel_to, pace))
+    route = hidden_rules.cut_route(world, route)
     total = sum(s for _, s in route)
     limit = ctx.cfg.time.journey_from_s
     seconds = steed_seconds(hero, world.clock.now_s, min(total, limit))
@@ -1529,7 +1535,7 @@ def travel(ctx, request):
         hero.journey.walked_s += seconds
         route = route[:stop[0]]
     else:
-        here = request.travel_to
+        here = route[-1][0]
     hero.location_id = here
     companions = []
     for npc in world.npcs.values():
@@ -1543,8 +1549,10 @@ def travel(ctx, request):
         apply_events(world, [event])
         ctx.events.append(event)
     result = {"seconds": seconds, "now_s": world.clock.now_s, "location_id": here, "path": path}
-    target = world.locations[request.travel_to]
-    line, left_s = travel_line(ctx, target, seconds, path, total > limit)
+    target = world.locations[request.travel_to if total > limit else here]
+    cut = total <= limit and here != request.travel_to
+    goal = world.locations[request.travel_to] if cut else None
+    line, left_s = travel_line(ctx, target, seconds, path, total > limit, goal)
     if left_s is None:
         end_journey(world, hero)
     else:
@@ -1553,7 +1561,12 @@ def travel(ctx, request):
     if companions:
         log.append("С тобой: " + ", ".join(companions))
     concentration_note(ctx, log, result)
-    signal = service_rules.returned_signal(world, returned) or None
+    notes = [service_rules.returned_signal(world, returned), hidden_rules.enter(ctx, here)]
+    if cut:
+        notes.append(
+            f"Герой встал в «{target.name}», не дойдя до «{goal.name}»: дальше — новым travel_to."
+        )
+    signal = " ".join(note for note in notes if note) or None
     return Decision(status="accepted", result=result, log=log, signal_to_master=signal)
 
 

@@ -17,6 +17,7 @@ from ai_dm.protocol.handlers.trade import short_of_money
 from ai_dm.protocol.handlers.trade_pick import refusal_problem, scene_problem
 from ai_dm.protocol.handlers.world import rejected
 from ai_dm.protocol.hints import allowed
+from ai_dm.rules import hidden as hidden_rules
 from ai_dm.rules import money, time_ops
 from ai_dm.rules import services as service_rules
 from ai_dm.rules import trade as trade_rules
@@ -188,6 +189,9 @@ def passage_service(ctx, request, npc, kind, unit):
     )
     if returned:
         signal += "; " + service_rules.returned_signal(world, returned)
+    found = hidden_rules.enter(ctx, request.destination)
+    if found:
+        signal += ". " + found
     return Decision(status="accepted", result=result, log=log, signal_to_master=signal)
 
 

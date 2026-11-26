@@ -621,6 +621,10 @@ class LocationCreate(Request):
     connections: list[ConnectionSpec] = Field(
         [], description="Связи с другими локациями; пусто = нет."
     )
+    hostile: bool = Field(
+        False, description="Враждебное место (логово, руины, подземелье): движок сам расставит "
+        "ловушки при первом входе; false = обычное место."
+    )
     NEUTRAL: ClassVar[dict] = {"parent_id": "", "description": ""}
 
 
@@ -1059,6 +1063,10 @@ class PackLocation(Request):
     description: str = Field("", description="Описание локации; пусто = нет.")
     connections: list[ConnectionSpec] = Field(
         [], description="Связи с другими локациями пака; пусто = нет."
+    )
+    hostile: bool = Field(
+        False, description="Враждебное место (логово, руины, подземелье): движок расставит "
+        "ловушки при первом входе героя; вложенные локации тоже враждебны; false = обычное."
     )
     NEUTRAL: ClassVar[dict] = {"parent_id": "", "description": ""}
 

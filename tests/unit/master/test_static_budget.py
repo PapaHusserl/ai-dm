@@ -81,7 +81,9 @@ from ai_dm.protocol.schema import MODE_TOOLS, tool_set
 # (замер 27282: rules 14039, tools 13243; 27010 -> 27310).
 # 265 П3: фраза о позиции импровизации в разделе «Бой» (замер 27358: rules 14115, tools 13243;
 # 27310 -> 27390).
-STATIC_MAX = 27390
+# 262 П2: абзац «Ловушки» в narrator_rules.md и поле hostile у location_create (замер 27605:
+# rules 14291, tools 13314; 27390 -> 27640).
+STATIC_MAX = 27640
 
 MODES = sorted(MODE_TOOLS)
 

@@ -262,6 +262,13 @@ def test_explore_set_is_visible_minus_combat_only_tools():
         assert hidden not in names
 
 
+def test_explore_set_cannot_create_or_remove_traps():
+    # шаг 262, П2: ловушки ставит и убирает только движок; рассказчику -- поиск, обезвреживание,
+    # запуск
+    allowed = {"trap_search", "trap_disarm", "trap_trigger"}
+    assert [n for n in names_of("explore") if "trap" in n and n not in allowed] == []
+
+
 def test_explore_set_has_at_most_16_strict_tools():
     assert len(strict_tools("explore")) <= 16
 

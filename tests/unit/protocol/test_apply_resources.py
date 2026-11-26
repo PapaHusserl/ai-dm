@@ -660,6 +660,153 @@ def test_travel_sets_visited_flag_and_event(registry, cfg):
     assert "location_visited" in [e.type for e in ctx.events]
 
 
+# шаг 262, П2: вход во враждебную локацию расставляет скрытое; путь обрывается на первой
+# враждебной нерасставленной локации; найденная ловушка -- в signal_to_master, не в ленте.
+
+def deep_ctx(registry, cfg):
+    # Вейл -> Лес (враждебный, ловушка от пака) -> Чаща (не враждебная)
+    ctx = make_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["forest"].connections.append(Connection(to="deep", distance_m=1000))
+    world.locations["deep"] = Location(id="deep", name="Чаща")
+    world.locations["forest"].hostile = True
+    world.locations["forest"].traps = ["falling_net"]
+    return ctx
+
+
+def test_travel_into_hostile_location_places_hidden(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="forest"))
+    hidden = ctx.bundle.world.locations["forest"].hidden
+    assert [t.trap_id for t in hidden.traps] == ["falling_net"]
+
+
+def test_travel_into_peaceful_location_leaves_hidden_empty(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    ctx.bundle.world.locations["forest"].hostile = False
+    apply(ctx, req("advance_time", travel_to="forest"))
+    assert ctx.bundle.world.locations["forest"].hidden is None
+
+
+def test_travel_stops_at_first_hostile_unplaced_location(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="deep"))
+    world = ctx.bundle.world
+    assert ctx.hero.location_id == "forest"
+    assert world.locations["forest"].hidden is not None
+    assert "visited:deep" not in world.flags
+
+
+def test_travel_through_placed_hostile_location_reaches_target(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="deep"))
+    ctx.hero.location_id = "vale"
+    apply(ctx, req("advance_time", travel_to="deep"))
+    assert ctx.hero.location_id == "deep"
+
+
+def test_found_trap_name_goes_to_signal_not_to_log_or_dc(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="forest"))
+    assert ctx.bundle.world.locations["forest"].hidden.traps[0].state == "found"
+    assert "Падающая сеть" in d.signal_to_master
+    assert "СЛ" not in d.signal_to_master
+    assert all("Падающая сеть" not in line and "ловуш" not in line.lower() for line in d.log)
+
+
+def test_cut_route_signal_names_stop_and_target(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert "Лес" in d.signal_to_master
+    assert "Чаща" in d.signal_to_master
+
+
+def test_route_without_cut_has_no_cut_signal(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="forest"))
+    assert "Чаща" not in (d.signal_to_master or "")
+
+
+def test_repeat_route_through_placed_location_has_no_signal(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    apply(ctx, req("advance_time", travel_to="deep"))
+    ctx.hero.location_id = "vale"
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert not d.signal_to_master
+
+
+def test_cut_arrival_line_names_target_and_stop_with_via(registry, cfg):
+    # Р20 (а): «Путь к «<цель>» прерван в «<место>»: N с» + хвост «(через ...)» как у обычной строки
+    ctx = deep_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["mid"] = Location(id="mid", name="Брод")
+    world.locations["vale"].connections = [Connection(to="mid", distance_m=1000)]
+    world.locations["mid"].connections.append(Connection(to="forest", distance_m=4800))
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert d.log[0] == f"Путь к «Чаща» прерван в «Лес»: {d.result['seconds']} с (через Брод)"
+
+
+def test_cut_arrival_line_without_via(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert d.log[0] == f"Путь к «Чаща» прерван в «Лес»: {d.result['seconds']} с"
+
+
+def test_uncut_arrival_line_is_unchanged(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="forest"))
+    assert d.log[0] == f"Путь в «Лес»: {d.result['seconds']} с"
+
+
+def test_leg_line_on_cut_route_keeps_target_and_counts_left_to_it(registry, cfg):
+    # Р20 (б): отрезок долгого пути -- прежняя цель, «осталось» до неё
+    # (15000 м = 11250 с, прошло 7200)
+    from ai_dm.rules import time_ops
+
+    ctx = deep_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections[0].distance_m = 14000
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert d.result["left_s"] == 4050
+    assert d.log[0] == (
+        f"В пути к «Чаща»: прошло {time_ops.minutes_text(7200)}, "
+        f"осталось {time_ops.minutes_text(4050)}"
+    )
+
+
+def test_cut_signal_joins_found_traps_and_cut_note_with_space(registry, cfg):
+    ctx = deep_ctx(registry, cfg)
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert "Опиши, как он их заметил. Герой встал в «Лес», не дойдя до «Чаща»" in d.signal_to_master
+
+
+def test_cut_at_exact_journey_limit_is_arrival_not_leg(registry, cfg):
+    # путь до Леса ровно в один отрезок (total == journey_from_s): прибытие с обрывом, не отрезок
+    ctx = deep_ctx(registry, cfg)
+    ctx.bundle.world.locations["vale"].connections[0].distance_m = 9600
+    d = apply(ctx, req("advance_time", travel_to="deep"))
+    assert d.result["seconds"] == cfg.time.journey_from_s
+    assert d.log[0] == f"Путь к «Чаща» прерван в «Лес»: {d.result['seconds']} с"
+    assert ctx.hero.journey is None
+    assert ctx.hero.location_id == "forest"
+
+
+def test_cut_on_long_route_waits_for_the_next_leg(registry, cfg):
+    # до Леса дальше одного отрезка: первый отрезок -- на дороге, расстановки и сигнала нет
+    ctx = deep_ctx(registry, cfg)
+    world = ctx.bundle.world
+    world.locations["vale"].connections[0].distance_m = 14000
+    first = apply(ctx, req("advance_time", travel_to="deep"))
+    assert world.locations[ctx.hero.location_id].temporary
+    assert world.locations["forest"].hidden is None
+    assert not first.signal_to_master
+    assert ctx.hero.journey.to == "deep"
+    apply(ctx, req("advance_time", travel_to="deep"))
+    assert ctx.hero.location_id == "forest"
+    assert ctx.hero.journey is None
+    assert world.locations["forest"].hidden is not None
+    assert "visited:deep" not in world.flags
+
+
 def test_travel_without_route_is_invalid(registry, cfg):
     ctx = make_ctx(registry, cfg)
     before = dump(ctx)

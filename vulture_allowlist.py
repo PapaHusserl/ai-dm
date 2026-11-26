@@ -65,8 +65,6 @@ ac_bonus  # unused variable (src/ai_dm/state/hero.py:150) -- М0п/96б/167-168
 base_id  # unused variable (src/ai_dm/state/world.py:341) -- М0п/96б/167-168
 scene_weights  # unused variable (src/ai_dm/state/world.py:376) -- 25 (пресеты)
 # Задел 262 П1 (решение Влада 2026-11-25): убрать строку, когда поле начнут читать.
-detect  # unused variable (src/ai_dm/content/models/traps.py:50) -- П2
-trap_id  # unused variable (src/ai_dm/state/world.py:228) -- П2
 resets  # unused variable (src/ai_dm/content/models/traps.py:55) -- П3
 severity_by_level  # unused variable (src/ai_dm/content/models/traps.py:57) -- П3
 entered_from  # unused variable (src/ai_dm/state/world.py:247) -- П3

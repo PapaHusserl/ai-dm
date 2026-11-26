@@ -266,7 +266,8 @@ def location_create(ctx, request):
         )
     location = Location(
         id=request.id, name=request.name, parent_id=request.parent_id,
-        description=request.description or "", connections=connections, origin="ai",
+        description=request.description or "", connections=connections,
+        hostile=request.hostile, origin="ai",
     )
     conflicts = uniqueness.check_location(world, location, ctx.bundle.heroes)
     if conflicts:

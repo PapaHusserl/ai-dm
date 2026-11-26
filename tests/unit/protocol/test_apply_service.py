@@ -1881,6 +1881,34 @@ def test_passage_moves_hero_across_and_charges(registry, cfg):
     assert price > 0
 
 
+def test_passage_into_hostile_location_places_hidden(registry, cfg):
+    # шаг 262, П2: тот же вход, что и у travel
+    ctx = passage_ctx(registry, cfg)
+    island = ctx.bundle.world.locations["island"]
+    island.hostile = True
+    island.traps = ["falling_net"]
+    d = ferry(ctx)
+    assert [t.trap_id for t in island.hidden.traps] == ["falling_net"]
+    assert "Падающая сеть" in d.signal_to_master
+
+
+def test_passage_signal_keeps_base_and_appends_found_traps_after_period(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    island = ctx.bundle.world.locations["island"]
+    island.hostile = True
+    island.traps = ["falling_net"]
+    d = ferry(ctx)
+    base, found = d.signal_to_master.split(". Герой сразу", 1)
+    assert "ждёт здесь" in base
+    assert found == " заметил ловушки: Падающая сеть. Опиши, как он их заметил."
+
+
+def test_passage_into_peaceful_location_leaves_hidden_empty(registry, cfg):
+    ctx = passage_ctx(registry, cfg)
+    ferry(ctx)
+    assert ctx.bundle.world.locations["island"].hidden is None
+
+
 def test_passage_shifts_clock_by_edge_time(registry, cfg):
     ctx = passage_ctx(registry, cfg)
     ferry(ctx)

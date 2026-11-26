@@ -150,6 +150,19 @@ class DisarmConfig(BaseModel):
     enemy_chance: int = Field(0, ge=0, le=100)
 
 
+class TrapsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # пороги броска к6 числа ловушек: меньше one_from -- ни одной, от two_from -- две
+    one_from: int = Field(4, ge=1, le=7)
+    two_from: int = Field(6, ge=1, le=7)
+
+    @model_validator(mode="after")
+    def check_thresholds(self):
+        if self.one_from > self.two_from:
+            raise ValueError("traps: one_from не больше two_from")
+        return self
+
+
 class CustomItemsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name_max: int = 40
@@ -488,6 +501,7 @@ class RulesConfig(BaseModel):
     parley: ParleyConfig = ParleyConfig()
     survivors: SurvivorsConfig = SurvivorsConfig()
     disarm: DisarmConfig = DisarmConfig()
+    traps: TrapsConfig = TrapsConfig()
     limits: LimitsConfig
     custom_items: CustomItemsConfig = CustomItemsConfig()
     encounter: EncounterConfig = EncounterConfig()
